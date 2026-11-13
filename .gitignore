@@ -1,0 +1,19 @@
+# Local settings and secrets
+.DS_Store
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Common local dependency/build folders; stack not selected yet
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+target/
+dist/
+coverage/
+.pytest_cache/
+.ruff_cache/
