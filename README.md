@@ -10,8 +10,8 @@ Team workspace for the **Universal Event**, preparing for **Create Health Monito
 - [How we collaborate](CONTRIBUTING.md)
 - [Preparation and submission checklist](docs/PREPARATION.md)
 - [Scientific papers, repositories, and data references](docs/REFERENCES.md)
-- [Open tasks](../../issues)
-- [Pull requests](../../pulls)
+- [Open tasks](https://github.com/MiServeRDC/nasa-space-apps-2026/issues)
+- [Pull requests](https://github.com/MiServeRDC/nasa-space-apps-2026/pulls)
 
 ## Event
 
