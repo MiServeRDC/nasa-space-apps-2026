@@ -34,7 +34,7 @@ Confirm current instructions on the official site and in Space Apps Messages:
 3. Ask a teammate to review before merging. This is a team convention; a technical branch-protection rule is not configured.
 4. Keep each pull request small and explain how it was checked.
 5. Do not commit credentials, personal health records, or recordings of teammates.
-6. No hosted GitHub Actions workflows are included. Check work locally.
+6. GitHub Actions is disabled for this repository. No workflows are included; check work locally.
 
 ## Visibility and licensing
 
