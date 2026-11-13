@@ -1,20 +1,3 @@
-# GitHub: guida pratica per il team
-
-## Repository, branch e pull request
-
-Il repository è la cartella condivisa del progetto con la cronologia delle modifiche. Un branch è una linea di lavoro separata: permette di lavorare senza modificare subito la versione comune. Una pull request (PR) propone di unire le modifiche di un branch alla versione comune, chiamata main.
-
-- **Commit:** salva un gruppo di modifiche nella cronologia locale.
-- **Push:** invia i tuoi commit dal computer a GitHub.
-- **Fetch:** controlla quali aggiornamenti esistono su GitHub.
-- **Pull:** porta gli aggiornamenti da GitHub nel tuo computer.
-- **Merge:** integra il lavoro di un branch nell'altro.
-
-## Aggiungere i membri
-
-Il proprietario apre il repository e va in **Settings → Collaborators** (in alcune interfacce **Collaborators and teams**) → **Add people**. Cerca lo username GitHub di ciascun collega e invia l'invito. Ogni collega deve accettarlo.
-
-Sono due cose distinte: essere collaboratore su GitHub e far parte del team sul sito NASA. Per la gara servono entrambe le organizzazioni correttamente completate.
 
 ## Percorso semplice con GitHub Desktop
 
