@@ -7,6 +7,7 @@ import { useTelemetry } from './lib/useTelemetry';
 import { AlarmBadge, TriPhaseHeader, type Phase } from './modules/header-triphase/TriPhaseHeader';
 import { MriGauge, PredicateBars, StlChart } from './modules/mri-and-stl/MriAndStl';
 import { BodyHeatmap } from './modules/body-3d-heatmap/BodyHeatmap';
+import type { InjuryMarker } from './types/injury';
 import { WhatIfConsole } from './modules/whatif-console/WhatIfConsole';
 import { PlaybookRunner } from './modules/playbook-runner/PlaybookRunner';
 import { EcgStrip, OcularOnsd, PocusIjv } from './modules/analysis-imaging/Imaging';
@@ -58,6 +59,7 @@ export default function App() {
   const [ventEvent, setVentEvent] = useState<string | null>(null);
   const [activePhase, setActivePhase] = useState<Phase>('EVALUATE');
   const [evalTab, setEvalTab] = useState<EvalTab>('BODY_3D');
+  const [injuries, setInjuries] = useState<InjuryMarker[]>([]);
 
   const { packet, link } = useTelemetry(whatIf, thrombus, lastScanDay);
   const s = useMemo(() => evaluate(whatIf, lastScanDay), [whatIf, lastScanDay]);
@@ -169,6 +171,9 @@ export default function App() {
                   <BodyHeatmap
                     s={s}
                     sex={whatIf.sex}
+                    injuries={injuries}
+                    onAddInjury={(inj) => setInjuries((prev) => [...prev.filter((p) => p.region !== inj.region), inj])}
+                    onResolveInjury={(id) => setInjuries((prev) => prev.filter((p) => p.id !== id))}
                     onChangeSex={(sex) => setWhatIf((w) => ({ ...w, sex }))}
                     onOpenTab={setEvalTab}
                   />
