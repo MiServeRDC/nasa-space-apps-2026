@@ -30,8 +30,8 @@ function tubeFrom(pts: V3[], radius: number, tubularSegs = 20, radialSegs = 8): 
 }
 
 /** Layer 1: Anatomically sculpted Skeleton (cranium, orbits, S-spine, 8 rib pairs, pelvis, condyle long bones). */
-export function SkeletonLayer({ s, sex }: { s: ScenarioState; sex: CrewSex }) {
-  const boneRho = s.rho.sclerostin;
+export function SkeletonLayer({ s, sex }: { s: ScenarioState | null; sex: CrewSex }) {
+  const boneRho = s?.rho.sclerostin ?? 1;
   const boneTint = boneRho < 0.4 ? riskColor(boneRho) : undefined;
   const isF = sex === 'FEMALE';
   const shoulderX = isF ? 0.25 : 0.29;
@@ -157,11 +157,11 @@ export function SkeletonLayer({ s, sex }: { s: ScenarioState; sex: CrewSex }) {
 }
 
 /** Layer 2: Vascular & Neuro-Ocular (curved IJVs, Aorta, Optic Nerve Sheaths). */
-export function VascularNeuroLayer({ s }: { s: ScenarioState }) {
-  const ijvColor = riskColor(s.rho.tau_w);
-  const onsdColor = riskColor(Math.min(s.rho.onsd, s.rho.ppco2));
-  const ijvR = 0.011 + Math.min(0.018, Math.max(0, (s.csa - 0.7) * 0.007));
-  const onsdR = 0.015 + Math.max(0, (s.onsdMm - 4.8) * 0.005);
+export function VascularNeuroLayer({ s }: { s: ScenarioState | null }) {
+  const ijvColor = s === null ? "#6191cb" : riskColor((s?.rho.tau_w ?? 1));
+  const onsdColor = s === null ? "#b0a0d5" : riskColor(Math.min(s?.rho.onsd ?? 1, s?.rho.ppco2 ?? 1));
+  const ijvR = 0.011 + Math.min(0.018, Math.max(0, ((s?.csa ?? 0.7) - 0.7) * 0.007));
+  const onsdR = 0.015 + Math.max(0, ((s?.onsdMm ?? 4.8) - 4.8) * 0.005);
 
   const tubes = useMemo(() => ({
     aorta: tubeFrom([[0.02, 0.98, 0.05], [0.03, 1.12, 0.02], [0.0, 1.05, -0.02], [0.0, 0.52, -0.01]], 0.017, 24, 10),
@@ -205,20 +205,20 @@ export function VascularNeuroLayer({ s }: { s: ScenarioState }) {
       <mesh geometry={tubes.iliacR}><meshStandardMaterial color="#ef4444" /></mesh>
 
       <mesh geometry={tubes.ijvL}>
-        <meshStandardMaterial color={ijvColor} emissive={ijvColor} emissiveIntensity={s.rho.tau_w < 0.4 ? 1.4 : 0.4} />
+        <meshStandardMaterial color={ijvColor} emissive={ijvColor} emissiveIntensity={(s?.rho.tau_w ?? 1) < 0.4 ? 1.4 : 0.4} />
       </mesh>
       <mesh geometry={tubes.ijvR}>
-        <meshStandardMaterial color={ijvColor} emissive={ijvColor} emissiveIntensity={s.rho.tau_w < 0.4 ? 1.4 : 0.4} />
+        <meshStandardMaterial color={ijvColor} emissive={ijvColor} emissiveIntensity={(s?.rho.tau_w ?? 1) < 0.4 ? 1.4 : 0.4} />
       </mesh>
     </group>
   );
 }
 
 /** Layer 3: Sculpted Muscle Bellies (Soleus scales dynamically with soleusMm). */
-export function MusclesLayer({ s, opacity, sex }: { s: ScenarioState; opacity: number; sex: CrewSex }) {
-  const soleusColor = s.rho.soleus < 0.4 ? riskColor(s.rho.soleus) : '#991b1b';
+export function MusclesLayer({ s, opacity, sex }: { s: ScenarioState | null; opacity: number; sex: CrewSex }) {
+  const soleusColor = (s?.rho.soleus ?? 1) < 0.4 ? riskColor((s?.rho.soleus ?? 1)) : '#991b1b';
   const soleusBase = sex === 'FEMALE' ? 14.0 : 16.0;
-  const soleusScale = Math.max(0.55, s.soleusMm / soleusBase);
+  const soleusScale = Math.max(0.55, (s?.soleusMm ?? soleusBase) / soleusBase);
   const isF = sex === 'FEMALE';
   const armScale = isF ? 0.84 : 1.0;
   const shoulderX = isF ? 0.25 : 0.29;
@@ -267,8 +267,8 @@ export function MusclesLayer({ s, opacity, sex }: { s: ScenarioState; opacity: n
           <mesh geometry={geo.calf} position={[x * 0.92, -0.39, -0.02]} scale={[soleusScale, 1, soleusScale]}>
             <meshStandardMaterial
               color={soleusColor}
-              emissive={s.rho.soleus < 0.4 ? soleusColor : '#000000'}
-              emissiveIntensity={s.rho.soleus < 0.4 ? 0.65 : 0}
+              emissive={(s?.rho.soleus ?? 1) < 0.4 ? soleusColor : '#000000'}
+              emissiveIntensity={(s?.rho.soleus ?? 1) < 0.4 ? 0.65 : 0}
               transparent
               opacity={Math.min(0.95, opacity + 0.2)}
               roughness={0.55}

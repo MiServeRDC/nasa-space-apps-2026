@@ -35,3 +35,18 @@ npm run build
 
 * Gate 1: Playbook #05 anticoagulation step stays LOCKED unless the POCUS finding is `CONFIRMED`.
 * Gate 2: LBNP auto-vents to 0 mmHg when SBP drops > 15 mmHg or HR > 115 bpm, with an `AUTO_VENT_LBNP_CHAMBER` alert.
+
+### Interface hierarchy prototype
+
+The phase title leads the cockpit, while detailed workstation status and
+What-If controls use separate disclosures. Connection, alerts and data
+provenance remain visible.
+
+Design reference reviewed: [Vercel UI SDK](https://github.com/vercel-labs/ui)
+(Apache-2.0). This prototype uses existing React and native disclosures;
+it imports no UI SDK code or dependency.
+
+The health dashboard revision uses [WHOOP Home](https://www.whoop.com/us/en/thelocker/the-all-new-whoop-home-screen/)
+as a reference for switching from a metric overview to its recorded trend,
+and [Oura Vitals](https://support.ouraring.com/hc/en-us/articles/360058599753-How-to-Use-the-Oura-App)
+for separating current metrics from detail. No assets or code were copied.

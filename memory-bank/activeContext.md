@@ -6,6 +6,12 @@
 
 ---
 
+## Cockpit update (2026-11-14)
+
+Revised Gather, Evaluate and Act on `work/LelloXV`. Gather shows one current reading per vital, Evaluate uses the atlas from `6abbabf` with manual markers, and Act highlights the current step. The frontend build and browser checks passed. The fast probe could not run its Rust checks because Cargo was unavailable.
+
+---
+
 ## 1. What Was Just Accomplished
 1. **Complete Clinical & Mathematical Rectification:**
    * Fixed dimensional venous wall shear stress equation $\tau_w(t) = 2\mu v_{\max}(t)\sqrt{\pi/\text{IJV\_CSA}(t)}$ ($\mu = 0.035\text{ Poise}$).

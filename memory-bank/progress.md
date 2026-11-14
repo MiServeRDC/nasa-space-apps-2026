@@ -7,6 +7,12 @@
 
 ---
 
+## Cockpit update (2026-11-14)
+
+Revised Gather, Evaluate and Act on `work/LelloXV`. Gather shows one current reading per vital, Evaluate uses the atlas from `6abbabf` with manual markers, and Act highlights the current step. The frontend build and browser checks passed. The fast probe could not run its Rust checks because Cargo was unavailable.
+
+---
+
 ## Blocco 0: Architettura, Peer-Review Flight Surgeon, Grounding 24 Dataset & Harness² [COMPLETATO 100%]
 
 - **[x] Fase 0.1 (`01`–`11` Dossier & Red-Team Validation):**

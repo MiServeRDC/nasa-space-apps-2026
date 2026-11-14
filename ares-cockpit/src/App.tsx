@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   alarmFor,
   clamp,
@@ -19,6 +19,7 @@ import {
 import { ENGINE_HTTP_URL, useTelemetry, type RecordedHistoryPoint } from './lib/useTelemetry';
 import { AlarmBadge, TriPhaseHeader, type Phase } from './modules/header-triphase/TriPhaseHeader';
 import { MriGauge, PredicateBars, StlChart } from './modules/mri-and-stl/MriAndStl';
+import type { InjuryMarker } from './types/injury';
 import { BodyHeatmap } from './modules/body-3d-heatmap/BodyHeatmap';
 import { WhatIfConsole } from './modules/whatif-console/WhatIfConsole';
 import { PlaybookRunner } from './modules/playbook-runner/PlaybookRunner';
@@ -129,40 +130,50 @@ function UnavailableSubsystemPanel({
   );
 }
 
-function RecordedHistoryStrip({ history }: { history: RecordedHistoryPoint[] }) {
-  if (history.length === 0) {
-    return (
-      <div className="rounded border border-line bg-black px-3 py-2 font-mono text-[11px] text-gray-500">
-        Waiting for 1 Hz recorded BIDMC samples...
-      </div>
-    );
-  }
-  const latest = history[history.length - 1];
-  const recent = history.slice(-8);
+function VitalsTrend({ history }: { history: RecordedHistoryPoint[] }) {
+  const [metric, setMetric] = useState<'hr' | 'spo2' | 'resp' | 'pulse'>('hr');
+  const signals = { hr: ['Heart rate', 'bpm'], spo2: ['Blood oxygen', '%'], resp: ['Breathing', 'br/min'], pulse: ['Pulse', 'bpm'] } as const;
+  const points = history.filter(point => point[metric] !== null);
+  const values = points.map(point => point[metric] ?? 0);
+  const low = values.length ? Math.min(...values) : 0;
+  const high = values.length ? Math.max(...values) : 0;
+  const padding = Math.max(1, (high - low) * 0.15);
+  const start = history[0]?.relativeTimeS ?? 0;
+  const end = history.at(-1)?.relativeTimeS ?? start;
+  const x = (t: number) => 12 + (t - start) * 736 / Math.max(1, end - start);
+  const y = (v: number) => 12 + (high + padding - v) * 130 / (high - low + 2 * padding);
+  let penDown = false;
+  const path = history.map(point => {
+    const value = point[metric];
+    if (value === null) { penDown = false; return ''; }
+    const command = penDown ? 'L' : 'M';
+    penDown = true;
+    return `${command}${x(point.relativeTimeS)},${y(value)}`;
+  }).join(' ');
   return (
-    <div className="rounded border border-line bg-black px-3 py-2 font-mono text-[11px]">
-      <div className="mb-1 flex items-center justify-between text-gray-400">
-        <span>RECORDED 1 HZ HISTORY (IMMUTABLE UNDER WHAT-IF SLIDERS)</span>
-        <span>
-          {history.length} samples | latest t = {latest.relativeTimeS.toFixed(0)} s
-        </span>
+    <section className="health-trend" aria-label="Recorded vital trends">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <h2>Recorded trends</h2>
+        <div className="flex flex-wrap gap-1" aria-label="Choose signal">
+          {(Object.keys(signals) as (keyof typeof signals)[]).map(key => (
+            <button key={key} type="button" aria-pressed={key === metric} onClick={() => setMetric(key)}
+              className="health-choice">{signals[key][0]}</button>
+          ))}
+        </div>
       </div>
-      <div className="flex flex-wrap gap-2">
-        {recent.map((pt) => {
-          const hasGap = pt.pulse === null || pt.spo2 === null || pt.hr === null;
-          return (
-            <div
-              key={pt.relativeTimeS}
-              className={`rounded border px-2 py-0.5 text-[10px] ${
-                hasGap ? 'border-advisory/60 bg-advisory/10 text-advisory' : 'border-line text-gray-300'
-              }`}
-            >
-              t={pt.relativeTimeS.toFixed(0)}s: HR {pt.hr ?? 'MISSING'} | SpO2 {pt.spo2 ?? 'MISSING'}
-            </div>
-          );
-        })}
-      </div>
-    </div>
+      {points.length >= 2 ? <>
+        <svg viewBox="0 0 760 154" preserveAspectRatio="none" role="img"
+          aria-label={`${signals[metric][0]} over recorded time`} className="mt-4 h-36 w-full">
+          {[22, 62, 102, 142].map(row => <line key={row} x1="12" x2="748" y1={row} y2={row} stroke="#283345" />)}
+          <path d={path} fill="none" stroke="#a6baf1" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+          {points.map(point => <circle key={point.relativeTimeS} cx={x(point.relativeTimeS)}
+            cy={y(point[metric] ?? 0)} r="1.25" fill="#a6baf1" />)}
+        </svg>
+        <div className="flex justify-between text-xs text-gray-400">
+          <span>{start.toFixed(0)} s</span><span>{low}–{high} {signals[metric][1]}</span><span>{end.toFixed(0)} s</span>
+        </div>
+      </> : <p className="py-9 text-sm text-gray-400">Waiting for recorded samples for this signal.</p>}
+    </section>
   );
 }
 
@@ -249,6 +260,27 @@ export default function App() {
   const [thrombus, setThrombus] = useState<boolean | null>(null);
   const [lastScanDay, setLastScanDay] = useState<number>(DEFAULT_WHATIF.mission_day - 5);
   const [ventEvent, setVentEvent] = useState<string | null>(null);
+  const [injuries, setInjuries] = useState<InjuryMarker[]>([]);
+  const injuryPhotoUrls = useRef(new Set<string>());
+  useEffect(() => {
+    const urls = injuryPhotoUrls.current;
+    return () => { urls.forEach(url => URL.revokeObjectURL(url)); urls.clear(); };
+  }, []);
+
+  const releaseInjuryPhoto = (injury?: InjuryMarker) => {
+    if (!injury?.photoUrl) return;
+    URL.revokeObjectURL(injury.photoUrl);
+    injuryPhotoUrls.current.delete(injury.photoUrl);
+  };
+  const addInjury = (injury: InjuryMarker) => {
+    releaseInjuryPhoto(injuries.find(note => note.region === injury.region));
+    if (injury.photoUrl) injuryPhotoUrls.current.add(injury.photoUrl);
+    setInjuries(current => [...current.filter(note => note.region !== injury.region), injury]);
+  };
+  const resolveInjury = (id: string) => {
+    releaseInjuryPhoto(injuries.find(note => note.id === id));
+    setInjuries(current => current.filter(note => note.id !== id));
+  };
   const [activePhase, setActivePhase] = useState<Phase>('GATHER');
   const [evalTab, setEvalTab] = useState<EvalTab>('BODY_3D');
   const [whatIfOverlayActive, setWhatIfOverlayActive] = useState<boolean>(false);
@@ -381,18 +413,7 @@ export default function App() {
         });
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-black">
-      <OsSystemStatusBar
-        packet={packet}
-        whatIf={whatIf}
-        transportMode={transportMode}
-        ipcLatencyUs={ipcLatencyUs}
-        binaryFrameCount={binaryFrameCount}
-        lastBinaryFrame={lastBinaryFrame}
-        osStatus={osStatus}
-        paletteOpen={paletteOpen}
-        onTogglePalette={() => setPaletteOpen((v) => !v)}
-      />
+    <div className="health-shell">
       <TriPhaseHeader
         astronautId={packet.astronaut_id}
         alarm={sm.alarm_level}
@@ -403,14 +424,23 @@ export default function App() {
         onSelectPhase={setActivePhase}
       />
 
-      <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col gap-3 overflow-hidden p-4">
-        <ProvenanceBanner packet={packet} status={status} />
-
-        <div className="grid min-h-0 flex-1 gap-4 overflow-hidden lg:grid-cols-[1fr_340px]">
-          {/* Left / Center Authoritative Workspace */}
-          <main className="flex min-h-0 flex-col gap-3 overflow-hidden">
-            {/* Compact status banner */}
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line bg-panel px-4 py-2">
+      <div className="health-workspace">
+        <div className="health-page-heading">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-white">
+              {activePhase === 'GATHER' ? 'Crew vitals' : activePhase === 'EVALUATE' ? 'Health assessment' : 'Guided actions'}
+            </h1>
+            <p className="mt-1 text-sm text-gray-400">{isPureReplay ? "BIDMC recorded replay" : "Simulated flight scenario"}</p>
+          </div>
+          <button type="button" onClick={() => setPaletteOpen(true)}
+            className="min-h-12 rounded-lg border border-line px-4 text-sm text-gray-200 hover:bg-panel focus-visible:outline-2 focus-visible:outline-nominal">
+            Mission tools
+          </button>
+        </div>
+        <div className="health-content">
+          <main className="min-w-0 space-y-4">
+            {/* Assessment summary */}
+            {activePhase !== 'GATHER' && !(activePhase === 'EVALUATE' && evalTab === 'BODY_3D') && <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line bg-panel px-4 py-2">
               <div className="text-sm text-gray-200">
                 <span className="mr-2 font-mono text-xs text-gray-500">
                   {packet.mission_elapsed_days != null
@@ -442,83 +472,76 @@ export default function App() {
                   {ttvFormatted.primaryText}
                 </span>
               </div>
-            </div>
+            </div>}
 
             {/* PAGE 1: GATHER */}
             {activePhase === 'GATHER' && (
-              <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
-                <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-                  {[
-                    { key: 'Heart Rate (ECG)', fmt: hrFmt, unit: 'bpm' },
-                    { key: 'Pulse Rate (PPG)', fmt: pulseFmt, unit: 'bpm' },
-                    { key: 'Blood Oxygen (SpO2)', fmt: spo2Fmt, unit: '%' },
-                    { key: 'Breathing Rate', fmt: respFmt, unit: 'br/min' },
-                    { key: 'HRV (RMSSD)', fmt: hrvFmt, unit: 'ms' },
-                  ].map((item) => (
-                    <div key={item.key} className="flex flex-col justify-between rounded-lg border border-line bg-panel p-3">
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="text-xs text-gray-400">{item.key}</span>
-                      </div>
-                      <div
-                        className={`mt-1 font-mono ${
-                          item.fmt.unavailable ? 'text-xs font-bold leading-snug text-advisory' : 'text-2xl text-white'
-                        }`}
-                      >
-                        {item.fmt.text}
-                      </div>
-                      <div className="mt-1.5 flex flex-wrap items-center justify-between gap-1">
-                        <span className="font-mono text-[10px] text-gray-500">{item.fmt.unavailable ? '--' : item.unit}</span>
-                        <div className="flex flex-wrap gap-1">
-                          <OriginBadge origin={item.fmt.unavailable ? 'UNAVAILABLE' : bioOrigin} />
-                          <FreshnessBadge
-                            freshness={bioFreshness(item.fmt.unavailable)}
-                            ageMs={status.heldSample ? status.heldAgeMs : null}
-                          />
-                        </div>
-                      </div>
+              <div className="space-y-5">
+                <section className="bedside-monitor" aria-label="Current vital signs">
+                  <div className="monitor-heading">
+                    <h2>Cardiac monitor</h2>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <OriginBadge origin={bioOrigin} />
+                      <FreshnessBadge freshness={bioFreshness(false)} ageMs={status.heldSample ? status.heldAgeMs : null} />
                     </div>
-                  ))}
-                </div>
-
-                <RecordedHistoryStrip history={recordedHistory} />
-
-                <Card
-                  title="ECG Waveform Visualizer & Signal Quality Check"
-                  tag={packet.provenance_manifest.biometrics_source}
-                  origin={b.heart_rate_bpm === null ? 'UNAVAILABLE' : bioOrigin}
-                  freshness={bioFreshness(b.heart_rate_bpm === null)}
-                  className="min-h-0 flex-1"
-                >
-                  <div className="flex h-full flex-col justify-between gap-3">
-                    <EcgStrip
-                      hr={b.heart_rate_bpm}
-                      artifact={isRecordedBiometrics ? 0 : whatIf.artifact_level}
-                      sqi={b.sqi_score ?? (isRecordedBiometrics ? 1.0 : localSim.sqi)}
-                      isRecorded={isRecordedBiometrics}
-                    />
-                    <p className="text-xs text-gray-300">
-                      Missing or null channels remain explicitly <span className="font-mono text-advisory">MISSING</span> /{' '}
-                      <span className="font-mono text-advisory">UNAVAILABLE (BEAT_INTERVALS_NOT_AVAILABLE)</span> and are never coerced to 0 or overwritten by What-If sliders.
-                    </p>
                   </div>
-                </Card>
+                  <div className="monitor-cardiac">
+                    <div className="min-w-0">
+                      <p className="monitor-trace-label">Illustrative ECG waveform</p>
+                      <EcgStrip
+                        hr={status.isStale ? null : b.heart_rate_bpm}
+                        artifact={isRecordedBiometrics ? 0 : whatIf.artifact_level}
+                        sqi={b.sqi_score ?? localSim.sqi}
+                      />
+                    </div>
+                    <div className="monitor-vital monitor-heart">
+                      <span>Heart rate</span>
+                      <strong className={hrFmt.unavailable ? 'vital-unavailable' : ''}>{hrFmt.text}</strong>
+                      {!hrFmt.unavailable && <small>bpm</small>}
+                    </div>
+                  </div>
+                  <dl className="monitor-secondary">
+                    {[
+                      { label: 'Blood oxygen', fmt: spo2Fmt, unit: '%', color: 'oxygen' },
+                      { label: 'Breathing rate', fmt: respFmt, unit: 'br/min', color: 'breathing' },
+                      { label: 'Pulse', fmt: pulseFmt, unit: 'bpm', color: 'pulse' },
+                    ].map(({ label, fmt, unit, color }) => (
+                      <div key={label} className={`monitor-vital monitor-${color}`}>
+                        <dt>{label}</dt>
+                        <dd>
+                          <strong className={fmt.unavailable ? 'vital-unavailable' : ''}>{fmt.text}</strong>
+                          {!fmt.unavailable && <small>{unit}</small>}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                </section>
+                <VitalsTrend history={recordedHistory} />
+                <section className="health-region p-5" aria-label="Recording and signal details">
+                  <h2 className="mb-3 text-lg font-semibold text-white">Recording and signal details</h2>
+                  <p className="mb-3 text-sm text-gray-300">
+                    HRV (RMSSD) · {hrvFmt.text}{hrvFmt.unavailable ? '' : ' ms'}
+                  </p>
+                  <p className="text-sm text-gray-400">{recordedHistory.length} recorded samples · BIDMC 1 Hz</p>
+                </section>
               </div>
             )}
 
             {/* PAGE 2: EVALUATE */}
             {activePhase === 'EVALUATE' && (
-              <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
-                <div className="flex flex-wrap gap-2 font-mono text-xs">
+              <div className="flex shrink-0 flex-col gap-3">
+                <div className="health-sections">
                   {([
-                    ['BODY_3D', '3D Body Layers'],
-                    ['POCUS', 'Ultrasound (Neck & Eye)'],
-                    ['MUSCLE_BONE', 'Muscle, Bone & Mars Gait'],
-                    ['FORECAST', '14-Day Safety Forecast'],
+                    ['BODY_3D', 'Body overview'],
+                    ['POCUS', 'Ultrasound'],
+                    ['MUSCLE_BONE', 'Muscle & bone'],
+                    ['FORECAST', 'Safety forecast'],
                   ] as const).map(([id, label]) => (
                     <button
                       key={id}
                       type="button"
                       onClick={() => setEvalTab(id)}
+                      aria-pressed={evalTab === id}
                       className={`cursor-pointer rounded border px-3 py-1.5 ${
                         evalTab === id ? 'border-nominal bg-nominal/15 font-bold text-nominal' : 'border-line text-gray-400 hover:text-white'
                       }`}
@@ -530,26 +553,18 @@ export default function App() {
 
                 {evalTab === 'BODY_3D' && (
                   <Card
-                    title="Your 3D Body Scan"
-                    tag="Click any point to inspect, drag to rotate"
-                    origin={hasHemodynamics || hasMusculoskeletal ? (packet.is_local_simulation ? 'SIMULATED_SCENARIO_INPUT' : 'DERIVED_FROM_HYBRID_SCENARIO') : 'UNAVAILABLE'}
-                    className="min-h-0 flex-1"
+                    title="Body overview"
+                    tag="Drag to rotate · scroll to zoom"
                   >
-                    {!hasHemodynamics && !hasMusculoskeletal ? (
-                      <UnavailableSubsystemPanel
-                        title="3D MICROGRAVITY HEATMAP UNAVAILABLE IN PURE BIDMC REPLAY"
-                        reason="The active stream is pure terrestrial BIDMC v1.0.0 replay (hemodynamics and musculoskeletal blocks are null). No fabricated organ values are rendered."
-                        linkIsLive={link === 'ENGINE_LIVE'}
-                        onEngageOverlay={() => setWhatIfOverlayActive(true)}
-                      />
-                    ) : (
-                      <BodyHeatmap
-                        s={s}
-                        sex={whatIf.sex}
-                        onChangeSex={(sex) => handleWhatIfChange({ ...whatIf, sex })}
-                        onOpenTab={setEvalTab}
-                      />
-                    )}
+                    <BodyHeatmap
+                      s={isPureReplay ? null : s}
+                      sex={whatIf.sex}
+                      injuries={injuries}
+                      onAddInjury={addInjury}
+                      onResolveInjury={resolveInjury}
+                      onChangeSex={(sex) => handleWhatIfChange({ ...whatIf, sex })}
+                      onOpenTab={setEvalTab}
+                    />
                   </Card>
                 )}
 
@@ -677,55 +692,70 @@ export default function App() {
 
             {/* PAGE 3: ACT */}
             {activePhase === 'ACT' && (
-              <div className="grid min-h-0 flex-1 gap-4 md:grid-cols-[1.3fr_1fr]">
+              <div className="act-grid">
                 <Card
-                  title="Guided Medical Procedure"
+                  title="Guided procedure"
                   origin={packet.active_playbook ? 'DERIVED_FROM_HYBRID_SCENARIO' : 'SIMULATED_SCENARIO_INPUT'}
                   className="min-h-0"
                 >
-                  <PlaybookRunner thrombus={thrombus} setThrombus={handleThrombusChange} />
                   {packet.active_playbook && (
-                    <div className="mt-3 rounded border border-nominal/50 bg-black p-2.5 font-mono text-xs">
-                      <div className="text-nominal">ACTIVE ENGINE PLAYBOOK: {packet.active_playbook.playbook_id}</div>
-                      {packet.active_playbook.step_instruction && (
-                        <div className="mt-1 text-gray-300">{packet.active_playbook.step_instruction}</div>
-                      )}
-                    </div>
+                    <section className="act-engine mb-5" aria-label="Active engine playbook">
+                      <p className="text-sm text-gray-400">Active engine playbook</p>
+                      <h2 className="mt-1 text-xl font-semibold text-white">{packet.active_playbook.title ?? packet.active_playbook.playbook_id}</h2>
+                      {packet.active_playbook.step_instruction && <p className="mt-2 text-gray-200">{packet.active_playbook.step_instruction}</p>}
+                      <details className="mt-3 text-sm text-gray-400">
+                        <summary className="cursor-pointer">Engine details</summary>
+                        <p className="mt-2 break-words">{packet.active_playbook.playbook_id}</p>
+                        {!!packet.active_playbook.causal_chain_summary?.length && (
+                          <ul className="mt-2 list-disc space-y-1 pl-5">
+                            {packet.active_playbook.causal_chain_summary.map((item, index) => <li key={index}>{item}</li>)}
+                          </ul>
+                        )}
+                      </details>
+                    </section>
                   )}
+                  <PlaybookRunner thrombus={thrombus} setThrombus={handleThrombusChange} />
                 </Card>
                 <Card title="Active Safety Protections" origin={packet.is_local_simulation ? 'SIMULATED_SCENARIO_INPUT' : 'DERIVED_COMPUTED'} className="min-h-0">
                   <div className="space-y-4 text-sm text-gray-300">
                     <div className="rounded border border-line p-3">
                       <div className="flex justify-between font-mono text-xs">
-                        <span className="font-bold text-white">NO BLIND BLOOD THINNERS</span>
+                        <span className="font-bold text-white">Anticoagulant lock</span>
                         <span className={thrombus === true ? 'text-ok' : 'text-critical'}>
                           {thrombus === true ? 'OPEN' : 'LOCKED'}
                         </span>
                       </div>
                       <p className="mt-1 text-xs text-gray-400">
-                        Anticoagulants stay locked until your neck ultrasound confirms a real clot, protecting you from dangerous bleeding after a minor bump.
+                        This scenario requires a confirmed POCUS finding before unlocking the anticoagulant step.
                       </p>
                     </div>
                     <div className="rounded border border-line p-3">
                       <div className="flex justify-between font-mono text-xs">
-                        <span className="font-bold text-white">FAINTING PROTECTION (LBNP)</span>
+                        <span className="font-bold text-white">LBNP protection</span>
                         <span className={ventEvent ? 'text-critical' : 'text-ok'}>
                           {ventEvent ? 'VENTED' : 'ARMED'}
                         </span>
                       </div>
                       <p className="mt-1 text-xs text-gray-400">
-                        If your blood pressure drops more than 15 mmHg or your heart rate passes 115 bpm during LBNP, the chamber vents back to 0 mmHg right away.
+                        The simulator resets LBNP when systolic pressure drops more than 15 mmHg or heart rate exceeds 115 bpm.
                       </p>
                     </div>
+                    {packet.active_playbook?.safety_gates && (
+                      <div className="rounded border border-line p-3">
+                        <div className="flex flex-wrap justify-between gap-2 text-sm">
+                          <span className="font-semibold text-white">EVA suit damping</span>
+                          <span>{packet.active_playbook.safety_gates.eva_suit_damping_active ? 'Active' : 'Inactive'}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </Card>
               </div>
             )}
           </main>
 
-          {/* Right Sticky Control Sidebar */}
-          <aside className="flex min-h-0 flex-col gap-3 overflow-y-auto">
-            <div className="rounded-lg border border-line bg-panel p-4">
+          <aside className="health-tools">
+            {activePhase !== 'GATHER' && !(activePhase === 'EVALUATE' && evalTab === 'BODY_3D') && <div className="rounded-lg border border-line bg-panel p-4">
               <div className="mb-1 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
                   <span className="font-mono text-xs tracking-widest text-gray-500">YOUR READINESS</span>
@@ -734,9 +764,11 @@ export default function App() {
                 <AlarmBadge level={sm.alarm_level} />
               </div>
               <MriGauge safety={sm} qualityFlags={qualityFlags} />
-            </div>
+            </div>}
 
-            <div className="min-h-0 flex-1 rounded-lg border border-line bg-panel p-4">
+            <details open={whatIfOverlayActive || undefined} className="rounded-lg border border-line bg-panel">
+              <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-gray-200">What-If simulation</summary>
+              <div className="border-t border-line p-4">
               <div className="mb-2 flex items-center justify-between">
                 <span className="font-mono text-xs tracking-widest text-gray-500">ADJUST CONDITIONS</span>
                 <OriginBadge origin="SIMULATED_SCENARIO_INPUT" />
@@ -766,7 +798,23 @@ export default function App() {
                   </div>
                 </div>
               )}
-            </div>
+              </div>
+            </details>
+            <details className="rounded-lg border border-line bg-panel">
+              <summary className="cursor-pointer px-4 py-3 text-sm text-gray-300">System details and provenance</summary>
+              <ProvenanceBanner packet={packet} status={status} />
+              <OsSystemStatusBar
+                packet={packet}
+                whatIf={whatIf}
+                transportMode={transportMode}
+                ipcLatencyUs={ipcLatencyUs}
+                binaryFrameCount={binaryFrameCount}
+                lastBinaryFrame={lastBinaryFrame}
+                osStatus={osStatus}
+                paletteOpen={paletteOpen}
+                onTogglePalette={() => setPaletteOpen((v) => !v)}
+              />
+            </details>
           </aside>
         </div>
       </div>

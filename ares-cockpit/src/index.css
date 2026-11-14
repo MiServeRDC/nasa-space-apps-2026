@@ -26,3 +26,127 @@ input[type="range"] {
   accent-color: #22d3ee;
   width: 100%;
 }
+
+/* Health dashboard surfaces and typography. */
+@theme {
+  --color-panel: #141c2a;
+  --color-line: #2a3547;
+  --color-nominal: #a6baf1;
+}
+
+.health-shell { background: #0b111c; }
+.health-shell > header { background: #101725; }
+.health-shell h1 { font-size: clamp(1.75rem, 3vw, 2.5rem); letter-spacing: -.035em; }
+.health-trend, .health-region {
+  background: #141c2a;
+  border: 1px solid #2a3547;
+  border-radius: 14px;
+}
+.health-trend { padding: 1.25rem 1.5rem; }
+.health-trend h2 { color: #f4f6fa; font-size: 1.375rem; font-weight: 650; }
+.health-choice {
+  border: 1px solid transparent;
+  border-radius: 7px;
+  padding: .45rem .65rem;
+  color: #b7c2d5;
+  font-size: .8rem;
+  cursor: pointer;
+}
+.health-choice[aria-pressed="true"] { background: #26344e; border-color: #394d70; color: #edf2ff; }
+.health-choice:focus-visible { outline: 2px solid #a6baf1; outline-offset: 2px; }
+.health-figure { background: radial-gradient(ellipse at 50% 42%, #26364e, #121a28 75%); }
+
+.health-shell {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: 208px minmax(0, 1fr);
+  color: #ecf1fb;
+}
+.health-shell > .health-sidebar {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  padding: 1.75rem 1rem;
+  border-right: 1px solid var(--color-line);
+}
+.health-brand { display: grid; gap: .35rem; padding-inline: .55rem; }
+.health-brand > span:first-child { font-size: 1.35rem; letter-spacing: -.025em; }
+.health-brand strong { color: #b3c6fa; font-weight: 600; }
+.health-nav { display: grid; gap: .45rem; }
+.health-nav-button {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  padding: .5rem .85rem;
+  border-radius: .65rem;
+  text-align: left;
+  font-weight: 600;
+  cursor: pointer;
+}
+.health-nav-button:hover { background: #1c2940; }
+.health-nav-button.health-nav-active { background: #263c66; color: #f0f4ff; }
+.health-mission { display: grid; justify-items: start; gap: .65rem; margin-top: auto; font-size: .875rem; }
+.health-mission select { width: 100%; min-height: 48px; background: #141c2a; }
+.health-workspace { width: 100%; max-width: 1510px; margin-inline: auto; padding: clamp(1rem, 3vw, 2.5rem); }
+.health-page-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; }
+.health-content, .health-tools { display: grid; gap: 1rem; }
+.health-tools { grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)); align-items: start; }
+.health-sections { display: flex; flex-wrap: wrap; gap: .4rem; }
+.health-sections button, .health-choice, .health-region select { min-height: 48px; font-size: .875rem; }
+.health-sections button { padding-inline: .85rem; border: 1px solid var(--color-line); border-radius: .65rem; }
+.bedside-monitor { overflow: hidden; background: #080e13; border: 1px solid var(--color-line); border-radius: 1rem; }
+.monitor-heading, .monitor-cardiac { display: flex; align-items: center; gap: 1rem; padding: 1rem clamp(1rem, 3vw, 1.75rem); }
+.monitor-heading { justify-content: space-between; flex-wrap: wrap; border-bottom: 1px solid var(--color-line); }
+.monitor-heading h2 { font-size: 1.125rem; font-weight: 650; }
+.monitor-cardiac { display: grid; grid-template-columns: minmax(0, 1fr) minmax(145px, 21%); }
+.monitor-trace-label { margin-bottom: .5rem; font-size: .875rem; color: #aab8c8; }
+.monitor-trace { display: block; width: 100%; height: clamp(125px, 19vw, 220px); border-radius: .45rem; }
+.monitor-vital { font-variant-numeric: tabular-nums; }
+.monitor-vital dt, .monitor-vital > span { display: block; margin-bottom: .25rem; color: #c3cde0; font-size: .875rem; }
+.monitor-vital strong { font-size: clamp(1.85rem, 4vw, 3rem); line-height: 1.12; letter-spacing: -.055em; }
+.monitor-vital strong.vital-unavailable { font-size: 1rem; letter-spacing: normal; overflow-wrap: anywhere; color: #b5c2d4; }
+.monitor-vital small { margin-left: .45rem; color: #aab8c8; font-size: .875rem; }
+.monitor-heart { padding-left: clamp(.15rem, 2vw, 1rem); color: #72efa9; }
+.monitor-heart strong { font-size: clamp(2.6rem, 6vw, 5.5rem); }
+.monitor-secondary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--color-line); }
+.monitor-secondary > div { padding: .9rem clamp(.65rem, 2vw, 1.75rem); }
+.monitor-secondary > div + div { border-left: 1px solid var(--color-line); }
+.monitor-oxygen { color: #76d8fc; }
+.monitor-breathing { color: #ffd986; }
+.monitor-pulse { color: #c8b5ff; }
+.act-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); align-items: start; gap: 1rem; }
+.act-engine, .act-current { padding: 1rem; border-radius: .65rem; background: #0c1422; border: 1px solid var(--color-line); }
+.health-shell :is(button, summary, select):focus-visible { outline: 2px solid #a6baf1; outline-offset: 3px; }
+@media (max-width: 900px) {
+  .health-shell { grid-template-columns: 155px minmax(0, 1fr); }
+  .act-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 660px) {
+  .health-shell { display: block; }
+  .health-shell > .health-sidebar { position: static; min-height: auto; gap: .75rem; padding: .9rem 1rem; border-right: 0; border-bottom: 1px solid var(--color-line); }
+  .health-brand { display: flex; align-items: baseline; justify-content: space-between; padding: 0; }
+  .health-nav { grid-template-columns: repeat(3, 1fr); }
+  .health-nav-button { text-align: center; }
+  .health-mission { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .8rem; }
+  .health-mission select { width: auto; }
+}
+@media (max-width: 425px) {
+  .monitor-cardiac { grid-template-columns: minmax(0, 1fr); }
+  .monitor-heart { grid-row: 1; }
+  .monitor-secondary > div { padding-inline: .5rem; }
+}
+.anatomy-layers {
+  margin-top: .5rem;
+  display: flex;
+  flex-wrap: wrap;
+  width: fit-content;
+  max-width: 100%;
+  padding: .2rem;
+  border: 1px solid var(--color-line);
+  border-radius: .6rem;
+  background: #101725;
+}

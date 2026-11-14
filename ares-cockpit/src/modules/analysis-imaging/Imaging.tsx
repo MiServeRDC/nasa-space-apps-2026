@@ -150,16 +150,14 @@ export function EcgStrip({
   hr,
   artifact,
   sqi,
-  isRecorded = false,
 }: {
   hr: number | null;
   artifact: number;
   sqi: number;
-  isRecorded?: boolean;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
-  const params = useRef({ hr, artifact, sqi, isRecorded });
-  params.current = { hr, artifact, sqi, isRecorded };
+  const params = useRef({ hr, artifact, sqi });
+  params.current = { hr, artifact, sqi };
   useEffect(() => {
     const cv = ref.current;
     const ctx = cv?.getContext('2d');
@@ -169,7 +167,7 @@ export function EcgStrip({
     let raf = 0;
     const g = (t: number, mu: number, s: number, a: number) => a * Math.exp(-((t - mu) ** 2) / (2 * s * s));
     const draw = (now: number) => {
-      const { hr: h, artifact: a, sqi: q, isRecorded: rec } = params.current;
+      const { hr: h, artifact: a, sqi: q } = params.current;
       const missingHr = h === null || !Number.isFinite(h) || h <= 0;
       const rejected = !missingHr && q < SQI_REJECT_THRESHOLD;
       ctx.fillStyle = '#000';
@@ -185,11 +183,7 @@ export function EcgStrip({
       ctx.strokeStyle = missingHr ? '#facc15' : rejected ? '#f43f5e' : '#4ade80';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      if (missingHr) {
-        const y = EH * 0.65;
-        ctx.moveTo(0, y);
-        ctx.lineTo(EW, y);
-      } else {
+      if (!missingHr) {
         const period = 60 / h;
         const secondsShown = 4;
         const t0 = now / 1000;
@@ -203,20 +197,16 @@ export function EcgStrip({
         }
       }
       ctx.stroke();
-      ctx.lineWidth = 1;
-      ctx.font = '12px monospace';
-      ctx.fillStyle = missingHr ? '#facc15' : rejected ? '#f43f5e' : '#4ade80';
-      const statusText = missingHr
-        ? 'ECG HR MISSING - WAVEFORM BLANKED (NEVER COERCED TO 0)'
-        : `ECG LEAD II   SQI ${q.toFixed(2)}   ${rejected ? 'SAMPLE REJECTED (SQI < 0.60)' : `ACCEPTED (HR ${h.toFixed(0)} BPM)`}`;
-      ctx.fillText(statusText, 8, 16);
-      ctx.fillStyle = '#6b7280';
-      const tag = rec ? 'SYNTHETIC VISUALIZER (RECORDED HR)' : 'SIMULATED';
-      ctx.fillText(tag, EW - ctx.measureText(tag).width - 8, EH - 8);
+      if (missingHr) {
+        ctx.font = '16px system-ui';
+        ctx.fillStyle = '#e5e7eb';
+        ctx.textAlign = 'center';
+        ctx.fillText('Heart rate unavailable', EW / 2, EH / 2);
+      }
       raf = requestAnimationFrame(draw);
     };
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
   }, []);
-  return <canvas ref={ref} width={720} height={150} className="w-full rounded border border-line" />;
+  return <canvas ref={ref} width={960} height={230} role="img" aria-label="Synthetic ECG illustration driven by heart rate" className="monitor-trace" />;
 }

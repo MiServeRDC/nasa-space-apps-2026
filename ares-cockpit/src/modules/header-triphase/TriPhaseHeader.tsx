@@ -22,10 +22,10 @@ export function AlarmBadge({ level }: { level: AlarmLevel }) {
     NOMINAL: 'border-ok text-ok',
     ADVISORY: 'border-advisory text-advisory',
     WARNING: 'border-warning text-warning',
-    CRITICAL: 'border-critical bg-critical text-black animate-pulse',
+    CRITICAL: 'border-critical bg-critical text-black',
     DATA_DEGRADED_MISSING_CHANNELS: 'border-advisory text-advisory',
   };
-  return <span className={`rounded border px-2 py-1 font-bold ${cls[level]}`}>{level}</span>;
+  return <span className={`rounded border px-2 py-1 font-bold ${cls[level]}`}>{level === 'DATA_DEGRADED_MISSING_CHANNELS' ? 'Limited data' : level[0] + level.slice(1).toLowerCase()}</span>;
 }
 
 export function TriPhaseHeader({
@@ -56,38 +56,38 @@ export function TriPhaseHeader({
   const phases: Phase[] = ['GATHER', 'EVALUATE', 'ACT'];
 
   return (
-    <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-black px-4 py-2 font-mono text-sm">
-      <div className="flex items-center gap-3">
-        <span className="text-lg font-bold tracking-widest text-nominal">ARES-HEALTH</span>
-        <span className="text-gray-400">{astronautId}</span>
+    <header className="health-sidebar">
+      <div className="health-brand">
+        <span>ARES <strong>Health</strong></span>
+        <span className="text-sm text-gray-400">{astronautId}</span>
       </div>
 
-      <nav className="flex items-center gap-2" aria-label="Cockpit pages">
-        {phases.map((p, i) => {
+      <nav className="health-nav" aria-label="Cockpit pages">
+        {phases.map((p) => {
           const isActive = p === activePhase;
           const isAlert = p === 'ACT' && recommendedPhase === 'ACT' && !isActive;
           return (
-            <div key={p} className="flex items-center gap-2">
+            <div key={p}>
               <button
                 type="button"
                 onClick={() => onSelectPhase(p)}
-                className={`cursor-pointer rounded border px-3 py-1 transition-colors ${
+                aria-current={isActive ? "page" : undefined}
+                className={`health-nav-button ${
                   isActive
-                    ? 'border-nominal bg-nominal font-bold text-black'
+                    ? 'health-nav-active'
                     : isAlert
-                      ? 'border-warning text-warning hover:bg-warning/15'
-                      : 'border-line text-gray-400 hover:border-gray-500 hover:text-white'
+                      ? 'text-warning'
+                      : 'text-gray-300'
                 }`}
               >
-                {i + 1}. {p}
+                {p[0] + p.slice(1).toLowerCase()}
               </button>
-              {i < 2 && <span className="text-gray-600">-&gt;</span>}
             </div>
           );
         })}
       </nav>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="health-mission">
         <select
           aria-label="Earth link profile"
           className="rounded border border-line bg-black px-2 py-1 text-gray-200"
