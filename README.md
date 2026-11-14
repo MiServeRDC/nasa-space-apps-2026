@@ -84,7 +84,7 @@ This folder contains the complete, rigorous architectural, clinical, and softwar
 * **Astronaut Cockpit (`ares-cockpit` in React / TypeScript / Tailwind CSS / Three.js):** Microgravity-optimized dark OLED mission dashboard featuring the tri-phase header (`[1. GATHER] -> [2. EVALUATE] -> [3. ACT]`), Mission Readiness Index, 3D anatomical deconditioning map, live What-If Stress-Test Console, and interactive NASA MedOps Playbook Runner with Hard Clinical Safety Gates.
 
 ### Clean-Room Open-Source & Fresh-Code Compliance Mandate
-ARES-Health is a 100% standalone, clean-room, open-source aerospace medical project with zero external proprietary dependencies. In strict accordance with NASA Space Apps Challenge regulations, zero executable source code is written prior to the official 48-hour hackathon window.
+ARES-Health is a 100% standalone, clean-room, open-source aerospace medical project with zero external proprietary dependencies. In strict accordance with NASA Space Apps Challenge regulations, all first-party code was developed fresh for the hackathon under dual `MIT OR Apache-2.0` (`LICENSE`, `LICENSE-APACHE`). 3D anatomical meshes in `ares-cockpit/public/anatomy/*.glb` are attributed under `CC-BY-SA-4.0` (Z-Anatomy / DBCLS BodyParts3D, see `public/anatomy/ATTRIBUTION.md`).
 
 ---
 
@@ -103,5 +103,4 @@ This workspace is natively pre-configured for autonomous AI coding agents across
   - `telemetry-replay-verifier`: Enforces reproducible PhysioNet `BIDMC v1.0.0` CSV replay (`data/bidmc/`), leading-whitespace header parsing, explicit `null`/`UNAVAILABLE` missing-value handling, and provenance separation (`Issue #4`).
   - `ui-ux-pro-max`: Searchable UI/UX design intelligence (`scripts/search.py`) with 79 styles, 192 palettes, 119 accessibility guidelines, and `react`/`html-tailwind`/`threejs` stack rules.
   - `frontend-design`: High-contrast OLED dark UI (`#000000`), React 19, Tailwind, Three.js WebGL.
-  - `deep-scholar`: Scientific literature search engine over arXiv and Crossref (`scripts/search_academic.py`).
   - `git-standard`: Conventional Commits standard and clean team branching.

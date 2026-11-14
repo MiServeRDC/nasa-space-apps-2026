@@ -8,7 +8,8 @@
     "dev": "vite --host 127.0.0.1 --port 5173",
     "build": "tsc -b && vite build",
     "lint": "tsc -b --noEmit",
-    "preview": "vite preview --host 127.0.0.1"
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "node --test --experimental-strip-types tests/*.test.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.0.0",

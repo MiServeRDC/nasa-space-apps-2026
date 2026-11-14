@@ -9,7 +9,6 @@ use crate::telemetry::{
 };
 use core::mem::{align_of, offset_of, size_of};
 use core::sync::atomic::{AtomicU64, Ordering, fence};
-use std::cell::UnsafeCell;
 
 pub const ARES_BINARY_MAGIC: u32 = 0x4152_4553; // "ARES"
 pub const ARES_BINARY_VERSION: u16 = 1;
@@ -695,24 +694,22 @@ impl BinaryTelemetryFrame {
     }
 }
 
+const ARES_BINARY_FRAME_WORDS: usize = ARES_BINARY_FRAME_BYTES / core::mem::size_of::<u64>();
+
 /// Cache-line-aligned slot for lock-free SPMC Seqlock ring buffer.
 #[repr(C, align(64))]
 struct SeqlockSlot {
     seq: AtomicU64,
-    payload: UnsafeCell<[u8; ARES_BINARY_FRAME_BYTES]>,
+    payload: [AtomicU64; ARES_BINARY_FRAME_WORDS],
 }
 
 /// Lock-free Single-Producer Multi-Consumer (SPMC) Seqlock ring buffer.
-/// Guarantees zero producer blocking under UI stalls (ARINC 653 temporal isolation).
+/// Guarantees zero producer blocking under UI stalls (ARINC 653 temporal isolation)
+/// with 100% safe atomic word accesses (`#![forbid(unsafe_code)]`).
 pub struct SeqlockTelemetryRing<const N: usize> {
     write_cursor: AtomicU64,
     slots: [SeqlockSlot; N],
 }
-
-// SAFETY: Single-producer writes are bracketed by odd/even sequence transitions with
-// Release fences; multi-consumer readers perform speculative copies validated by Acquire
-// fences and seq equality before returning any bytes.
-unsafe impl<const N: usize> Sync for SeqlockTelemetryRing<N> {}
 
 impl<const N: usize> Default for SeqlockTelemetryRing<N> {
     fn default() -> Self {
@@ -724,16 +721,18 @@ impl<const N: usize> SeqlockTelemetryRing<N> {
     /// Allocates an empty Seqlock ring buffer. `N` must be a non-zero power of two.
     pub fn new() -> Self {
         const { assert!(N > 0 && N.is_power_of_two()) };
+        const { assert!(ARES_BINARY_FRAME_WORDS * 8 == ARES_BINARY_FRAME_BYTES) };
         Self {
             write_cursor: AtomicU64::new(0),
             slots: core::array::from_fn(|_| SeqlockSlot {
                 seq: AtomicU64::new(0),
-                payload: UnsafeCell::new([0u8; ARES_BINARY_FRAME_BYTES]),
+                payload: core::array::from_fn(|_| AtomicU64::new(0)),
             }),
         }
     }
 
     /// Publishes a 128-byte frame without ever blocking on readers.
+    #[allow(clippy::chunks_exact_to_as_chunks)]
     pub fn publish(&self, frame: &BinaryTelemetryFrame) {
         let idx = self.write_cursor.load(Ordering::Relaxed);
         let slot = &self.slots[(idx as usize) & (N - 1)];
@@ -741,16 +740,19 @@ impl<const N: usize> SeqlockTelemetryRing<N> {
         slot.seq.store(prev_seq.wrapping_add(1), Ordering::Release);
         fence(Ordering::Release);
         let raw = frame.to_le_bytes();
-        // SAFETY: `prev_seq + 1` is odd; only the single producer writes to this slot.
-        unsafe {
-            *slot.payload.get() = raw;
+        for (word_slot, chunk) in slot.payload.iter().zip(raw.chunks_exact(8)) {
+            let mut word_bytes = [0u8; 8];
+            word_bytes.copy_from_slice(chunk);
+            word_slot.store(u64::from_le_bytes(word_bytes), Ordering::Relaxed);
         }
+        fence(Ordering::Release);
         slot.seq.store(prev_seq.wrapping_add(2), Ordering::Release);
         self.write_cursor
             .store(idx.wrapping_add(1), Ordering::Release);
     }
 
     /// Reads the latest consistent 128-byte raw payload without locking the producer.
+    #[allow(clippy::chunks_exact_to_as_chunks)]
     pub fn read_latest_bytes(&self) -> Result<[u8; ARES_BINARY_FRAME_BYTES], AresCoreError> {
         let cursor = self.write_cursor.load(Ordering::Acquire);
         if cursor == 0 {
@@ -763,8 +765,11 @@ impl<const N: usize> SeqlockTelemetryRing<N> {
                 core::hint::spin_loop();
                 continue;
             }
-            // SAFETY: Speculative read validated immediately by `s1 == s2`.
-            let bytes = unsafe { *slot.payload.get() };
+            let mut bytes = [0u8; ARES_BINARY_FRAME_BYTES];
+            for (dst_chunk, word_slot) in bytes.chunks_exact_mut(8).zip(slot.payload.iter()) {
+                let word = word_slot.load(Ordering::Relaxed);
+                dst_chunk.copy_from_slice(&word.to_le_bytes());
+            }
             fence(Ordering::Acquire);
             let s2 = slot.seq.load(Ordering::Relaxed);
             if s1 == s2 {

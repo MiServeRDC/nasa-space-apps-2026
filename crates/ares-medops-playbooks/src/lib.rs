@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! `ares-medops-playbooks`: Deterministic Type-1 Crystallized MedOps Playbooks (`#01-#09`)
 //! and the 3 Hard Clinical Safety Gates (`3. ACT`).
 

@@ -516,14 +516,16 @@ export function getCatalogEntry(id: string | null | undefined): PlaybookCatalogE
 }
 
 export function isAnticoagulantAction(action: Pick<CountermeasureAction, 'action_id' | 'category'>): boolean {
+  const category = action.category.toUpperCase();
+  const actionId = action.action_id.toUpperCase();
   return (
-    action.action_id.toUpperCase().includes('ANTICOAG') ||
-    action.category.toUpperCase().includes('PHARMACOLOGICAL')
+    category === 'PHARMACOLOGICAL_ANTICOAGULANT' ||
+    actionId.includes('ANTICOAG')
   );
 }
 
 /**
- * Applies the 3 Hard Clinical Safety Gates (`crates/ares-medops-playbooks/src/safety_gates.rs`)
+ * Applies the 4 Hard Clinical Safety Gates (1, 2, 3, 4A, 4B — `safety_gates.rs`)
  * onto a list of candidate actions.
  */
 export function enforceHardSafetyGatesOnActions(
@@ -542,7 +544,7 @@ export function enforceHardSafetyGatesOnActions(
     Boolean(context.lbnpActive) &&
     (sbpDrop > LBNP_MAX_SYS_BP_DROP_MMHG || hr > LBNP_MAX_SAFE_HR_BPM);
 
-  // Gate 1: Strip any anticoagulant / pharmacological action when locked
+  // Gate 1: Strip ONLY anticoagulant actions when locked (preserve non-anticoagulant drugs)
   let next = gates.anticoagulant_lock_active
     ? actions.filter((a) => !isAnticoagulantAction(a))
     : [...actions];
@@ -571,6 +573,31 @@ export function enforceHardSafetyGatesOnActions(
         category: 'BIOMECHANICAL_SAFETY_GATE',
         delta_rho_per_hour: 0.10,
       },
+    ];
+  }
+
+  // Gate 4A: Strip invasive thoracic decompression unless explicitly unlocked by verified eFAST
+  if (gates.gate4_invasive_decompression_locked !== false) {
+    next = next.filter((a) => {
+      const id = a.action_id.toUpperCase();
+      return !id.includes('THORACOSTOMY') && !id.includes('NEEDLE_DECOMPRESSION');
+    });
+  }
+
+  // Gate 4B: Prepend EVA Fitness No-Go Lock when active
+  if (
+    gates.gate4_eva_fitness_no_go &&
+    !next.some((a) => a.action_id === 'ACT_EVA_NO_GO_COGNITIVE_OR_HEMODYNAMIC_LOCK')
+  ) {
+    const gai = typeof context.gaiPct === 'number' && Number.isFinite(context.gaiPct) ? context.gaiPct : 12.1;
+    next = [
+      {
+        action_id: 'ACT_EVA_NO_GO_COGNITIVE_OR_HEMODYNAMIC_LOCK',
+        label: `SAFETY GATE 4 TRIGGERED: EVA NO-GO LOCK ACTIVE (GAI=${gai.toFixed(1)}%)`,
+        category: 'CRITICAL_SAFETY_LOCK',
+        delta_rho_per_hour: 0.0,
+      },
+      ...next,
     ];
   }
 

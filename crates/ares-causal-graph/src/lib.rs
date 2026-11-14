@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! `ares-causal-graph` — Blocco C (Fasi 05 C1, 06 C2, 07 C3):
 //! Fisiopatologia differenziale (RK4 Frost-Hargens Sclerostin ODE, Ultrasound MQI, Martian GAI at 0.38g),
 //! emodinamica venosa giugulare dimensionalmente esatta (`tau_w` in `dyn/cm^2`), risposta dose-dipendente

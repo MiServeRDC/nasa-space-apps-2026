@@ -245,6 +245,8 @@ pub struct WireMedOpsGates {
     pub anticoagulation_locked: bool,
     pub gait_suit_damping_pct: f64,
     pub lbnp_autosafe_vent: bool,
+    pub gate4_invasive_decompression_locked: bool,
+    pub gate4_eva_fitness_no_go: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -318,6 +320,16 @@ pub struct WireTelemetryPacket {
     pub what_if_overlay: WireWhatIfOverlay,
     pub nqs_stl: ares_core_types::telemetry::NqsStlMargins,
     pub sans_ocular: Option<ares_core_types::telemetry::SansOcular>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub spot_poct: Option<ares_core_types::telemetry::SpotPoctPanel>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub renal_nephrolithiasis: Option<ares_core_types::telemetry::RenalNephrolithiasis>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub orthostatic_fluid: Option<ares_core_types::telemetry::OrthostaticFluid>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mars_circadian_sleep: Option<ares_core_types::telemetry::MarsCircadianSleep>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub neuro_immune_viral: Option<ares_core_types::telemetry::NeuroImmuneViral>,
     pub timestral_quantiles: serde_json::Value,
     /// Per-channel anomaly status (`VitalsAnomalyReport`) plus the active synthetic demo injection.
     #[serde(default)]
@@ -543,6 +555,14 @@ impl WireTelemetryPacket {
                     0.0
                 },
                 lbnp_autosafe_vent: p.active_playbook.safety_gates.lbnp_auto_vent_armed,
+                gate4_invasive_decompression_locked: p
+                    .active_playbook
+                    .safety_gates
+                    .gate4_invasive_decompression_locked,
+                gate4_eva_fitness_no_go: p
+                    .active_playbook
+                    .safety_gates
+                    .gate4_eva_fitness_no_go,
             },
             triggered_playbooks: vec![p.active_playbook.playbook_id.clone()],
             priority_actions: p
@@ -616,6 +636,11 @@ impl WireTelemetryPacket {
             what_if_overlay,
             nqs_stl: p.nqs_stl,
             sans_ocular,
+            spot_poct: p.spot_poct.clone(),
+            renal_nephrolithiasis: p.renal_nephrolithiasis,
+            orthostatic_fluid: p.orthostatic_fluid,
+            mars_circadian_sleep: p.mars_circadian_sleep,
+            neuro_immune_viral: p.neuro_immune_viral,
             timestral_quantiles: ctx.timestral_quantiles,
             vitals_anomaly: ctx.vitals_anomaly,
             hypergraph_spatial: ctx.hypergraph_spatial,
