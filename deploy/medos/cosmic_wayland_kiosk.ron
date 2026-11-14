@@ -1,0 +1,18 @@
+(
+    compositor: "cosmic-comp (pop-os/cosmic-comp + smithay/smithay)",
+    toolkit: "iced-rs/iced + wgpu / Tauri v2 WebKitGTK Vulkan",
+    mode: SingleWorkspaceKiosk,
+    target_app_id: "org.areshealth.medos",
+    display: (
+        background_hex: "#000000",
+        target_refresh_hz: 120,
+        vsync: true,
+        nasa_std_3001_v2_10152_budget_ms: 50,
+    ),
+    lockdown: (
+        disable_vt_switch: true,
+        disable_window_close_shortcut: true,
+        allow_command_palette_shortcuts: ["Alt+Space", "Super+K"],
+        air_gapped_csp: true,
+    ),
+)

@@ -1,11 +1,16 @@
 //! `ares-core-types`: Contratti telemetrici condivisi, manifesto di provenienza,
 //! costanti normative NASA-STD-3001, errori fortemente tipizzati e trait di sicurezza.
 
+pub mod binary_ipc;
 pub mod constants;
 pub mod error;
 pub mod security;
 pub mod telemetry;
 
+pub use binary_ipc::{
+    ARES_BINARY_FRAME_BYTES, ARES_BINARY_MAGIC, ARES_BINARY_VERSION, BinaryFrameMeta,
+    BinaryTelemetryFrame, SeqlockTelemetryRing,
+};
 pub use constants::*;
 pub use error::AresCoreError;
 pub use security::{

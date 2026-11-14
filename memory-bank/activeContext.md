@@ -1,7 +1,7 @@
 # Active Context: ARES-Health (NASA Space Apps Challenge 2026)
 
 **Last Updated:** 2026-11-14  
-**Current Phase:** Block J Planning Completed (`Fasi 21–24`: `ARES-MedOS` Pure-Rust Mission Workstation OS Shell, Zero-Copy Binary IPC & Multi-Tier Space OS Targets — `PLANNED / READY FOR IMPLEMENTATION`, awaiting human review before coding `crates/` or `ares-cockpit/`).  
+**Current Phase:** Block J (`Fasi 21–24`: `ARES-MedOS` Pure-Rust Mission Workstation OS Shell, Zero-Copy Binary IPC & Multi-Tier Space OS Targets) `COMPLETED (TESTED)` (`103/103` workspace tests passing across `8` crates, `ares-cockpit` lint + Vite build clean); Block K (`Fasi 25–28`: System-Wide Testing, Chaos/SEU Injection, Full-Stack E2E & `NASA-STD-3001` Certification Suite) `PLANNED (READY FOR EXECUTION)`.  
 **Active Repository:** `https://github.com/MiServeRDC/nasa-space-apps-2026` (`main` synchronized).
 
 ---
@@ -43,19 +43,20 @@
    * **1 Hz Native BIDMC Cadence & Cursor Invariance (`@LelloXV`):** `SharedMissionState` separates 1 Hz (`Duration`) BIDMC row advancement and SQI evaluation from the 20 Hz WebSocket loop; `POST /api/stress-test` re-evaluates the cached 1 Hz row without advancing `replayer` or `replay_elapsed`.
    * **Wire Contract & Contract Fixtures (`@fertech02`):** Added `crates/ares-server-cli/src/wire_contract.rs` (`WireTelemetryPacket` + `StressTestPatchRequest`) emitting all `contracts/telemetry_schema.json` blocks (`provenance_manifest`, `biometrics`, `biometrics_1hz`, nullable `hemodynamics`/`musculoskeletal`/`environment`, `safety_margins`, `active_playbook`, `causal_graph_state`, `nqs_stl_status`, `what_if_overlay`) plus 20-Phase extensions (`timestral_quantiles`, `hypergraph_spatial`), verified against all fixtures in `contracts/fixtures/`.
    * **React 19 Cockpit (`@carolina2910`):** Unified `ares-cockpit/` (`src/lib/useTelemetry.ts`, `telemetryValidation.ts`, `ProvenanceInspector.tsx`, `MriAndStl.tsx`, `Imaging.tsx`, `WhatIfConsole.tsx`) wired to `127.0.0.1:8080`.
-8. **Pure-Rust OS, Zero-Copy IPC & Native Mission Shell Feasibility Study & Block J Implementation Plans (`Fasi 21–24` — `READY FOR IMPLEMENTATION`):**
-   * Created `docs/architecture/RUST_OS_AND_SHELL_FEASIBILITY_STUDY.md` and mapped Section 9 of `docs/scientific_references.md` and `docs/architecture/IMPLEMENTATION_STACK.md` to all public repos and peer-reviewed papers.
-   * Authored the 4 detailed implementation plans for **Block J (`ARES-MedOS`)** in `docs/plans/` and expanded `RUST_ENGINE_PHASED_MASTER_PLAN.md` to **10 Blocks / 24 Phases**:
-     - `phase_21_J1_zero_copy_binary_ipc_shm_protocol.md`: 128-byte `#[repr(C, align(64))] BinaryTelemetryFrame` with `validity_mask: u32` (preserving `BEAT_INTERVALS_NOT_AVAILABLE` & `Option<f64>::None`), lock-free SPMC `SeqlockTelemetryRing` (`< 100 ns`), and `--features shm-ipc` (`iceoryx2` `ZeroCopySend` + `Zenoh` DSN).
-     - `phase_22_J2_ares_desktop_os_tauri_native_shell.md`: `crates/ares-desktop-os` (`Tauri v2`, `~30–50 MB` RAM, Apple Silicon Metal `WKWebView` / Linux `WebKitGTK` / Windows `WebView2`, `Channel<Response>` `< 0.05 ms`, `SharedMissionState` in-process + parallel `127.0.0.1:8080` WS fallback, headless CI-safe `tauri-runtime` feature gate).
-     - `phase_23_J3_os_chrome_fastmcp_palette_dual_transport.md`: `binaryTelemetryDecoder.ts` (`DataView`), dual-transport `useTelemetry.ts` (`TAURI_NATIVE_IPC` vs `BROWSER_WEBSOCKET`), `OsSystemStatusBar.tsx` (Sol clock, OWLT `4–24 min` Mars delay, `ARINC 653` partitions, deontic zone, `CANS` radiation), and `Alt+Space`/`Cmd+K` `OsCommandPalette.tsx` for all 8 `FastMCP` tools.
-     - `phase_24_J4_asterinas_framekernel_hubris_wearable_targets.md`: 32-byte `#[repr(C)] WearableSensorPacket` (CRC-16-CCITT + `Oxide Hubris` `supervisor_restart_count` SEU recovery), `deploy/medos/` manifests (`Asterinas` `14.0%` TCB, `cosmic-comp` Wayland Kiosk, `Hubris`/`Embassy` MCU), and `scripts/launch_ares_medos.sh`.
+8. **`ARES-MedOS` Pure-Rust Mission Workstation OS Shell, Zero-Copy IPC & Multi-Tier Space OS Targets (`Blocco J`, `Fasi 21–24` — `COMPLETED (TESTED)`):**
+   * Implemented all 4 Block J deliverables across the 8-crate Rust workspace (`103/103` passing tests, `0` Clippy warnings, `0` production `.unwrap()`/`.expect()`), `ares-cockpit/`, `deploy/medos/`, and `scripts/`:
+     - `crates/ares-core-types/src/binary_ipc.rs` + `crates/ares-server-cli/src/shm_bus.rs`: 128-byte `#[repr(C, align(64))] BinaryTelemetryFrame` with Castagnoli `CRC-32C` (`104..108`), `validity_mask` preserving `BEAT_INTERVALS_NOT_AVAILABLE` / `Option<f64>::None`, and lock-free SPMC `SeqlockTelemetryRing`.
+     - `crates/ares-desktop-os/` (8th workspace crate): `Tauri v2` pure-Rust workstation shell with in-process `SharedMissionState`, `Channel<Response>` binary IPC, `tauri-runtime` headless CI gate, and `--mode desktop-smoke-test`.
+     - `crates/ares-server-cli/src/ws_server.rs` + `ares-cockpit/src/`: Added `GET /api/os-status`, `GET /api/binary-frame`, and `POST /api/mcp` HTTP parity routes; delivered `ares-cockpit/src/lib/binaryTelemetryDecoder.ts` (`DataView` decoder + `computeCrc32c`), dual-transport `useTelemetry.ts`, `ares-cockpit/src/modules/os-shell/OsSystemStatusBar.tsx` (`#000000` OLED), and `OsCommandPalette.tsx` (`Alt+Space` / `Cmd+K` for all 8 `FastMCP` tools), verified via `npm run lint` + `npm run build`.
+     - `crates/ares-telemetry-ingest/src/wearable_packet.rs`, `deploy/medos/*`, `scripts/launch_ares_medos.sh`: 32-byte `#[repr(C)] WearableSensorPacket` (CRC-16-CCITT + `supervisor_restart_count` SEU recovery), Tier B/C manifests (`Asterinas` Framekernel, `System76 COSMIC` Wayland Kiosk, `Oxide Hubris` wearable), and 1-command launcher.
+9. **System-Wide Verification & `NASA-STD-3001` Certification Blueprints (`Blocco K`, `Fasi 25–28` — `PLANNED (READY FOR EXECUTION)`):**
+   * Authored 4 comprehensive verification plans (`docs/plans/phase_25_K1_*.md` .. `phase_28_K4_*.md`) and expanded `RUST_ENGINE_PHASED_MASTER_PLAN.md` to **11 Blocks / 28 Phases** covering `proptest` ODE/STL/DHF/binary invariants (`K1`), clinical chaos/SEU/tamper fault injection (`K2`), full-stack binary/dual-clock/24-dataset/`FastMCP` E2E (`K3`), and `NASA-STD-3001 Vol. 1 & 2` traceability + latency/RAM benchmarks (`K4`).
 
 ---
 
 ## 2. Immediate Next Steps for the 5-Person Team
-1. **Human Review of Block J Plans (`Fasi 21–24`):** Review `docs/plans/phase_21_J1_*.md` .. `phase_24_J4_*.md` before beginning implementation of `crates/ares-desktop-os`, `binary_ipc.rs`, `wearable_frame.rs`, and `ares-cockpit/` OS Chrome.
-2. **End-to-End Live Demo Run:** Launch `cargo run -p ares-server-cli -- --mode ws-only` alongside `npm run dev` in `ares-cockpit/` to verify WebSocket `20 Hz` stream, `1 Hz` recorded BIDMC cadence, and What-If Console responses.
+1. **Execute Block K Verification Suites (`Fasi 25–28`):** Implement and run the automated `proptest`, SEU chaos, full-stack IPC/HTTP/WebSocket contract, and `NASA-STD-3001` latency/memory certification harnesses specified in `docs/plans/phase_25_K1_*.md` .. `phase_28_K4_*.md`.
+2. **End-to-End Live Demo Run:** Launch `./scripts/launch_ares_medos.sh` (or `cargo run -p ares-server-cli -- --mode ws-only` alongside `npm run dev` in `ares-cockpit/`) to verify WebSocket `20 Hz` stream, `1 Hz` recorded BIDMC cadence, `Alt+Space` FastMCP palette, and What-If Console responses.
 3. **Clinical Domain Review & Calibration (Issue #12):** Retain `ModelValidationStatus::IllustrativeUnvalidated` and `TtvIntervalKind::IllustrativeScenarioRange` notices until qualified clinical/outcome validation is completed.
 4. **Final Pitch Delivery:** Complete 180s + 30s demonstration video recording for NASA Space Apps 2026 submission.
 

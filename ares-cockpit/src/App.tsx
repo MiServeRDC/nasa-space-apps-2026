@@ -16,7 +16,7 @@ import {
   formatTimeToViolation,
   isPureRecordedReplay,
 } from './lib/telemetryValidation';
-import { useTelemetry, type RecordedHistoryPoint } from './lib/useTelemetry';
+import { ENGINE_HTTP_URL, useTelemetry, type RecordedHistoryPoint } from './lib/useTelemetry';
 import { AlarmBadge, TriPhaseHeader, type Phase } from './modules/header-triphase/TriPhaseHeader';
 import { MriGauge, PredicateBars, StlChart } from './modules/mri-and-stl/MriAndStl';
 import { BodyHeatmap } from './modules/body-3d-heatmap/BodyHeatmap';
@@ -24,6 +24,8 @@ import { WhatIfConsole } from './modules/whatif-console/WhatIfConsole';
 import { PlaybookRunner } from './modules/playbook-runner/PlaybookRunner';
 import { EcgStrip, OcularOnsd, PocusIjv } from './modules/analysis-imaging/Imaging';
 import { FreshnessBadge, OriginBadge, ProvenanceBanner } from './modules/provenance/ProvenanceInspector';
+import { OsSystemStatusBar } from './modules/os-shell/OsSystemStatusBar';
+import { OsCommandPalette } from './modules/os-shell/OsCommandPalette';
 import type { DataOrigin, FreshnessStatus, TelemetryPacket } from './types/telemetry';
 
 type EvalTab = 'BODY_3D' | 'POCUS' | 'MUSCLE_BONE' | 'FORECAST';
@@ -250,8 +252,20 @@ export default function App() {
   const [activePhase, setActivePhase] = useState<Phase>('GATHER');
   const [evalTab, setEvalTab] = useState<EvalTab>('BODY_3D');
   const [whatIfOverlayActive, setWhatIfOverlayActive] = useState<boolean>(false);
+  const [paletteOpen, setPaletteOpen] = useState<boolean>(false);
 
-  const { packet, link, status, recordedHistory, syncWhatIfNow } = useTelemetry(
+  const {
+    packet,
+    link,
+    transportMode,
+    ipcLatencyUs,
+    binaryFrameCount,
+    lastBinaryFrame,
+    osStatus,
+    status,
+    recordedHistory,
+    syncWhatIfNow,
+  } = useTelemetry(
     whatIf,
     thrombus,
     lastScanDay,
@@ -368,6 +382,17 @@ export default function App() {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-black">
+      <OsSystemStatusBar
+        packet={packet}
+        whatIf={whatIf}
+        transportMode={transportMode}
+        ipcLatencyUs={ipcLatencyUs}
+        binaryFrameCount={binaryFrameCount}
+        lastBinaryFrame={lastBinaryFrame}
+        osStatus={osStatus}
+        paletteOpen={paletteOpen}
+        onTogglePalette={() => setPaletteOpen((v) => !v)}
+      />
       <TriPhaseHeader
         astronautId={packet.astronaut_id}
         alarm={sm.alarm_level}
@@ -745,6 +770,17 @@ export default function App() {
           </aside>
         </div>
       </div>
+
+      <OsCommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        onToggle={() => setPaletteOpen((v) => !v)}
+        httpBaseUrl={ENGINE_HTTP_URL}
+        packet={packet}
+        whatIf={whatIf}
+        transportMode={transportMode}
+        osStatus={osStatus}
+      />
     </div>
   );
 }

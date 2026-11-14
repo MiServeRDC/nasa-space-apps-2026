@@ -194,7 +194,9 @@ pub fn handle_fastmcp_jsonrpc_request<S: McpInputSanitizer>(
                     "hrv_unavailable_reason": latest_packet.biometrics.hrv_unavailable_reason,
                     "missing": latest_packet.biometrics.missing_channels
                 }),
-                "explain_causal_anomaly" | "query_organ_robustness" => {
+                "explain_causal_anomaly"
+                | "query_organ_robustness"
+                | "query_causal_biomarker_state" => {
                     let wrapped_chain: Vec<String> = latest_packet
                         .active_playbook
                         .causal_chain_summary
@@ -209,13 +211,15 @@ pub fn handle_fastmcp_jsonrpc_request<S: McpInputSanitizer>(
                         "adhg_chain": wrapped_chain
                     })
                 }
-                "simulate_countermeasure_impact" => json!({
+                "simulate_countermeasure_impact" | "evaluate_stl_safety_margins" => json!({
                     "current_rho": latest_packet.nqs_stl.rho_global.map(round2),
                     "lbnp_30mmhg_delta_rho_h": latest_packet.nqs_stl.rho_global.map(|_| 0.19),
                     "ared_125kgf_delta_rho_h": latest_packet.nqs_stl.rho_global.map(|_| 0.11),
                     "projected_ttv_gain_h": latest_packet.nqs_stl.rho_global.map(|_| 96.0)
                 }),
-                "get_medops_playbook" | "trigger_medops_action_playbook" => json!({
+                "get_medops_playbook"
+                | "trigger_medops_action_playbook"
+                | "get_active_medops_playbook" => json!({
                     "playbook_id": latest_packet.active_playbook.playbook_id,
                     "gates": latest_packet.active_playbook.safety_gates,
                     "top_action": latest_packet.active_playbook.actions.first().map(|a| &a.action_id)

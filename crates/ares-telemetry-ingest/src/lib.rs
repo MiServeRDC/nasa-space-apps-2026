@@ -7,9 +7,14 @@
 pub mod bidmc_replayer;
 pub mod scenario_overlay;
 pub mod sqi_filter;
+pub mod wearable_packet;
 
 pub use bidmc_replayer::{BidmcNumericRow, BidmcReplayer, IngestError};
 pub use scenario_overlay::{
     biometrics_with_signal_quality, merge_biometrics_with_rmssd, merge_biometrics_with_scenario,
 };
 pub use sqi_filter::{SqiEvaluation, SqiFilter};
+pub use wearable_packet::{
+    ValidatedTelemetryFrame, WEARABLE_PACKET_BYTES, WEARABLE_SYNC_WORD, WearableSensorPacket,
+    compute_crc16_ccitt,
+};

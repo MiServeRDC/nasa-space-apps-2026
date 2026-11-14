@@ -1,7 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { TelemetryPacket } from '../types/telemetry';
+import {
+  decodeBinaryTelemetryFrame,
+  mergeBinaryFrameIntoPacket,
+  type DecodedBinaryTelemetryFrame,
+} from './binaryTelemetryDecoder';
 import { buildPacket, type WhatIf } from './scenario';
 import { isValidTelemetryPayload, normalizeTelemetryPacket } from './telemetryValidation';
+import {
+  IS_ARES_DESKTOP_SHELL,
+  type OsStatusBarState,
+  type TransportMode,
+} from '../modules/os-shell/OsSystemStatusBar';
+
+export type { OsStatusBarState, TransportMode };
+export { IS_ARES_DESKTOP_SHELL };
 
 const DEFAULT_HTTP_BASE = 'http://127.0.0.1:8080';
 
@@ -33,6 +46,45 @@ export interface TelemetryStatus {
   lastValidAtMs: number | null;
 }
 
+interface TauriInternalsApi {
+  invoke?: (cmd: string, args?: Record<string, unknown>) => Promise<unknown>;
+  transformCallback?: (
+    callback: (response: unknown) => void,
+    once?: boolean,
+  ) => number;
+}
+
+function getTauriInternals(): TauriInternalsApi | undefined {
+  if (typeof window === 'undefined') return undefined;
+  return (window as unknown as { __TAURI_INTERNALS__?: TauriInternalsApi })
+    .__TAURI_INTERNALS__;
+}
+
+function toArrayBuffer(payload: unknown): ArrayBuffer | null {
+  if (payload instanceof ArrayBuffer) return payload;
+  if (payload instanceof Uint8Array) {
+    return payload.buffer.slice(
+      payload.byteOffset,
+      payload.byteOffset + payload.byteLength,
+    ) as ArrayBuffer;
+  }
+  if (Array.isArray(payload) && payload.every((n) => typeof n === 'number')) {
+    return new Uint8Array(payload).buffer;
+  }
+  if (
+    typeof payload === 'object' &&
+    payload !== null &&
+    'data' in payload &&
+    Array.isArray((payload as { data: unknown }).data)
+  ) {
+    const arr = (payload as { data: unknown[] }).data;
+    if (arr.every((n) => typeof n === 'number')) {
+      return new Uint8Array(arr as number[]).buffer;
+    }
+  }
+  return null;
+}
+
 function buildStressTestPayload(
   whatIf: WhatIf,
   thrombusConfirmed: boolean | null,
@@ -48,6 +100,7 @@ function buildStressTestPayload(
     lbnp_pressure_mmhg: whatIf.lbnp_mmhg,
     pocus_thrombus_confirmed: thrombusConfirmed === true,
     systolic_bp_drop_mmhg: Math.abs(whatIf.lbnp_mmhg) * 0.25,
+    cabin_ppco2_mmhg: whatIf.ppco2_mmhg,
   };
 }
 
@@ -61,12 +114,10 @@ function buildFertechStressTestPayload(whatIf: WhatIf) {
 }
 
 /**
- * Connects to `ares-server-cli`:
- * - Cold-start snapshot from `GET /api/snapshot`
- * - Live 20 Hz stream on `ws://127.0.0.1:8080/ws/telemetry`
- * - Active What-If synchronization via `POST /api/stress-test` on open/reconnect and on change
- * - Strict runtime validation before accepting any frame (invalid frames never clobber last valid data)
- * - Clean separation between authoritative engine stream and offline local simulation
+ * Dual-transport bridge connecting `ares-cockpit` to `ARES-MedOS` / `ares-server-cli`:
+ * - `TAURI_NATIVE_IPC`: zero-copy 128-byte `BinaryTelemetryFrame` via Tauri Channel + `DataView`
+ * - `BROWSER_WEBSOCKET`: `GET /api/snapshot`, `ws://127.0.0.1:8080/ws/telemetry` (JSON or 128B binary), `POST /api/stress-test`
+ * - Strict runtime validation & Issue #11 nullability preservation (`null` never coerced to `0`)
  */
 export function useTelemetry(
   whatIf: WhatIf,
@@ -83,6 +134,11 @@ export function useTelemetry(
   const [rejectedFrames, setRejectedFrames] = useState<number>(0);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [lastSyncLatencyUs, setLastSyncLatencyUs] = useState<number | null>(null);
+  const [ipcLatencyUs, setIpcLatencyUs] = useState<number | null>(null);
+  const [binaryFrameCount, setBinaryFrameCount] = useState<number>(0);
+  const [lastBinaryFrame, setLastBinaryFrame] =
+    useState<DecodedBinaryTelemetryFrame | null>(null);
+  const [osStatus, setOsStatus] = useState<OsStatusBarState | null>(null);
   const [heldSample, setHeldSample] = useState<boolean>(false);
   const [heldAgeMs, setHeldAgeMs] = useState<number>(0);
   const [isStale, setIsStale] = useState<boolean>(false);
@@ -94,6 +150,11 @@ export function useTelemetry(
   const lastSampleRecTimeRef = useRef<number | null>(null);
   const sampleFirstObservedAtRef = useRef<number>(Date.now());
   const lastValidAtRef = useRef<number | null>(null);
+  const lastBinaryMetaRef = useRef<{
+    alert: number;
+    playbook: number;
+    habitat: number;
+  } | null>(null);
   const inputsRef = useRef({ whatIf, thrombusConfirmed, lastScanDay, whatIfOverlayActive });
   inputsRef.current = { whatIf, thrombusConfirmed, lastScanDay, whatIfOverlayActive };
   const activeSourceIdRef = useRef<string>('bidmc_01');
@@ -157,9 +218,57 @@ export function useTelemetry(
     return true;
   }, []);
 
+  const acceptBinaryBuffer = useCallback(
+    (buffer: ArrayBuffer, originLabel: string): DecodedBinaryTelemetryFrame | null => {
+      const decodeStart = performance.now();
+      const decoded = decodeBinaryTelemetryFrame(buffer);
+      if (!decoded) {
+        setRejectedFrames((n) => n + 1);
+        setValidationError(`Rejected invalid 128B binary frame from ${originLabel}`);
+        return null;
+      }
+
+      const decodeUs = Math.max(1, Math.round((performance.now() - decodeStart) * 1000));
+      const measuredIpcUs =
+        decoded.ipc_latency_ns > 0
+          ? Math.max(1, Math.round(decoded.ipc_latency_ns / 1000))
+          : decodeUs;
+
+      const now = Date.now();
+      lastValidAtRef.current = now;
+      setLastValidAtMs(now);
+      setIsStale(false);
+      setValidationError(null);
+      setIpcLatencyUs(measuredIpcUs);
+      setBinaryFrameCount((c) => c + 1);
+      setLastBinaryFrame(decoded);
+      setLivePacket((prev) => (prev ? mergeBinaryFrameIntoPacket(prev, decoded) : prev));
+      setLink('ENGINE_LIVE');
+      return decoded;
+    },
+    [],
+  );
+
   const postStressTestOverride = useCallback(
     async (w: WhatIf, thrombus: boolean | null): Promise<void> => {
       const payload = buildStressTestPayload(w, thrombus, activeSourceIdRef.current);
+      if (IS_ARES_DESKTOP_SHELL) {
+        const tauri = getTauriInternals();
+        if (tauri?.invoke) {
+          try {
+            const start = performance.now();
+            const updated = await tauri.invoke('apply_what_if_patch', { patch: payload });
+            const elapsedUs = Math.max(1, Math.round((performance.now() - start) * 1000));
+            setLastSyncLatencyUs(elapsedUs);
+            setIpcLatencyUs(elapsedUs);
+            acceptRawPayload(updated, 'TAURI apply_what_if_patch');
+            return;
+          } catch {
+            // Fall through to HTTP loopback if Tauri command not registered
+          }
+        }
+      }
+
       try {
         const start = performance.now();
         let res = await fetch(`${ENGINE_HTTP_URL}/api/stress-test`, {
@@ -206,11 +315,107 @@ export function useTelemetry(
     [acceptRawPayload],
   );
 
-  // 1. Initial cold-start fetch from GET /api/snapshot + WebSocket subscription with reconnect.
+  // 1A. Native Tauri v2 IPC transport (when running inside ARES-MedOS desktop shell)
   useEffect(() => {
+    if (!IS_ARES_DESKTOP_SHELL) return;
+    const tauri = getTauriInternals();
+    if (!tauri?.invoke) return;
+
+    let disposed = false;
+
+    const hydrateTauriSnapshot = async () => {
+      try {
+        const snap = await tauri.invoke?.('get_full_wire_snapshot');
+        if (!disposed && snap) {
+          acceptRawPayload(snap, 'TAURI get_full_wire_snapshot');
+        }
+      } catch {
+        // Fallback handled gracefully
+      }
+      try {
+        const os = await tauri.invoke?.('get_os_status_bar_state');
+        if (!disposed && os && typeof os === 'object') {
+          setOsStatus(os as OsStatusBarState);
+        }
+      } catch {
+        // Optional status endpoint
+      }
+    };
+
+    void hydrateTauriSnapshot();
+
+    if (tauri.transformCallback) {
+      const channelId = tauri.transformCallback((msg: unknown) => {
+        if (disposed) return;
+        const buf = toArrayBuffer(msg);
+        if (!buf) return;
+        const decoded = acceptBinaryBuffer(buf, 'TAURI subscribe_binary_telemetry');
+        if (!decoded) return;
+        const prevMeta = lastBinaryMetaRef.current;
+        if (
+          !prevMeta ||
+          prevMeta.alert !== decoded.active_alert_code ||
+          prevMeta.playbook !== decoded.active_playbook_id ||
+          prevMeta.habitat !== decoded.deontic_habitat_mask
+        ) {
+          lastBinaryMetaRef.current = {
+            alert: decoded.active_alert_code,
+            playbook: decoded.active_playbook_id,
+            habitat: decoded.deontic_habitat_mask,
+          };
+          void hydrateTauriSnapshot();
+        }
+      });
+
+      void tauri
+        .invoke('subscribe_binary_telemetry', {
+          onFrame: { __TAURI_CHANNEL_MARKER__: true, id: channelId },
+        })
+        .catch(() => {
+          // If binary channel command is unavailable, snapshot polling still works
+        });
+    }
+
+    const osPollId = window.setInterval(() => {
+      if (!disposed) {
+        void tauri.invoke?.('get_os_status_bar_state').then((os) => {
+          if (!disposed && os && typeof os === 'object') {
+            setOsStatus(os as OsStatusBarState);
+          }
+        }).catch(() => {});
+      }
+    }, 1000);
+
+    return () => {
+      disposed = true;
+      window.clearInterval(osPollId);
+    };
+  }, [acceptBinaryBuffer, acceptRawPayload]);
+
+  // 1B. Browser WebSocket + HTTP Snapshot transport (default in browser & fallback)
+  useEffect(() => {
+    if (IS_ARES_DESKTOP_SHELL) return;
     let disposed = false;
     let retryTimer: number | undefined;
     const abortCtrl = new AbortController();
+
+    const fetchOsStatus = async () => {
+      try {
+        const res = await fetch(`${ENGINE_HTTP_URL}/api/os-status`, {
+          signal: abortCtrl.signal,
+        });
+        if (!res.ok || disposed) return;
+        const json = (await res.json()) as OsStatusBarState;
+        if (!disposed && json && typeof json === 'object') {
+          setOsStatus(json);
+          if (typeof json.engine_tick_latency_us === 'number') {
+            setIpcLatencyUs((prev) => prev ?? json.engine_tick_latency_us);
+          }
+        }
+      } catch {
+        // Optional endpoint; ignore if backend is offline or older version
+      }
+    };
 
     const fetchInitialSnapshot = async () => {
       try {
@@ -231,6 +436,7 @@ export function useTelemetry(
       let ws: WebSocket;
       try {
         ws = new WebSocket(ENGINE_WS_URL);
+        ws.binaryType = 'arraybuffer';
       } catch {
         if (!disposed) retryTimer = window.setTimeout(connectWs, 3000);
         return;
@@ -244,6 +450,7 @@ export function useTelemetry(
         }
         setWsConnected(true);
         setLink('ENGINE_LIVE');
+        void fetchOsStatus();
         // Re-sync active What-If override when socket opens or reconnects.
         const cur = inputsRef.current;
         if (cur.whatIfOverlayActive) {
@@ -253,6 +460,18 @@ export function useTelemetry(
 
       ws.onmessage = (ev) => {
         if (disposed || gen !== socketGenRef.current) return;
+        if (ev.data instanceof ArrayBuffer) {
+          acceptBinaryBuffer(ev.data, 'WS /ws/telemetry (binary)');
+          return;
+        }
+        if (typeof Blob !== 'undefined' && ev.data instanceof Blob) {
+          void ev.data.arrayBuffer().then((buf) => {
+            if (!disposed && gen === socketGenRef.current) {
+              acceptBinaryBuffer(buf, 'WS /ws/telemetry (blob)');
+            }
+          });
+          return;
+        }
         let parsed: unknown;
         try {
           parsed = JSON.parse(String(ev.data));
@@ -283,22 +502,30 @@ export function useTelemetry(
     };
 
     void fetchInitialSnapshot();
+    void fetchOsStatus();
     connectWs();
+
+    const osPollId = window.setInterval(() => {
+      if (!disposed) {
+        void fetchOsStatus();
+      }
+    }, 2000);
 
     return () => {
       disposed = true;
       socketGenRef.current += 1;
       abortCtrl.abort();
       window.clearTimeout(retryTimer);
+      window.clearInterval(osPollId);
       wsRef.current?.close();
       wsRef.current = null;
     };
-  }, [acceptRawPayload, postStressTestOverride]);
+  }, [acceptBinaryBuffer, acceptRawPayload, postStressTestOverride]);
 
-  // 2. Forward active What-If overrides via POST /api/stress-test on change.
+  // 2. Forward active What-If overrides via POST /api/stress-test (or Tauri IPC) on change.
   useEffect(() => {
     if (!whatIfOverlayActive) return;
-    if (link !== 'ENGINE_LIVE' && !wsConnected) return;
+    if (!IS_ARES_DESKTOP_SHELL && link !== 'ENGINE_LIVE' && !wsConnected) return;
     void postStressTestOverride(whatIf, thrombusConfirmed);
   }, [whatIf, thrombusConfirmed, whatIfOverlayActive, link, wsConnected, postStressTestOverride]);
 
@@ -333,6 +560,12 @@ export function useTelemetry(
   }, []);
 
   const packet = link === 'ENGINE_LIVE' && livePacket !== null ? livePacket : localPacket;
+  const transportMode: TransportMode = IS_ARES_DESKTOP_SHELL
+    ? 'TAURI_NATIVE_IPC'
+    : link === 'ENGINE_LIVE'
+      ? 'BROWSER_WEBSOCKET'
+      : 'LOCAL_SIMULATION';
+
   const status: TelemetryStatus = {
     wsConnected,
     heldSample,
@@ -349,6 +582,11 @@ export function useTelemetry(
     livePacket,
     localPacket,
     link,
+    transportMode,
+    ipcLatencyUs: ipcLatencyUs ?? lastSyncLatencyUs,
+    binaryFrameCount,
+    lastBinaryFrame,
+    osStatus,
     status,
     recordedHistory,
     syncWhatIfNow: () => postStressTestOverride(whatIf, thrombusConfirmed),

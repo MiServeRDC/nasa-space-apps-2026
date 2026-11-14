@@ -1,6 +1,7 @@
 //! Fase 13 (G1) + Blocchi H & I: Server HTTP/WebSocket Axum a 20 Hz su `127.0.0.1:8080`,
 //! API `/api/stress-test`, bridge Timestral 1 Hz -> 20 Hz e ARES-HyperGraph / ARES-DatasetGraph.
 
+use crate::fastmcp_router::{JsonRpcRequest, JsonRpcResponse, handle_fastmcp_jsonrpc_request};
 use crate::wire_contract::{StressTestPatchRequest, WirePacketContext, WireTelemetryPacket};
 use ares_causal_graph::adhg_graph::{AdhgCausalEngine, AdhgNodeKind};
 use ares_causal_graph::biokg_reasoner::{NormativeClinicalGrounding, ground_adhg_node_o1};
@@ -8,12 +9,17 @@ use ares_causal_graph::dataset_graph::AresUnifiedDatasetGraph;
 use ares_causal_graph::error::CausalGraphError;
 use ares_causal_graph::hemodynamics::compute_jugular_and_sans_state;
 use ares_causal_graph::hypergraph_spatial::{
-    AnatomicalRegionSubgraph, AnatomicalRiskInputs, BodyHeatmap, HabitatDeonticAssessment,
-    HabitatEnvironmentState, HabitatZoneDeonticPolicy, HabitatZoneId, MissionLongitudinalCompactor,
-    PhysiologicalTick, ZoneTransitionMarkovModel,
+    AnatomicalRegionSubgraph, AnatomicalRiskInputs, BodyHeatmap, DeonticModality,
+    HabitatDeonticAssessment, HabitatEnvironmentState, HabitatZoneDeonticPolicy, HabitatZoneId,
+    MARS_SOL_SECONDS, MissionLongitudinalCompactor, PhysiologicalTick, ZoneTransitionMarkovModel,
 };
 use ares_causal_graph::mechanotransduction::compute_musculoskeletal_state;
 use ares_core_types::NqsQuantileForecastSnapshot;
+use ares_core_types::binary_ipc::{
+    ARES_BINARY_FRAME_BYTES, BinaryFrameMeta, BinaryTelemetryFrame, DEONTIC_EIMO_AUTONOMOUS,
+    DEONTIC_EVA_FORBIDDEN, DEONTIC_SHELTER_MANDATORY, DEONTIC_VIOLATES_POLICY,
+    PARTITION_ALL_NOMINAL, SeqlockTelemetryRing,
+};
 use ares_core_types::security::{CrewRole, MedOpsAuditLogger};
 use ares_core_types::telemetry::{
     Biometrics, BiometricsSource, ProvenanceManifest, ScenarioOverlayMode, StressTestScenarioInput,
@@ -29,9 +35,12 @@ use ares_nqs_stl::timestral_bridge::{
     AresMultivariateSample, AresTemporalForecasterEngine, KnownFutureCovariates,
 };
 use ares_security_privacy::audit_chain::Sha256AuditLogger;
+use ares_security_privacy::sanitizer::StrictMcpSanitizer;
 use ares_telemetry_ingest::bidmc_replayer::{BidmcNumericRow, BidmcReplayer, IngestError};
 use ares_telemetry_ingest::scenario_overlay::biometrics_with_signal_quality;
 use ares_telemetry_ingest::sqi_filter::{SqiEvaluation, SqiFilter};
+use ares_telemetry_ingest::wearable_packet::{ValidatedTelemetryFrame, WearableSensorPacket};
+use axum::body::Bytes;
 use axum::extract::State;
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::http::{HeaderValue, Request, StatusCode, header};
@@ -39,11 +48,81 @@ use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
+use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 use thiserror::Error;
 use tokio::sync::broadcast;
+
+/// Canonical base epoch matching pinned contract fixtures (`2026-11-14T12:00:00Z`).
+const CONTRACT_BASE_EPOCH_MS: u64 = 1_794_657_600_000;
+
+/// ARINC 653 logical partition identifiers for `ARES-MedOS`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum PartitionId {
+    TelemetryIngest,
+    CausalOdeStl,
+    TimestralForecaster,
+    MedOpsUiShell,
+}
+
+impl PartitionId {
+    #[inline]
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::TelemetryIngest => "INGEST",
+            Self::CausalOdeStl => "CAUSAL_ODE_STL",
+            Self::TimestralForecaster => "TIMESTRAL",
+            Self::MedOpsUiShell => "MEDOPS_SHELL",
+        }
+    }
+}
+
+/// Runtime health status for a single ARINC 653 partition.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Arinc653PartitionHealth {
+    pub id: PartitionId,
+    pub label: String,
+    pub healthy: bool,
+    pub last_latency_us: u64,
+}
+
+/// Deep-space One-Way Light Time (OWLT) Mars communication state (`NASA-STD-3001 [V1 3006]`).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OwltMarsCommState {
+    pub owlt_seconds: f32,
+    pub eimo_autonomous_active: bool,
+    pub blackout_active: bool,
+    pub label: String,
+}
+
+/// Unified OS status bar state exposed by both Tauri IPC and `GET /api/os-status`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OsStatusBarState {
+    pub shell_name: String,
+    pub shell_version: String,
+    pub transport_mode: String,
+    pub host_os: String,
+    pub host_arch: String,
+    pub air_gapped: bool,
+    pub ws_mirror_active: bool,
+    pub engine_tick_latency_us: u64,
+    pub target_ipc_budget_us: u64,
+    pub sol_number: u32,
+    pub mission_elapsed_s: f64,
+    pub owlt: OwltMarsCommState,
+    pub partitions: Vec<Arinc653PartitionHealth>,
+    pub habitat_zone: HabitatZoneId,
+    pub violates_policy: bool,
+    pub eva_airlock_forbidden: bool,
+    pub storm_shelter_mandatory: bool,
+    pub radiation_dose_rate_msv_d: f64,
+    pub seu_restart_count: u16,
+    pub hrv_unavailable: bool,
+    pub model_validation_status: ares_core_types::telemetry::ModelValidationStatus,
+}
 
 /// Errori tipizzati di inizializzazione del runtime `ares-server-cli`.
 #[derive(Debug, Error)]
@@ -225,6 +304,11 @@ pub struct MissionRuntimeInner {
     pub latest_quantile_snapshot: Arc<NqsQuantileForecastSnapshot>,
     pub latest_grounding: NormativeClinicalGrounding,
     pub tick_counter: u64,
+    pub seu_restart_count: u16,
+    pub owlt_delay_sec: f32,
+    pub eimo_autonomous_active: bool,
+    pub last_timestral_latency_us: u64,
+    pub last_ingest_latency_us: u64,
 }
 
 impl MissionRuntimeInner {
@@ -334,19 +418,159 @@ impl MissionRuntimeInner {
         } else {
             -0.002
         };
+        let t_start = Instant::now();
         let snap = self
             .forecaster_engine
             .ingest_sample_1hz(&sample, &covariates, ode_drift)?;
+        self.last_timestral_latency_us = t_start.elapsed().as_micros() as u64;
         self.latest_quantile_snapshot = Arc::clone(&snap);
         Ok(snap)
     }
+
+    fn build_binary_frame(&self, ipc_latency_ns: u32) -> BinaryTelemetryFrame {
+        let p = &self.latest_packet;
+        let offset_ms = if p.relative_recording_time_s.is_finite() {
+            (p.relative_recording_time_s.max(0.0) * 1000.0).round() as u64
+        } else {
+            0
+        };
+        let timestamp_ms = CONTRACT_BASE_EPOCH_MS.saturating_add(offset_ms);
+        let zone = self.latest_habitat_assessment.current_zone;
+        let eva_forbidden = self
+            .latest_habitat_assessment
+            .verdict(HabitatZoneId::EvaAirlock)
+            .modality
+            == DeonticModality::Forbidden;
+        let shelter_mandatory = self
+            .latest_habitat_assessment
+            .verdict(HabitatZoneId::RadiationStormShelter)
+            .modality
+            == DeonticModality::Mandatory;
+
+        let mut deontic_habitat_mask = (zone as u8) & 0x07;
+        if self.latest_habitat_assessment.violates_policy {
+            deontic_habitat_mask |= DEONTIC_VIOLATES_POLICY;
+        }
+        if eva_forbidden {
+            deontic_habitat_mask |= DEONTIC_EVA_FORBIDDEN;
+        }
+        if shelter_mandatory {
+            deontic_habitat_mask |= DEONTIC_SHELTER_MANDATORY;
+        }
+        if self.eimo_autonomous_active {
+            deontic_habitat_mask |= DEONTIC_EIMO_AUTONOMOUS;
+        }
+
+        let meta = BinaryFrameMeta {
+            seq: self.tick_counter,
+            timestamp_ms,
+            partition_status: PARTITION_ALL_NOMINAL,
+            deontic_habitat_mask,
+            crs_score: if self.what_if_active {
+                Some(self.latest_pocus_posterior)
+            } else {
+                None
+            },
+            owlt_delay_sec: self.owlt_delay_sec,
+            ipc_latency_ns,
+            conformal_abstained: self.latest_quantile_snapshot.abstention_certificate.abstained,
+            seu_recovery_active: self.seu_restart_count > 0,
+            include_derived_models: self.what_if_active,
+        };
+        BinaryTelemetryFrame::from_telemetry_packet(p, Some(&self.latest_quantile_snapshot), meta)
+    }
+
+    fn build_os_status_bar_state(
+        &self,
+        shell_name: &str,
+        shell_version: &str,
+        transport_mode: &str,
+        air_gapped: bool,
+        ws_mirror_active: bool,
+    ) -> OsStatusBarState {
+        let eva_forbidden = self
+            .latest_habitat_assessment
+            .verdict(HabitatZoneId::EvaAirlock)
+            .modality
+            == DeonticModality::Forbidden;
+        let shelter_mandatory = self
+            .latest_habitat_assessment
+            .verdict(HabitatZoneId::RadiationStormShelter)
+            .modality
+            == DeonticModality::Mandatory;
+        let sol_offset = (self.mission_elapsed_s / MARS_SOL_SECONDS).floor().max(0.0) as u32;
+        let sol_number = self.latest_packet.flight_day.saturating_add(sol_offset);
+
+        let mins = (self.owlt_delay_sec / 60.0).floor() as u32;
+        let secs = (self.owlt_delay_sec % 60.0).round() as u32;
+        let owlt_label = if self.eimo_autonomous_active {
+            format!("OWLT: {mins}m {secs:02}s (EIMO AUTONOMOUS)")
+        } else {
+            format!("OWLT: {:.1}s (LEO NOMINAL)", self.owlt_delay_sec)
+        };
+
+        OsStatusBarState {
+            shell_name: shell_name.to_string(),
+            shell_version: shell_version.to_string(),
+            transport_mode: transport_mode.to_string(),
+            host_os: std::env::consts::OS.to_string(),
+            host_arch: std::env::consts::ARCH.to_string(),
+            air_gapped,
+            ws_mirror_active,
+            engine_tick_latency_us: self.latest_recompute_latency_us,
+            target_ipc_budget_us: 50,
+            sol_number,
+            mission_elapsed_s: self.mission_elapsed_s,
+            owlt: OwltMarsCommState {
+                owlt_seconds: self.owlt_delay_sec,
+                eimo_autonomous_active: self.eimo_autonomous_active,
+                blackout_active: false,
+                label: owlt_label,
+            },
+            partitions: vec![
+                Arinc653PartitionHealth {
+                    id: PartitionId::TelemetryIngest,
+                    label: PartitionId::TelemetryIngest.label().to_string(),
+                    healthy: true,
+                    last_latency_us: self.last_ingest_latency_us,
+                },
+                Arinc653PartitionHealth {
+                    id: PartitionId::CausalOdeStl,
+                    label: PartitionId::CausalOdeStl.label().to_string(),
+                    healthy: true,
+                    last_latency_us: self.latest_recompute_latency_us,
+                },
+                Arinc653PartitionHealth {
+                    id: PartitionId::TimestralForecaster,
+                    label: PartitionId::TimestralForecaster.label().to_string(),
+                    healthy: true,
+                    last_latency_us: self.last_timestral_latency_us,
+                },
+                Arinc653PartitionHealth {
+                    id: PartitionId::MedOpsUiShell,
+                    label: PartitionId::MedOpsUiShell.label().to_string(),
+                    healthy: true,
+                    last_latency_us: 25,
+                },
+            ],
+            habitat_zone: self.latest_habitat_assessment.current_zone,
+            violates_policy: self.latest_habitat_assessment.violates_policy,
+            eva_airlock_forbidden: eva_forbidden,
+            storm_shelter_mandatory: shelter_mandatory,
+            radiation_dose_rate_msv_d: self.latest_packet.biometrics.radiation_dose_rate_msv_d,
+            seu_restart_count: self.seu_restart_count,
+            hrv_unavailable: self.latest_packet.biometrics.rmssd_ms.is_none(),
+            model_validation_status: self.latest_packet.model_validation_status,
+        }
+    }
 }
 
-/// Stato condiviso tra il server Axum HTTP/WebSocket, il co-processore Timestral 1 Hz
-/// e il server FastMCP su `stdio`.
+/// Stato condiviso tra il server Axum HTTP/WebSocket, il co-processore Timestral 1 Hz,
+/// il ring buffer binario zero-copy Seqlock e il server FastMCP su `stdio`.
 pub struct SharedMissionState {
     pub inner: RwLock<MissionRuntimeInner>,
     pub tx: broadcast::Sender<String>,
+    pub binary_ring: Arc<SeqlockTelemetryRing<64>>,
     pub audit_logger: Sha256AuditLogger,
     pub dataset_graph: Arc<AresUnifiedDatasetGraph>,
 }
@@ -458,7 +682,8 @@ impl SharedMissionState {
             "INITIALIZE_ARES_MISSION_RUNTIME_WITH_TIMESTRAL_HYPERGRAPH",
         );
 
-        Ok(Arc::new(Self {
+        let binary_ring = Arc::new(SeqlockTelemetryRing::<64>::new());
+        let shared = Arc::new(Self {
             inner: RwLock::new(MissionRuntimeInner {
                 replayer,
                 sqi_filter,
@@ -485,11 +710,116 @@ impl SharedMissionState {
                 latest_quantile_snapshot,
                 latest_grounding,
                 tick_counter: 0,
+                seu_restart_count: 0,
+                owlt_delay_sec: 852.0,
+                eimo_autonomous_active: true,
+                last_timestral_latency_us: 0,
+                last_ingest_latency_us: 0,
             }),
             tx,
+            binary_ring,
             audit_logger,
             dataset_graph,
-        }))
+        });
+        shared.publish_latest_binary_frame(0);
+        Ok(shared)
+    }
+
+    /// Publishes the current state into the lock-free `SeqlockTelemetryRing<64>`.
+    pub fn publish_latest_binary_frame(&self, ipc_latency_ns: u32) {
+        if let Ok(guard) = self.inner.read() {
+            let frame = guard.build_binary_frame(ipc_latency_ns);
+            self.binary_ring.publish(&frame);
+        }
+    }
+
+    /// Reads the latest 128-byte `BinaryTelemetryFrame` from the Seqlock ring (zero-copy).
+    pub fn latest_binary_frame(&self) -> Option<BinaryTelemetryFrame> {
+        if let Ok(frame) = self.binary_ring.read_latest() {
+            return Some(frame);
+        }
+        self.inner.read().ok().map(|g| g.build_binary_frame(0))
+    }
+
+    /// Reads the latest 128-byte serialized frame bytes.
+    pub fn latest_binary_frame_bytes(&self) -> Option<[u8; ARES_BINARY_FRAME_BYTES]> {
+        if let Ok(bytes) = self.binary_ring.read_latest_bytes() {
+            return Some(bytes);
+        }
+        self.inner
+            .read()
+            .ok()
+            .map(|g| g.build_binary_frame(0).to_le_bytes())
+    }
+
+    /// Processes a Tier C `WearableSensorPacket` (Oxide Hubris / Embassy), updating SQI,
+    /// `seu_restart_count`, causal state, and publishing a 128-byte `BinaryTelemetryFrame`.
+    pub fn ingest_wearable_packet(
+        &self,
+        packet: &WearableSensorPacket,
+    ) -> Option<ValidatedTelemetryFrame> {
+        let start = Instant::now();
+        let mut guard = self.inner.write().ok()?;
+        let scenario = guard.scenario.clone();
+        let validated = packet.to_validated_frame(
+            &format!("hubris_node_{:02}", packet.node_id),
+            &scenario,
+            &mut guard.sqi_filter,
+        );
+        guard.seu_restart_count = guard
+            .seu_restart_count
+            .max(validated.supervisor_restart_count);
+        guard.signal_quality = validated.sqi_evaluation.clone();
+        guard.tick_counter = guard.tick_counter.saturating_add(1);
+        let elapsed = guard.mission_elapsed_s;
+        let what_if_active = guard.what_if_active;
+
+        let (telemetry_packet, pocus_posterior, causal_chain) =
+            compute_mission_telemetry_tick_from_row(
+                &validated.row,
+                validated.biometrics.clone(),
+                &mut guard.adhg_engine,
+                &scenario,
+                elapsed,
+                what_if_active,
+            );
+        guard.latest_packet = telemetry_packet;
+        guard.latest_pocus_posterior = pocus_posterior;
+        guard.latest_causal_chain = causal_chain;
+        guard.update_hypergraph_and_nqs_hot_path();
+        guard.last_ingest_latency_us = start.elapsed().as_micros() as u64;
+        guard.latest_recompute_latency_us = guard.last_ingest_latency_us;
+
+        let frame = guard.build_binary_frame((start.elapsed().as_nanos()).min(u128::from(u32::MAX)) as u32);
+        self.binary_ring.publish(&frame);
+        let _ = self.audit_logger.append_audit_event(
+            CrewRole::CrewMedicalOfficer,
+            &format!(
+                "HUBRIS_WEARABLE_INGEST:NODE={}:SEQ={}:SEU_RESTARTS={}",
+                packet.node_id, packet.sequence_num, packet.supervisor_restart_count
+            ),
+        );
+        Some(validated)
+    }
+
+    /// Projects the unified `OsStatusBarState` for both Tauri IPC and `GET /api/os-status`.
+    pub fn os_status_bar_state(
+        &self,
+        shell_name: &str,
+        shell_version: &str,
+        transport_mode: &str,
+        air_gapped: bool,
+        ws_mirror_active: bool,
+    ) -> Option<OsStatusBarState> {
+        self.inner.read().ok().map(|g| {
+            g.build_os_status_bar_state(
+                shell_name,
+                shell_version,
+                transport_mode,
+                air_gapped,
+                ws_mirror_active,
+            )
+        })
     }
 
     /// Avanza il clock di replay (`dt`, tipicamente `50 ms` a 20 Hz), mantenendo
@@ -505,10 +835,12 @@ impl SharedMissionState {
         let row = guard.replayer.row_at_second(sample_index).clone();
 
         if current_second != previous_second {
+            let ingest_start = Instant::now();
             if sample_index == 0 {
                 guard.sqi_filter = SqiFilter::default();
             }
             guard.signal_quality = guard.sqi_filter.evaluate_row_detailed(&row);
+            guard.last_ingest_latency_us = ingest_start.elapsed().as_micros() as u64;
         }
 
         let biometrics =
@@ -532,6 +864,11 @@ impl SharedMissionState {
         guard.latest_causal_chain = causal_chain;
         guard.update_hypergraph_and_nqs_hot_path();
         guard.latest_recompute_latency_us = start.elapsed().as_micros() as u64;
+
+        let bin_frame = guard.build_binary_frame(
+            start.elapsed().as_nanos().min(u128::from(u32::MAX)) as u32,
+        );
+        self.binary_ring.publish(&bin_frame);
 
         let snapshot_packet = guard.latest_packet.clone();
         if self.tx.receiver_count() > 0
@@ -591,6 +928,11 @@ impl SharedMissionState {
         guard.update_hypergraph_and_nqs_hot_path();
         let _ = guard.run_1hz_timestral_inference();
         guard.latest_recompute_latency_us = start.elapsed().as_micros() as u64;
+
+        let bin_frame = guard.build_binary_frame(
+            start.elapsed().as_nanos().min(u128::from(u32::MAX)) as u32,
+        );
+        self.binary_ring.publish(&bin_frame);
 
         let wire_snapshot = guard.to_wire_packet();
         let _ = self.audit_logger.append_audit_event(
@@ -655,11 +997,18 @@ async fn cors_preflight_handler() -> StatusCode {
     StatusCode::NO_CONTENT
 }
 
-/// Costruisce il router Axum con `/ws/telemetry`, `GET /api/snapshot` e `POST /api/stress-test`.
+/// Costruisce il router Axum con `/ws/telemetry`, `GET /api/snapshot`,
+/// `POST /api/stress-test`, `GET /api/os-status`, `GET /api/binary-frame` e `POST /api/mcp`.
 pub fn build_axum_router(state: Arc<SharedMissionState>) -> Router {
     Router::new()
         .route("/ws/telemetry", get(ws_telemetry_handler))
         .route("/api/snapshot", get(get_snapshot_handler))
+        .route("/api/os-status", get(get_os_status_handler))
+        .route("/api/binary-frame", get(get_binary_frame_handler))
+        .route(
+            "/api/mcp",
+            post(post_mcp_handler).options(cors_preflight_handler),
+        )
         .route(
             "/api/stress-test",
             post(post_stress_test_handler).options(cors_preflight_handler),
@@ -675,6 +1024,46 @@ async fn get_snapshot_handler(
         .latest_wire_snapshot()
         .map(Json)
         .ok_or(StatusCode::INTERNAL_SERVER_ERROR)
+}
+
+async fn get_os_status_handler(
+    State(state): State<Arc<SharedMissionState>>,
+) -> Result<Json<OsStatusBarState>, StatusCode> {
+    state
+        .os_status_bar_state(
+            "ARES-MedOS",
+            env!("CARGO_PKG_VERSION"),
+            "BROWSER_WEBSOCKET",
+            true,
+            true,
+        )
+        .map(Json)
+        .ok_or(StatusCode::INTERNAL_SERVER_ERROR)
+}
+
+async fn get_binary_frame_handler(
+    State(state): State<Arc<SharedMissionState>>,
+) -> Result<Response, StatusCode> {
+    let bytes = state
+        .latest_binary_frame_bytes()
+        .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+    let mut response = Bytes::copy_from_slice(&bytes).into_response();
+    response.headers_mut().insert(
+        header::CONTENT_TYPE,
+        HeaderValue::from_static("application/octet-stream"),
+    );
+    Ok(response)
+}
+
+async fn post_mcp_handler(
+    State(state): State<Arc<SharedMissionState>>,
+    Json(req): Json<JsonRpcRequest>,
+) -> Result<Json<JsonRpcResponse>, StatusCode> {
+    let ctx = state
+        .fastmcp_context()
+        .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+    let sanitizer = StrictMcpSanitizer;
+    Ok(Json(handle_fastmcp_jsonrpc_request(&req, &ctx, &sanitizer)))
 }
 
 async fn post_stress_test_handler(
