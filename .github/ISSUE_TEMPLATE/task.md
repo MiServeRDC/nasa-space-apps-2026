@@ -1,6 +1,6 @@
 ---
 name: Team task
-about: Agree on a small task with an owner and a verifiable outcome
+about: Define a task with an owner and a verifiable outcome
 title: ""
 labels: ""
 assignees: ""
@@ -10,9 +10,9 @@ assignees: ""
 
 What should this task achieve?
 
-## Owner
+## Owner and branch
 
-Who is responsible? Assign the issue after the collaborator joins.
+Assign one owner and link their working branch.
 
 ## Acceptance criteria
 
@@ -21,8 +21,3 @@ Who is responsible? Assign the issue after the collaborator joins.
 ## Dependencies and references
 
 Related tasks, sources, or decisions.
-
-## Timing
-
-Before opening: coordination, reading, and generic tool preparation only.
-Challenge implementation and prototyping start at the official event opening.
