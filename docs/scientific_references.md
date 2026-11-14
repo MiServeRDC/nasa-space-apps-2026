@@ -214,3 +214,48 @@ Questo documento tiene traccia di tutte le basi teoriche, articoli scientifici p
 | **`lancedb/lancedb`** | `https://github.com/lancedb/lancedb` (Hybrid Vector + Graph Storage Architecture) | Hot/Warm/Cold temporal decay storage pattern adapted to `WelfordAccumulator` + `LongitudinalSuperNode` (< 200 KB for 900 Martian Sols) and `graphify` disk bundle export (`data/knowledge_graph/ares_dataset_graph.json`, `graphify-out/graph.json`). | `crates/ares-causal-graph/src/hypergraph_spatial.rs`, `crates/ares-causal-graph/src/dataset_graph.rs` |
 | **`huggingface/candle`** | `https://github.com/huggingface/candle` (Pure-Rust ML & Apple Metal / CUDA Tensor Backend) | Pure-Rust zero-Python tensor execution paradigm guiding hardware-aligned `#[repr(C, align(16))]` `BiomedicalEvidenceDescriptor` (16-byte) and edge inference abstractions. | `crates/ares-causal-graph/src/biokg_reasoner.rs`, `docs/architecture/IMPLEMENTATION_STACK.md` |
 
+---
+
+## 9. Pure-Rust Operating Systems, Framekernels, Zero-Copy IPC & Native Mission Shells (Repositories & Scientific Literature)
+
+Studio architetturale completo documentato in [`docs/architecture/RUST_OS_AND_SHELL_FEASIBILITY_STUDY.md`](architecture/RUST_OS_AND_SHELL_FEASIBILITY_STUDY.md) (architettura a 3 Tier `ARES-MedOS`, allineamento `NASA-STD-3001 Vol. 2` `[V2 10001]`–`[V2 10152]`, partizionamento `ARINC 653` e `NASA cFE/cFS` / `JPL F Prime`).
+
+### 9.1 Letteratura Peer-Reviewed su Kernel Rust, Partizionamento Aerospaziale e Sistemi Operativi
+
+- **Asterinas Framekernel (Linux-ABI Safe Rust OS Architecture):**
+  - *Autori*: Yuke Peng, Yifan Shen, Hongliang Tian, Shoumeng Yan et al.
+  - *Venue*: *"Asterinas: A Linux ABI-Compatible, Rust-Based Framekernel OS with a Small and Sound TCB"*, *USENIX Annual Technical Conference (ATC 2025)* (`arXiv:2506.03876`) e *"Framekernel: A Safe and Fast Kernel Architecture via Rust"*, *ACM SIGOPS Asia-Pacific Workshop on Systems (APsys 2024)* (`DOI: 10.1145/3678015.3680492`); studio eBPF correlato Chen & Lee (*ACM 2026*, `DOI: 10.1145/3837779.3838157`).
+  - *Applicazione nel Progetto*: Target di riferimento Tier B per eseguire il binario Linux ELF `ares-server-cli` (`> 210` syscall Linux, latenza LMbench `1.08x`) isolando il codice `unsafe` in `ostd` al `~14.0%` del codebase.
+
+- **Theseus OS (Intralingual Rust OS & Live Cell Swapping):**
+  - *Autori*: Kevin Boos, Namitha Liyanage, Ramla Ijaz, Lin Zhong (Rice University & Yale University)
+  - *Venue*: *"Theseus: an Experiment in Operating System Structure and State Management"*, *USENIX OSDI 2020*, pp. 1–19 (`ISBN: 978-1-939133-19-9`, `https://www.usenix.org/conference/osdi20/presentation/boos`); Boos et al., *PLOS 2017* (`DOI: 10.1145/3144555.3144560`) & *EuroSys 2017* (`DOI: 10.1145/3064176.3064205`).
+  - *Applicazione nel Progetto*: Modello concettuale di *live cell swapping* a compile-time per il ripristino a caldo di moduli corrotti da *Single-Event Upsets* (SEU) da radiazione cosmica senza riavvio completo.
+
+- **Tock OS & Atmosphere (Embedded Isolation & Formally Verified Microkernels):**
+  - *Autori*: Amit Levy, Bradford Campbell, Branden Ghena, Daniel B. Giffin, Pat Pannuto, Prabal Dutta, Philip Levis (Stanford, UC Berkeley, UMich), *"Multiprogramming a 64kB Computer Safely and Efficiently"*, *ACM SOSP 2017* (`DOI: 10.1145/3132747.3132786`); Schuermann et al., *"Tock: From Research to Securing 10 Million Computers"* (`arXiv:2603.22585`, 2026); Chen et al., *"Atmosphere: Formally Verified Microkernel in Rust with Verus"*, *ACM SOSP 2025* (`DOI: 10.1145/3731569.3764821`).
+  - *Applicazione nel Progetto*: Riferimenti per isolamento MPU su microcontroller wearable Tier C (`~8.4 KB` SRAM) e verifica formale SMT del TCB.
+
+- **NASA `cFE/cFS`, `JPL F Prime`, `ARINC 653` & `NASA-STD-3001 Vol. 2` Human-System Latency:**
+  - *Fonti*: NASA Core Flight System (`https://github.com/nasa/cFS`), JPL F Prime (`https://github.com/nasa/fprime`), V. Cheptsov & A. Khoroshilov (*ISP RAS 2018*, `DOI: 10.1109/ispras.2018.00009` & *2023*, `DOI: 10.1109/ispras60948.2023.10508165`), `NASA-STD-3001 Vol. 2 Rev F` (`[V2 10001]` NMSUS Usability, `[V2 10002]` Design Error, `[V2 10005]` Standardization, `[V2 10022]` `<= 100 ms` control feedback, `[V2 10023]`/`[V2 10024]` electronic procedures, `[V2 10027]` inadvertent operation interlocks, `[V2 10152]` `<= 50 ms` dynamic display latency).
+
+### 9.2 Registry dei Repository Pure-Rust OS, Compositor, UI & Zero-Copy IPC
+
+| Repository / Project | Primary URL & License | Category | Role in 3-Tier `ARES-MedOS` Architecture |
+| :--- | :--- | :--- | :--- |
+| **`asterinas/asterinas`** | `https://github.com/asterinas/asterinas` (`MPL-2.0`) | Framekernel OS | **Tier B Host Kernel:** `14.0%` TCB in `ostd`, `#![deny(unsafe_code)]` services, executes unmodified `ares-server-cli` ELF binary. |
+| **`redox-os/redox`** | `https://gitlab.redox-os.org/redox-os/redox` / `https://github.com/redox-os/redox` (`MIT`) | Microkernel OS | **Tier B Reference & Kiosk:** Plan-9 `scheme:` capability namespaces mirroring MCP `slice://` & `handle://` handles; Orbital & COSMIC ports. |
+| **`theseus-os/Theseus`** | `https://github.com/theseus-os/Theseus` (`MIT`) | Intralingual OS | **SEU Recovery Model:** Live crate-cell swapping without rebooting (*OSDI 2020*). |
+| **`oxidecomputer/hubris`** | `https://github.com/oxidecomputer/hubris` (`MPL-2.0`) | Embedded Microkernel | **Tier C Flight Sensor Hub:** `~2,000` LOC MPU-isolated kernel + `Idol` IPC + user-space `Supervisor` driver restart. |
+| **`tock/tock`** | `https://github.com/tock/tock` (`Apache-2.0/MIT`) | Embedded Microkernel | **Tier C Multi-Tenant Wearable:** Rust kernel capsules + isolated user apps (`~8.4 KB` SRAM, *SOSP 2017*). |
+| **`embassy-rs/embassy`** | `https://github.com/embassy-rs/embassy` (`Apache-2.0/MIT`) | Embedded Async RTOS | **Tier C Wearable Biosensor Firmware:** `no_std` async DMA HALs + `trouble` BLE for `ECG`/`PPG`/`SpO2` acquisition. |
+| **`rtic-rs/rtic`** | `https://github.com/rtic-rs/rtic` (`Apache-2.0/MIT`) | Hard-RT Embedded | **Tier C Deterministic ADC:** Hardware NVIC SRP concurrency (`< 512 B` RAM minimal, `250–500 Hz` sampling). |
+| **`tauri-apps/tauri`** | `https://github.com/tauri-apps/tauri` (`Apache-2.0/MIT`) | Native Desktop OS Shell | **Tier A Primary Shell (`ARES-MedOS Desktop`):** `~30–50 MB` RAM (`WKWebView` Metal / `WebKitGTK` / `WebView2`) + `< 0.05 ms` binary `Channel<ArrayBuffer>`. |
+| **`pop-os/cosmic-epoch`** / **`cosmic-comp`** | `https://github.com/pop-os/cosmic-epoch` & `https://github.com/pop-os/cosmic-comp` (`GPL-3.0`) | Wayland OS Compositor | **Tier B Habitat Medical Kiosk:** Pure-Rust Wayland compositor (`smithay/smithay`) + `libcosmic` single-workspace kiosk shell. |
+| **`iced-rs/iced`** | `https://github.com/iced-rs/iced` (`MIT`) | Pure-Rust GPU GUI | **Tier B Native Applet Toolkit:** Elm-architecture GUI accelerated by `wgpu` (Metal/Vulkan) powering `libcosmic`. |
+| **`rerun-io/rerun`** & **`emilk/egui`** | `https://github.com/rerun-io/rerun` & `https://github.com/emilk/egui` (`Apache-2.0/MIT`) | `wgpu` 120 FPS Telemetry UI | **Tier A.2 Waveform Companion:** Zero-GC `120 FPS` `wgpu` plotting & Apache Arrow (`re_chunk`) multimodal time-series scrubbing. |
+| **`slint-ui/slint`** & **`DioxusLabs/dioxus`** | `https://github.com/slint-ui/slint` & `https://github.com/DioxusLabs/dioxus` | Native Rust UI Toolkits | Evaluated alternatives (`Slint` retained `.slint` for embedded displays; `Dioxus` VDOM + `wgpu`/WebView). |
+| **`eclipse-iceoryx/iceoryx2`** | `https://github.com/eclipse-iceoryx/iceoryx2` (`Apache-2.0/MIT`) | Zero-Copy Shared Memory IPC | **Tier B Partitioned Bus:** Daemonless lock-free `POSIX shm` (`< 100 ns`, `ZeroCopySend`, ISO 26262 ASIL-D / DO-178 certifiable design). |
+| **`eclipse-zenoh/zenoh`** | `https://github.com/eclipse-zenoh/zenoh` (`EPL-2.0/Apache-2.0`) | Distributed Space/Edge Middleware | **Tier B/C DSN Bridge:** Sub-microsecond local `shm` pub/sub + intermittent Mars-to-Earth Store-and-Forward synchronization. |
+
+

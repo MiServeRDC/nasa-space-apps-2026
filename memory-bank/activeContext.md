@@ -43,6 +43,12 @@
    * **1 Hz Native BIDMC Cadence & Cursor Invariance (`@LelloXV`):** `SharedMissionState` separates 1 Hz (`Duration`) BIDMC row advancement and SQI evaluation from the 20 Hz WebSocket loop; `POST /api/stress-test` re-evaluates the cached 1 Hz row without advancing `replayer` or `replay_elapsed`.
    * **Wire Contract & Contract Fixtures (`@fertech02`):** Added `crates/ares-server-cli/src/wire_contract.rs` (`WireTelemetryPacket` + `StressTestPatchRequest`) emitting all `contracts/telemetry_schema.json` blocks (`provenance_manifest`, `biometrics`, `biometrics_1hz`, nullable `hemodynamics`/`musculoskeletal`/`environment`, `safety_margins`, `active_playbook`, `causal_graph_state`, `nqs_stl_status`, `what_if_overlay`) plus 20-Phase extensions (`timestral_quantiles`, `hypergraph_spatial`), verified against all fixtures in `contracts/fixtures/`.
    * **React 19 Cockpit (`@carolina2910`):** Unified `ares-cockpit/` (`src/lib/useTelemetry.ts`, `telemetryValidation.ts`, `ProvenanceInspector.tsx`, `MriAndStl.tsx`, `Imaging.tsx`, `WhatIfConsole.tsx`) wired to `127.0.0.1:8080`.
+8. **Pure-Rust OS, Zero-Copy IPC & Native Mission Shell Feasibility Study (`os-hackathon-align`, `os-rust-kernels`, `os-ui-ipc-shell`):**
+   * Created `docs/architecture/RUST_OS_AND_SHELL_FEASIBILITY_STUDY.md` and added Section 9 to `docs/scientific_references.md`.
+   * Defined the **3-Tier `ARES-MedOS` Architecture**:
+     - **Tier A (`ARES-MedOS Desktop`):** `Tauri v2` native single-binary shell (`~30-50 MB` RAM, Apple Silicon Metal `WKWebView` / Linux `WebKitGTK` / Windows `WebView2`) embedding `SharedMissionState` in-process with `tauri::ipc::Channel<ArrayBuffer>` (`< 0.05 ms` zero-JSON streaming), frameless `#000000` OLED Mission Control bar, and `Alt+Space`/`Cmd+K` `FastMCP` Command Palette while preserving `cargo run` + `npm run dev` 100%.
+     - **Tier B (Partitioned Spacecraft Host):** `Asterinas` Framekernel (`14.0%` unsafe TCB, Linux-ABI compatible), `System76 COSMIC` (`cosmic-comp`/`Iced`/`wgpu`) kiosk, `Eclipse iceoryx2` lock-free shared-memory IPC (`< 100 ns`), and `Eclipse Zenoh` Store-and-Forward DSN bridge, aligned with `NASA-STD-3001 Vol. 2` (`[V2 10001]`–`[V2 10152]`), `ARINC 653`, and `NASA cFE/cFS`.
+     - **Tier C (Wearable Sensor Node):** `Embassy` (`trouble` BLE + async DMA) and `Oxide Hubris` (`~2,000` LOC static MPU isolation + `Supervisor` SEU recovery) / `RTIC v2`.
 
 ---
 
