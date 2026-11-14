@@ -11,15 +11,19 @@ use crate::wire_contract::{
 };
 use ares_causal_graph::adhg_graph::{AdhgCausalEngine, AdhgNodeKind};
 use ares_causal_graph::biokg_reasoner::{NormativeClinicalGrounding, ground_adhg_node_o1};
+use ares_causal_graph::circadian_cognitive::MarsCircadianOscillator;
 use ares_causal_graph::dataset_graph::AresUnifiedDatasetGraph;
 use ares_causal_graph::error::CausalGraphError;
-use ares_causal_graph::hemodynamics::compute_jugular_and_sans_state;
+use ares_causal_graph::hemodynamics::compute_jugular_and_sans_state_ext;
 use ares_causal_graph::hypergraph_spatial::{
     AnatomicalRegionSubgraph, AnatomicalRiskInputs, BodyHeatmap, DeonticModality,
     HabitatDeonticAssessment, HabitatEnvironmentState, HabitatZoneDeonticPolicy, HabitatZoneId,
     MARS_SOL_SECONDS, MissionLongitudinalCompactor, PhysiologicalTick, ZoneTransitionMarkovModel,
 };
 use ares_causal_graph::mechanotransduction::compute_musculoskeletal_state;
+use ares_causal_graph::orthostatic_fluid::compute_orthostatic_fluid_state;
+use ares_causal_graph::renal_nephrolithiasis::compute_renal_nephrolithiasis_state;
+use ares_causal_graph::space_immunology::compute_neuro_immune_viral_state;
 use ares_core_types::anomaly::{
     AnomalyStatus, EWMA_SHORT_HORIZONS_SECONDS, ForecastMethod, ShortHorizonCone,
     VitalsAnomalyReport,
@@ -32,15 +36,16 @@ use ares_core_types::binary_ipc::{
 use ares_core_types::security::{AuditChainRecord, CrewRole, MedOpsAuditLogger};
 use ares_core_types::telemetry::{
     AlertSeverity, Biometrics, BiometricsSource, ProvenanceManifest, ScenarioOverlayMode,
-    StressTestScenarioInput, SystemPhase, TelemetryPacket,
+    SpotPoctPanel, StressTestScenarioInput, SystemPhase, TelemetryPacket,
 };
 use ares_core_types::{AbstentionCertificate, NqsQuantileForecastSnapshot};
-use ares_medops_playbooks::playbooks::{select_candidate_playbook, select_vitals_anomaly_playbook};
-use ares_medops_playbooks::safety_gates::enforce_hard_clinical_safety_gates;
+use ares_medops_playbooks::playbooks::select_candidate_playbook_ext;
+use ares_medops_playbooks::pocus_multiorgan::{PocusEfastScan, PocusRenalBladderScan};
+use ares_medops_playbooks::safety_gates::enforce_hard_clinical_safety_gates_ext;
 use ares_nqs_stl::NqsEngine;
 use ares_nqs_stl::error::NqsStlError;
 use ares_nqs_stl::ewma_forecaster::EwmaResidualForecaster;
-use ares_nqs_stl::mri_index::evaluate_nqs_stl_and_mri;
+use ares_nqs_stl::mri_index::evaluate_nqs_stl_and_mri_ext;
 use ares_nqs_stl::timestral_backbone::{ARES_TIMESTRAL_CHANNELS, TimestralConfig};
 use ares_nqs_stl::timestral_bridge::{
     AresMultivariateSample, AresTemporalForecasterEngine, KnownFutureCovariates,
@@ -188,11 +193,22 @@ pub fn primary_adhg_node_for_playbook(playbook_id: &str) -> AdhgNodeKind {
         "PLAYBOOK_04_SANS_TRANSLAMINAR_MITIGATION" => AdhgNodeKind::SansTranslaminarGradient,
         "PLAYBOOK_05_SPE_RADIATION_SHELTER_CANS" => AdhgNodeKind::CansRadiationOxidativeStress,
         "PLAYBOOK_06_HYPOXEMIA_DESATURATION"
+        | "PLAYBOOK_07_HEART_RATE_ANOMALY"
+        | "PLAYBOOK_07_TACHYCARDIA_AUTONOMIC_STRESS"
         | "PLAYBOOK_07_ACUTE_TACHYCARDIA"
+        | "PLAYBOOK_08_SENSOR_SIGNAL_LOSS"
+        | "PLAYBOOK_08_SIGNAL_QUALITY_SENSOR_CHECK"
         | "PLAYBOOK_08_ACUTE_BRADYPNEA_RESPIRATORY"
+        | "PLAYBOOK_09_MULTIPARAMETER_DETERIORATION"
         | "PLAYBOOK_09_MULTICHANNEL_CARDIORESPIRATORY_DRIFT" => {
             AdhgNodeKind::EndothelialProtectiveSecretome
         }
+        "PLAYBOOK_10_RENAL_LITHIASIS" => AdhgNodeKind::RenalSupersaturationRsr,
+        "PLAYBOOK_11_MARS_ENTRY_FLUID_LOADING" => AdhgNodeKind::PlasmaVolumeOrthostatic,
+        "PLAYBOOK_12_CIRCADIAN_LIGHT_HYGIENE" => AdhgNodeKind::MarsCircadianCognitiveFatigue,
+        "PLAYBOOK_13_VIRAL_IMMUNE_VALACYCLOVIR" => AdhgNodeKind::NeuroImmuneViralReactivation,
+        "PLAYBOOK_14_CO2_SCRUBBER_SANS" => AdhgNodeKind::CabinHypercapniaEnv,
+        "PLAYBOOK_15_EFAST_TRAUMA_TRIAGE" => AdhgNodeKind::EndothelialProtectiveSecretome,
         _ => AdhgNodeKind::AredMechanicalLoad,
     }
 }
@@ -208,13 +224,19 @@ pub fn compute_mission_telemetry_tick(
     let row = replayer.next_row().clone();
     let eval = sqi_filter.evaluate_row_detailed(&row);
     let biometrics = biometrics_with_signal_quality(&row, scenario, &eval);
+    let circadian_osc = MarsCircadianOscillator::default();
     compute_mission_telemetry_tick_from_row(
         &row,
         biometrics,
         adhg_engine,
+        &circadian_osc,
         scenario,
+        2.3,
         mission_elapsed_s,
         false,
+        None,
+        None,
+        None,
         VitalsContext::default(),
     )
     .0
@@ -228,27 +250,89 @@ struct VitalsContext<'a> {
     injected: bool,
 }
 
+#[allow(clippy::too_many_arguments)]
 fn compute_mission_telemetry_tick_from_row(
     row: &BidmcNumericRow,
-    biometrics: Biometrics,
+    mut biometrics: Biometrics,
     adhg_engine: &mut AdhgCausalEngine,
+    circadian_osc: &MarsCircadianOscillator,
     scenario: &StressTestScenarioInput,
+    cabin_ppco2_mmhg: f64,
     mission_elapsed_s: f64,
     what_if_active: bool,
+    spot_poct: Option<SpotPoctPanel>,
+    efast_scan: Option<&PocusEfastScan>,
+    renal_pocus: Option<&PocusRenalBladderScan>,
     vitals: VitalsContext<'_>,
 ) -> (TelemetryPacket, f64, Vec<String>) {
-    // 2. EVALUATE (Parte 1): ODE RK4 Frost-Hargens, Shear Stress Giugulare tau_w, SANS e Grafo ADHG
+    if what_if_active && biometrics.helmet_ppco2_mmhg.is_none() {
+        biometrics.helmet_ppco2_mmhg = Some(cabin_ppco2_mmhg);
+    }
+
+    // 2. EVALUATE (Parte 1): ODE RK4 Muscoloscheletrico + Moduli Multi-Organo Block N (Condition 5)
     let musculo = compute_musculoskeletal_state(scenario.flight_day, scenario.ared_daily_load_kgf);
-    let (jugular, sans) = compute_jugular_and_sans_state(&musculo, scenario);
-    let (pocus_est, causal_chain) = adhg_engine.update_and_extract_causal_chain(
+    let effective_sbp = biometrics
+        .sbp_mmhg
+        .or_else(|| what_if_active.then_some((120.0 - scenario.systolic_bp_drop_mmhg).max(65.0)));
+    let orthostatic = compute_orthostatic_fluid_state(
+        scenario.flight_day,
+        biometrics.heart_rate_bpm,
+        effective_sbp,
+        false,
+        spot_poct.as_ref(),
+    );
+    let (jugular, sans) = compute_jugular_and_sans_state_ext(
+        &musculo,
+        scenario,
+        Some(orthostatic.apparent_blood_viscosity_poise),
+        Some(cabin_ppco2_mmhg),
+    );
+    let renal = compute_renal_nephrolithiasis_state(
+        musculo.urinary_calcium_mg_d,
+        2.4,
+        cabin_ppco2_mmhg,
+        false,
+        spot_poct.as_ref(),
+        renal_pocus.is_some_and(|r| r.is_colic_risk()),
+        renal_pocus.map_or(110.0, |r| r.post_void_bladder_volume_ml),
+    );
+    let circadian = circadian_osc.evaluate_state(
+        mission_elapsed_s,
+        biometrics.melanopic_edi_lux,
+        biometrics.vocal_jitter_pct,
+        spot_poct.as_ref(),
+    );
+    let immune = compute_neuro_immune_viral_state(
+        biometrics.rmssd_ms,
+        biometrics.radiation_dose_rate_msv_d,
+        circadian.homeostatic_sleep_pressure_s,
+        spot_poct.as_ref(),
+        false,
+    );
+
+    let (pocus_est, causal_chain) = adhg_engine.update_and_extract_causal_chain_ext(
         &musculo,
         &jugular,
         &sans,
         biometrics.radiation_dose_rate_msv_d,
+        cabin_ppco2_mmhg,
+        Some(&renal),
+        Some(&orthostatic),
+        Some(&circadian),
+        Some(&immune),
     );
 
-    // 2. EVALUATE (Parte 2): Margini normalizzati NQS-STL, TTV +/- 1.96 sigma e Mission Readiness Index
-    let (nqs_stl, nqs_severity) = evaluate_nqs_stl_and_mri(&biometrics, &musculo, &jugular, &sans);
+    // 2. EVALUATE (Parte 2): Margini normalizzati NQS-STL a 10 predicati e Mission Readiness Index
+    let (nqs_stl, nqs_severity) = evaluate_nqs_stl_and_mri_ext(
+        &biometrics,
+        &musculo,
+        &jugular,
+        &sans,
+        Some(&renal),
+        Some(&orthostatic),
+        Some(&circadian),
+        Some(&immune),
+    );
     let anomaly_status = vitals.report.map_or(AnomalyStatus::Normal, |r| r.overall);
     let alert_severity = nqs_severity.max(match anomaly_status {
         AnomalyStatus::Normal => AlertSeverity::Nominal,
@@ -256,33 +340,29 @@ fn compute_mission_telemetry_tick_from_row(
         AnomalyStatus::Alarm => AlertSeverity::Warning,
     });
 
-    // 3. ACT: Selezione Playbook #01-#09 e applicazione inflessibile dei 3 Hard Clinical Safety Gates.
-    // Gli eventi vitali acuti (#06-#09) prevalgono sui playbook cronici (#01,#03,#04), mentre
-    // le emergenze cliniche (#02 trombosi POCUS, #05 SPE radiazione) mantengono precedenza massima.
-    let chronic_playbook = select_candidate_playbook(
+    // 3. ACT: Selezione deterministica Playbook #01-#15 e applicazione dei 4 Hard Clinical Safety Gates (1, 2, 3, 4A, 4B)
+    let candidate_playbook = select_candidate_playbook_ext(
         &biometrics,
         &musculo,
         &jugular,
         &nqs_stl,
         causal_chain.clone(),
+        efast_scan,
+        renal_pocus,
+        vitals.report,
+        scenario.flight_day,
+        Some(circadian.pvt_lapse_probability),
+        Some(immune.viral_reactivation_risk_pct),
     );
-    let candidate_playbook = if matches!(
-        chronic_playbook.playbook_id.as_str(),
-        "PLAYBOOK_02_CONFIRMED_IJV_THROMBUS" | "PLAYBOOK_05_SPE_RADIATION_SHELTER_CANS"
-    ) {
-        chronic_playbook
-    } else {
-        vitals
-            .report
-            .and_then(|r| select_vitals_anomaly_playbook(r, chronic_playbook.safety_gates))
-            .unwrap_or(chronic_playbook)
-    };
-    let active_playbook = enforce_hard_clinical_safety_gates(
+    let active_playbook = enforce_hard_clinical_safety_gates_ext(
         candidate_playbook,
         &biometrics,
         &musculo,
         &jugular,
         scenario,
+        efast_scan,
+        Some(circadian.pvt_lapse_probability),
+        Some(orthostatic.shock_index),
     );
 
     let system_phase = if nqs_stl.has_known_violation()
@@ -331,11 +411,11 @@ fn compute_mission_telemetry_tick_from_row(
         sans_ocular: sans,
         nqs_stl,
         active_playbook,
-        spot_poct: None,
-        renal_nephrolithiasis: None,
-        orthostatic_fluid: None,
-        mars_circadian_sleep: None,
-        neuro_immune_viral: None,
+        spot_poct,
+        renal_nephrolithiasis: Some(renal),
+        orthostatic_fluid: Some(orthostatic),
+        mars_circadian_sleep: Some(circadian),
+        neuro_immune_viral: Some(immune),
     };
     (packet, pocus_est.thrombus_posterior, causal_chain)
 }
@@ -447,6 +527,8 @@ pub struct MissionRuntimeInner {
     pub zone_markov: ZoneTransitionMarkovModel,
     pub latest_quantile_snapshot: Arc<NqsQuantileForecastSnapshot>,
     pub latest_grounding: NormativeClinicalGrounding,
+    pub circadian_oscillator: MarsCircadianOscillator,
+    pub spot_poct: Option<SpotPoctPanel>,
     pub tick_counter: u64,
     pub seu_restart_count: u16,
     pub owlt_delay_sec: f32,
@@ -508,12 +590,16 @@ impl MissionRuntimeInner {
     fn update_hypergraph_and_nqs_hot_path(&mut self) {
         let eval = {
             let pkt = &self.latest_packet;
-            self.nqs_engine.evaluate_tick(
+            self.nqs_engine.evaluate_tick_ext(
                 pkt.relative_recording_time_s,
                 &pkt.biometrics,
                 &pkt.musculoskeletal,
                 &pkt.jugular_hemodynamics,
                 &pkt.sans_ocular,
+                pkt.renal_nephrolithiasis.as_ref(),
+                pkt.orthostatic_fluid.as_ref(),
+                pkt.mars_circadian_sleep.as_ref(),
+                pkt.neuro_immune_viral.as_ref(),
             )
         };
         self.latest_packet.nqs_stl = eval.margins;
@@ -871,14 +957,20 @@ impl SharedMissionState {
             first_row.relative_time_s,
             [first_row.hr_bpm, first_row.spo2_pct, first_row.resp_brpm],
         );
+        let circadian_oscillator = MarsCircadianOscillator::default();
         let (latest_packet, latest_pocus_posterior, latest_causal_chain) =
             compute_mission_telemetry_tick_from_row(
                 &first_row,
                 first_biometrics,
                 &mut adhg_engine,
+                &circadian_oscillator,
                 &scenario,
+                2.3,
                 0.0,
                 false,
+                None,
+                None,
+                None,
                 VitalsContext {
                     report: Some(&latest_anomaly),
                     injected: false,
@@ -935,12 +1027,16 @@ impl SharedMissionState {
                 latest_short_horizon_abstention = Some(abstention);
             }
         }
-        let eval = nqs_engine.evaluate_tick(
+        let eval = nqs_engine.evaluate_tick_ext(
             latest_packet.relative_recording_time_s,
             &latest_packet.biometrics,
             &latest_packet.musculoskeletal,
             &latest_packet.jugular_hemodynamics,
             &latest_packet.sans_ocular,
+            latest_packet.renal_nephrolithiasis.as_ref(),
+            latest_packet.orthostatic_fluid.as_ref(),
+            latest_packet.mars_circadian_sleep.as_ref(),
+            latest_packet.neuro_immune_viral.as_ref(),
         );
         let mut initial_snap = (*eval.quantile_snapshot).clone();
         initial_snap.ewma_short_horizon_max_s =
@@ -1024,6 +1120,8 @@ impl SharedMissionState {
                 zone_markov,
                 latest_quantile_snapshot,
                 latest_grounding,
+                circadian_oscillator,
+                spot_poct: None,
                 tick_counter: 0,
                 seu_restart_count: 0,
                 owlt_delay_sec: 852.0,
@@ -1096,15 +1194,23 @@ impl SharedMissionState {
         guard.tick_counter = guard.tick_counter.saturating_add(1);
         let elapsed = guard.mission_elapsed_s;
         let what_if_active = guard.what_if_active;
+        let cabin_ppco2_mmhg = guard.cabin_ppco2_mmhg;
+        let spot_poct = guard.spot_poct.clone();
 
+        let inner = &mut *guard;
         let (telemetry_packet, pocus_posterior, causal_chain) =
             compute_mission_telemetry_tick_from_row(
                 &validated.row,
                 validated.biometrics.clone(),
-                &mut guard.adhg_engine,
+                &mut inner.adhg_engine,
+                &inner.circadian_oscillator,
                 &scenario,
+                cabin_ppco2_mmhg,
                 elapsed,
                 what_if_active,
+                spot_poct,
+                None,
+                None,
                 VitalsContext::default(),
             );
         guard.latest_packet = telemetry_packet;
@@ -1193,6 +1299,13 @@ impl SharedMissionState {
             guard.last_ingest_latency_us = ingest_start.elapsed().as_micros() as u64;
         }
 
+        let is_sleep = guard.habitat_state.current_zone == HabitatZoneId::SleepQuarters;
+        guard.circadian_oscillator.step_state(
+            dt.as_secs_f64() / 3600.0,
+            is_sleep,
+            0.85,
+            250.0,
+        );
         let biometrics =
             biometrics_with_signal_quality(&row, &guard.scenario, &guard.signal_quality);
         guard.mission_elapsed_s = guard.replay_elapsed.as_secs_f64();
@@ -1200,15 +1313,23 @@ impl SharedMissionState {
         let elapsed = guard.mission_elapsed_s;
         let scenario = guard.scenario.clone();
         let what_if_active = guard.what_if_active;
+        let cabin_ppco2_mmhg = guard.cabin_ppco2_mmhg;
+        let spot_poct = guard.spot_poct.clone();
         let anomaly_report = guard.latest_anomaly.clone();
 
+        let inner = &mut *guard;
         let (packet, pocus_posterior, causal_chain) = compute_mission_telemetry_tick_from_row(
             &row,
             biometrics,
-            &mut guard.adhg_engine,
+            &mut inner.adhg_engine,
+            &inner.circadian_oscillator,
             &scenario,
+            cabin_ppco2_mmhg,
             elapsed,
             what_if_active,
+            spot_poct,
+            None,
+            None,
             VitalsContext {
                 report: Some(&anomaly_report),
                 injected,
@@ -1217,6 +1338,9 @@ impl SharedMissionState {
         guard.latest_packet = packet;
         guard.latest_pocus_posterior = pocus_posterior;
         guard.latest_causal_chain = causal_chain;
+        guard.latest_grounding = *ground_adhg_node_o1(primary_adhg_node_for_playbook(
+            &guard.latest_packet.active_playbook.playbook_id,
+        ));
         if new_native_sample {
             guard.ingest_short_horizon_sample();
         }
@@ -1358,14 +1482,21 @@ impl SharedMissionState {
             biometrics_with_signal_quality(&row, &new_scenario, &guard.signal_quality);
         let elapsed = guard.mission_elapsed_s;
         let anomaly_report = guard.latest_anomaly.clone();
+        let spot_poct = guard.spot_poct.clone();
 
+        let inner = &mut *guard;
         let (packet, pocus_posterior, causal_chain) = compute_mission_telemetry_tick_from_row(
             &row,
             biometrics,
-            &mut guard.adhg_engine,
+            &mut inner.adhg_engine,
+            &inner.circadian_oscillator,
             &new_scenario,
+            next_ppco2,
             elapsed,
             true,
+            spot_poct,
+            None,
+            None,
             VitalsContext {
                 report: Some(&anomaly_report),
                 injected,
@@ -1374,6 +1505,9 @@ impl SharedMissionState {
         guard.latest_packet = packet;
         guard.latest_pocus_posterior = pocus_posterior;
         guard.latest_causal_chain = causal_chain;
+        guard.latest_grounding = *ground_adhg_node_o1(primary_adhg_node_for_playbook(
+            &guard.latest_packet.active_playbook.playbook_id,
+        ));
         guard.update_hypergraph_and_nqs_hot_path();
         let _ = guard.run_1hz_timestral_inference();
         guard.latest_recompute_latency_us = start.elapsed().as_micros() as u64;

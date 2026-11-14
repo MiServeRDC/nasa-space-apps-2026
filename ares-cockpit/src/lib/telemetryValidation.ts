@@ -969,6 +969,9 @@ export function normalizeTelemetryPacket(data: unknown): TelemetryPacket | null 
             anticoagulant_lock_active: Boolean(pb.safety_gates.anticoagulant_lock_active),
             lbnp_auto_vent_armed: Boolean(pb.safety_gates.lbnp_auto_vent_armed),
             eva_suit_damping_active: Boolean(pb.safety_gates.eva_suit_damping_active),
+            gate4_invasive_decompression_locked:
+              pb.safety_gates.gate4_invasive_decompression_locked !== false,
+            gate4_eva_fitness_no_go: Boolean(pb.safety_gates.gate4_eva_fitness_no_go),
           }
         : undefined,
     };

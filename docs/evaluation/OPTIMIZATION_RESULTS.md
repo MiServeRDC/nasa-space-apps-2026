@@ -1,13 +1,14 @@
 # Optimization results
 
-Date: 2026-11-14. Base: `2b0a9bc`. Verified on the local Apple Silicon Mac;
+Date: 2026-11-14. Initial base: `2b0a9bc`; integrated concurrent main at
+`3516da4`. Verified on the local Apple Silicon Mac;
 these are not cross-platform performance or clinical-validation claims.
 
 ## Before and after
 
 | Item | Before | After | Interpretation |
 |---|---|---|---|
-| Main JavaScript bundle | 1,606.49 kB / 453.74 kB gzip before splitting | 432.32 kB / 131.41 kB gzip | About 73% fewer main-entry bytes; Assessment still loads its 3D chunks |
+| Main JavaScript bundle | 1,606.49 kB / 453.74 kB gzip before splitting | 435.70 kB / 132.23 kB gzip | About 73% fewer main-entry bytes; Assessment still loads its 3D chunks |
 | Atlas material construction, all five actual GLBs | 3,746 per-mesh material objects | 11 per-layer/region material objects | Mesh instances, geometry and picking retained; not an FPS/RAM percentage |
 | Unused local simulator during live telemetry | Always scheduled at 20 Hz | No local frame increments while paused | Browser hook regression also checks preview, disconnect and reconnect |
 | Warm write failure | Bank cleared before persistence; error discarded | Rows retained for retry; failure observable | Failure/recovery and unsuccessful shutdown regression tests pass |
@@ -16,8 +17,10 @@ these are not cross-platform performance or clinical-validation claims.
 | Mission-state critical section | Wire JSON construction and encoding inside writer | Owned coherent snapshot; JSON construction/encoding outside writer | Ordered publication retained; no percentage latency claim |
 | Idle/hidden anatomy | Continuously rendered | Bounded adaptive DPR; Lite/reduced-motion demand mode; hidden/covered views stop | Tested resolution, reduced motion and visibility in Chromium |
 
-The main-entry comparison isolates chunk splitting (both builds include the small
-simulation/memoization changes). It is not a measurement of total application size,
+Before integrating concurrent main, chunk splitting reduced the entry to
+432.32 kB / 131.41 kB gzip (both comparison builds included the small
+simulation/memoization changes). The table reports the final combined tree,
+including the team’s new gate badges and other main updates. It is not a measurement of total application size,
 download size for the default 3D page, startup CPU, or total GPU memory. The large
 shared 3D chunk warning remains; no geometry decimation was applied blindly.
 
@@ -25,7 +28,7 @@ shared 3D chunk warning remains; no geometry decimation was applied blindly.
 
 - Default Rust workspace: **212 tests passed**.
 - Desktop `tauri-runtime` configuration: **15 tests passed** (overlaps default tests).
-- Frontend Node: **24 tests passed**, including null/alert equivalence, render policy
+- Frontend Node: **26 tests passed**, including null/alert equivalence, render policy
   and material ownership/disposal. TypeScript lint and production build passed.
 - Workspace/all-target Clippy: no warnings with `-D warnings`.
 - Browser/process checks: live/preview/fallback/reconnect, immediate critical alarm

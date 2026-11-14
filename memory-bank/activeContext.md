@@ -1,5 +1,15 @@
 # Active Context: ARES-Health (NASA Space Apps Challenge 2026)
 
+## Integration of concurrent main updates (2026-11-14)
+
+Merged `origin/main` at `3516da4` into the optimization branch. Preserved the
+team’s Block N/gate, atomic IPC, metadata, licensing and submission changes.
+Combined-tree verification passed: 212 default Rust tests, 15 desktop tests,
+26 frontend tests, all-target Clippy, lint/build, the browser/process harness and
+the unchanged generated anomaly evaluation tables. Main-entry size with these
+additional team changes is 435.70 kB (132.23 kB gzip). Hosted Actions stay disabled.
+The optimization branch is ready for a draft review PR; main is not merged by this task.
+
 ## Reliability/performance optimization completed (2026-11-14)
 
 User authorized resolving all reviewed reliability/performance weaknesses, one at
@@ -13,8 +23,8 @@ publication. The default workspace has 212 passing tests and all-target Clippy i
 clean; the desktop tauri-runtime configuration has 15 passing tests. Frontend is
 also verified: unused simulation pauses, geometry memoization, local lazy panels,
 adaptive/saved quality, hidden/covered viewport suspension and pooled atlas
-materials. Main entry is 432.32 kB (131.41 kB gzip); actual atlas material objects
-drop from 3,746 to 11. All 24 Node tests, lint/build and browser/process checks pass,
+materials. Main entry is 435.70 kB (132.23 kB gzip); actual atlas material objects
+drop from 3,746 to 11. All 26 Node tests, lint/build and browser/process checks pass,
 including reconnect, alarm delivery, lazy-load failure isolation and shutdown with
 a real WebSocket still connected. Longer validation runs 8 hours each of stationary,
 artificial drift and dropout streams; delayed scores are cross-checked independently
@@ -25,25 +35,50 @@ is implied. Reproduction and limits are in `docs/operations/PROJECT_OPTIMIZATION
 and `docs/evaluation/OPTIMIZATION_RESULTS.md`. Work is complete on the dedicated
 branch for review. Hosted Actions remain disabled; no main merge is requested here.
 
-## User-approved medical-blue cockpit integration (2026-11-14)
+## Full Resolution of Carbon High Independent Audit & Verified Merge into Main (2026-11-14)
 
-The user requested the local medical-blue redesign on main. Integration starts
-from main `e8c2927`, rather than merging the outdated preview branch. Ported its
-header, Overview/Assessment/Care plan navigation, OLED palette, panel hierarchy,
-anatomy preferences disclosure and scenario sidebar. Kept current main's detector,
-bedside monitor, voice copilot, ground portal, studio, audit, shortcuts, twin modal,
-UBERON/GLB behavior and all current handlers. Assessment is the initial page;
-explicit `phase` query parameters still take precedence. System diagnostics remain
-available in a disclosure with a summary for reported habitat restrictions.
+All 5 critical audit vulnerabilities identified by the independent Gemini Carbon High audit have been resolved, comprehensively tested, and cleanly merged into `main` (`ad3bab9`):
 
-Local verification on the integrated tree: frontend lint/build, 21 Node tests in
-7 suites and `bash scripts/agent_probe.sh --fast` passed. Browser checks confirmed
-three-phase navigation and portal/studio/audit/shortcut overlays, with zero page
-errors and no horizontal page overflow at 1440px or 390px. Production build retains
-the existing large-chunk warning. No backend or contract changes, hosted Actions,
-remote fonts or runtime cloud dependencies were added. See
-`docs/plans/COCKPIT_DESIGN_REFRESH.md`. User authorized PR merge to main; this note
-records the verified integration before publication.
+1. **Vulnerability 1 (OSDR Metadata Alignment & Epistemic Honesty in `MissionPortal.tsx`):**
+   * Corrected `OSD-51` to WISE-2005 60-Day Female Bed-Rest Soleus & Vastus Lateralis Transcriptome (`MEDES -6 deg HDBR`).
+   * Corrected `OSD-195` to 21-Day Human Bed-Rest Skeletal Muscle Microarray Study.
+   * Corrected `OSD-818` to Ex Vivo Human Translaminar Pressure Gradient Ocular Model for SANS.
+   * Corrected `OSD-570` and `OSD-571` to SpaceX Inspiration4 SOMA Multi-Omics, Proteomics, cfDNA & cf-mtDNA.
+   * Replaced erroneous accession and DOI on `OSD-665` with `JAMA-NO-2019-IJV` and Marshall-Goebel et al. 2019 (`https://doi.org/10.1001/jamanetworkopen.2019.15011`).
+   * Eradicated all unjustified claims ("ground truth", "calibrates", "proves", "validating") in favor of explicit `ILLUSTRATIVE_UNVALIDATED` and `RECORDED_TERRESTRIAL_BIDMC_CSV` qualifiers.
+
+2. **Vulnerability 2 (Block N Physiological Expansion Modules & Gate 4 in Live WebSocket & UI):**
+   * Wired `compute_orthostatic_fluid_state`, `compute_jugular_and_sans_state_ext`, `compute_renal_nephrolithiasis_state`, `circadian_osc.evaluate_state`, `compute_neuro_immune_viral_state`, and `NqsEngine::evaluate_tick_ext` into the live 20 Hz server loop (`crates/ares-server-cli/src/ws_server.rs`).
+   * Switched playbook candidate routing to `select_candidate_playbook_ext` (`#01-#15`) and safety interlock gating to `enforce_hard_clinical_safety_gates_ext`.
+   * Updated binary IPC telemetry decoder (`binaryTelemetryDecoder.ts`), telemetry normalizer (`telemetryValidation.ts`), playbook runner (`PlaybookRunner.tsx`), and mission cockpit (`App.tsx`) to render all 5 active gate badges: Gate 1, Gate 2, Gate 3, Gate 4A (`THORACIC DECOMPRESSION LOCK`), and Gate 4B (`EVA FITNESS NO-GO INTERLOCK`).
+
+3. **Vulnerability 3 (Gate 1 Medication Filter Specificity):**
+   * Fixed `isAnticoagulantAction` in `ares-cockpit/src/lib/playbookCatalog.ts` to strictly target `PHARMACOLOGICAL_ANTICOAGULANT` instead of generic `PHARMACOLOGICAL`.
+   * Non-anticoagulant therapeutics such as Potassium Citrate (Playbook #10) and Valacyclovir (Playbook #13) are preserved and never stripped when no jugular thrombus is present.
+   * Added dedicated unit test suite in `ares-cockpit/tests/patch_gate1_and_gate4.test.ts`.
+
+4. **Vulnerability 4 (Rust Unsafe & Data Race UB Elimination in Seqlock):**
+   * Replaced `UnsafeCell<[u8; 128]>` in `crates/ares-core-types/src/binary_ipc.rs` with `[AtomicU64; 16]`, operating through relaxed word loads/stores bounded by acquire/release memory fences.
+   * Eliminated all 3 `unsafe` blocks and `unsafe impl Sync`.
+   * Declared `#![forbid(unsafe_code)]` globally across all 11 entrypoints (`src/lib.rs` and `src/main.rs`) in all 9 crates of the workspace.
+
+5. **Vulnerability 5 (NASA Policy Compliance, Video <= 30.0s Hard Cap, Licenses & 7-Slide Deck):**
+   * **Wolf Amendment Compliance:** Switched default edge LLM tag from `qwen2.5` to `llama3.2:3b-instruct-q4_K_M` in `edge_llm_bridge.rs`, tests, and documentation. Completely removed duplicate Chinese academic scraper directories (`skills/deep-scholar`, `.agents/skills/deep-scholar`, `.claude/skills/deep-scholar`, `.gemini/skills/deep-scholar`) and citations.
+   * **Video Hard Cap <= 29.8s:** Integrated `NASA_PITCH_HARD_CAP_SECONDS = 29.8` in `OpenScreenStudio.tsx` and updated `scripts/build_submission_videos.py` to compile strictly `<= 29.8s` videos, preventing 0:31 rounding on YouTube.
+   * **SI / AI Disclosure:** Added section `Use of Super Intelligence (SI) / Artificial Intelligence (AI) Disclosure` in `docs/submission/NASA_SUBMISSION_PORTAL_READY.md`.
+   * **Licensing:** Added official `LICENSE-APACHE` to root (matching `Cargo.toml` `MIT OR Apache-2.0`) and documented `CC-BY-SA-4.0` attribution for Z-Anatomy 3D meshes in `README.md` and submission documents.
+   * **Deck & Verification Suite:** Refreshed `NASA_2026_7_SLIDE_DECK.typ` with 9 crates, 15 playbooks, and 4 gates; verified exact 7-page dual-oracle assertion and zero-emoji invariant (`Gate L6-01..L6-06` all green). Added `"test"` script to `ares-cockpit/package.json`.
+
+**Verification Metrics:**
+- `cargo check --workspace --all-targets`: 0 warnings, 0 errors
+- `cargo clippy --workspace --all-targets -- -D warnings`: 0 warnings
+- `cargo test --workspace`: 205+ tests passing, 0 failures
+- `ares-cockpit`: 23/23 tests passing across 7 suites, production build clean
+- `./scripts/agent_probe.sh --fast`: 4/4 probes passing
+- `./scripts/build_submission_docs.sh`: 6/6 gates passing (exact 7 pages, 0 emojis, 0 broken links)
+- Remote synchronization: `main`, `work/carbon-audit-patches`, and `work/fabiomalagutti27-droid` pushed to `origin`.
+
+---
 
 **Last Updated:** 2026-11-14  
 **Current Phase:** ALL 41 PHASES / 14 BLOCKS (A–N) `COMPLETED (TESTED)` — Block N (`Phases 38–41` / `N1–N4`: Multisystem Exploration Medicine, Wearable Suite V2, Tiselius RSR Lithiasis, Orthostatic Fluid-Shift Hemodynamics, Mars Circadian & Neuro-Immune Dynamics, Multi-Organ POCUS & Playbooks #10–#15, and Hard Clinical Safety Gate 4) fully implemented and verified alongside Blocks A–M with **all workspace Rust crates passing tests & Clippy with 0 warnings**, **`21/21` cockpit Node tests passing across `7` suites**, `0` Clippy warnings, `0` `.unwrap()`/`.expect()` in production `crates/*/src/`, `0` Unicode emojis, `ares-calibrate --verify-only` clean across all `53` PhysioNet BIDMC subjects, `./scripts/launch_ares_medos.sh --verify` clean, `./scripts/build_submission_docs.sh` (`6/6` gates passing), and `ares-cockpit` passing. See [`docs/architecture/MODEL_EVIDENCE_AUDIT.md`](../docs/architecture/MODEL_EVIDENCE_AUDIT.md).  

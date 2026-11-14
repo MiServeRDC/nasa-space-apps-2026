@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! Fase 22 (J2): `crates/ares-desktop-os` — `ARES-MedOS` Pure-Rust Workstation OS Shell.
 //!
 //! Embedda in-process tutti i crate dell'engine (`SharedMissionState`), mantiene un

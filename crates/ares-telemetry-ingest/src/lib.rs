@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! `ares-telemetry-ingest` — Blocco B (`1. GATHER`, Fasi 03 B1, 04 B2 & Fase 31 L3).
 //!
 //! Esporta il motore di replay deterministico `BIDMC v1.0.0` (`bidmc_replayer`),

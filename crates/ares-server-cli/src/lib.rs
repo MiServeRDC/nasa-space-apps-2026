@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! `ares-server-cli`: Dual-Transport Tokio Orchestrator (`axum` 20 Hz WebSocket + `FastMCP` stdio).
 
 pub mod anomaly_eval;

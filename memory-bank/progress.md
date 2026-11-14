@@ -1,5 +1,15 @@
 # Progress Tracking: ARES-Health (Autonomous Resilient Edge-native System for Astronaut Health)
 
+## Integration of concurrent main updates (2026-11-14)
+
+Merged `origin/main` at `3516da4` into the optimization branch. Preserved the
+team’s Block N/gate, atomic IPC, metadata, licensing and submission changes.
+Combined-tree verification passed: 212 default Rust tests, 15 desktop tests,
+26 frontend tests, all-target Clippy, lint/build, the browser/process harness and
+the unchanged generated anomaly evaluation tables. Main-entry size with these
+additional team changes is 435.70 kB (132.23 kB gzip). Hosted Actions stay disabled.
+The optimization branch is ready for a draft review PR; main is not merged by this task.
+
 ## Reliability/performance optimization (2026-11-14)
 
 - [x] Warm batch acknowledgement/retry, error observability, partial deadlines and
@@ -11,12 +21,21 @@
   workspace/all-target Clippy.
 - [x] Paused unused fallback simulation and stabilized expensive anatomical rendering;
   split optional local UI; added adaptive quality, viewport suspension and regional
-  material pooling. All 24 frontend tests, lint/build and browser/process checks pass.
+  material pooling. All 26 frontend tests, lint/build and browser/process checks pass.
 - [x] Eight-hour stationary/drift/dropout comparisons with independent delayed
   scoring; one-hour bounded-state/blackout test; development-only controller
   comparison. Candidate remains disabled after worse real development coverage.
 - [x] Final operations, evidence registry, reproduction commands and measured
   limitations documented. No change to clinical defaults or validation status.
+
+## Carbon High Independent Audit Resolutions & Verified Main Merge (2026-11-14)
+
+- [x] **Vulnerability 1 Resolved:** Aligned NASA OSDR metadata (`OSD-51`, `OSD-195`, `OSD-818`, `OSD-570/571`, Marshall-Goebel 2019 DOI) and eradicated all unjustified calibration claims in `MissionPortal.tsx`.
+- [x] **Vulnerability 2 Resolved:** Wired Block N physiological models, Playbooks `#01-#15`, and Safety Gates 4A/4B into live 20 Hz server (`ws_server.rs`) and UI badges (`App.tsx`, `PlaybookRunner.tsx`).
+- [x] **Vulnerability 3 Resolved:** Fixed Gate 1 anticoagulant filter specificity in `playbookCatalog.ts` (preserving non-anticoagulant drugs #10 and #13) and added TypeScript unit test suite.
+- [x] **Vulnerability 4 Resolved:** Eliminated Seqlock data race UB by replacing `UnsafeCell<[u8; 128]>` with `[AtomicU64; 16]`, removing all 3 `unsafe` blocks, and enforcing `#![forbid(unsafe_code)]` across all 9 crates (11 entrypoints).
+- [x] **Vulnerability 5 Resolved:** Wolf Amendment compliance (default `llama3.2:3b-instruct-q4_K_M`, duplicate Chinese scraper directories removed), `NASA_PITCH_HARD_CAP_SECONDS = 29.8` video limit, SI/AI disclosure in submission docs, `LICENSE-APACHE` + `CC-BY-SA-4.0` attribution, and `NASA_2026_7_SLIDE_DECK.typ` 7-slide deck refresh.
+- [x] **Merged into Main:** All patches cleanly merged into `main` (`ad3bab9`) and pushed to remotes.
 
 ## Approved medical-blue cockpit refresh (2026-11-14)
 
@@ -169,7 +188,7 @@
   - Aggiornamento del reasoner bio-ontologico ARES-BioKG in `biokg_reasoner.rs` (tabella di grounding a 13 nodi, mapping $O(1)$ normativo NASA-STD-3001).
   - Estensione del monitor NQS STL in `normalizer.rs` e `mri_index.rs` (`evaluate_nqs_stl_and_mri_ext`) con tutti e 4 i margini clinici del Blocco N.
 - [x] **Fase 41 (`N4` — Verificato):** POCUS Multi-Organo, Playbook #10–#15 & Hard Clinical Gate 4 (`crates/ares-medops-playbooks/src/` & `ares-cockpit/`):
-  - Modulo POCUS multi-organo in `pocus_multiorgan.rs` con target anatomici UBERON (`UBERON:0001496` IJV, `UBERON:0001793` Oculare, `UBERON:0002123` Renale, `UBERON:0002048` eFAST trauma).
+  - Modulo POCUS multi-organo in `pocus_multiorgan.rs` con target anatomici UBERON (`UBERON:0001496` IJV, `UBERON:0001793` Oculare, `UBERON:0002113` Renale, `UBERON:0002048` eFAST trauma).
   - Valutazione POCUS renale/vescicale (idronefrosi grado 0-4, calcolo, twinkling artifact, simmetria getto ureterale, ritenzione vescicale) e scansione traumatica eFAST a 5 finestre.
   - Hard Clinical Gate 4A (`gate4_invasive_decompression_locked`, blocco toracostomia con ago salvo conferma eFAST o collasso vitale `ShockIndex >= 1.20` + `SpO2 < 85%`) e Gate 4B (`gate4_eva_fitness_no_go` su GAI > 12%, fatica cognitiva $\ge 0.75$, o Shock Index $\ge 0.90$).
   - 6 nuovi Type-1 Playbook cristallizzati: `#10` (Renal Lithiasis), `#11` (Mars Entry Fluid Loading), `#12` (Circadian Light Hygiene), `#13` (Viral Immune Containment), `#14` (CO2 Scrubber SANS Mitigation), `#15` (eFAST Trauma Triage).

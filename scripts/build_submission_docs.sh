@@ -196,7 +196,7 @@ submission_text_files = sorted((root / "docs/submission").glob("*.*")) + [
 ]
 scanned_count = 0
 for fpath in submission_text_files:
-    if fpath.suffix.lower() == ".pdf":
+    if fpath.suffix.lower() in {".pdf", ".mp4", ".mp3", ".png", ".jpg", ".jpeg"}:
         continue
     content = fpath.read_text(encoding="utf-8")
     hit = EMOJI_RE.search(content)

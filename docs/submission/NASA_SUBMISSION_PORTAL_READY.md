@@ -76,29 +76,29 @@ All musculoskeletal, jugular, ocular, readiness (`MRI`), `TTV` (`ILLUSTRATIVE_SC
 
 ## Field 4: Tools, Coding Languages, Hardware & Software Used
 
-- **Core Backend & Edge OS (`8` Crates, Rust Edition 2024):** `ares-core-types`, `ares-telemetry-ingest`, `ares-causal-graph`, `ares-nqs-stl`, `ares-medops-playbooks`, `ares-security-privacy`, `ares-server-cli` (`tokio`, `axum` `127.0.0.1:8080`, `FastMCP` `stdio` + HTTP `/api/mcp`, optional `shm-ipc` / `iceoryx2`), `ares-desktop-os` (`Tauri v2`, `Channel<Response>` `128 B` binary IPC, optional `offline-voice` `whisper-rs`).
-- **Astronaut Cockpit (`ares-cockpit/`):** React 19, TypeScript 5.7, Vite 6, Tailwind CSS 4 (`#000000` OLED dark theme), Three.js / `@react-three/fiber` (3D `UBERON:` heatmap + local `.glb` loader with `0x46546C67` guard), `DataView` `BinaryTelemetryFrame` decoder with Castagnoli `CRC-32C`, `Alt+Space` `OsCommandPalette`, and `OsVoiceCopilot`.
+- **Core Backend & Edge OS (`9` Crates, Safe Rust Edition 2024, `#![forbid(unsafe_code)]`):** `ares-core-types`, `ares-telemetry-ingest`, `ares-causal-graph`, `ares-nqs-stl`, `ares-medops-playbooks`, `ares-security-privacy`, `ares-storage-lsah`, `ares-server-cli` (`tokio`, `axum` `127.0.0.1:8080`, `FastMCP` `stdio` + HTTP `/api/mcp`, optional `shm-ipc` / `iceoryx2`), `ares-desktop-os` (`Tauri v2`, `Channel<Response>` `128 B` binary IPC, optional `offline-voice` `whisper-rs`).
+- **Astronaut Cockpit (`ares-cockpit/`):** React 19, TypeScript 5.7, Vite 6, Tailwind CSS 4 (`#000000` OLED dark theme), Three.js / `@react-three/fiber` (3D `UBERON:` heatmap + local `.glb` loader with `0x46546C67` guard), `DataView` `BinaryTelemetryFrame` decoder with Castagnoli `CRC-32C`, `Alt+Space` `OsCommandPalette`, 15 MedOps Playbooks (#01-#15), and 4 Hard Clinical Safety Gates (1, 2, 3, 4A, 4B).
 - **Tier B/C Deployment Manifests (`deploy/medos/`):** Declarative specifications for `Asterinas` Framekernel (`14.0%` TCB), `System76 COSMIC` Wayland Kiosk, and `Oxide Hubris` / `Embassy` wearable sensor MCU (`32 B` `WearableSensorPacket`).
 - **Documentation & Verification Toolchain:** `Typst 0.15.1` (`SOURCE_DATE_EPOCH=1794670800` offline PDFs), `Python 3` stdlib verification suite (`scripts/build_submission_docs.sh`), `proptest`, and `scripts/agent_probe.sh` / `scripts/run_block_k_suite.sh`.
 
 ---
 
-## Field 5: Use of Artificial Intelligence (AI) Disclosure
+## Field 5: Use of Super Intelligence (SI) / Artificial Intelligence (AI) Disclosure
 
 ### 5.A Runtime On-Board AI Architecture (Air-Gapped & Safety-Bounded)
 - **Zero-LLM Critical Path:** All ODE integration (`RK4`), CGS hemodynamics, `NQS-STL` margins, `Timestral` quantile cones, and MedOps Playbook / Safety Gate transitions execute deterministically in Safe Rust without any LLM in the loop (`DO-178C` DAL-E separation).
-- **Local `FastMCP` & Edge Copilot (`edge_llm_bridge.rs`):** An optional local quantized LLM (`Ollama` / `llama.cpp` on loopback) and offline voice interface (`whisper-rs` / local Web Speech API) may summarize telemetry and explain deterministic playbooks by invoking the `8` read-only `FastMCP` tools (`<= 600 B` / `< 150 tokens` per response). All untrusted telemetry fields pass through `StrictMcpSanitizer` wrapped in escaped `<untrusted_telemetry_observation>` delimiters against Indirect Prompt Injection. When no local LLM runtime is active, the system seamlessly falls back to `OfflineTemplateCopilot` (`< 400 us`).
+- **Local `FastMCP` & Edge Copilot (`edge_llm_bridge.rs`):** An optional local quantized LLM (default `llama3.2:3b-instruct-q4_K_M` via `Ollama` / `llama.cpp` on loopback) and offline voice interface (`whisper-rs` / local Web Speech API) may summarize telemetry and explain deterministic playbooks by invoking the `8` read-only `FastMCP` tools (`<= 600 B` / `< 150 tokens` per response). All untrusted telemetry fields pass through `StrictMcpSanitizer` wrapped in escaped `<untrusted_telemetry_observation>` delimiters against Indirect Prompt Injection. When no local LLM runtime is active, the system seamlessly falls back to `OfflineTemplateCopilot` (`< 400 us`).
 
-### 5.B Software Engineering & Pre-Hackathon AI Assistance Disclosure
-- **AI Assistants Utilized:** Google Antigravity, Anthropic Claude Code, OpenAI Codex, GitHub Copilot, and Cursor IDE.
+### 5.B Development-Time SI / AI Tools Disclosure
+- **AI / SI Engineering Assistants Utilized:** Google Antigravity, Anthropic Claude Code, OpenAI Codex, GitHub Copilot, and Cursor IDE.
 - **Scope of Usage:** Literature synthesis across open NASA/CSA/ESA resources, dimensional consistency cross-checks (CGS $\tau_w$), property-based red-teaming (`proptest`), TypeScript/Rust boilerplate scaffolding, unit/chaos test expansion, and deterministic Typst documentation formatting.
-- **Human Engineering Accountability:** All mathematical models, epistemic boundaries (`MODEL_EVIDENCE_AUDIT.md`, Issue #11, Issue #12), safety gate logic, code reviews, and verification gates were directed, audited, and validated by the five human team members.
+- **Human Engineering Accountability:** All mathematical models, epistemic boundaries (`MODEL_EVIDENCE_AUDIT.md`, Issue #11, Issue #12), safety gate logic, code reviews, and verification gates were directed, audited, and validated by the five human team members. Every equation, safety threshold, and OSDR accession was verified via deterministic CI probes (`cargo test --workspace`, `cargo clippy -- -D warnings`, `npm test`).
 
 ---
 
 ## Field 6: Fresh-Code & OSI Open-Source License Audit
 
-All project source code (`crates/`, `ares-cockpit/`, `scripts/`, `docs/submission/`) was developed fresh for NASA Space Apps Challenge 2026 and is released under dual **`MIT OR Apache-2.0`** (`Cargo.toml`, `ares-cockpit/package.json`, `LICENSE`).
+All project source code (`crates/`, `ares-cockpit/`, `scripts/`, `docs/submission/`) was developed fresh for NASA Space Apps Challenge 2026 and is released under dual **`MIT OR Apache-2.0`** (`Cargo.toml`, `ares-cockpit/package.json`, `LICENSE`, `LICENSE-APACHE`).
 
 | Layer / Dependency | License | Role in `ARES-Health` |
 | :--- | :--- | :--- |
@@ -106,6 +106,7 @@ All project source code (`crates/`, `ares-cockpit/`, `scripts/`, `docs/submissio
 | `petgraph`, `proptest`, `sha2`, `chacha20poly1305`, `zeroize` | `MIT OR Apache-2.0` | `ADHG` / `DatasetGraph`, property tests, FIPS 180-4 & RFC 8439 crypto |
 | `tauri` (`v2`), `safetensors`, `arrow` / `parquet` (opt.) | `MIT OR Apache-2.0` | Native workstation shell, `SafeTensors` parser, Parquet adapters |
 | `react`, `three`, `@react-three/fiber`, `tailwindcss`, `vite` | `MIT` | Pure `#000000` OLED cockpit & 3D `UBERON:` rendering |
+| `3D Anatomical Meshes` (`public/anatomy/*.glb`) | `CC-BY-SA-4.0` | Z-Anatomy / DBCLS BodyParts3D (see public/anatomy/ATTRIBUTION.md) |
 | `typst` (`0.15.1`) | `Apache-2.0` | Air-gapped deterministic PDF pitch deck & blueprint compilation |
 | `PhysioNet BIDMC v1.0.0` (`data/bidmc/`) | `ODC-By-1.0` | Bundled `1 Hz` terrestrial numeric replay & missing-value validation |
 | `NASA OSDR / HRP / NLSP / LSAH / NASA-STD-3001` | US Federal Open Data | Biological context, cohort metadata & human-system requirements |

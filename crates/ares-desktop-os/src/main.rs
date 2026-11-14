@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! Entrypoint binario per `crates/ares-desktop-os` (`ARES-MedOS` Workstation Shell).
 
 use anyhow::{Context, Result};

@@ -1,7 +1,8 @@
 # Reliability and performance optimization
 
 Base: main `2b0a9bc`. Authorized by the user to resolve the reviewed weaknesses
-one at a time. Work on an isolated branch, with local checks only.
+one at a time. Work on an isolated branch, with local checks only. Concurrent main
+updates through `3516da4` were integrated before publication.
 
 Status: software steps 1–6 and the reproducible validation in step 7 are complete.
 See [measured results](../evaluation/OPTIMIZATION_RESULTS.md). The forecast candidate

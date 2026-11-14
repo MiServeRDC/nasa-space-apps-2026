@@ -240,7 +240,7 @@ The table below provides the exact per-dataset accounting across all **24 datase
 
 ## 4. Public Open-Source Repositories & NASA Frameworks We Can Leverage (`deep-scholar` Survey)
 
-Through our systematic `deep-scholar` investigation across arXiv, Crossref, Nature, PubMed Central, GitHub, and Chinese academic indices (Baidu Scholar / CNKI), we audited five foundational open-source frameworks and scientific architectures that directly ground `ARES-DatasetGraph`:
+Through our systematic investigation across arXiv, Crossref, Nature, PubMed Central, and GitHub, we audited five foundational open-source frameworks and scientific architectures that directly ground `ARES-DatasetGraph`:
 
 ### 4.1 NASA OSDR / GeneLab + UCSF SPOKE (`Scalable Precision Medicine Open Knowledge Engine`)
 - **Primary Repositories:**

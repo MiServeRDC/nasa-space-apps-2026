@@ -1,7 +1,7 @@
 # Reliability and performance changes
 
 Implementation plan: [PROJECT_OPTIMIZATION_IMPLEMENTATION.md](../plans/PROJECT_OPTIMIZATION_IMPLEMENTATION.md).
-Base revision: `2b0a9bc`. All validation runs locally; GitHub Actions stays disabled.
+Initial base: `2b0a9bc`; concurrent main integrated at `3516da4`. All validation runs locally; GitHub Actions stays disabled.
 
 ## Local telemetry recording
 

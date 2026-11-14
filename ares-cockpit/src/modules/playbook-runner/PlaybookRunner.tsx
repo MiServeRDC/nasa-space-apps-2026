@@ -36,12 +36,17 @@ function getEffectiveSafetyGates(
         activePlaybook.safety_gates.anticoagulant_lock_active || thrombusConfirmed !== true,
       lbnp_auto_vent_armed: activePlaybook.safety_gates.lbnp_auto_vent_armed,
       eva_suit_damping_active: activePlaybook.safety_gates.eva_suit_damping_active,
+      gate4_invasive_decompression_locked:
+        activePlaybook.safety_gates.gate4_invasive_decompression_locked ?? true,
+      gate4_eva_fitness_no_go: activePlaybook.safety_gates.gate4_eva_fitness_no_go ?? false,
     };
   }
   return {
     anticoagulant_lock_active: thrombusConfirmed !== true,
     lbnp_auto_vent_armed: true,
     eva_suit_damping_active: false,
+    gate4_invasive_decompression_locked: true,
+    gate4_eva_fitness_no_go: false,
   };
 }
 
@@ -243,8 +248,8 @@ export function PlaybookRunner({
         </div>
       )}
 
-      {/* 3 Hard Clinical Safety Gates Strip */}
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 text-xs">
+      {/* 4 Hard Clinical Safety Gates Strip (1, 2, 3, 4A, 4B) */}
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5 text-xs">
         <div
           className={`rounded border px-2.5 py-2 bg-black ${
             gates.anticoagulant_lock_active ? 'border-critical text-critical' : 'border-ok text-ok'
@@ -265,6 +270,26 @@ export function PlaybookRunner({
           }`}
         >
           GATE 3 EVA 0.38g DAMPING: {gates.eva_suit_damping_active ? 'ACTIVE (+25% ANKLE)' : 'STANDBY (GAI <= 12%)'}
+        </div>
+        <div
+          className={`rounded border px-2.5 py-2 bg-black ${
+            gates.gate4_invasive_decompression_locked !== false
+              ? 'border-critical text-critical'
+              : 'border-ok text-ok'
+          }`}
+        >
+          GATE 4A THORACIC DECOMP:{' '}
+          {gates.gate4_invasive_decompression_locked !== false
+            ? 'LOCKED (EFAST REQUIRED)'
+            : 'UNLOCKED (PNEUMOTHORAX VERIFIED)'}
+        </div>
+        <div
+          className={`rounded border px-2.5 py-2 bg-black ${
+            gates.gate4_eva_fitness_no_go ? 'border-critical text-critical' : 'border-ok text-ok'
+          }`}
+        >
+          GATE 4B EVA FITNESS:{' '}
+          {gates.gate4_eva_fitness_no_go ? 'NO-GO LOCK ACTIVE' : 'GO / CLEARED'}
         </div>
       </div>
 

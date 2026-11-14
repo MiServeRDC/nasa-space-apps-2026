@@ -69,7 +69,7 @@ impl Default for EdgeLlmConfig {
         Self {
             endpoint_url: env_url.unwrap_or_else(|| "http://127.0.0.1:11434".to_string()),
             protocol: EdgeLlmWireProtocol::OllamaChat,
-            model_tag: "qwen2.5:3b-instruct-q4_K_M".to_string(),
+            model_tag: "llama3.2:3b-instruct-q4_K_M".to_string(),
             allow_rfc1918_lan: allow_lan,
             force_offline_template: false,
             timeout_ms: 2_200,

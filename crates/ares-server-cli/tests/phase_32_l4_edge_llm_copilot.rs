@@ -193,7 +193,7 @@ async fn ollama_tool_loop_spotlights_observations_and_returns_local_edge_llm() {
     let cfg = EdgeLlmConfig {
         endpoint_url: format!("http://{addr}"),
         protocol: EdgeLlmWireProtocol::OllamaChat,
-        model_tag: "qwen2.5:3b-instruct-q4_K_M".to_string(),
+        model_tag: "llama3.2:3b-instruct-q4_K_M".to_string(),
         allow_rfc1918_lan: false,
         force_offline_template: false,
         timeout_ms: 1500,
