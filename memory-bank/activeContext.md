@@ -1,7 +1,7 @@
 # Active Context: ARES-Health (NASA Space Apps Challenge 2026)
 
 **Last Updated:** 2026-11-14  
-**Current Phase:** Phase 2 — Complete 7-Crate Rust Engine & Dual-Transport Backend Implementation (`Blocchi A–G`, `Fasi 01–14` `[x] COMPLETATA` — 40/40 Tests Passing, 0 Warnings, `./scripts/agent_probe.sh --all` PASSED) -> Ready for Phase 3 (`Blocco H`: Frontend Astronaut Cockpit `ares-cockpit/` & Final Pitch).  
+**Current Phase:** Phase 2.5 — Core Rust Engine (`Blocchi A–G`, `Fasi 01–14` `[x] COMPLETATA` — 40/40 Tests Passing, 0 Warnings) + Detailed Architectural Studies & Implementation Plans Completed for **Blocco H (`Fasi 15–17`: Pure-Rust Timestral Grey-Box Forecaster)** and **Blocco I (`Fasi 18–20`: Three-Layer `ARES-HyperGraph` & 24-Dataset `ARES-DatasetGraph`)** (`READY FOR IMPLEMENTATION`).  
 **Active Repository:** `https://github.com/MiServeRDC/nasa-space-apps-2026` (`main` synchronized).
 
 ---
@@ -31,9 +31,19 @@
    * **`crates/ares-security-privacy` (`4/4` tests):** Role-based crew medical privacy (`AresSecurityGuard`), non-repudiable `Sha256AuditLogger` hash chain, `ChaCha20-Poly1305` Store-and-Forward encryption (`EphemeralDsnKey` with `ZeroizeOnDrop`), and `StrictMcpSanitizer` (`<untrusted_telemetry_observation>` XML shield).
    * **`crates/ares-server-cli` (`5/5` tests + CLI smoke test):** `compute_mission_telemetry_tick` (`< 150 µs`), `axum` `20 Hz` WebSocket server on `127.0.0.1:8080` (`/ws/telemetry`, `GET /api/snapshot`, `POST /api/stress-test`), and `FastMCP` JSON-RPC 2.0 `stdio` server (`<= 600 bytes` / `< 150 tokens` per tool response, `tracing` routed to `stderr`).
    * **Verification Gate (`./scripts/agent_probe.sh --all`):** 100% PASSED (`0` `.unwrap()`/`.expect()` in production code, `0` Clippy warnings across all targets, `40/40` tests passing).
+7. **Architectural Studies & Implementation Plans for Blocks H & I (`Fasi 15–20` — `READY FOR IMPLEMENTATION`):**
+   * Authored `docs/architecture/TIMESTRAL_INTEGRATION_STUDY.md`, `docs/architecture/KNOWLEDGE_GRAPH_ARCHITECTURE_STUDY.md`, and `docs/architecture/UNIFIED_DATASET_GRAPH_FEASIBILITY_STUDY.md` (with `docs/scientific_references.md`).
+   * Created the 6 detailed implementation plans in `docs/plans/`:
+     - `phase_15_H1_timestral_patch_scaler_rope_backbone.md` (`CausalScaler` `asinh`, `PatchRepresentation` Missing-Channel Mask, `RMSNorm`, `FusedSwiGLU`, `SinCosRoPE`, `DualAxisAttention`).
+     - `phase_16_H2_dhf_monotone_quantiles_conformal_gate.md` (`MonotoneQuantileHead` $q_{0.05} \le q_{0.50} \le q_{0.95}$ & `ConformalAbstentionGate`).
+     - `phase_17_H3_async_1hz_forecaster_nqs_stl_bridge.md` (`1 Hz` async forecaster + `180 ns` lock-free snapshot into `20 Hz` hot-path & pessimistic $\text{TTV}_{q_{0.05}}$).
+     - `phase_18_I1_welford_longitudinal_compaction_spatial_deontic.md` (`ARES-HyperGraph` Layers 1 & 2: Welford `LongitudinalSuperNode` `< 200 KB` for 900d Mars mission, 3D Anatomical Region subgraph, and `HabitatZoneDeonticPolicy` + Markov $D_{\text{KL}}$).
+     - `phase_19_I2_biokg_16byte_descriptor_epistemic_reasoner.md` (`ARES-HyperGraph` Layer 3 `ARES-BioKG`: `16-byte #[repr(C)] BiomedicalEvidenceDescriptor`, `Noisy-OR` `EpistemicProvenance`, `ClinicalAnswerabilityGate`, and `NASA-STD-3001` grounding).
+     - `phase_20_I3_unified_dataset_graph_builder_graphify_mcp.md` (`ARES-DatasetGraph` linking all 24 official datasets with `slice://` pointers, `data/knowledge_graph/ares_dataset_graph.json` `graphify` exporter, and `FastMCP` query tools).
 
 ---
 
 ## 2. Immediate Next Steps for the 5-Person Team
-1. **`@carolina2910` (`Blocco H`, `Fase 15 H1`):** Implement `ares-cockpit/` (React 19 + Tailwind OLED `#000000` layout, `[1. GATHER] -> [2. EVALUATE] -> [3. ACT]` header, 3D Anatomical Heatmap, `NQS-STL` chart with `±1.96σ` cone, and What-If Stress-Test Console connected to `127.0.0.1:8080`).
-2. **Full Team (`Blocco H`, `Fase 16 H2`):** End-to-end integration test (`ares-server-cli` + `ares-cockpit`) and 180s + 30s pitch video recording.
+1. **`@fabiomalagutti27-droid` (`Blocco H` `Fasi 15–17` & `Blocco I` `Fasi 18–20`):** Execute implementation of the Pure-Rust Timestral Grey-Box Forecaster in `crates/ares-nqs-stl` and the 3-Layer `ARES-HyperGraph` + 24-Dataset `ARES-DatasetGraph` in `crates/ares-causal-graph`.
+2. **`@carolina2910` (`Blocco J`, `ares-cockpit/`):** Implement `ares-cockpit/` (React 19 + Tailwind OLED `#000000` layout, `[1. GATHER] -> [2. EVALUATE] -> [3. ACT]` header, 3D Anatomical Heatmap driven by Layer-2 `AnatomicalRegion`, `NQS-STL` chart with non-crossing $[q_{0.05}, q_{0.50}, q_{0.95}]$ cone, and What-If Stress-Test Console connected to `127.0.0.1:8080`).
+3. **Full Team:** End-to-end integration test (`ares-server-cli` + `ares-cockpit`) and 180s + 30s pitch video recording.

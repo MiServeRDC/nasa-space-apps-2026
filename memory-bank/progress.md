@@ -1,6 +1,6 @@
 # Progress Tracking: ARES-Health (Autonomous Resilient Edge-native System for Astronaut Health)
 
-> **Ruolo di questo file (ispirato a `spatiotemporal-mcp-engine`):** scaletta sequenziale ordinata dei Blocchi Architetturali (`Blocco 0` – `Blocco H`) e delle Fasi (`Fase 0` – `Fase 16`), con stato netto:
+> **Ruolo di questo file (ispirato a `spatiotemporal-mcp-engine`):** scaletta sequenziale ordinata dei Blocchi Architetturali (`Blocco 0` – `Blocco J`) e delle Fasi (`Fase 0` – `Fase 22`), con stato netto:
 > - `[x]` Completata, verificata con `./scripts/agent_probe.sh` e integrata su `main`
 > - `[/]` In corso di implementazione / PR aperta
 > - `[ ]` Pianificata (piano approvato in [`docs/plans/RUST_ENGINE_PHASED_MASTER_PLAN.md`](../docs/plans/RUST_ENGINE_PHASED_MASTER_PLAN.md))
@@ -55,6 +55,22 @@
 
 ---
 
-## Blocco H: Frontend Astronaut Cockpit & Pitch Finale (`ares-cockpit/` — `@carolina2910` & Team)
-- [ ] **Fase 15 (`H1`):** Layout React 19 + Tailwind OLED `#000000` (`NASA-STD-3001 Vol. 2`), barra `[1. GATHER] -> [2. EVALUATE] -> [3. ACT]`, 3D Anatomical Heatmap (`Three.js`), grafico `NQS-STL` con cono $\pm 1.96\sigma$ e **What-If Stress-Test Console**.
-- [ ] **Fase 16 (`H2`):** Verifica finale end-to-end (`./scripts/agent_probe.sh --all`) e registrazione video demo (180s + 30s).
+## Blocco H [MOTORE RUST CORE]: Co-Processore Probabilistico Multi-Orizzonte Grey-Box Pure-Rust `Timestral` (`crates/ares-nqs-stl` — `@fabiomalagutti27-droid`) [PIANIFICATO — PRONTO PER IMPLEMENTAZIONE]
+> **Studio Architetturale:** [`docs/architecture/TIMESTRAL_INTEGRATION_STUDY.md`](../docs/architecture/TIMESTRAL_INTEGRATION_STUDY.md)
+- [ ] **Fase 15 (`H1`):** Pure-Rust Timestral Backbone (`CausalScaler` `asinh`, `PatchRepresentation` con maschera `Option<f64>` per i 13 `None` di `bidmc_01`, `RMSNorm`, `FusedSwiGLU`, `SinCosRoPE` e `DualAxisAttention` con `SdpaSigmoid`) ([`phase_15_H1_timestral_patch_scaler_rope_backbone.md`](../docs/plans/phase_15_H1_timestral_patch_scaler_rope_backbone.md)).
+- [ ] **Fase 16 (`H2`):** Direct Multi-Horizon Forecasting (DHF) Non-Crossing Monotone `QuantileHead` ($q_{0.05} \le q_{0.50} \le q_{0.95}$ tramite accumulazione triangolare $\operatorname{softplus}$) e `ConformalAbstentionGate` adattivo ([`phase_16_H2_dhf_monotone_quantiles_conformal_gate.md`](../docs/plans/phase_16_H2_dhf_monotone_quantiles_conformal_gate.md)).
+- [ ] **Fase 17 (`H3`):** Grey-Box Neuro-Mechanistic Bridge (`1 Hz` async forecaster + `180 ns` lock-free snapshot nel loop a `20 Hz`, calcolo pessimistico $\text{TTV}_{q_{0.05}}$ e coni non incrociati per `ares-cockpit/`) ([`phase_17_H3_async_1hz_forecaster_nqs_stl_bridge.md`](../docs/plans/phase_17_H3_async_1hz_forecaster_nqs_stl_bridge.md)).
+
+---
+
+## Blocco I [MOTORE RUST CORE]: Architettura a 3 Livelli `ARES-HyperGraph` & Grafo Multi-Dataset `ARES-DatasetGraph` (`crates/ares-causal-graph` — `@fabiomalagutti27-droid` & `@fertech02`) [PIANIFICATO — PRONTO PER IMPLEMENTAZIONE]
+> **Studi Architetturali:** [`docs/architecture/KNOWLEDGE_GRAPH_ARCHITECTURE_STUDY.md`](../docs/architecture/KNOWLEDGE_GRAPH_ARCHITECTURE_STUDY.md) & [`docs/architecture/UNIFIED_DATASET_GRAPH_FEASIBILITY_STUDY.md`](../docs/architecture/UNIFIED_DATASET_GRAPH_FEASIBILITY_STUDY.md)
+- [ ] **Fase 18 (`I1`):** `ARES-HyperGraph` Layers 1 & 2 — Compattazione longitudinale di Welford `LongitudinalSuperNode` (`< 200 KB` per missione marziana di 900 giorni), sottografo delle 4 Regioni Anatomiche 3D e grafo deontico Q-STL / Markov $D_{\text{KL}}$ dei 6 Compartimenti dell'Habitat ([`phase_18_I1_welford_longitudinal_compaction_spatial_deontic.md`](../docs/plans/phase_18_I1_welford_longitudinal_compaction_spatial_deontic.md)).
+- [ ] **Fase 19 (`I2`):** `ARES-HyperGraph` Layer 3 (`ARES-BioKG`) — Descrittore stack-allocated `16-byte #[repr(C)] BiomedicalEvidenceDescriptor`, fusione multi-modale `Noisy-OR` (`EpistemicProvenance`), `ClinicalAnswerabilityGate` e grounding normativo $O(1)$ alle clausole `NASA-STD-3001` (`[V1 3001]..[V2 10001]`) ([`phase_19_I2_biokg_16byte_descriptor_epistemic_reasoner.md`](../docs/plans/phase_19_I2_biokg_16byte_descriptor_epistemic_reasoner.md)).
+- [ ] **Fase 20 (`I3`):** Unified Multi-Dataset Knowledge Graph Builder (`ARES-DatasetGraph` che collega tutti i 24 dataset ufficiali con puntatori `slice://`, esportatore JSON `data/knowledge_graph/ares_dataset_graph.json` compatibile `/graphify`, e tool `FastMCP` `< 150 token`) ([`phase_20_I3_unified_dataset_graph_builder_graphify_mcp.md`](../docs/plans/phase_20_I3_unified_dataset_graph_builder_graphify_mcp.md)).
+
+---
+
+## Blocco J: Frontend Astronaut Cockpit & Pitch Finale (`ares-cockpit/` — `@carolina2910` & Team)
+- [ ] **Fase 21 (`J1`):** Layout React 19 + Tailwind OLED `#000000` (`NASA-STD-3001 Vol. 2`), barra `[1. GATHER] -> [2. EVALUATE] -> [3. ACT]`, 3D Anatomical Heatmap (`Three.js`), grafico `NQS-STL` con cono monotono $[q_{0.05}, q_{0.50}, q_{0.95}]$ e **What-If Stress-Test Console**.
+- [ ] **Fase 22 (`J2`):** Verifica finale end-to-end (`./scripts/agent_probe.sh --all`) e registrazione video demo (180s + 30s).

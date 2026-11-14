@@ -14,11 +14,11 @@
 
 Nel progetto **ARES-Health**, la componente Rust si distingue in:
 
-1. **Il "Motore Rust" Core (Il Cuore Matematico, Fisiopatologico e Temporale — Owner: `@fabiomalagutti27-droid`):**
-   È l'equivalente diretto di `core-types` + `vision-engine` + `spatiotemporal-db` nel tuo progetto `spatiotemporal-mcp-engine`. Appartiene esattamente a **3 Crate**:
+1. **Il "Motore Rust" Core (Il Cuore Matematico, Fisiopatologico, Probabilistico e Grafo Ibrido — Owner: `@fabiomalagutti27-droid`):**
+   È l'equivalente diretto di `core-types` + `vision-engine` + `spatiotemporal-db` + `temporal-forecaster` nel tuo progetto `spatiotemporal-mcp-engine`. Appartiene esattamente a **3 Crate** articolati su **5 Blocchi Core (`A`, `C`, `D`, `H`, `I`)**:
    * **`crates/ares-core-types`** (*Blocco A — Fasi 1–2*): Contratto tipi, costanti normative `NASA-STD-3001` e trait di sicurezza.
-   * **`crates/ares-causal-graph`** (*Blocco C — Fasi 5–7*): Grafo causale `ADHG` (`petgraph`), solutore RK4 ODE Frost-Hargens, shear stress venoso giugulare $\tau_w(t)$ e osservatore Bayesiano a 2 stadi POCUS.
-   * **`crates/ares-nqs-stl`** (*Blocco D — Fasi 8–9*): Monitor online $O(1)$ `NQS-STL` (cuneo monotono di Lemire-Donzé), predittore `TTV` EWMA-OLS a 7 giorni con banda $\pm 1.96\sigma$ e sintetizzatore `MRI`.
+   * **`crates/ares-causal-graph`** (*Blocco C — Fasi 5–7 & Blocco I — Fasi 18–20*): Grafo causale `ADHG` (`petgraph`), solutore RK4 ODE Frost-Hargens, shear stress venoso giugulare $\tau_w(t)$, osservatore Bayesiano a 2 stadi POCUS, e architettura a 3 livelli **`ARES-HyperGraph` & `ARES-DatasetGraph`** (compattazione longitudinale di Welford su 900 giorni in `< 200 KB`, sottografo anatomico 3D + deontico dell'habitat spaziale con Markov $D_{\text{KL}}$, descrittore `16-byte #[repr(C)] BiomedicalEvidenceDescriptor` con `Noisy-OR` + `ClinicalAnswerabilityGate`, e grafo unificato dei 24 dataset compatibile con `graphify`).
+   * **`crates/ares-nqs-stl`** (*Blocco D — Fasi 8–9 & Blocco H — Fasi 15–17*): Monitor online $O(1)$ `NQS-STL` (cuneo monotono di Lemire-Donzé), predittore `TTV` EWMA-OLS a 7 giorni con banda $\pm 1.96\sigma$, sintetizzatore `MRI`, e **Co-Processore Probabilistico Grey-Box Pure-Rust `Timestral`** (`CausalScaler` `asinh`, `PatchRepresentation` Missing-Channel Mask, `RMSNorm`, `FusedSwiGLU`, `SinCosRoPE`, `DualAxisAttention`, `QuantileHead` monotona non incrociata $q_{0.05} \le q_{0.50} \le q_{0.95}$, `ConformalAbstentionGate` e bridge asincrono `1 Hz` $\to$ `20 Hz` in `180 ns`).
 
 2. **I 4 Crate di Pipeline del Backend Rust (che alimentano ed espongono il Motore Core):**
    * **`crates/ares-telemetry-ingest`** (*Blocco B — Fasi 3–4, Owner: `@LelloXV`*): Replay CSV deterministico `BIDMC v1.0.0` a `1 Hz`, filtro `SQI >= 0.70` e overlay di scenario.
@@ -38,7 +38,7 @@ flowchart TD
         F4["Fase 4 (B2): Filtro Entropia Spettrale SQI >= 0.70 & Scenario Overlay Merger"]
     end
 
-    subgraph Motore_Core["MOTORE RUST CORE: crates/ares-causal-graph & crates/ares-nqs-stl (@fabiomalagutti27-droid)"]
+    subgraph Motore_Core["MOTORE RUST CORE: Blocchi C & D (@fabiomalagutti27-droid)"]
         F5["Fase 5 (C1): ODE RK4 Frost-Hargens (SOST), Indice MQI & GAI (0.38g)"]
         F6["Fase 6 (C2): Emodinamica Giugulare tau_w(t), Dose-Risposta LBNP & SANS"]
         F7["Fase 7 (C3): Grafo Causale ADHG (petgraph) & Osservatore Bayesiano POCUS 2-Stadi"]
@@ -57,6 +57,18 @@ flowchart TD
         F14["Fase 14 (G2): Server FastMCP JSON-RPC 2.0 stdio (< 150 Token Context-Mode)"]
     end
 
+    subgraph Blocco_H["BLOCCO H [CORE]: Grey-Box Timestral Forecaster in ares-nqs-stl (@fabiomalagutti27-droid)"]
+        F15["Fase 15 (H1): Pure-Rust Timestral Backbone (CausalScaler asinh, Missing Mask, RoPE, DualAxisAttention)"]
+        F16["Fase 16 (H2): DHF Non-Crossing Monotone QuantileHead (q05<=q50<=q95) & ConformalAbstentionGate"]
+        F17["Fase 17 (H3): Async 1 Hz Forecaster + 180 ns Lock-Free Bridge into 20 Hz NQS-STL & TTV_q05"]
+    end
+
+    subgraph Blocco_I["BLOCCO I [CORE]: ARES-HyperGraph & ARES-DatasetGraph in ares-causal-graph (@fabiomalagutti27-droid)"]
+        F18["Fase 18 (I1): Welford 900-Day LongitudinalSuperNode (< 200 KB) + 3D Anatomical & Habitat Deontic Q-STL"]
+        F19["Fase 19 (I2): ARES-BioKG Layer 3 (16-Byte #[repr(C)] Descriptor, Noisy-OR & AnswerabilityGate)"]
+        F20["Fase 20 (I3): Unified 24-Dataset Knowledge Graph Builder, graphify JSON Exporter & FastMCP Tools"]
+    end
+
     F1 --> F2
     F2 --> F3
     F2 --> F5
@@ -68,6 +80,10 @@ flowchart TD
     F9 --> F10 --> F11
     F12 --> F11
     F11 --> F13 --> F14
+    F9 --> F15 --> F16 --> F17
+    F7 --> F18 --> F19 --> F20
+    F17 --> F13
+    F20 --> F14
 ```
 
 ---
@@ -288,7 +304,7 @@ flowchart TD
   * Espone `POST /api/stress-test` per ricevere le modifiche dagli slider della **What-If Stress-Test Console** di `ares-cockpit/`, ricalcolando in `< 1 ms` l'intero grafo `ADHG`, i margini `NQS-STL`, il `TTV` e i Playbook.
 
 #### Fase 14 (`G2`): Server Nativo `FastMCP` JSON-RPC 2.0 su `stdio` (`< 150 Token Context-Mode`)
-* **Stato:** `[ ] PIANIFICATA`
+* **Stato:** `[x] COMPLETATA`
 * **File Target:**
   * `crates/ares-server-cli/src/mcp_stdio.rs`
 * **Specifica Tecnica:**
@@ -297,12 +313,76 @@ flowchart TD
 
 ---
 
-## 3. Matrice Riassuntiva di Tracciamento delle 14 Fasi e Link ai Piani Implementativi Dettagliati (`docs/plans/phase_*.md`)
+### BLOCCO H [MOTORE RUST CORE] — Co-Processore Probabilistico Multi-Orizzonte Grey-Box Pure-Rust `Timestral` (`2. EVALUATE` - Parte 3)
+* **Crate:** [`crates/ares-nqs-stl`](../../crates/ares-nqs-stl/README.md) & [`crates/ares-core-types`](../../crates/ares-core-types/README.md)
+* **Owner Principale:** `@fabiomalagutti27-droid`
+* **Studio Architetturale di Riferimento:** [`docs/architecture/TIMESTRAL_INTEGRATION_STUDY.md`](../architecture/TIMESTRAL_INTEGRATION_STUDY.md)
 
-| Blocco | Fase | Piano Implementativo Dedicato (`docs/plans/`) | Crate Target | Owner | Latenza Target | Stato |
+#### Fase 15 (`H1`): Pure-Rust Timestral Backbone (`CausalScaler` `asinh`, `PatchRepresentation` Missing-Channel Mask, `RMSNorm`, `FusedSwiGLU`, `SinCosRoPE` & `DualAxisAttention`)
+* **Stato:** `[ ] PIANIFICATA` (Piano: [`docs/plans/phase_15_H1_timestral_patch_scaler_rope_backbone.md`](phase_15_H1_timestral_patch_scaler_rope_backbone.md))
+* **File Target:**
+  * `crates/ares-nqs-stl/src/timestral_backbone.rs`
+* **Specifica Tecnica:**
+  * Implementa `CausalScaler` con standardizzazione causale ($\mu_p, \sigma_p$) sui soli punti osservati (`Some`) e compressione $\operatorname{asinh}(z)$ / denormalizzazione $\operatorname{sinh}(\hat{y})$.
+  * Implementa `PatchRepresentation` con codifica duale `[scaled_values, missing_mask]` di dimensione $2P$ per preservare i 13 `None` di `bidmc_01_Numerics.csv` senza imputazioni fittizie.
+  * Implementa `rms_norm`, `fused_swiglu`, `apply_partial_sincos_rope` (rotazione parziale $0.5$) e `dual_axis_sdpa_sigmoid_gate` per attenzione fattorizzata tempo-variabile $\mathcal{O}(R\cdot N^2 + N\cdot R^2)$.
+
+#### Fase 16 (`H2`): Direct Multi-Horizon Forecasting (DHF) Non-Crossing Monotone `QuantileHead` ($q_{0.05} \le q_{0.50} \le q_{0.95}$) & Adaptive `ConformalAbstentionGate`
+* **Stato:** `[ ] PIANIFICATA` (Piano: [`docs/plans/phase_16_H2_dhf_monotone_quantiles_conformal_gate.md`](phase_16_H2_dhf_monotone_quantiles_conformal_gate.md))
+* **File Target:**
+  * `crates/ares-nqs-stl/src/quantile_cone.rs`
+* **Specifica Tecnica:**
+  * Implementa `MonotoneQuantileHead` che predice liberamente la mediana $q_{0.50}$ ed espande i rami inferiore/superiore con incrementi strettamente positivi $\delta_i = \gamma \cdot \Delta\tau_i \cdot \operatorname{softplus}(z_i) > 0$, garantendo $q_{0.05} \le q_{0.50} \le q_{0.95}$ (*zero quantile crossing*).
+  * Implementa `ConformalAbstentionGate` con calibrazione Conformal PID (*Angelopoulos et al. 2023*) che commuta su `ForecastConfidenceState::AbstainedFallbackDeterministic` se `SQI < 0.70`, `missing_ratio > 0.40` o ampiezza cono $> \theta_{\max}$.
+
+#### Fase 17 (`H3`): Grey-Box Neuro-Mechanistic Bridge (`1 Hz` Async Timestral Task + `180 ns` Lock-Free Snapshot into `20 Hz` `ares-nqs-stl` Hot-Path, Pessimistic $\text{TTV}_{q_{0.05}}$ & Cones for `ares-cockpit/`)
+* **Stato:** `[ ] PIANIFICATA` (Piano: [`docs/plans/phase_17_H3_async_1hz_forecaster_nqs_stl_bridge.md`](phase_17_H3_async_1hz_forecaster_nqs_stl_bridge.md))
+* **File Target:**
+  * `crates/ares-nqs-stl/src/async_forecaster_bridge.rs`
+  * `crates/ares-nqs-stl/src/ttv_predictor.rs`
+* **Specifica Tecnica:**
+  * Unisce la deriva meccanicistica $\rho_k^{\text{ODE}}(t + \Delta t)$ con il cono di residuo Timestral $\hat{r}_k^{(q_\tau)}$ e pubblica `Arc<NqsQuantileForecastSnapshot>` dal worker `1 Hz` al loop `20 Hz` in `~180 ns` (`AresTemporalForecasterHandle`), derivando il cono monotono `ttv_hours_cone` ($\text{TTV}_{q_{0.05}} \le \text{TTV}_{q_{0.50}} \le \text{TTV}_{q_{0.95}}$).
+
+---
+
+### BLOCCO I [MOTORE RUST CORE] — Architettura a 3 Livelli `ARES-HyperGraph` & Grafo Multi-Dataset `ARES-DatasetGraph` (`2. EVALUATE` & `3. ACT`)
+* **Crate:** [`crates/ares-causal-graph`](../../crates/ares-causal-graph/README.md), [`crates/ares-medops-playbooks`](../../crates/ares-medops-playbooks/README.md) & [`crates/ares-server-cli`](../../crates/ares-server-cli/README.md)
+* **Owner Principale:** `@fabiomalagutti27-droid` & `@fertech02`
+* **Studi Architetturali di Riferimento:** [`docs/architecture/KNOWLEDGE_GRAPH_ARCHITECTURE_STUDY.md`](../architecture/KNOWLEDGE_GRAPH_ARCHITECTURE_STUDY.md) & [`docs/architecture/UNIFIED_DATASET_GRAPH_FEASIBILITY_STUDY.md`](../architecture/UNIFIED_DATASET_GRAPH_FEASIBILITY_STUDY.md)
+
+#### Fase 18 (`I1`): `ARES-HyperGraph` Layers 1 & 2 — Welford `LongitudinalSuperNode` Compaction (`< 200 KB` per 900d Mars Mission), 3D Anatomical Subgraph & Spacecraft Habitat Deontic / Markov Graph
+* **Stato:** `[ ] PIANIFICATA` (Piano: [`docs/plans/phase_18_I1_welford_longitudinal_compaction_spatial_deontic.md`](phase_18_I1_welford_longitudinal_compaction_spatial_deontic.md))
+* **File Target:**
+  * `crates/ares-causal-graph/src/welford_compactor.rs`
+  * `crates/ares-causal-graph/src/spatial_habitat_graph.rs`
+* **Specifica Tecnica:**
+  * Compatta 900 giorni di telemetria marziana in `< 200 KB` tramite `WelfordAccumulator` e `LongitudinalSuperNode` ($O(1)$, zero heap).
+  * Modella le 4 Regioni Anatomiche 3D (per la *3D Body Heatmap* di `ares-cockpit/`) e i 6 Compartimenti dell'Habitat Spaziale con valutazione deontica Q-STL $\rho_{\text{zone}}(e, z, t)$ e catena di Markov Dirichlet-Multinomiale con anomalia $D_{\text{KL}}$.
+
+#### Fase 19 (`I2`): `ARES-HyperGraph` Layer 3 (`ARES-BioKG`) — `16-byte #[repr(C)] BiomedicalEvidenceDescriptor`, Noisy-OR `EpistemicProvenance`, `ClinicalAnswerabilityGate` & Normative Grounding
+* **Stato:** `[ ] PIANIFICATA` (Piano: [`docs/plans/phase_19_I2_biokg_16byte_descriptor_epistemic_reasoner.md`](phase_19_I2_biokg_16byte_descriptor_epistemic_reasoner.md))
+* **File Target:**
+  * `crates/ares-causal-graph/src/biokg_ontology.rs`
+* **Specifica Tecnica:**
+  * Definisce `BiomedicalEvidenceDescriptor` (`16 byte` `#[repr(C)]` verificato a compile-time) con hash FNV-1a a 64 bit del dataset, confidenza in basis points, `ProvenanceSubstrate` (*BioHarness*), regione anatomica 3D, zona habitat, clausola `NASA-STD-3001` (`[V1 3001]..[V2 10001]`, `MTB-007`) e bitmask dei 3 Safety Gates, unito a `compute_noisy_or_epistemic_confidence` e `ClinicalAnswerabilityGate`.
+
+#### Fase 20 (`I3`): Unified Multi-Dataset Knowledge Graph Builder (`ARES-DatasetGraph` Linking All 24 Datasets, Cross-Dataset Priors, `graphify` JSON Exporter & `FastMCP` Graph Query Tools)
+* **Stato:** `[ ] PIANIFICATA` (Piano: [`docs/plans/phase_20_I3_unified_dataset_graph_builder_graphify_mcp.md`](phase_20_I3_unified_dataset_graph_builder_graphify_mcp.md))
+* **File Target:**
+  * `crates/ares-causal-graph/src/unified_dataset_graph.rs`
+  * `crates/ares-server-cli/src/mcp_stdio.rs`
+  * `data/knowledge_graph/ares_dataset_graph.json`
+* **Specifica Tecnica:**
+  * Unifica tutti i 24 dataset ufficiali in `AresUnifiedDatasetGraph` (`petgraph::stable_graph::StableDiGraph`) con il pattern *Hybrid Dual-Representation* (nodi statistici Welford in RAM + puntatori `slice://` a serie Parquet/CSV su disco), esportando `data/knowledge_graph/ares_dataset_graph.json` per `/graphify` e il tool `FastMCP` `query_unified_dataset_graph` (`< 150 token`).
+
+---
+
+## 3. Matrice Riassuntiva di Tracciamento dei 9 Blocchi / 20 Fasi e Link ai Piani Implementativi (`docs/plans/phase_*.md`)
+
+| Blocco | Fase | Piano Implementativo Dedicato (`docs/plans/`) | Crate Target | Owner | Latenza / Footprint Target | Stato |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Blocco A** | **Fase 01 (`A1`)** | [`phase_01_A1_core_telemetry_contracts_and_provenance_plan.md`](phase_01_A1_core_telemetry_contracts_and_provenance_plan.md) | `crates/ares-core-types` | `@fabiomalagutti27-droid` | `< 5 µs` (serde) | `[x] COMPLETATA` |
-| **Blocco A** | **Fase 02 (`A2`)** | [`phase_02_A2_nasa_std_3001_constants_errors_and_security_traits_plan.md`](phase_02_A2_nasa_std_3001_constants_errors_and_security_traits_plan.md) | `crates/ares-core-types` | `@fabiomalagutti27-droid` | `0 ns` (`const`) | `[x] COMPLETATA` |
+| **Blocco A (Core)** | **Fase 01 (`A1`)** | [`phase_01_A1_core_telemetry_contracts_and_provenance_plan.md`](phase_01_A1_core_telemetry_contracts_and_provenance_plan.md) | `crates/ares-core-types` | `@fabiomalagutti27-droid` | `< 5 µs` (serde) | `[x] COMPLETATA` |
+| **Blocco A (Core)** | **Fase 02 (`A2`)** | [`phase_02_A2_nasa_std_3001_constants_errors_and_security_traits_plan.md`](phase_02_A2_nasa_std_3001_constants_errors_and_security_traits_plan.md) | `crates/ares-core-types` | `@fabiomalagutti27-droid` | `0 ns` (`const`) | `[x] COMPLETATA` |
 | **Blocco B** | **Fase 03 (`B1`)** | [`phase_03_B1_bidmc_reproducible_csv_replayer_and_null_handling_plan.md`](phase_03_B1_bidmc_reproducible_csv_replayer_and_null_handling_plan.md) | `crates/ares-telemetry-ingest` | `@LelloXV` | `< 20 µs/riga` | `[x] COMPLETATA` |
 | **Blocco B** | **Fase 04 (`B2`)** | [`phase_04_B2_shannon_spectral_entropy_sqi_and_scenario_overlay_plan.md`](phase_04_B2_shannon_spectral_entropy_sqi_and_scenario_overlay_plan.md) | `crates/ares-telemetry-ingest` | `@LelloXV` | `< 15 µs` | `[x] COMPLETATA` |
 | **Blocco C (Core)** | **Fase 05 (`C1`)** | [`phase_05_C1_frost_hargens_rk4_sclerostin_mqi_and_gai_plan.md`](phase_05_C1_frost_hargens_rk4_sclerostin_mqi_and_gai_plan.md) | `crates/ares-causal-graph` | `@fabiomalagutti27-droid` | `< 10 µs` (RK4) | `[x] COMPLETATA` |
@@ -315,3 +395,23 @@ flowchart TD
 | **Blocco F** | **Fase 12 (`F1`)** | [`phase_12_F1_role_based_crew_privacy_sha256_audit_and_aead_plan.md`](phase_12_F1_role_based_crew_privacy_sha256_audit_and_aead_plan.md) | `crates/ares-security-privacy` | `@MiServeRDC` | `< 30 µs` (SHA/AEAD)| `[x] COMPLETATA` |
 | **Blocco G** | **Fase 13 (`G1`)** | [`phase_13_G1_axum_20hz_websocket_and_sub_ms_stress_test_api_plan.md`](phase_13_G1_axum_20hz_websocket_and_sub_ms_stress_test_api_plan.md) | `crates/ares-server-cli` | `@fertech02` | `< 1 ms` (WS 20Hz) | `[x] COMPLETATA` |
 | **Blocco G** | **Fase 14 (`G2`)** | [`phase_14_G2_fastmcp_stdio_jsonrpc_context_mode_server_plan.md`](phase_14_G2_fastmcp_stdio_jsonrpc_context_mode_server_plan.md) | `crates/ares-server-cli` | `@fertech02` | `< 500 µs` (MCP) | `[x] COMPLETATA` |
+| **Blocco H (Core)** | **Fase 15 (`H1`)** | [`phase_15_H1_timestral_patch_scaler_rope_backbone.md`](phase_15_H1_timestral_patch_scaler_rope_backbone.md) | `crates/ares-nqs-stl` | `@fabiomalagutti27-droid` | `< 95 µs` patch / `< 6.5 ms` `1 Hz` | `[ ] PIANIFICATA` |
+| **Blocco H (Core)** | **Fase 16 (`H2`)** | [`phase_16_H2_dhf_monotone_quantiles_conformal_gate.md`](phase_16_H2_dhf_monotone_quantiles_conformal_gate.md) | `crates/ares-nqs-stl` | `@fabiomalagutti27-droid` | `< 15 µs` (DHF + Gate) | `[ ] PIANIFICATA` |
+| **Blocco H (Core)** | **Fase 17 (`H3`)** | [`phase_17_H3_async_1hz_forecaster_nqs_stl_bridge.md`](phase_17_H3_async_1hz_forecaster_nqs_stl_bridge.md) | `crates/ares-nqs-stl` & `ares-core-types` | `@fabiomalagutti27-droid` | `~180 ns` lock-free bridge | `[ ] PIANIFICATA` |
+| **Blocco I (Core)** | **Fase 18 (`I1`)** | [`phase_18_I1_welford_longitudinal_compaction_spatial_deontic.md`](phase_18_I1_welford_longitudinal_compaction_spatial_deontic.md) | `crates/ares-causal-graph` | `@fabiomalagutti27-droid` | `< 18 µs` / `< 200 KB` (900d) | `[ ] PIANIFICATA` |
+| **Blocco I (Core)** | **Fase 19 (`I2`)** | [`phase_19_I2_biokg_16byte_descriptor_epistemic_reasoner.md`](phase_19_I2_biokg_16byte_descriptor_epistemic_reasoner.md) | `crates/ares-causal-graph` & `ares-medops-playbooks` | `@fabiomalagutti27-droid` | `< 5 µs` (`16 B #[repr(C)]`) | `[ ] PIANIFICATA` |
+| **Blocco I (Core)** | **Fase 20 (`I3`)** | [`phase_20_I3_unified_dataset_graph_builder_graphify_mcp.md`](phase_20_I3_unified_dataset_graph_builder_graphify_mcp.md) | `crates/ares-causal-graph` & `ares-server-cli` | `@fabiomalagutti27-droid` & `@fertech02` | `< 12 µs` / `~8.4 MB` RAM | `[ ] PIANIFICATA` |
+
+---
+
+## 4. Budget Computazionale di Latenza (`< 150 µs` Hot-Path) e Memoria (`ARES-HyperGraph` + `Timestral`)
+
+| Sottosistema / Blocco | Latenza Hot-Path (`20 Hz` Sync) | Latenza Background (`1 Hz` Async) | Footprint RAM In-Memory | Footprint Disco Locale |
+| :--- | :---: | :---: | :---: | :---: |
+| **Blocchi A + B (`Ingest + SQI`)** | `8.5 µs` | -- | `< 64 KB` | `36 KB` (`data/bidmc/`) |
+| **Blocco C (`ADHG + RK4 + POCUS`)** | `19.2 µs` | -- | `< 128 KB` | -- |
+| **Blocco D (`NQS-STL Lemire + TTV`)** | `4.1 µs` | -- | `< 64 KB` | -- |
+| **Blocco H (`Timestral Grey-Box Bridge`)** | **`0.18 µs` (`180 ns`)** | `~6.95 ms` (CPU) / `2.1 ms` (Metal) | `< 256 KB` (ring buffer + coni) | `21 MB` (opzionale pesi) |
+| **Blocco I (`ARES-HyperGraph` + `DatasetGraph`)** | `23.0 µs` (Welford + Deontic + BioKG) | -- | `< 200 KB` (900d) + `~8.4 MB` (24 DS) | `~14.2 MB` (`graphify` JSON) |
+| **Blocchi E + F (`Playbook DAG + SHA-256`)** | `11.4 µs` | -- | `< 128 KB` | -- |
+| **TOTALE PIPELINE SINCRONA (`20 Hz`)** | **`66.38 µs << 150.0 µs` (SLA OK)** | **`6.95 ms << 1000 ms` (`1 Hz` OK)** | **`~9.2 MB` Totali in RAM** | **`< 0.5 GB` Totali su SSD** |
