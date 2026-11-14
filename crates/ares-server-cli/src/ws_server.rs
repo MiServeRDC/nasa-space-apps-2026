@@ -1,8 +1,18 @@
-//! Fase 13 (G1): Server HTTP/WebSocket Axum a 20 Hz su `127.0.0.1:8080` e API `/api/stress-test`.
+//! Fase 13 (G1) + Blocchi H & I: Server HTTP/WebSocket Axum a 20 Hz su `127.0.0.1:8080`,
+//! API `/api/stress-test`, bridge Timestral 1 Hz -> 20 Hz e ARES-HyperGraph / ARES-DatasetGraph.
 
-use ares_causal_graph::adhg_graph::AdhgCausalEngine;
+use ares_causal_graph::adhg_graph::{AdhgCausalEngine, AdhgNodeKind};
+use ares_causal_graph::biokg_reasoner::{NormativeClinicalGrounding, ground_adhg_node_o1};
+use ares_causal_graph::dataset_graph::AresUnifiedDatasetGraph;
+use ares_causal_graph::error::CausalGraphError;
 use ares_causal_graph::hemodynamics::compute_jugular_and_sans_state;
+use ares_causal_graph::hypergraph_spatial::{
+    AnatomicalRegionSubgraph, AnatomicalRiskInputs, BodyHeatmap, HabitatDeonticAssessment,
+    HabitatEnvironmentState, HabitatZoneDeonticPolicy, HabitatZoneId,
+    MissionLongitudinalCompactor, PhysiologicalTick, ZoneTransitionMarkovModel,
+};
 use ares_causal_graph::mechanotransduction::compute_musculoskeletal_state;
+use ares_core_types::NqsQuantileForecastSnapshot;
 use ares_core_types::security::{CrewRole, MedOpsAuditLogger};
 use ares_core_types::telemetry::{
     BiometricsSource, ProvenanceManifest, ScenarioOverlayMode, StressTestScenarioInput,
@@ -10,7 +20,13 @@ use ares_core_types::telemetry::{
 };
 use ares_medops_playbooks::playbooks::select_candidate_playbook;
 use ares_medops_playbooks::safety_gates::enforce_hard_clinical_safety_gates;
+use ares_nqs_stl::error::NqsStlError;
 use ares_nqs_stl::mri_index::evaluate_nqs_stl_and_mri;
+use ares_nqs_stl::timestral_backbone::{ARES_TIMESTRAL_CHANNELS, TimestralConfig};
+use ares_nqs_stl::timestral_bridge::{
+    AresMultivariateSample, AresTemporalForecasterEngine, KnownFutureCovariates,
+};
+use ares_nqs_stl::NqsEngine;
 use ares_security_privacy::audit_chain::Sha256AuditLogger;
 use ares_telemetry_ingest::bidmc_replayer::{BidmcReplayer, IngestError};
 use ares_telemetry_ingest::scenario_overlay::merge_biometrics_with_scenario;
@@ -23,7 +39,19 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use std::path::Path;
 use std::sync::{Arc, RwLock};
+use thiserror::Error;
 use tokio::sync::broadcast;
+
+/// Errori tipizzati di inizializzazione del runtime `ares-server-cli`.
+#[derive(Debug, Error)]
+pub enum ServerRuntimeError {
+    #[error("telemetry ingest error: {0}")]
+    Ingest(#[from] IngestError),
+    #[error("timestral / NQS-STL error: {0}")]
+    NqsStl(#[from] NqsStlError),
+    #[error("causal / hypergraph error: {0}")]
+    CausalGraph(#[from] CausalGraphError),
+}
 
 /// Restituisce lo scenario nominale iniziale per l'avvio della missione.
 #[inline]
@@ -40,7 +68,20 @@ pub fn default_scenario_input() -> StressTestScenarioInput {
     }
 }
 
-/// Esegue un singolo ciclo completo (GATHER -> EVALUATE -> ACT) in < 150 microsecondi.
+/// Risolve in O(1) il nodo ADHG primario associato al Playbook MedOps attivo.
+#[inline]
+pub fn primary_adhg_node_for_playbook(playbook_id: &str) -> AdhgNodeKind {
+    match playbook_id {
+        "PLAYBOOK_01_VENOUS_STASIS_LBNP" => AdhgNodeKind::IjvVenousStasisShearStress,
+        "PLAYBOOK_02_CONFIRMED_IJV_THROMBUS" => AdhgNodeKind::PocusThrombusPosterior,
+        "PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED" => AdhgNodeKind::AredMechanicalLoad,
+        "PLAYBOOK_04_SANS_TRANSLAMINAR_MITIGATION" => AdhgNodeKind::SansTranslaminarGradient,
+        "PLAYBOOK_05_SPE_RADIATION_SHELTER_CANS" => AdhgNodeKind::CansRadiationOxidativeStress,
+        _ => AdhgNodeKind::AredMechanicalLoad,
+    }
+}
+
+/// Esegue un singolo ciclo deterministico (GATHER -> EVALUATE -> ACT) in < 150 microsecondi.
 pub fn compute_mission_telemetry_tick(
     replayer: &mut BidmcReplayer,
     sqi_filter: &mut SqiFilter,
@@ -62,7 +103,7 @@ pub fn compute_mission_telemetry_tick(
         biometrics.radiation_dose_rate_msv_d,
     );
 
-    // 2. EVALUATE (Parte 2): Margini normalizzati NQS-STL, TTV ±1.96σ e Mission Readiness Index
+    // 2. EVALUATE (Parte 2): Margini normalizzati NQS-STL, TTV +/- 1.96 sigma e Mission Readiness Index
     let (nqs_stl, alert_severity) =
         evaluate_nqs_stl_and_mri(&biometrics, &musculo, &jugular, &sans);
 
@@ -113,7 +154,18 @@ pub fn compute_mission_telemetry_tick(
     }
 }
 
-/// Stato mutabile interno protetto da RwLock per la pipeline a 20 Hz e gli stress test.
+/// Snapshot immutabile estratto per il router FastMCP (< 150 token Context-Mode).
+#[derive(Debug, Clone)]
+pub struct FastMcpRuntimeContext {
+    pub latest_packet: TelemetryPacket,
+    pub quantile_snapshot: Arc<NqsQuantileForecastSnapshot>,
+    pub heatmap: BodyHeatmap,
+    pub habitat_assessment: HabitatDeonticAssessment,
+    pub grounding: NormativeClinicalGrounding,
+    pub dataset_graph: Arc<AresUnifiedDatasetGraph>,
+}
+
+/// Stato mutabile interno protetto da RwLock per la pipeline a 20 Hz, Timestral 1 Hz e HyperGraph.
 pub struct MissionRuntimeInner {
     pub replayer: BidmcReplayer,
     pub sqi_filter: SqiFilter,
@@ -121,18 +173,122 @@ pub struct MissionRuntimeInner {
     pub scenario: StressTestScenarioInput,
     pub mission_elapsed_s: f64,
     pub latest_packet: TelemetryPacket,
+    pub nqs_engine: NqsEngine,
+    pub forecaster_engine: AresTemporalForecasterEngine,
+    pub longitudinal_compactor: MissionLongitudinalCompactor,
+    pub anatomical_subgraph: AnatomicalRegionSubgraph,
+    pub latest_heatmap: BodyHeatmap,
+    pub habitat_policy: HabitatZoneDeonticPolicy,
+    pub habitat_state: HabitatEnvironmentState,
+    pub latest_habitat_assessment: HabitatDeonticAssessment,
+    pub zone_markov: ZoneTransitionMarkovModel,
+    pub latest_quantile_snapshot: Arc<NqsQuantileForecastSnapshot>,
+    pub latest_grounding: NormativeClinicalGrounding,
+    pub tick_counter: u64,
 }
 
-/// Stato condiviso tra il server Axum HTTP/WebSocket e il server FastMCP su `stdio`.
+impl MissionRuntimeInner {
+    fn update_hypergraph_and_nqs_hot_path(&mut self) {
+        let eval = {
+            let pkt = &self.latest_packet;
+            self.nqs_engine.evaluate_tick(
+                pkt.relative_recording_time_s,
+                &pkt.biometrics,
+                &pkt.musculoskeletal,
+                &pkt.jugular_hemodynamics,
+                &pkt.sans_ocular,
+            )
+        };
+        self.latest_packet.nqs_stl = eval.margins;
+        self.latest_quantile_snapshot = eval.quantile_snapshot;
+        let pkt = &self.latest_packet;
+
+        let tick = PhysiologicalTick {
+            tau_w_dyn_cm2: pkt.jugular_hemodynamics.tau_w_dyn_cm2,
+            sost_pmol_l: pkt.musculoskeletal.sclerostin_pmol_l,
+            mqi: pkt.musculoskeletal.mqi_index,
+            sans_index: pkt.sans_ocular.sans_risk_index,
+            rho_global: pkt.nqs_stl.rho_global,
+        };
+        let _ = self
+            .longitudinal_compactor
+            .observe(self.mission_elapsed_s, &tick);
+
+        let risk_inputs = AnatomicalRiskInputs {
+            sans_index: Some(pkt.sans_ocular.sans_risk_index),
+            tau_w_dyn_cm2: Some(pkt.jugular_hemodynamics.tau_w_dyn_cm2),
+            rmssd_ms: pkt.biometrics.rmssd_ms,
+            sost_pmol_l: Some(pkt.musculoskeletal.sclerostin_pmol_l),
+            mqi_deficit_fraction: Some((1.0 - pkt.musculoskeletal.mqi_index).clamp(0.0, 1.0)),
+            gai_pct: Some(pkt.musculoskeletal.gai_pct),
+        };
+        self.latest_heatmap = self.anatomical_subgraph.compute_body_heatmap(&risk_inputs);
+
+        let next_zone = if pkt.biometrics.radiation_dose_rate_msv_d > 1.5 {
+            HabitatZoneId::RadiationStormShelter
+        } else if pkt.jugular_hemodynamics.pocus_thrombus_confirmed {
+            HabitatZoneId::MedOpsUltrasoundBay
+        } else if self.scenario.lbnp_active {
+            HabitatZoneId::LbnpChamber
+        } else {
+            HabitatZoneId::SleepQuarters
+        };
+        if next_zone != self.habitat_state.current_zone {
+            self.zone_markov
+                .record_transition(self.habitat_state.current_zone, next_zone);
+            self.habitat_state.current_zone = next_zone;
+        }
+        self.habitat_state.radiation_dose_rate_msv_d = pkt.biometrics.radiation_dose_rate_msv_d;
+        self.habitat_state.gai_pct = pkt.musculoskeletal.gai_pct;
+        self.habitat_state.pocus_thrombus_confirmed =
+            pkt.jugular_hemodynamics.pocus_thrombus_confirmed;
+
+        self.latest_habitat_assessment = self.habitat_policy.evaluate(&self.habitat_state);
+        let adhg_node = primary_adhg_node_for_playbook(&pkt.active_playbook.playbook_id);
+        self.latest_grounding = *ground_adhg_node_o1(adhg_node);
+    }
+
+    fn run_1hz_timestral_inference(&mut self) -> Result<Arc<NqsQuantileForecastSnapshot>, NqsStlError> {
+        let pkt = &self.latest_packet;
+        let sample = AresMultivariateSample::from_telemetry_components(
+            pkt.relative_recording_time_s,
+            &pkt.biometrics,
+            &pkt.musculoskeletal,
+            &pkt.jugular_hemodynamics,
+            &pkt.sans_ocular,
+            pkt.nqs_stl.rho_global,
+        );
+        let covariates = KnownFutureCovariates {
+            planned_ared_load_kgf: self.scenario.ared_daily_load_kgf,
+            planned_lbnp_pressure_mmhg: self.scenario.lbnp_pressure_mmhg,
+            scheduled_sleep_window: self.habitat_state.current_zone == HabitatZoneId::SleepQuarters,
+        };
+        let ode_drift = if self.scenario.ared_daily_load_kgf < 100.0 {
+            -0.012
+        } else {
+            -0.002
+        };
+        let snap = self
+            .forecaster_engine
+            .ingest_sample_1hz(&sample, &covariates, ode_drift)?;
+        self.latest_quantile_snapshot = Arc::clone(&snap);
+        Ok(snap)
+    }
+}
+
+/// Stato condiviso tra il server Axum HTTP/WebSocket, il co-processore Timestral 1 Hz
+/// e il server FastMCP su `stdio`.
 pub struct SharedMissionState {
     pub inner: RwLock<MissionRuntimeInner>,
     pub tx: broadcast::Sender<String>,
     pub audit_logger: Sha256AuditLogger,
+    pub dataset_graph: Arc<AresUnifiedDatasetGraph>,
 }
 
 impl SharedMissionState {
-    /// Inizializza lo stato condiviso caricando `bidmc_01_Numerics.csv` dalla directory specificata.
-    pub fn from_data_dir(data_dir: &Path) -> Result<Arc<Self>, IngestError> {
+    /// Inizializza lo stato condiviso caricando `bidmc_01..03_Numerics.csv`,
+    /// inizializzando Timestral (Blocco H), `ARES-HyperGraph` e `ARES-DatasetGraph` (Blocco I).
+    pub fn from_data_dir(data_dir: &Path) -> Result<Arc<Self>, ServerRuntimeError> {
         let csv_path = data_dir.join("bidmc_01_Numerics.csv");
         let mut replayer = BidmcReplayer::from_csv_path("bidmc_01", &csv_path)?;
         let mut sqi_filter = SqiFilter::default();
@@ -145,11 +301,88 @@ impl SharedMissionState {
             &scenario,
             0.0,
         );
+
+        let timestral_cfg = TimestralConfig {
+            num_channels: ARES_TIMESTRAL_CHANNELS,
+            patch_len: 4,
+            d_model: 16,
+            n_heads: 4,
+            d_ff: 32,
+            num_layers: 2,
+            ..TimestralConfig::default()
+        };
+        let mut forecaster_engine = AresTemporalForecasterEngine::new(timestral_cfg)?;
+        let mut nqs_engine = NqsEngine::with_forecaster_handle(60.0, forecaster_engine.handle());
+
+        let mut longitudinal_compactor = MissionLongitudinalCompactor::new(900)?;
+        let mut anatomical_subgraph = AnatomicalRegionSubgraph::new();
+        let habitat_policy = HabitatZoneDeonticPolicy::default();
+        let habitat_state = HabitatEnvironmentState {
+            current_zone: HabitatZoneId::SleepQuarters,
+            radiation_dose_rate_msv_d: latest_packet.biometrics.radiation_dose_rate_msv_d,
+            gai_pct: latest_packet.musculoskeletal.gai_pct,
+            pocus_thrombus_confirmed: latest_packet.jugular_hemodynamics.pocus_thrombus_confirmed,
+            lbnp_dwell_s: 0.0,
+            sleep_quarters_noise_dba: 44.0,
+        };
+        let latest_habitat_assessment = habitat_policy.evaluate(&habitat_state);
+        let zone_markov = ZoneTransitionMarkovModel::default();
+
+        // Warm-up deterministico di 8 campioni a 1 Hz per calibrare il cono quantilico iniziale.
+        for step in 0..8 {
+            let sample = AresMultivariateSample::from_telemetry_components(
+                step as f64,
+                &latest_packet.biometrics,
+                &latest_packet.musculoskeletal,
+                &latest_packet.jugular_hemodynamics,
+                &latest_packet.sans_ocular,
+                latest_packet.nqs_stl.rho_global,
+            );
+            let _ = forecaster_engine.ingest_sample_1hz(
+                &sample,
+                &KnownFutureCovariates::default(),
+                -0.002,
+            )?;
+        }
+        let eval = nqs_engine.evaluate_tick(
+            latest_packet.relative_recording_time_s,
+            &latest_packet.biometrics,
+            &latest_packet.musculoskeletal,
+            &latest_packet.jugular_hemodynamics,
+            &latest_packet.sans_ocular,
+        );
+        let latest_quantile_snapshot = eval.quantile_snapshot;
+        let _ = longitudinal_compactor.observe(
+            0.0,
+            &PhysiologicalTick {
+                tau_w_dyn_cm2: latest_packet.jugular_hemodynamics.tau_w_dyn_cm2,
+                sost_pmol_l: latest_packet.musculoskeletal.sclerostin_pmol_l,
+                mqi: latest_packet.musculoskeletal.mqi_index,
+                sans_index: latest_packet.sans_ocular.sans_risk_index,
+                rho_global: latest_packet.nqs_stl.rho_global,
+            },
+        );
+        let latest_heatmap = anatomical_subgraph.compute_body_heatmap(&AnatomicalRiskInputs {
+            sans_index: Some(latest_packet.sans_ocular.sans_risk_index),
+            tau_w_dyn_cm2: Some(latest_packet.jugular_hemodynamics.tau_w_dyn_cm2),
+            rmssd_ms: latest_packet.biometrics.rmssd_ms,
+            sost_pmol_l: Some(latest_packet.musculoskeletal.sclerostin_pmol_l),
+            mqi_deficit_fraction: Some(
+                (1.0 - latest_packet.musculoskeletal.mqi_index).clamp(0.0, 1.0),
+            ),
+            gai_pct: Some(latest_packet.musculoskeletal.gai_pct),
+        });
+        let latest_grounding = *ground_adhg_node_o1(primary_adhg_node_for_playbook(
+            &latest_packet.active_playbook.playbook_id,
+        ));
+
+        let dataset_graph = Arc::new(AresUnifiedDatasetGraph::build_with_bidmc_dir(Some(data_dir))?);
+
         let (tx, _) = broadcast::channel(128);
         let audit_logger = Sha256AuditLogger::default();
         let _ = audit_logger.append_audit_event(
             CrewRole::CrewMedicalOfficer,
-            "INITIALIZE_ARES_MISSION_RUNTIME",
+            "INITIALIZE_ARES_MISSION_RUNTIME_WITH_TIMESTRAL_HYPERGRAPH",
         );
 
         Ok(Arc::new(Self {
@@ -160,16 +393,30 @@ impl SharedMissionState {
                 scenario,
                 mission_elapsed_s: 0.0,
                 latest_packet,
+                nqs_engine,
+                forecaster_engine,
+                longitudinal_compactor,
+                anatomical_subgraph,
+                latest_heatmap,
+                habitat_policy,
+                habitat_state,
+                latest_habitat_assessment,
+                zone_markov,
+                latest_quantile_snapshot,
+                latest_grounding,
+                tick_counter: 0,
             }),
             tx,
             audit_logger,
+            dataset_graph,
         }))
     }
 
-    /// Avanza di un tick (`dt_s = 0.05` s a 20 Hz) e trasmette il pacchetto JSON sul canale broadcast.
+    /// Avanza di un tick (`dt_s = 0.05` s a 20 Hz) mantenendo il budget < 150 us.
     pub fn advance_tick(&self, dt_s: f64) -> Option<TelemetryPacket> {
         let mut guard = self.inner.write().ok()?;
         guard.mission_elapsed_s += dt_s;
+        guard.tick_counter = guard.tick_counter.saturating_add(1);
         let elapsed = guard.mission_elapsed_s;
         let scenario = guard.scenario.clone();
         let packet = {
@@ -181,14 +428,23 @@ impl SharedMissionState {
             } = &mut *guard;
             compute_mission_telemetry_tick(replayer, sqi_filter, adhg_engine, &scenario, elapsed)
         };
-        guard.latest_packet = packet.clone();
-        if let Ok(json_str) = serde_json::to_string(&packet) {
+        guard.latest_packet = packet;
+        guard.update_hypergraph_and_nqs_hot_path();
+
+        let snapshot_packet = guard.latest_packet.clone();
+        if let Ok(json_str) = serde_json::to_string(&snapshot_packet) {
             let _ = self.tx.send(json_str);
         }
-        Some(packet)
+        Some(snapshot_packet)
     }
 
-    /// Applica un nuovo scenario What-If in < 1 ms, aggiorna l'audit log SHA-256 e trasmette il pacchetto.
+    /// Esegue uno step del co-processore asincrono Timestral a 1 Hz.
+    pub fn run_1hz_timestral_step(&self) -> Option<Arc<NqsQuantileForecastSnapshot>> {
+        let mut guard = self.inner.write().ok()?;
+        guard.run_1hz_timestral_inference().ok()
+    }
+
+    /// Applica un nuovo scenario What-If in < 1 ms, aggiorna HyperGraph e audit log SHA-256.
     pub fn apply_stress_test(
         &self,
         new_scenario: StressTestScenarioInput,
@@ -211,7 +467,11 @@ impl SharedMissionState {
                 elapsed,
             )
         };
-        guard.latest_packet = packet.clone();
+        guard.latest_packet = packet;
+        guard.update_hypergraph_and_nqs_hot_path();
+        let _ = guard.run_1hz_timestral_inference();
+
+        let snapshot_packet = guard.latest_packet.clone();
         let _ = self.audit_logger.append_audit_event(
             CrewRole::CrewMedicalOfficer,
             &format!(
@@ -222,15 +482,28 @@ impl SharedMissionState {
                 new_scenario.pocus_thrombus_confirmed
             ),
         );
-        if let Ok(json_str) = serde_json::to_string(&packet) {
+        if let Ok(json_str) = serde_json::to_string(&snapshot_packet) {
             let _ = self.tx.send(json_str);
         }
-        Some(packet)
+        Some(snapshot_packet)
     }
 
     /// Legge una copia dell'ultimo `TelemetryPacket` calcolato.
     pub fn latest_snapshot(&self) -> Option<TelemetryPacket> {
         self.inner.read().ok().map(|g| g.latest_packet.clone())
+    }
+
+    /// Estrae il contesto completo e compatto per il router `FastMCP` (< 150 token).
+    pub fn fastmcp_context(&self) -> Option<FastMcpRuntimeContext> {
+        let guard = self.inner.read().ok()?;
+        Some(FastMcpRuntimeContext {
+            latest_packet: guard.latest_packet.clone(),
+            quantile_snapshot: Arc::clone(&guard.latest_quantile_snapshot),
+            heatmap: guard.latest_heatmap.clone(),
+            habitat_assessment: guard.latest_habitat_assessment.clone(),
+            grounding: guard.latest_grounding,
+            dataset_graph: Arc::clone(&self.dataset_graph),
+        })
     }
 }
 
@@ -341,6 +614,30 @@ mod tests {
             pkt.provenance_manifest.biometrics_source,
             BiometricsSource::RecordedTerrestrialBidmcCsv
         );
+    }
+
+    #[test]
+    fn test_shared_mission_state_integrates_timestral_and_hypergraph_under_budget() {
+        let state =
+            SharedMissionState::from_data_dir(&workspace_bidmc_dir()).expect("init mission state");
+        assert_eq!(state.dataset_graph.dataset_count(), 24);
+
+        let start = Instant::now();
+        for _ in 0..20 {
+            state.advance_tick(0.05).expect("advance tick");
+        }
+        let avg_us = start.elapsed().as_secs_f64() * 1_000_000.0 / 20.0;
+        assert!(
+            avg_us < 150.0,
+            "Expected SharedMissionState::advance_tick < 150 us, got {avg_us:.2} us"
+        );
+
+        let ctx = state.fastmcp_context().expect("fastmcp context");
+        ctx.quantile_snapshot
+            .assert_monotone()
+            .expect("quantile snapshot monotone");
+        assert_eq!(ctx.heatmap.cells.len(), 5);
+        assert!(ctx.grounding.descriptor.verify_crc().is_ok());
     }
 
     #[test]

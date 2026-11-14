@@ -84,6 +84,7 @@ dependencies = [
  "ares-core-types",
  "petgraph",
  "serde",
+ "serde_json",
  "thiserror",
 ]
 

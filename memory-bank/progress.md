@@ -20,7 +20,7 @@
 
 ---
 
-## Roadmap di Implementazione del Motore & Backend Rust (Blocchi A–G, Fasi 1–14) [COMPLETATO 100%]
+## Roadmap di Implementazione del Motore & Backend Rust (Blocchi A–I, Fasi 1–20) [COMPLETED (TESTED) — 77/77 Workspace Tests]
 
 > **Piano di Riferimento Dettagliato:** [`docs/plans/RUST_ENGINE_PHASED_MASTER_PLAN.md`](../docs/plans/RUST_ENGINE_PHASED_MASTER_PLAN.md)  
 > **Stack & Riferimenti Scientifici (`deep-scholar`):** [`docs/architecture/IMPLEMENTATION_STACK.md`](../docs/architecture/IMPLEMENTATION_STACK.md)
@@ -55,19 +55,21 @@
 
 ---
 
-## Blocco H [MOTORE RUST CORE]: Co-Processore Probabilistico Multi-Orizzonte Grey-Box Pure-Rust `Timestral` (`crates/ares-nqs-stl` — `@fabiomalagutti27-droid`) [PIANIFICATO — PRONTO PER IMPLEMENTAZIONE]
+## Blocco H [MOTORE RUST CORE]: Co-Processore Probabilistico Multi-Orizzonte Grey-Box Pure-Rust `Timestral` (`crates/ares-nqs-stl` — `@fabiomalagutti27-droid`) [COMPLETED (TESTED) — 18/18 Tests]
 > **Studio Architetturale:** [`docs/architecture/TIMESTRAL_INTEGRATION_STUDY.md`](../docs/architecture/TIMESTRAL_INTEGRATION_STUDY.md)
-- [ ] **Fase 15 (`H1`):** Pure-Rust Timestral Backbone (`CausalScaler` `asinh`, `PatchRepresentation` con maschera `Option<f64>` per i 13 `None` di `bidmc_01`, `RMSNorm`, `FusedSwiGLU`, `SinCosRoPE` e `DualAxisAttention` con `SdpaSigmoid`) ([`phase_15_H1_timestral_patch_scaler_rope_backbone.md`](../docs/plans/phase_15_H1_timestral_patch_scaler_rope_backbone.md)).
-- [ ] **Fase 16 (`H2`):** Direct Multi-Horizon Forecasting (DHF) Non-Crossing Monotone `QuantileHead` ($q_{0.05} \le q_{0.50} \le q_{0.95}$ tramite accumulazione triangolare $\operatorname{softplus}$) e `ConformalAbstentionGate` adattivo ([`phase_16_H2_dhf_monotone_quantiles_conformal_gate.md`](../docs/plans/phase_16_H2_dhf_monotone_quantiles_conformal_gate.md)).
-- [ ] **Fase 17 (`H3`):** Grey-Box Neuro-Mechanistic Bridge (`1 Hz` async forecaster + `180 ns` lock-free snapshot nel loop a `20 Hz`, calcolo pessimistico $\text{TTV}_{q_{0.05}}$ e coni non incrociati per `ares-cockpit/`) ([`phase_17_H3_async_1hz_forecaster_nqs_stl_bridge.md`](../docs/plans/phase_17_H3_async_1hz_forecaster_nqs_stl_bridge.md)).
+- [x] **Fase 15 (`H1`):** Pure-Rust Timestral Backbone (`CausalScaler` `asinh`/`sinh`, `PatchRepresentation` con maschera `Option<f64>` per i 13 `None` di `bidmc_01`, `RmsNorm`, `FusedSwiGlu`, `SinCosRoPe` e `DualAxisAttention` con `SdpaSigmoid`) in `crates/ares-nqs-stl/src/timestral_backbone.rs` (`COMPLETED (TESTED)`).
+- [x] **Fase 16 (`H2`):** Direct Multi-Horizon Forecasting (DHF) Non-Crossing Monotone `QuantileHead` ($q_{0.05} \le q_{0.50} \le q_{0.95}$ tramite accumulazione triangolare `stable_softplus`) e `ConformalAbstentionGate` adattivo (Conformal PID) in `crates/ares-nqs-stl/src/timestral_quantiles.rs` (`COMPLETED (TESTED)`).
+- [x] **Fase 17 (`H3`):** Grey-Box Neuro-Mechanistic Bridge (`1 Hz` async forecaster + `try_read()` lock-free snapshot nel loop `20 Hz`, calcolo pessimistico $\text{TTV}_{q_{0.05}}$ e `NqsEngine`) in `crates/ares-nqs-stl/src/timestral_bridge.rs` e `ttv_predictor.rs` (`COMPLETED (TESTED)`).
 
 ---
 
-## Blocco I [MOTORE RUST CORE]: Architettura a 3 Livelli `ARES-HyperGraph` & Grafo Multi-Dataset `ARES-DatasetGraph` (`crates/ares-causal-graph` — `@fabiomalagutti27-droid` & `@fertech02`) [PIANIFICATO — PRONTO PER IMPLEMENTAZIONE]
+## Blocco I [MOTORE RUST CORE]: Architettura a 3 Livelli `ARES-HyperGraph` & Grafo Multi-Dataset `ARES-DatasetGraph` (`crates/ares-causal-graph` & `crates/ares-server-cli`) [COMPLETED (TESTED) — 24/24 + 8/8 + 11/11 Tests]
 > **Studi Architetturali:** [`docs/architecture/KNOWLEDGE_GRAPH_ARCHITECTURE_STUDY.md`](../docs/architecture/KNOWLEDGE_GRAPH_ARCHITECTURE_STUDY.md) & [`docs/architecture/UNIFIED_DATASET_GRAPH_FEASIBILITY_STUDY.md`](../docs/architecture/UNIFIED_DATASET_GRAPH_FEASIBILITY_STUDY.md)
-- [ ] **Fase 18 (`I1`):** `ARES-HyperGraph` Layers 1 & 2 — Compattazione longitudinale di Welford `LongitudinalSuperNode` (`< 200 KB` per missione marziana di 900 giorni), sottografo delle 4 Regioni Anatomiche 3D e grafo deontico Q-STL / Markov $D_{\text{KL}}$ dei 6 Compartimenti dell'Habitat ([`phase_18_I1_welford_longitudinal_compaction_spatial_deontic.md`](../docs/plans/phase_18_I1_welford_longitudinal_compaction_spatial_deontic.md)).
-- [ ] **Fase 19 (`I2`):** `ARES-HyperGraph` Layer 3 (`ARES-BioKG`) — Descrittore stack-allocated `16-byte #[repr(C)] BiomedicalEvidenceDescriptor`, fusione multi-modale `Noisy-OR` (`EpistemicProvenance`), `ClinicalAnswerabilityGate` e grounding normativo $O(1)$ alle clausole `NASA-STD-3001` (`[V1 3001]..[V2 10001]`) ([`phase_19_I2_biokg_16byte_descriptor_epistemic_reasoner.md`](../docs/plans/phase_19_I2_biokg_16byte_descriptor_epistemic_reasoner.md)).
-- [ ] **Fase 20 (`I3`):** Unified Multi-Dataset Knowledge Graph Builder (`ARES-DatasetGraph` che collega tutti i 24 dataset ufficiali con puntatori `slice://`, esportatore JSON `data/knowledge_graph/ares_dataset_graph.json` compatibile `/graphify`, e tool `FastMCP` `< 150 token`) ([`phase_20_I3_unified_dataset_graph_builder_graphify_mcp.md`](../docs/plans/phase_20_I3_unified_dataset_graph_builder_graphify_mcp.md)).
+- [x] **Fase 18 (`I1`):** `ARES-HyperGraph` Layers 1 & 2 — Compattazione longitudinale di Welford `LongitudinalSuperNode` (`< 200 KB` per 900 Sol marziani), sottografo delle 5 Regioni Anatomiche 3D (`UBERON:`) e grafo deontico Q-STL / Markov $D_{\text{KL}}$ dei 6 Compartimenti dell'Habitat in `crates/ares-causal-graph/src/hypergraph_spatial.rs` (`COMPLETED (TESTED)`).
+- [x] **Fase 19 (`I2`):** `ARES-HyperGraph` Layer 3 (`ARES-BioKG`) — Descrittore stack-allocated `16-byte #[repr(C, align(16))] BiomedicalEvidenceDescriptor` con CRC-8, fusione multi-modale `Noisy-OR` (`EpistemicProvenance`), `ClinicalAnswerabilityGate` e grounding normativo $O(1)$ alle clausole `NASA-STD-3001` (`[V1 3001]..[V2 10001]`, `OCHMO MTB-007`) in `crates/ares-causal-graph/src/biokg_reasoner.rs` e `crates/ares-medops-playbooks/src/grounding.rs` (`COMPLETED (TESTED)`).
+- [x] **Fase 20 (`I3`):** Unified Multi-Dataset Knowledge Graph Builder (`AresUnifiedDatasetGraph` con schema `SPOKE + BioCypher + PrimeKG + Biolink`, 24 dataset + 27 `TimeWindowSlice` reali da `bidmc_01..03`, `110` nodi, `326` archi, `12` comunità, `158,675` byte JSON esportati in `data/knowledge_graph/ares_dataset_graph.json` e `graphify-out/graph.json`, più 4 nuovi tool `FastMCP` `< 150 token` in `crates/ares-server-cli/src/fastmcp_router.rs`) (`COMPLETED (TESTED)`).
+
+> **Verification Gate Finale (`Blocchi A–I`, `Fasi 01–20`):** `77/77` workspace tests passing (`ares-core-types`: 6, `ares-telemetry-ingest`: 6, `ares-causal-graph`: 24, `ares-nqs-stl`: 18, `ares-medops-playbooks`: 8, `ares-security-privacy`: 4, `ares-server-cli`: 11), `0` Clippy warnings, `0` `.unwrap()`/`.expect()` in production code (`./scripts/agent_probe.sh --all`).
 
 ---
 

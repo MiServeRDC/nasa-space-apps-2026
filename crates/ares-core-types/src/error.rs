@@ -20,4 +20,7 @@ pub enum AresCoreError {
 
     #[error("errore di serializzazione/deserializzazione del contratto: {0}")]
     ContractSerialization(String),
+
+    #[error("violazione monotonia quantilica: q05={q05}, q50={q50}, q95={q95}")]
+    QuantileCrossing { q05: f64, q50: f64, q95: f64 },
 }
