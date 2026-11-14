@@ -360,17 +360,46 @@ function VitalsTrend({ history }: { history: RecordedHistoryPoint[] }) {
 }
 
 export default function App() {
-  const [activeView, setActiveView] = useState<MissionViewMode>('VIEW_COCKPIT');
+  const getInitialParam = (key: string): string | null => {
+    if (typeof window === 'undefined') return null;
+    try {
+      return new URLSearchParams(window.location.search).get(key);
+    } catch {
+      return null;
+    }
+  };
+
+  const [activeView, setActiveView] = useState<MissionViewMode>(() => {
+    const v = getInitialParam('view');
+    if (v === 'VIEW_PORTAL' || v === 'VIEW_TWIN' || v === 'VIEW_STUDIO' || v === 'VIEW_COCKPIT') return v;
+    return 'VIEW_COCKPIT';
+  });
   const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false);
   const [auditModalOpen, setAuditModalOpen] = useState(false);
-  const [whatIf, setWhatIf] = useState<WhatIf>(DEFAULT_WHATIF);
+  const [whatIf, setWhatIf] = useState<WhatIf>(() => {
+    const s = getInitialParam('sex')?.toUpperCase();
+    if (s === 'MALE' || s === 'FEMALE') return { ...DEFAULT_WHATIF, sex: s };
+    return DEFAULT_WHATIF;
+  });
   const [thrombus, setThrombus] = useState<boolean | null>(null);
   const [lastScanDay, setLastScanDay] = useState<number>(DEFAULT_WHATIF.mission_day - 5);
   const [ventEvent, setVentEvent] = useState<string | null>(null);
-  const [activePhase, setActivePhase] = useState<Phase>('GATHER');
-  const [evalTab, setEvalTab] = useState<EvalTab>('BODY_3D');
-  const [whatIfOverlayActive, setWhatIfOverlayActive] = useState<boolean>(false);
-  const [paletteOpen, setPaletteOpen] = useState<boolean>(false);
+  const [activePhase, setActivePhase] = useState<Phase>(() => {
+    const p = getInitialParam('phase');
+    if (p === 'GATHER' || p === 'EVALUATE' || p === 'ACT') return p;
+    return 'GATHER';
+  });
+  const [evalTab, setEvalTab] = useState<EvalTab>(() => {
+    const t = getInitialParam('tab');
+    if (t === 'BODY_3D' || t === 'MUSCLE_BONE' || t === 'POCUS' || t === 'FORECAST') return t;
+    return 'BODY_3D';
+  });
+  const [whatIfOverlayActive, setWhatIfOverlayActive] = useState<boolean>(() => {
+    return getInitialParam('overlay') === '1' || getInitialParam('overlay') === 'true';
+  });
+  const [paletteOpen, setPaletteOpen] = useState<boolean>(() => {
+    return getInitialParam('palette') === '1';
+  });
   const [paletteInitialMode, setPaletteInitialMode] = useState<'TOOLS' | 'COPILOT'>('TOOLS');
   const [requestedPlaybook, setRequestedPlaybook] = useState<{ id: string; seq: number } | null>(null);
   const [injuries, setInjuries] = useState<InjuryMarker[]>([]);
@@ -639,7 +668,7 @@ export default function App() {
       />
 
       {activeView === 'VIEW_PORTAL' ? (
-        <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col gap-3 overflow-hidden p-4">
+        <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col gap-3 overflow-hidden p-4 h-[calc(100vh-140px)]">
           <MissionPortal
             packet={packet}
             s={hasHemodynamics || hasMusculoskeletal ? s : null}
@@ -650,7 +679,7 @@ export default function App() {
           />
         </div>
       ) : activeView === 'VIEW_STUDIO' ? (
-        <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col gap-3 overflow-hidden p-4">
+        <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col gap-3 overflow-hidden p-4 h-[calc(100vh-140px)]">
           <OpenScreenStudio
             packet={packet}
             s={hasHemodynamics || hasMusculoskeletal ? s : null}
@@ -659,12 +688,12 @@ export default function App() {
           />
         </div>
       ) : activeView === 'VIEW_TWIN' ? (
-        <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col gap-3 overflow-hidden p-4">
+        <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col gap-3 overflow-hidden p-4 h-[calc(100vh-140px)]">
           <Card
             title="ARES Biodigital Twin 3D Viewport (Full Screen)"
             tag="OrbitControls 360-degree interactive anatomical twin"
             origin={hasHemodynamics || hasMusculoskeletal ? (packet.is_local_simulation ? 'SIMULATED_SCENARIO_INPUT' : 'DERIVED_FROM_HYBRID_SCENARIO') : 'UNAVAILABLE'}
-            className="min-h-0 flex-1"
+            className="min-h-0 flex-1 h-full"
           >
             <BodyHeatmap
               s={hasHemodynamics || hasMusculoskeletal ? s : null}
