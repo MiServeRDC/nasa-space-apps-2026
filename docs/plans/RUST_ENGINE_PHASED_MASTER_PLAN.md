@@ -1,10 +1,10 @@
 # Piano Progettuale Master a Fasi e Blocchi — Motore & Backend Rust di ARES-Health
 
 - **Tag di Tracciabilita**: `[FABIO, IMPLEMENTATION]` | `[ARES-HEALTH, RUST-CORE-ENGINE]`
-- **Stato**: ALL 20 PHASES (PHASES 01-20 ACROSS BLOCKS A-I) `COMPLETED (TESTED)` — 77/77 Workspace Tests Passing, 0 Clippy Warnings, Physical 24-Dataset Graph Verified (`110` nodes, `326` edges, `24` datasets, `27` BIDMC slices, `158,675` bytes JSON)
+- **Stato**: ALL 34 PHASES / 12 BLOCKS (A-L) `COMPLETED (TESTED)` (`158/158` Default Workspace Tests Passing across `24` Active Suites & `8` Crates + Feature-Gated `tauri-runtime` `5/5`, `shm-ipc` `4/4`, `candle-safetensors` `4/4`, `parquet-ingest` `6/6`, `15/15` Cockpit Node Tests across `7` Suites, `0` Clippy Warnings, `0` Production `.unwrap()`/`.expect()`, `ares-calibrate --verify-only`, `./scripts/launch_ares_medos.sh --verify`, `./scripts/build_submission_docs.sh` `6/6` L6 Gates, `--release` 1-Tick Pipeline `p99.9=5.58 µs`, `SeqlockTelemetryRing` `p50=42 ns` / `p99.9=84 ns`) ([`BLOCK_L_GAP_CLOSURE_ARCHITECTURE.md`](BLOCK_L_GAP_CLOSURE_ARCHITECTURE.md))
 - **Ispirazione Metodologica**: Gold Standard di `spatiotemporal-mcp-engine` (`memory-bank/progress.md`, `docs/architecture/IMPLEMENTATION_STACK.md`, `docs/plans/phase_*.md`, `scripts/agent_probe.sh`)
 - **Budget Latenza Hot-Path (Valutazione Completa Grafo ADHG + ODE RK4 + NQS-STL + Playbook DAG)**: $< 150\,\mu\text{s}$ (`P99` in-memory per tick)
-- **Budget Latenza Endpoint Stress-Test (`POST /api/stress-test` -> Broadcast WebSocket)**: $< 1.0\text{ ms}$
+- **Budget Latenza IPC `ARES-MedOS` (Blocco J)**: `< 0.05 ms` (`Tauri v2` `Channel<ArrayBuffer>` `128 B`) / `< 100 ns` (`SeqlockTelemetryRing` & `iceoryx2` SHM) | `< 1.0 ms` fallback WebSocket (`127.0.0.1:8080`)
 - **Budget Token Context-Mode (`FastMCP stdio`)**: $< 150\text{ token}$ ($\le 600\text{ byte}$ JSON serializzato per risposta)
 - **Politica Rust 2024 Strict Mode**: Zero `.unwrap()`, zero `.expect()` nel codice di produzione (`crates/*/src/`), `thiserror` per tutti i crate di libreria (`1..6`), `anyhow` esclusivamente nel binario `crates/ares-server-cli`.
 
@@ -69,6 +69,27 @@ flowchart TD
         F20["Fase 20 (I3): Unified 24-Dataset Knowledge Graph Builder, graphify JSON Exporter & FastMCP Tools"]
     end
 
+    subgraph Blocco_J["BLOCCO J: ARES-MedOS Pure-Rust Workstation Shell, Zero-Copy IPC & Multi-Tier Space OS Targets"]
+        F21["Fase 21 (J1): 128B #[repr(C, align(64))] BinaryTelemetryFrame, Validity Mask & Seqlock/iceoryx2 SHM (< 100 ns)"]
+        F22["Fase 22 (J2): crates/ares-desktop-os Tauri v2 Native Shell (Metal/Vulkan, In-Process 8-Crate + 127.0.0.1:8080)"]
+        F23["Fase 23 (J3): OsSystemStatusBar (#000000 OLED), Alt+Space/Cmd+K FastMCP Palette & Dual-Transport DataView"]
+        F24["Fase 24 (J4): Tier B/C Targets (Asterinas 14% TCB, COSMIC Wayland Kiosk, Hubris/Embassy 32B CRC-16 Wearable)"]
+    end
+    subgraph Blocco_K["BLOCCO K: System-Wide Verification, Clinical Chaos & NASA-STD-3001 Certification Harness"]
+        F25["Fase 25 (K1): proptest Mathematical ODEs, Monotone DHF Quantiles & 16B/32B/128B Binary Struct Parity"]
+        F26["Fase 26 (K2): Clinical Chaos Engineering, Sensor Dropouts, Deep-Space SEU Bit-Flips & Vault Tamper"]
+        F27["Fase 27 (K3): Full-Stack Contract (Rust <-> TS DataView), 1Hz/20Hz Dual-Clock & FastMCP POST /api/mcp E2E"]
+        F28["Fase 28 (K4): NASA-STD-3001 Vol. 1 & 2 Normative Traceability Matrix & Hard Real-Time Latency/RAM Harness"]
+    end
+    subgraph Blocco_L["BLOCCO L [COMPLETED (TESTED)]: Gap Closure, Operational Deployment, Edge AI Copilot, Calibration & NASA Submission"]
+        F29["Fase 29 (L1): Cockpit Live Playbook/Safety Gates, Multi-Horizon Timestral Cones & 3D UBERON/GLB Binding"]
+        F30["Fase 30 (L2): Native Tauri v2 Window (Metal/Vulkan), Channel<Response> 128B & Real iceoryx2/Zenoh SHM"]
+        F31["Fase 31 (L3): Pure-Rust Level-1 GATHER DSP (60GHz/5.2GHz Radar, YIN Vocal & 125-500Hz Pan-Tompkins R-R)"]
+        F32["Fase 32 (L4): Air-Gapped Edge LLM Copilot, Offline Voice (whisper-rs/WebSpeech) & SafeTensors Loader"]
+        F33["Fase 33 (L5): Subject-Disjoint Clinical Calibration (CQR/Clopper-Pearson/ECE), Parquet Adapters & Issue #12"]
+        F34["Fase 34 (L6): Deterministic NASA 2026 Submission Bundle (7-Slide Typst PDF, 30s/180s SRT & Issue #12 Guard)"]
+    end
+
     F1 --> F2
     F2 --> F3
     F2 --> F5
@@ -84,6 +105,37 @@ flowchart TD
     F7 --> F18 --> F19 --> F20
     F17 --> F13
     F20 --> F14
+    F1 --> F21
+    F13 --> F21
+    F21 --> F22 --> F23
+    F14 --> F22
+    F20 --> F23
+    F3 --> F24
+    F21 --> F24
+    F5 --> F25
+    F16 --> F25
+    F21 --> F25
+    F24 --> F26
+    F12 --> F26
+    F23 --> F27
+    F20 --> F27
+    F25 --> F28
+    F26 --> F28
+    F27 --> F28
+    F28 --> F29
+    F28 --> F30
+    F28 --> F31
+    F29 --> F30
+    F30 --> F32
+    F14 --> F32
+    F17 --> F32
+    F31 --> F33
+    F20 --> F33
+    F16 --> F33
+    F29 --> F34
+    F30 --> F34
+    F32 --> F34
+    F33 --> F34
 ```
 
 ---
@@ -378,7 +430,143 @@ flowchart TD
 
 ---
 
-## 3. Matrice Riassuntiva di Tracciamento dei 9 Blocchi / 20 Fasi e Link ai Piani Implementativi (`docs/plans/phase_*.md`)
+### BLOCCO J — `ARES-MedOS`: Pure-Rust Mission Workstation OS Shell, Zero-Copy IPC & Multi-Tier Space OS Partitioning (`1. GATHER` -> `3. ACT` UX & OS Layer)
+* **Crate / Target:** `crates/ares-core-types`, `crates/ares-telemetry-ingest`, `crates/ares-server-cli`, `crates/ares-desktop-os` *(NEW — 8o crate)*, `ares-cockpit/`, `deploy/medos/`
+* **Owner Principale:** `@fabiomalagutti27-droid` (con integrazione `@fertech02`, `@carolina2910`, `@LelloXV`, `@MiServeRDC`)
+* **Studio Architetturale di Riferimento:** [`docs/architecture/RUST_OS_AND_SHELL_FEASIBILITY_STUDY.md`](../architecture/RUST_OS_AND_SHELL_FEASIBILITY_STUDY.md)
+
+#### Fase 21 (`J1`): Zero-Copy Binary Telemetry Protocol (`#[repr(C, align(64))]` `BinaryTelemetryFrame`), Validity Bitmask (`BEAT_INTERVALS_NOT_AVAILABLE`), and Shared-Memory Ring Buffer (`iceoryx2` / Lock-Free SPMC Seqlock Pattern)
+* **Stato:** `[x] COMPLETED (TESTED)` (Piano: [`docs/plans/phase_21_J1_zero_copy_binary_ipc_shm_protocol.md`](phase_21_J1_zero_copy_binary_ipc_shm_protocol.md))
+* **File Target:**
+  * `crates/ares-core-types/src/binary_ipc.rs`
+  * `crates/ares-server-cli/src/shm_bus.rs` (`--features shm-ipc`)
+* **Specifica Tecnica:**
+  * Frame binario fisso da `128` byte (`#[repr(C, align(64))] BinaryTelemetryFrame`, Castagnoli `CRC-32C` byte `104..108`) con `validity_mask: u32` e `quality_flags_mask: u32` che preservano la nullabilita `Option<f64>::None` (`BEAT_INTERVALS_NOT_AVAILABLE` Issue `#11` e `ILLUSTRATIVE_UNVALIDATED` Issue `#12`), piu `SeqlockTelemetryRing<N>` lock-free SPMC (`< 100 ns`).
+
+#### Fase 22 (`J2`): Pure-Rust Native Mission Workstation Shell (`crates/ares-desktop-os` on `Tauri v2` + Apple Silicon Metal / Linux Vulkan + In-Process 8-Crate Runtime)
+* **Stato:** `[x] COMPLETED (TESTED)` (Piano: [`docs/plans/phase_22_J2_ares_desktop_os_tauri_native_shell.md`](phase_22_J2_ares_desktop_os_tauri_native_shell.md))
+* **File Target:**
+  * `crates/ares-desktop-os/Cargo.toml`, `tauri.conf.json`, `build.rs`, `src/lib.rs`, `src/ipc_bridge.rs`, `src/main.rs`
+* **Specifica Tecnica:**
+  * Singolo eseguibile nativo (`~30–50 MB` RAM idle, `WKWebView` Metal / `WebKitGTK` / `WebView2`) con `SharedMissionState` in-process, `tauri::ipc::Channel<Response>` (`InvokeResponseBody::Raw` `< 0.05 ms`), server parallelo `127.0.0.1:8080` (`/api/os-status`, `/api/binary-frame`, `/api/mcp`), CSP zero-cloud `default-src 'self'`, feature gate `tauri-runtime` per CI headless e `--mode desktop-smoke-test`.
+
+#### Fase 23 (`J3`): `ARES-MedOS` System Chrome Status Bar, `Alt+Space` (`Cmd+K`) Native FastMCP Command Palette, and Dual-Transport Frontend Bridge (`ares-cockpit/`)
+* **Stato:** `[x] COMPLETED (TESTED)` (Piano: [`docs/plans/phase_23_J3_os_chrome_fastmcp_palette_dual_transport.md`](phase_23_J3_os_chrome_fastmcp_palette_dual_transport.md))
+* **File Target:**
+  * `ares-cockpit/src/lib/binaryTelemetryDecoder.ts`
+  * `ares-cockpit/src/lib/useTelemetry.ts`
+  * `ares-cockpit/src/modules/os-shell/OsSystemStatusBar.tsx` & `OsCommandPalette.tsx`
+* **Specifica Tecnica:**
+  * Auto-rileva `TAURI_NATIVE_IPC` (decoder `DataView` `< 10 µs` su `ArrayBuffer` 128 B + `computeCrc32c`) vs `BROWSER_WEBSOCKET` (`ws://127.0.0.1:8080` + `POST /api/mcp`), aggiunge la barra sistema `#000000` OLED (Sol clock, OWLT Marte `4–24 min`, partizioni `ARINC 653`, zona deontica habitat, radiazione `CANS`) e la palette `Alt+Space`/`Cmd+K` per tutti gli 8 tool `FastMCP`.
+
+#### Fase 24 (`J4`): Tier B & Tier C Aerospace OS Deployment Target Descriptors (`Asterinas` Framekernel Kiosk Container, `System76 COSMIC` Wayland Kiosk Policy, and `Oxide Hubris` / `Embassy` Wearable Sensor Node Framing)
+* **Stato:** `[x] COMPLETED (TESTED)` (Piano: [`docs/plans/phase_24_J4_asterinas_framekernel_hubris_wearable_targets.md`](phase_24_J4_asterinas_framekernel_hubris_wearable_targets.md))
+* **File Target:**
+  * `crates/ares-telemetry-ingest/src/wearable_packet.rs`
+  * `deploy/medos/asterinas_framekernel_kiosk.toml`, `cosmic_wayland_kiosk.ron`, `hubris_wearable_app.toml`
+  * `scripts/launch_ares_medos.sh`
+* **Specifica Tecnica:**
+  * Framing `WearableSensorPacket` (`32` byte `#[repr(C)]`, CRC-16-CCITT, `supervisor_restart_count` SEU da `Oxide Hubris`), manifesti dichiarativi Tier B (`Asterinas` `14.0%` TCB + `cosmic-comp` kiosk `120 Hz` `wgpu`) e launcher unificato a 1 comando.
+
+---
+
+### BLOCCO K — System-Wide Verification, Clinical Chaos Engineering & `NASA-STD-3001` Certification Harness (`Fasi 25–28`)
+* **Architettura Master & Matrice Cross-Crate:** [`docs/plans/BLOCK_K_SYSTEM_TESTING_ARCHITECTURE.md`](BLOCK_K_SYSTEM_TESTING_ARCHITECTURE.md)
+* **Crate / Target:** Workspace completo (8 crate Rust + `ares-cockpit/` + `contracts/fixtures/` + `deploy/medos/` + `scripts/agent_probe.sh`)
+* **Owner Principale:** `@fabiomalagutti27-droid` (`test-architect-verifier` con `@MiServeRDC`, `@LelloXV`, `@fertech02`, `@carolina2910`)
+
+#### Fase 25 (`K1`): Mathematical, Dimensional & Property-Based Verification Suite (`proptest` / Algebraic Invariants Across ODEs, STL, Timestral Quantiles & Binary Layouts)
+* **Stato:** `[x] COMPLETED (TESTED)` (`12` K1 tests across `ares-core-types`, `ares-causal-graph`, `ares-nqs-stl`; Piano: [`docs/plans/phase_25_K1_property_based_numerical_ode_stl_verification.md`](phase_25_K1_property_based_numerical_ode_stl_verification.md))
+* **Specifica Tecnica:**
+  * Test deterministici property-based per Richardson extrapolation $O(h^4)$ sulla ODE Frost-Hargens RK4 (`1,000` conservation trials), omogeneita dimensionale Poiseuille-Womersley $\tau_w(t)$ (`1,000` trials), non-crossing stretto $q_{0.05} \le q_{0.50} \le q_{0.95}$ su `10,000` traiettorie `QuantileHead`, equivalenza `LemireMinWedge` su `2,000` sequenze, e layout/endianness `16 B` / `32 B` / `128 B` + `SeqlockTelemetryRing<64>` SPMC multi-lap (`4,096` frames).
+
+#### Fase 26 (`K2`): Clinical Chaos Engineering, Multi-Channel Sensor Dropout & Deep-Space SEU Radiation Fault-Injection Suite
+* **Stato:** `[x] COMPLETED (TESTED)` (`6` K2 chaos/SEU/crypto tests across `ares-telemetry-ingest`, `ares-security-privacy`, plus `ares-nqs-stl`; Piano: [`docs/plans/phase_26_K2_clinical_chaos_sensor_dropout_seu_fault_injection.md`](phase_26_K2_clinical_chaos_sensor_dropout_seu_fault_injection.md))
+* **Specifica Tecnica:**
+  * Scenari di fault injection per dropout (`NaN`, `Inf`, `None`, ZOH `30s` hold/expiry fix in `sqi_filter.rs` e `scenario_overlay.rs`, `BEAT_INTERVALS_NOT_AVAILABLE` su `481` righe `bidmc_01`), SEU exhaustive + randomized bit-flip su `WearableSensorPacket` (CRC-16) + 5 Hubris restart increments, `BiomedicalEvidenceDescriptor` (CRC-8), `BinaryTelemetryFrame` (CRC-32C), drift `ConformalAbstentionGate`, AEAD `ChaCha20-Poly1305` bit-flip rejection, `Sha256AuditLogger` tamper pinpointing su `100` entry, e `StrictMcpSanitizer` `<untrusted_telemetry_observation>`.
+
+#### Fase 27 (`K3`): Full-Stack End-to-End Contract, Dual-Transport IPC (`BinaryTelemetryFrame` <-> TypeScript `DataView`), 24-Dataset Graph & `FastMCP` Verification Suite
+* **Stato:** `[x] COMPLETED (TESTED)` (`3` E2E tests in `phase_27_k3_cross_language_e2e.rs` & `phase_27_k3_http_ws_mcp_contract.rs`; Piano: [`docs/plans/phase_27_K3_full_stack_contract_cockpit_ipc_mcp_e2e.md`](phase_27_K3_full_stack_contract_cockpit_ipc_mcp_e2e.md))
+* **Specifica Tecnica:**
+  * Parity binaria bit-exact cross-language Rust `BinaryTelemetryFrame::to_le_bytes()` <-> TypeScript `decodeBinaryTelemetryFrame` (`ares-cockpit/src/lib/binaryTelemetryDecoder.ts` via `node --experimental-strip-types` su frame nominale, degradato `null`-preserved, SPE critico, e rejection 1-bit flip), invarianza dual-clock `1 Hz`/`20 Hz` + cursor invariance `POST /api/stress-test`, completezza 24-dataset `AresUnifiedDatasetGraph`, e verifica live Axum HTTP/WS (`GET /api/snapshot`, `GET /api/os-status`, `GET /api/binary-frame`, `/ws/telemetry`, `POST /api/mcp`) across all `8` tool `FastMCP` (`<= 600 B`, `< 150` token).
+
+#### Fase 28 (`K4`): `NASA-STD-3001 Vol. 1 & Vol. 2` Normative Traceability Matrix & Hard Real-Time Latency/Memory Certification Harness
+* **Stato:** `[x] COMPLETED (TESTED)` (`2` certification tests in `phase_28_k4_nasa_std_3001_bench.rs` + `scripts/run_block_k_suite.sh`; Piano: [`docs/plans/phase_28_K4_nasa_std_3001_compliance_latency_memory_benchmark.md`](phase_28_K4_nasa_std_3001_compliance_latency_memory_benchmark.md))
+* **Specifica Tecnica:**
+  * Matrice di tracciabilita automatizzata (`[V1 3001]`–`[V1 4001]`, `[V2 6001]`–`[V2 10152]`) e benchmark `--release` (`N=1,000`): `SeqlockTelemetryRing::read_latest_bytes` (`p50=42.0 ns, p99=42.0 ns, p99.9=84.0 ns`), `read_latest`+CRC32C (`p50=791.0 ns, p99=916.0 ns, p99.9=959.0 ns`), `DatasetGraph` query (`p50=16.25 µs, p99.9=70.83 µs`), shortest path (`p50=16.33 µs, p99.9=31.21 µs`), `BioKG` O(1) (`p50=41.0 ns, p99.9=83.0 ns`), End-to-End 1-tick pipeline (`p50=2.12 µs, p99=2.25 µs, p99.9=5.58 µs`), compattatore 900-Sol (`167,352 B < 200 KB`), e `AresUnifiedDatasetGraph` (`RAM_est=196,264 B < 10 MB`, `JSON=122,023 B < 15 MB`).
+
+---
+
+### BLOCCO L — Gap Closure, Operational Deployment, Edge AI Copilot, Clinical Calibration & NASA Space Apps 2026 Submission (`Fasi 29–34`)
+* **Architettura Master & Matrice Cross-Crate:** [`docs/plans/BLOCK_L_GAP_CLOSURE_ARCHITECTURE.md`](BLOCK_L_GAP_CLOSURE_ARCHITECTURE.md)
+* **Crate / Target:** Workspace completo (`ares-core-types`, `ares-telemetry-ingest`, `ares-causal-graph`, `ares-nqs-stl`, `ares-server-cli`, `crates/ares-desktop-os`), `ares-cockpit/`, `assets/models/`, `docs/submission/`, `scripts/`
+* **Owner Principale:** `@fabiomalagutti27-droid` (coordinato con `@carolina2910`, `@fertech02`, `@LelloXV`, `@MiServeRDC`)
+
+#### Fase 29 (`L1`): Authoritative Cockpit Live-Engine Bindings, Multi-Horizon `Timestral` Quantile Cones & 3D `UBERON:` / Air-Gapped `.glb` Visualization (`ares-cockpit/`)
+* **Stato:** `[x] COMPLETED (TESTED)` (`ares-cockpit` `npm run lint` + `vite build`, `15/15` Node tests across `7` suites; Piano: [`docs/plans/phase_29_L1_cockpit_live_bindings_3d_cones.md`](phase_29_L1_cockpit_live_bindings_3d_cones.md))
+* **Specifica Tecnica:**
+  * Collega `PlaybookRunner.tsx` direttamente a `WireActivePlaybook` (`PLAYBOOK_01..05` + Gate 1/2/3 + conferma POCUS bidirezionale via `POST /api/stress-test` / `apply_what_if_patch`, touch target `>= 44x44 pt` su `#000000` OLED per `MIL-STD-1472H`).
+  * Collega `StlChart` (`MriAndStl.tsx`) a `NqsQuantileForecastSnapshot` (`+15m / +1h / +6h / +24h` log-scaled non-crossing $q_{0.05} \le q_{0.50} \le q_{0.95}$ + `ConformalAbstentionGate`, guardia Issue `#11` `rmssd_ms_cone: null` -> `BEAT_INTERVALS_NOT_AVAILABLE`, etichette Issue `#12` `ILLUSTRATIVE_UNVALIDATED` / `ILLUSTRATIVE_SCENARIO_RANGE`).
+  * Collega `BodyHeatmap.tsx` & `AnatomicalLayers.tsx` a `hypergraph_spatial.cells` (`UBERON:0000970/0001586/0000948/0001389/0000955`, distinzione `observed: false` su `UBERON:0000948`, 6 archi di conduzione) + `NasaGlbAssetLayer.tsx` locale air-gapped (`GLTFLoader` + guardia magic `0x46546C67` anti-HTML fallback, CSP `'self'`).
+
+#### Fase 30 (`L2`): Native `Tauri v2` Workstation Window (`WKWebView`/Metal & `WebKitGTK`/Vulkan), Real POSIX SHM `iceoryx2` + `Zenoh` DSN IPC & macOS `.app` Bundle
+* **Stato:** `[x] COMPLETED (TESTED)` (`phase_30_l2_tauri_bridge` `4/4` default + `5/5` `--features tauri-runtime`, `phase_30_l2_shm_zenoh_ipc` `4/4` `--features shm-ipc`, `clippy --features "tauri-native,shm-ipc,offline-voice"`, `./scripts/launch_ares_medos.sh --verify`; Piano: [`docs/plans/phase_30_L2_tauri_native_window_iceoryx2_ipc.md`](phase_30_L2_tauri_native_window_iceoryx2_ipc.md))
+* **Specifica Tecnica:**
+  * Completa `crates/ares-desktop-os` (`default=[]`, `tauri-runtime` headless CI, `tauri-native` GUI con `build.rs`, `capabilities/default.json`, `icons/`, Thread-0 AppKit/GTK isolato da Tokio, `ipc_bridge.rs` con `Channel<Response>` `InvokeResponseBody::Raw` `128 B` `< 50 us` e `resolve_medos_data_dir` per `ARES-MedOS.app`).
+  * Implementa `crates/ares-server-cli/src/shm_bus.rs` (`--features shm-ipc`) con `Iox2TelemetryFrame` (`iceoryx2::ZeroCopySend` `loan_uninit()` `< 100 ns`), `ZenohDsnAdapter` air-gapped con `OwltMarsCommState` (`852 s` + blackout outbox) e `NonBlockingShmDsnDispatcher::try_dispatch` (`< 150 ns` `ARINC 653`) in `ws_server.rs`, piu estensione `scripts/launch_ares_medos.sh` (`--native`, `--bundle-macos`, `--bundle-linux`, `--verify`).
+
+#### Fase 31 (`L3`): Pure-Rust Level-1 `GATHER` DSP Modules (`radar_csi_dsp`, `vocal_acoustic_dsp` & `waveform_rr_extractor` `125–500 Hz`)
+* **Stato:** `[x] COMPLETED (TESTED)` (`phase_31_l3_gather_dsp` `7/7` + `ares-telemetry-ingest` `20/20`; Piano: [`docs/plans/phase_31_L3_gather_radar_vocal_waveform_dsp.md`](phase_31_L3_gather_radar_vocal_waveform_dsp.md))
+* **Specifica Tecnica:**
+  * Implementa in `crates/ares-telemetry-ingest/src/` senza allocazioni heap nel loop (`< 15 us`, `< 28 KB`/astronauta): `radar_csi_dsp.rs` (`60 GHz`/`5.2 GHz` $\Delta\phi = 4\pi d/\lambda$, clutter EMA, banco SOS biquad DF2T notch `60/120 Hz` con verifica di Jury e guardia Nyquist, `SQI >= 0.70`), `vocal_acoustic_dsp.rs` (`YIN` $F_0$ + interpolazione parabolica, jitter, shimmer, `HNR`, spectral tilt, VAD `pause_ratio`, rigoroso `None` su silenzio/non vocalizzato), e `waveform_rr_extractor.rs` (`125–500 Hz` Pan-Tompkins + filtro ectopia di Malik $\pm 20\%$).
+  * Integra `GatherDspOverlay` in `scenario_overlay.rs` rispettando in modo assoluto Issue `#11`: `BidmcReplayer` (`1 Hz` numerico) resta sempre `rmssd_ms: None` + `BEAT_INTERVALS_NOT_AVAILABLE`, mentre solo stream waveform reali `125–500 Hz` possono popolare `Some(rmssd_ms)` via `SqiFilter::evaluate_row_with_rmssd`.
+
+#### Fase 32 (`L4`): Local Conversational Edge LLM + Voice-First Copilot & Cryptographically Verified `Timestral` `SafeTensors` Loader
+* **Stato:** `[x] COMPLETED (TESTED)` (`phase_32_l4_safetensors_loader` `4/4` default & `--features candle-safetensors`, `phase_32_l4_edge_llm_copilot` `5/5`, `phase32_voice_l4.test.ts` Node suite; Piano: [`docs/plans/phase_32_L4_edge_llm_voice_copilot_safetensors.md`](phase_32_L4_edge_llm_voice_copilot_safetensors.md))
+* **Specifica Tecnica:**
+  * `crates/ares-nqs-stl/src/timestral_safetensors.rs`: deserializzazione zero-copy `SafeTensors` (`F32`/`BF16` $\to$ `f64`, backend opzionale `--features candle-safetensors`) con verifica `SHA-256` contro `assets/models/MANIFEST.json` (`< 5 ms`) e fallback automatico pulito a `new_deterministic`, preservando `ModelValidationStatus::IllustrativeUnvalidated`.
+  * `crates/ares-server-cli/src/edge_llm_bridge.rs`: bridge HTTP/1.1 asincrono su loopback `127.0.0.1` / `MACMINI_LLM_URL` RFC1918 (`<= 2500 ms` timeout, max `2` round tool-calling sui soli `8` tool `FastMCP` `<= 600 B` filtrati da `StrictMcpSanitizer`, verificatore post-generazione dei Safety Gates 1–3 in stile `DO-178C` DAL-E + fallback Type-1 `OfflineTemplateCopilot` `< 400 us`), esposto su `POST /api/copilot/ask` & `/stream` (`0 ns` impatto sul tick `20 Hz`).
+  * `crates/ares-desktop-os/src/voice_whisper.rs` (`--features offline-voice`, `whisper-rs` GGML `~31–57 MB`, `< 350 ms` su `3 s` PCM16) + `ares-cockpit/src/lib/voiceIntentRouter.ts` & `OsVoiceCopilot.tsx` (Push-To-Talk `Space`/`Alt+V`, wake-word `"ARES"`, interlock `[V2 10027]`, target `>= 44x44 pt` `[V2 10001]`).
+
+#### Fase 33 (`L5`): Subject-Disjoint Clinical Calibration, Conformal Coverage Audit & Multi-Agency Parquet Dataset Adapters (Issue `#12` Closure)
+* **Stato:** `[x] COMPLETED (TESTED)` (`phase_33_l5_parquet_adapters` `6/6` default & `--features parquet-ingest`, `phase_33_l5_calibration_and_anti_leakage` `4/4`, `ares-calibrate --verify-only` exit `0`; Piano: [`docs/plans/phase_33_L5_clinical_calibration_24dataset_parquet.md`](phase_33_L5_clinical_calibration_24dataset_parquet.md))
+* **Specifica Tecnica:**
+  * `crates/ares-causal-graph/src/parquet_adapters.rs` (`--features parquet-ingest` con `arrow-array`/`parquet` pure-Rust + fallback CSV/TSV/WFDB): adapter per `BIDMC`, `PhysioNet Fantasia/CEBS/PPG-DaLiA`, `NASA OSDR` e `DLR AGBRESA/SANS-CM` con stato `AdapterStatus::ExternalDatasetNotBundled` se assenti su disco (`0` nodi sintetici).
+  * `crates/ares-nqs-stl/src/calibration_harness.rs` & `crates/ares-server-cli/src/bin/ares_calibrate.rs`: partizionamento `SubjectDisjointSplit` con 4 guardie anti-leakage, calibrazione split-conformal `CQR`, baseline `Persistence` & `RollingMedianIqr`, intervalli esatti di Clopper-Pearson, Winkler/Pinball/Brier/ECE su `10` bin, sensibilita RK4 oltre `60` giorni (`mechanotransduction.rs`) e audit gap `(0.45, 0.92)` (`bayesian_pocus.rs`).
+  * Macchina a stati `ModelValidationStatus` (`IllustrativeUnvalidated` default -> `InternallyBenchmarkedTerrestrial` -> `ClinicallyCalibratedSubjectToReview`) e flag `FLAG_TERRESTRIAL_BENCHMARKED_ONLY` in `ares-core-types`: vieta rigorosamente l'upgrade su dati sintetici.
+
+#### Fase 34 (`L6`): Deterministic NASA Space Apps 2026 Submission Package (7-Slide OLED Typst PDF, 30s/180s Storyboards & `.srt`, Issue `#12` Guard)
+* **Stato:** `[x] COMPLETED (TESTED)` (`./scripts/build_submission_docs.sh` `6/6` L6 gates `[PASSED]`; Piano: [`docs/plans/phase_34_L6_nasa_submission_pitch_slides_pdf.md`](phase_34_L6_nasa_submission_pitch_slides_pdf.md))
+* **Specifica Tecnica:**
+  * Genera e verifica in modalita offline bit-riproducibile (`typst 0.15.1` + `SOURCE_DATE_EPOCH`): `docs/submission/NASA_2026_7_SLIDE_DECK.typ`/`.pdf` (esattamente `7` pagine `16:9` `#000000` OLED), `PITCH_30S_STORYBOARD.md` + `PITCH_30S_SUBTITLES_EN.srt` (`<= 00:00:30,000`), `WALKTHROUGH_180S_DEMO_SCRIPT.md` + `WALKTHROUGH_180S_SUBTITLES_EN.srt` (`<= 00:03:00,000`), `NASA_SUBMISSION_PORTAL_READY.md` (zero `file://`), e rigenera `PANORAMICA_GENERALE_PROGETTO.md`/`.pdf` sincronizzato ai Blocchi `A–L` e a `MODEL_EVIDENCE_AUDIT.md`.
+  * Introduce `scripts/build_submission_docs.sh` con `6` gate automatici CI (`L6-01..L6-06`): compilazione Typst, doppio oracolo `N_pages == 7`, validazione sintattica/temporale `.srt`, zero emoji, audit semantico Issue `#11`/`#12`, e link-checker + `agent_probe.sh --fast` (`< 2.5 s`).
+
+---
+
+### BLOCCO M: 3-Tier LSAH Persistence Engine (`Issue #26`), Multi-Branch Team Unification & End-to-End Flight-Readiness Verification (`Fasi 35–37`)
+* **Architettura di Riferimento:** [`docs/plans/BLOCK_M_GAP_CLOSURE_ARCHITECTURE.md`](BLOCK_M_GAP_CLOSURE_ARCHITECTURE.md) | **Valutazione Multi-Branch (`M2`):** [`docs/plans/BLOCK_M_MULTI_BRANCH_MERGE_EVALUATION_AND_PATCH_PLAN.md`](BLOCK_M_MULTI_BRANCH_MERGE_EVALUATION_AND_PATCH_PLAN.md)
+* **Obiettivo:** Introdurre il **9° crate `crates/ares-storage-lsah`** per la persistenza clinica longitudinale a 3 tier (**GitHub Issue `#26`** di `@MiServeRDC`: Hot Ring Buffer zero-alloc `60–300 s @ 20 Hz`, Warm Columnar/Vector Store modulare con ricerca ANN `HNSW` su firme ecografiche POCUS `Sol 180` vs `Sol 1`, e Cold Archive `ChaCha20-Poly1305` con nonce monotono + `Sha256AuditLogger` `AAD` + `DsnDownlinkOutbox`), unificare i `4` branch di sviluppo del team su `main` preservando rigorosamente Issue `#11` e Issue `#12`, e certificare l'intero stack a `9` crate + `53` soggetti `BIDMC` + `5` mesh 3D `.glb` + pacchetto `Typst`.
+
+#### Fase 35 (`M1`): 3-Tier LSAH Persistence Engine — Hot Zero-Alloc Ring, Modular Arrow/LanceDB+HNSW Warm Store & Cold AEAD DSN Archive (`Issue #26`)
+* **Stato:** `[x] COMPLETED (TESTED)` (Piano: [`docs/plans/phase_35_M1_lsah_3tier_persistence_issue26.md`](phase_35_M1_lsah_3tier_persistence_issue26.md))
+* **Specifica Tecnica:**
+  * Nuovo crate `crates/ares-storage-lsah` (`#![forbid(unsafe_code)]`, zero `.unwrap()`/`.expect()`): `HotLsahSlot` (`256 B`, `#[repr(C, align(64))]`, `Copy`, `0` allocazioni heap post-init, `< 250 ns`) + `WarmStagingSwapBuffer` wait-free (`200x` riduzione usura NAND flash, isolamento dai picchi `fsync()` SSD).
+  * Trait `WarmColumnarVectorBackend`: backend nativo default `ArrowIpcZstdHnswBackend` (`arrow-array`/`arrow-ipc`/`arrow-schema` `58.4.0` + `zstd 0.13.3` + `HnswVectorIndex` deterministico pure-Rust; `62` crate `100%` offline, `0` crate HTTP) + backend opzionale `--features lancedb-warm` (`lancedb 0.40.0` con guardia air-gap `validate_airgapped_lsah_dir()`), bitmap `NULL` nativi per Issue `#11`, e firme POCUS `128-D`/`256-D` marcate `ProceduralBModeSimulation` + `IllustrativeUnvalidated` con **Hard Gate 1** bloccato (Issue `#12`).
+  * `ColdTierArchiver` (`ChaCha20-Poly1305` nonce monotono `(key_epoch_id, mission_sol, chunk_seq)` + `AAD` bidirezionale su `Sha256AuditLogger` + `DsnDownlinkOutbox`), route Axum `/api/lsah/*`, dispatch `FastMCP` (`<= 600 B`, mantenendo `tools/list == 8`) e pannello OLED `PocusLongitudinalHistory.tsx`.
+
+#### Fase 36 (`M2`): Multi-Branch Team Unification onto `main` (`fertech02`, `MiServeRDC`, `carolina2910`, `LelloXV`)
+* **Stato:** `[x] COMPLETED (TESTED)` (Piani: [`docs/plans/phase_36_M2_branch_unification_merge.md`](phase_36_M2_branch_unification_merge.md) & [`docs/plans/BLOCK_M_MULTI_BRANCH_MERGE_EVALUATION_AND_PATCH_PLAN.md`](BLOCK_M_MULTI_BRANCH_MERGE_EVALUATION_AND_PATCH_PLAN.md))
+* **Specifica Tecnica:**
+  * Unifica controllatamente `work/fertech02` (`vitals_anomaly.rs`, `ewma_forecaster.rs`, `VitalsAnomalyPanel.tsx`, `50` CSV `data/bidmc_eval/bidmc_04..53_Numerics.csv` + `MANIFEST.json`), `work/MiServeRDC` (`5` mesh 3D Z-Anatomy `.glb` `CC-BY-SA-4.0` in `ares-cockpit/public/anatomy/` + `MANIFEST.json` + `AtlasBody.tsx`), `work/carolina2910` (`AiInjuryModal.tsx`, `vlmInjuryEngine.ts` air-gapped, `Imaging.tsx`, `BodyHeatmap.tsx`), e `work/LelloXV` (`1 Hz` native BIDMC replay cadence), preservando tutti i binding live `L1–L6`, zero `.unwrap()` e Issue `#11`/`#12`.
+
+#### Fase 37 (`M3`): End-to-End LSAH Database, Unified Multi-Branch Cockpit, `agent_probe.sh` & Typst Submission Certification
+* **Stato:** `[x] COMPLETED (TESTED)` (Piano: [`docs/plans/phase_37_M3_end_to_end_db_cockpit_verification.md`](phase_37_M3_end_to_end_db_cockpit_verification.md))
+* **Specifica Tecnica:**
+  * Esegue la batteria di certificazione finale a `8` gate (`M3-G01..M3-G08`): `agent_probe.sh` esteso a `9` crate + `53` CSV `BIDMC` + `5` `.glb`, chaos/restart/tamper E2E su `ares-storage-lsah`, calibrazione `SubjectDisjointSplit` anti-leakage su `53` soggetti, contratti HTTP/WS/`FastMCP`/`128 B` IPC, test UI Cockpit unificato, benchmark `--release` `p99.9 < 150 µs` sotto I/O concorrente e rigenerazione deterministica `Typst 0.15.1`.
+
+---
+
+## 3. Matrice Riassuntiva di Tracciamento dei 12 Blocchi / 34 Fasi e Link ai Piani Implementativi (`docs/plans/phase_*.md`)
 
 | Blocco | Fase | Piano Implementativo Dedicato (`docs/plans/`) | Crate Target | Owner | Latenza / Footprint Target | Stato |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -402,12 +590,29 @@ flowchart TD
 | **Blocco I (Core)** | **Fase 18 (`I1`)** | [`phase_18_I1_welford_longitudinal_compaction_spatial_deontic.md`](phase_18_I1_welford_longitudinal_compaction_spatial_deontic.md) | `crates/ares-causal-graph` | `@fabiomalagutti27-droid` | `< 18 µs` / `< 200 KB` (900d) | `[x] COMPLETED (TESTED)` |
 | **Blocco I (Core)** | **Fase 19 (`I2`)** | [`phase_19_I2_biokg_16byte_descriptor_epistemic_reasoner.md`](phase_19_I2_biokg_16byte_descriptor_epistemic_reasoner.md) | `crates/ares-causal-graph` & `ares-medops-playbooks` | `@fabiomalagutti27-droid` | `< 5 µs` (`16 B #[repr(C)]`) | `[x] COMPLETED (TESTED)` |
 | **Blocco I (Core)** | **Fase 20 (`I3`)** | [`phase_20_I3_unified_dataset_graph_builder_graphify_mcp.md`](phase_20_I3_unified_dataset_graph_builder_graphify_mcp.md) | `crates/ares-causal-graph` & `ares-server-cli` | `@fabiomalagutti27-droid` & `@fertech02` | `< 12 µs` / `158,675 B` JSON | `[x] COMPLETED (TESTED)` |
+| **Blocco J (`ARES-MedOS`)** | **Fase 21 (`J1`)** | [`phase_21_J1_zero_copy_binary_ipc_shm_protocol.md`](phase_21_J1_zero_copy_binary_ipc_shm_protocol.md) | `crates/ares-core-types` & `ares-server-cli` | `@fabiomalagutti27-droid` & `@fertech02` | `< 100 ns` (`128 B` Seqlock/`iceoryx2`) | `[x] COMPLETED (TESTED)` |
+| **Blocco J (`ARES-MedOS`)** | **Fase 22 (`J2`)** | [`phase_22_J2_ares_desktop_os_tauri_native_shell.md`](phase_22_J2_ares_desktop_os_tauri_native_shell.md) | `crates/ares-desktop-os` | `@fabiomalagutti27-droid` & `@fertech02` | `< 0.05 ms` IPC / `~30–50 MB` RAM | `[x] COMPLETED (TESTED)` |
+| **Blocco J (`ARES-MedOS`)** | **Fase 23 (`J3`)** | [`phase_23_J3_os_chrome_fastmcp_palette_dual_transport.md`](phase_23_J3_os_chrome_fastmcp_palette_dual_transport.md) | `ares-cockpit/` | `@fabiomalagutti27-droid` & `@carolina2910` | `< 10 µs` `DataView` / `< 150` tok MCP | `[x] COMPLETED (TESTED)` |
+| **Blocco J (`ARES-MedOS`)** | **Fase 24 (`J4`)** | [`phase_24_J4_asterinas_framekernel_hubris_wearable_targets.md`](phase_24_J4_asterinas_framekernel_hubris_wearable_targets.md) | `crates/ares-telemetry-ingest` (`wearable_packet.rs`) & `deploy/medos/` | `@fabiomalagutti27-droid` & `@LelloXV` | `< 150 ns` CRC-16 (`32 B`) / `14%` TCB | `[x] COMPLETED (TESTED)` |
+| **Blocco K (Testing)** | **Fase 25 (`K1`)** | [`phase_25_K1_property_based_numerical_ode_stl_verification.md`](phase_25_K1_property_based_numerical_ode_stl_verification.md) | `ares-core-types`, `ares-causal-graph`, `ares-nqs-stl` | `@fabiomalagutti27-droid` (`impl-k1-k2-tests`) | `10,000` trajectories / `16B/32B/128B` | `[x] COMPLETED (TESTED)` |
+| **Blocco K (Testing)** | **Fase 26 (`K2`)** | [`phase_26_K2_clinical_chaos_sensor_dropout_seu_fault_injection.md`](phase_26_K2_clinical_chaos_sensor_dropout_seu_fault_injection.md) | `ares-telemetry-ingest`, `ares-nqs-stl`, `ares-security-privacy` | `@fabiomalagutti27-droid` (`impl-k1-k2-tests`) | `100%` SEU CRC-8/16/32C & ZOH/AEAD | `[x] COMPLETED (TESTED)` |
+| **Blocco K (Testing)** | **Fase 27 (`K3`)** | [`phase_27_K3_full_stack_contract_cockpit_ipc_mcp_e2e.md`](phase_27_K3_full_stack_contract_cockpit_ipc_mcp_e2e.md) | `ares-server-cli`, `ares-desktop-os`, `ares-cockpit/` | `@fabiomalagutti27-droid` (`impl-k3-k4-tests`) | `128 B` parity / `8` `FastMCP` `<= 600 B` | `[x] COMPLETED (TESTED)` |
+| **Blocco K (Testing)** | **Fase 28 (`K4`)** | [`phase_28_K4_nasa_std_3001_compliance_latency_memory_benchmark.md`](phase_28_K4_nasa_std_3001_compliance_latency_memory_benchmark.md) | Workspace (8 crates) & `NASA-STD-3001` | `@fabiomalagutti27-droid` (`impl-k3-k4-tests`) | `5.58 µs` `p99.9` / `167 KB` & `196 KB` | `[x] COMPLETED (TESTED)` |
+| **Blocco L (Gap Closure)** | **Fase 29 (`L1`)** | [`phase_29_L1_cockpit_live_bindings_3d_cones.md`](phase_29_L1_cockpit_live_bindings_3d_cones.md) | `ares-cockpit/` (`PlaybookRunner`, `MriAndStl`, `BodyHeatmap`) | `@carolina2910` & `@fabiomalagutti27-droid` | `< 16.6 ms` (`60 FPS`) / `< 1 ms` POCUS | `[x] COMPLETED (TESTED)` |
+| **Blocco L (Gap Closure)** | **Fase 30 (`L2`)** | [`phase_30_L2_tauri_native_window_iceoryx2_ipc.md`](phase_30_L2_tauri_native_window_iceoryx2_ipc.md) | `crates/ares-desktop-os` & `ares-server-cli` (`shm_bus.rs`) | `@fabiomalagutti27-droid` & `@fertech02` | `< 50 µs` IPC / `< 100 ns` `iceoryx2` / `< 150 ns` | `[x] COMPLETED (TESTED)` |
+| **Blocco L (Gap Closure)** | **Fase 31 (`L3`)** | [`phase_31_L3_gather_radar_vocal_waveform_dsp.md`](phase_31_L3_gather_radar_vocal_waveform_dsp.md) | `crates/ares-telemetry-ingest` (`radar_csi`, `vocal`, `rr`) | `@LelloXV` & `@fabiomalagutti27-droid` | `< 15 µs` DSP / `< 28 KB` per crew | `[x] COMPLETED (TESTED)` |
+| **Blocco L (Gap Closure)** | **Fase 32 (`L4`)** | [`phase_32_L4_edge_llm_voice_copilot_safetensors.md`](phase_32_L4_edge_llm_voice_copilot_safetensors.md) | `ares-nqs-stl`, `ares-server-cli`, `ares-desktop-os`, `ares-cockpit` | `@fabiomalagutti27-droid` & `@fertech02` | `0 ns` 20Hz / `< 2.5 s` LLM / `< 5 ms` SafeTensors | `[x] COMPLETED (TESTED)` |
+| **Blocco L (Gap Closure)** | **Fase 33 (`L5`)** | [`phase_33_L5_clinical_calibration_24dataset_parquet.md`](phase_33_L5_clinical_calibration_24dataset_parquet.md) | `ares-core-types`, `ares-causal-graph`, `ares-nqs-stl`, `ares-calibrate` | `@fabiomalagutti27-droid` & `@MiServeRDC` | `< 250 ms` CLI audit / `0` network | `[x] COMPLETED (TESTED)` |
+| **Blocco L (Gap Closure)** | **Fase 34 (`L6`)** | [`phase_34_L6_nasa_submission_pitch_slides_pdf.md`](phase_34_L6_nasa_submission_pitch_slides_pdf.md) | `docs/submission/`, `PANORAMICA_*`, `scripts/build_submission_docs.sh` | `@fabiomalagutti27-droid` (Team Review) | `< 2.5 s` Typst + 6 CI Gates | `[x] COMPLETED (TESTED)` |
+| **Blocco M (LSAH & Unification)** | **Fase 35 (`M1`)** | [`phase_35_M1_lsah_3tier_persistence_issue26.md`](phase_35_M1_lsah_3tier_persistence_issue26.md) | `crates/ares-storage-lsah`, `ares-server-cli`, `ares-cockpit` | `@MiServeRDC` & `@fabiomalagutti27-droid` | `< 330 ns` Hot (`0` alloc) / `< 260 µs` HNSW | `[x] COMPLETED (TESTED)` |
+| **Blocco M (LSAH & Unification)** | **Fase 36 (`M2`)** | [`phase_36_M2_branch_unification_merge.md`](phase_36_M2_branch_unification_merge.md) | `ares-telemetry-ingest`, `ares-nqs-stl`, `ares-cockpit/`, `data/bidmc_eval/` | `@fabiomalagutti27-droid`, `@fertech02`, `@MiServeRDC`, `@carolina2910`, `@LelloXV` | `53` BIDMC CSVs / `5` `.glb` (`26.75 MB`) | `[x] COMPLETED (TESTED)` |
+| **Blocco M (LSAH & Unification)** | **Fase 37 (`M3`)** | [`phase_37_M3_end_to_end_db_cockpit_verification.md`](phase_37_M3_end_to_end_db_cockpit_verification.md) | Workspace (`9` crates), `ares-cockpit/`, `scripts/agent_probe.sh`, `Typst` | `@fabiomalagutti27-droid` & `@MiServeRDC` (Full Team) | `p99.9 < 150 µs` (`--release` + I/O) / `8` Gates | `[x] COMPLETED (TESTED)` |
 
 ---
 
-## 4. Budget Computazionale di Latenza (`< 150 µs` Hot-Path) e Memoria (`ARES-HyperGraph` + `Timestral`)
+## 4. Budget Computazionale di Latenza (`< 150 µs` Hot-Path) e Memoria (`ARES-HyperGraph` + `Timestral` + `ARES-MedOS` + `Blocco L`)
 
-| Sottosistema / Blocco | Latenza Hot-Path (`20 Hz` Sync) | Latenza Background (`1 Hz` Async) | Footprint RAM In-Memory | Footprint Disco Locale |
+| Sottosistema / Blocco | Latenza Hot-Path (`20 Hz` Sync) | Latenza Background (`1 Hz` Async / On-Demand) | Footprint RAM In-Memory | Footprint Disco Locale |
 | :--- | :---: | :---: | :---: | :---: |
 | **Blocchi A + B (`Ingest + SQI`)** | `8.5 µs` | -- | `< 64 KB` | `36 KB` (`data/bidmc/`) |
 | **Blocco C (`ADHG + RK4 + POCUS`)** | `19.2 µs` | -- | `< 128 KB` | -- |
@@ -415,4 +620,7 @@ flowchart TD
 | **Blocco H (`Timestral Grey-Box Bridge`)** | **`0.18 µs` (`180 ns`)** | `~6.95 ms` (CPU) / `2.1 ms` (Metal) | `< 256 KB` (ring buffer + coni) | `21 MB` (opzionale pesi) |
 | **Blocco I (`ARES-HyperGraph` + `DatasetGraph`)** | `23.0 µs` (Welford + Deontic + BioKG) | -- | `< 200 KB` (900d) + `~8.4 MB` (24 DS) | `~14.2 MB` (`graphify` JSON) |
 | **Blocchi E + F (`Playbook DAG + SHA-256`)** | `11.4 µs` | -- | `< 128 KB` | -- |
-| **TOTALE PIPELINE SINCRONA (`20 Hz`)** | **`66.38 µs << 150.0 µs` (SLA OK)** | **`6.95 ms << 1000 ms` (`1 Hz` OK)** | **`~9.2 MB` Totali in RAM** | **`< 0.5 GB` Totali su SSD** |
+| **Blocco J (`ARES-MedOS` Zero-Copy IPC & Shell)** | **`< 100 ns` SHM Seqlock / `< 0.05 ms` Tauri IPC** | `120 FPS` Metal/Vulkan (`< 8.3 ms`) | `~30–50 MB` (`Tauri v2` native shell) | `~3–10 MB` (installer) |
+| **Blocco L (`L1–L6` Verified Extensions)** | **`0 ns` Copilot / `< 150 ns` `try_dispatch` SHM / `< 15 µs` Level-1 DSP** | `< 2.5 s` LLM (`< 400 µs` fallback) / `< 350 ms` `whisper-rs` / `< 250 ms` `ares-calibrate` | `+ < 28 KB`/crew DSP + `~31–57 MB` (`--features offline-voice`) | `~196 KB` `SafeTensors` + `~31–57 MB` GGML (opz.) |
+| **Blocco M (`M1–M3` Planned LSAH DB & Assets)** | **`< 0.33 µs` (`HotLsahSlot` + Swap, `0` alloc)** | `~1.4–3.2 ms / 10s` Warm IPC+Zstd / `< 260 µs` HNSW / `~8–19 ms / Sol` Cold AEAD | `+ 0.41–1.64 MB` Hot Ring + `< 1.2 MB` HNSW (`1k` scans) | `~18.5 MB / Sol` (`~13–19 GB / 900 Sol`) + `26.8 MB` `.glb` + `1.6 MB` `BIDMC` |
+| **TOTALE PIPELINE SINCRONA (`20 Hz`)** | **`66.38 µs << 150.0 µs` (SLA OK, `p99.9=5.58 µs` `--release`)** | **`6.95 ms << 1000 ms` (`1 Hz` OK)** | **`~9.2 MB` Engine (+ `~38 MB` Shell)** | **`< 0.5 GB` Totali su SSD** |

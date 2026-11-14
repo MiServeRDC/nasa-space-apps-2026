@@ -49,8 +49,17 @@ Reviewed November 13, 2026. This list supports preparation; it does not prescrib
 | [Dexie.js](https://github.com/dexie/Dexie.js)            | Browser-local IndexedDB storage.                          | Apache-2.0                              |
 | [Papa Parse](https://github.com/mholt/PapaParse)         | Browser CSV import/export.                                | MIT                                     |
 | [physioKIT](https://github.com/AmbiqAI/physiokit)        | Physiological signal processing and synthesis.            | BSD-3-Clause                            |
+| [OpenScreen](https://github.com/getopenscreen/openscreen) | Desktop screen recording and editing for cockpit demos, walkthroughs and pitch videos. | MIT |
+| [Vercel UI SDK](https://github.com/vercel-labs/ui) | Framework-independent interaction behaviors with React adapters: keyboard navigation, focus, selection, popups, drag-and-drop and ARIA. | Apache-2.0; beta terms also referenced upstream |
 
 Choose dependencies only after the team selects its stack and needs. Check the exact version, dependencies, models, and dataset terms before reuse.
+
+### Demo production and UI interaction resources
+
+Added at the user's request; upstream README and LICENSE files reviewed November 14, 2026. These are references for evaluation, not installed dependencies or completed integrations.
+
+- **OpenScreen:** useful for recording the detailed anatomy view, changing scenario parameters, showing manual markers and producing a short product walkthrough. Its README documents desktop capture/editing, MP4/GIF export and a CLI. Use it as a development/presentation tool outside the medical runtime. Its optional external-provider AI editing features are not part of ARES's offline architecture. [README](https://github.com/getopenscreen/openscreen/blob/main/README.md), [MIT licence](https://github.com/getopenscreen/openscreen/blob/main/LICENSE). Reviewed README blob: `e0eb475b0b9ea6f31c8f90528a713c629db92847`.
+- **Vercel UI SDK:** a possible reference for improving keyboard/focus behavior in anatomical-region controls, layer selectors, evidence drawers and the command palette. The React packages documented upstream are `@ui-sdk/core` and `@ui-sdk/react`. Evaluate a small interaction before adopting it across the cockpit; upstream explicitly marks it beta and links additional beta terms, so API stability and applicable terms need review before integration. It does not supply anatomical models or clinical inference. [README](https://github.com/vercel-labs/ui/blob/main/README.md), [Apache-2.0 licence](https://github.com/vercel-labs/ui/blob/main/LICENSE), [beta terms linked upstream](https://vercel.com/docs/release-phases/public-beta-agreement). Reviewed README blob: `c10e8fdb524548c52a813b27ee57de0902ef416a`.
 
 VitalAgent's [VitalBench license](https://github.com/DKSEZD/VitalAgent/blob/main/dataset/vitalbench/LICENSE) is CC BY-NC-SA 4.0 and preserves source-dataset restrictions. The repository's MIT code license does not cover everything it references.
 

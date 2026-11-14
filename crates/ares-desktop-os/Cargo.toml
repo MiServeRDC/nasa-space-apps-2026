@@ -1,0 +1,31 @@
+[package]
+name = "ares-desktop-os"
+version = "0.1.0"
+edition = "2024"
+description = "ARES-MedOS Pure-Rust Mission Workstation OS Shell, Seqlock 128B Binary IPC Bridge, and FastMCP Command Palette Runtime"
+license = "MIT OR Apache-2.0"
+
+[features]
+default = []
+tauri-runtime = []
+tauri-native = ["tauri-runtime"]
+shm-ipc = ["ares-server-cli/shm-ipc"]
+offline-voice = []
+
+[dependencies]
+anyhow = "1.0"
+ares-causal-graph = { path = "../ares-causal-graph" }
+ares-core-types = { path = "../ares-core-types" }
+ares-medops-playbooks = { path = "../ares-medops-playbooks" }
+ares-nqs-stl = { path = "../ares-nqs-stl" }
+ares-security-privacy = { path = "../ares-security-privacy" }
+ares-server-cli = { path = "../ares-server-cli" }
+ares-telemetry-ingest = { path = "../ares-telemetry-ingest" }
+axum = { version = "0.8", features = ["ws"] }
+clap = { version = "4.5", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
+tokio = { version = "1.40", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

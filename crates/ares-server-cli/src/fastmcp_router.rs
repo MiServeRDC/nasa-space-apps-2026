@@ -157,7 +157,7 @@ pub fn handle_fastmcp_jsonrpc_request<S: McpInputSanitizer>(
                     { "name": "get_crew_health_summary", "description": "Illustrative scenario assessment; unavailable metrics remain null" },
                     { "name": "explain_causal_anomaly", "description": "4-hop ADHG causal chain for active physiological degradation" },
                     { "name": "simulate_countermeasure_impact", "description": "Deterministic delta-rho & TTV projection for LBNP/ARED countermeasures" },
-                    { "name": "get_medops_playbook", "description": "Active Type-1 MedOps Playbook (#01-#05) and 3 Hard Safety Gates status" },
+                    { "name": "get_medops_playbook", "description": "Active Type-1 MedOps Playbook (#01-#09) and 3 Hard Safety Gates status" },
                     { "name": "query_dataset_graph", "description": "Query AresUnifiedDatasetGraph (24 datasets) with SPOKE/BioCypher/PrimeKG/Biolink provenance (<150 tokens)" },
                     { "name": "explain_biomarker_path", "description": "Shortest semantic/causal path across 24 datasets in AresUnifiedDatasetGraph (<150 tokens)" },
                     { "name": "get_timestral_quantile_cones", "description": "Illustrative non-crossing scenario ranges and heuristic gate; no calibrated coverage claim" },
@@ -187,6 +187,7 @@ pub fn handle_fastmcp_jsonrpc_request<S: McpInputSanitizer>(
                     "src": latest_packet.source_record_id,
                     "t_rec_s": latest_packet.relative_recording_time_s,
                     "severity": latest_packet.alert_severity,
+                    "vitals_anom": ctx.vitals_anomaly.overall,
                     "mri_pct": latest_packet.nqs_stl.mri_pct.map(round1),
                     "ttv_interval_kind": latest_packet.nqs_stl.ttv_interval_kind,
                     "rho_global": latest_packet.nqs_stl.rho_global.map(round2),
@@ -194,7 +195,9 @@ pub fn handle_fastmcp_jsonrpc_request<S: McpInputSanitizer>(
                     "hrv_unavailable_reason": latest_packet.biometrics.hrv_unavailable_reason,
                     "missing": latest_packet.biometrics.missing_channels
                 }),
-                "explain_causal_anomaly" | "query_organ_robustness" => {
+                "explain_causal_anomaly"
+                | "query_organ_robustness"
+                | "query_causal_biomarker_state" => {
                     let wrapped_chain: Vec<String> = latest_packet
                         .active_playbook
                         .causal_chain_summary
@@ -209,13 +212,15 @@ pub fn handle_fastmcp_jsonrpc_request<S: McpInputSanitizer>(
                         "adhg_chain": wrapped_chain
                     })
                 }
-                "simulate_countermeasure_impact" => json!({
+                "simulate_countermeasure_impact" | "evaluate_stl_safety_margins" => json!({
                     "current_rho": latest_packet.nqs_stl.rho_global.map(round2),
                     "lbnp_30mmhg_delta_rho_h": latest_packet.nqs_stl.rho_global.map(|_| 0.19),
                     "ared_125kgf_delta_rho_h": latest_packet.nqs_stl.rho_global.map(|_| 0.11),
                     "projected_ttv_gain_h": latest_packet.nqs_stl.rho_global.map(|_| 96.0)
                 }),
-                "get_medops_playbook" | "trigger_medops_action_playbook" => json!({
+                "get_medops_playbook"
+                | "trigger_medops_action_playbook"
+                | "get_active_medops_playbook" => json!({
                     "playbook_id": latest_packet.active_playbook.playbook_id,
                     "gates": latest_packet.active_playbook.safety_gates,
                     "top_action": latest_packet.active_playbook.actions.first().map(|a| &a.action_id)
@@ -300,6 +305,9 @@ pub fn handle_fastmcp_jsonrpc_request<S: McpInputSanitizer>(
                 "get_timestral_quantile_cones" => {
                     let snap = &ctx.quantile_snapshot;
                     json!({
+                        "method": snap.forecast_method,
+                        "horizon_s": snap.short_horizon_s,
+                        "ewma_max_s": snap.ewma_short_horizon_max_s,
                         "gate": gate_status_code(snap.confidence_state),
                         "abstained": snap.abstention_certificate.abstained,
                         "rho_cone": snap.rho_global_cone.map(|cone| [round2(cone.q05), round2(cone.q50), round2(cone.q95)]),

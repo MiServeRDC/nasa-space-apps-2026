@@ -5,10 +5,21 @@ use ares_core_types::constants::{
     ARED_NOMINAL_LOAD_KGF, FROST_MECHANOSTAT_STRAIN_UE, SOST_HILL_EXPONENT, sanitize_f64,
 };
 use ares_core_types::telemetry::Musculoskeletal;
+use serde::{Deserialize, Serialize};
 
 const K_PROD_SOST: f64 = 18.5; // pmol/(L * day)
 const K_DEG_SOST: f64 = 0.28; // 1 / day
 const ARED_TO_MICROSTRAIN: f64 = 11.2; // 125 kgf -> 1400 microstrain (> 1000 ue Frost threshold)
+
+/// Integration horizon policy for the Frost-Hargens Sclerostin RK4 solver.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum Rk4HorizonPolicy {
+    /// Exact legacy compatibility: 12 steps with dt clamped to [0.2, 5.0] days (max 60 effective days).
+    Bounded60DaysLegacy,
+    /// Adaptive integration without the 60-day cap: N = ceil(fd / max_dt_days), dt <= max_dt_days.
+    AdaptiveUnbounded { max_dt_days: f64 },
+}
 
 /// Derivata temporale d[SOST]/dt (in pmol/(L * day)) secondo il modello regolarizzato di Frost-Hargens.
 #[inline]
@@ -47,6 +58,21 @@ pub fn compute_musculoskeletal_state(
     flight_day: u32,
     ared_daily_load_kgf: f64,
 ) -> Musculoskeletal {
+    compute_musculoskeletal_state_with_policy(
+        flight_day,
+        ared_daily_load_kgf,
+        Rk4HorizonPolicy::Bounded60DaysLegacy,
+    )
+}
+
+/// Computes musculoskeletal state with an explicit RK4 horizon integration policy (`Bounded60DaysLegacy`
+/// or `AdaptiveUnbounded`) to avoid silently capping long-duration trajectories at 60 effective days.
+#[inline]
+pub fn compute_musculoskeletal_state_with_policy(
+    flight_day: u32,
+    ared_daily_load_kgf: f64,
+    policy: Rk4HorizonPolicy,
+) -> Musculoskeletal {
     let load = sanitize_f64(ared_daily_load_kgf, ARED_NOMINAL_LOAD_KGF).clamp(0.0, 250.0);
     let load_deficit_ratio =
         ((ARED_NOMINAL_LOAD_KGF - load) / ARED_NOMINAL_LOAD_KGF).clamp(0.0, 1.0);
@@ -66,10 +92,22 @@ pub fn compute_musculoskeletal_state(
 
     // Integrazione RK4 della Sclerostina sul tempo di missione equivalente
     let mut sost = 22.5;
-    let steps = 12;
-    let dt = (fd / steps as f64).clamp(0.2, 5.0);
-    for _ in 0..steps {
-        sost = step_sclerostin_rk4(sost, load, dt);
+    match policy {
+        Rk4HorizonPolicy::Bounded60DaysLegacy => {
+            let steps = 12;
+            let dt = (fd / steps as f64).clamp(0.2, 5.0);
+            for _ in 0..steps {
+                sost = step_sclerostin_rk4(sost, load, dt);
+            }
+        }
+        Rk4HorizonPolicy::AdaptiveUnbounded { max_dt_days } => {
+            let max_dt = sanitize_f64(max_dt_days, 0.5).clamp(0.05, 1.0);
+            let steps = ((fd / max_dt).ceil() as usize).max(1);
+            let dt = fd / (steps as f64);
+            for _ in 0..steps {
+                sost = step_sclerostin_rk4(sost, load, dt);
+            }
+        }
     }
 
     // Calciuria renale secondaria al riassorbimento osseo (mg/d)
@@ -87,6 +125,31 @@ pub fn compute_musculoskeletal_state(
         urinary_calcium_mg_d,
         gai_pct,
     }
+}
+
+/// Integrates a time-varying daily ARED load schedule (`daily_ared_loads_kgf`) with sub-day RK4
+/// substeps (`dt = 1.0 / substeps_per_day`), returning the end-of-day Sclerostin concentration
+/// (`pmol/L`) for each day in the schedule.
+pub fn integrate_sclerostin_schedule(
+    initial_sost: f64,
+    daily_ared_loads_kgf: &[f64],
+    substeps_per_day: usize,
+) -> Vec<f64> {
+    if daily_ared_loads_kgf.is_empty() {
+        return Vec::new();
+    }
+    let substeps = substeps_per_day.clamp(1, 24);
+    let dt = 1.0 / (substeps as f64);
+    let mut sost = sanitize_f64(initial_sost, 22.5).clamp(10.0, 120.0);
+    let mut trajectory = Vec::with_capacity(daily_ared_loads_kgf.len());
+    for &raw_load in daily_ared_loads_kgf {
+        let load = sanitize_f64(raw_load, ARED_NOMINAL_LOAD_KGF).clamp(0.0, 250.0);
+        for _ in 0..substeps {
+            sost = step_sclerostin_rk4(sost, load, dt);
+        }
+        trajectory.push(sost);
+    }
+    trajectory
 }
 
 #[cfg(test)]

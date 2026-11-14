@@ -187,6 +187,7 @@ impl ChannelWindowStats {
 
 /// Typed payload across all 9 PrimeKG categories.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[allow(clippy::large_enum_variant)]
 pub enum UnifiedNodePayload {
     Dataset {
         dataset_index: u16,
@@ -212,6 +213,10 @@ pub enum UnifiedNodePayload {
         pulse: ChannelWindowStats,
         resp: ChannelWindowStats,
         spo2: ChannelWindowStats,
+        #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+        extra_channels: BTreeMap<String, ChannelWindowStats>,
+        #[serde(default)]
+        beat_intervals_present: bool,
     },
     Biomarker {
         loinc_curie: String,
@@ -997,6 +1002,63 @@ impl AresUnifiedDatasetGraph {
             .collect()
     }
 
+    /// Looks up a node in the graph by its deterministic string ID.
+    #[inline]
+    pub fn node_by_id(&self, id: &str) -> Option<&UnifiedDatasetNode> {
+        let &idx = self.id_index.get(id)?;
+        self.graph.node_weight(idx)
+    }
+
+    /// Inserts a new node or updates the existing node payload when `node.id` is already present.
+    pub fn upsert_node(&mut self, node: UnifiedDatasetNode) -> NodeIndex {
+        if let Some(&existing) = self.id_index.get(&node.id) {
+            if let Some(slot) = self.graph.node_weight_mut(existing) {
+                let was_ds = slot.category == PrimeKgCategory::Dataset;
+                let is_ds = node.category == PrimeKgCategory::Dataset;
+                *slot = node;
+                if !was_ds && is_ds && !self.dataset_nodes.contains(&existing) {
+                    self.dataset_nodes.push(existing);
+                }
+            }
+            return existing;
+        }
+        self.insert_node(node)
+    }
+
+    /// Links two existing nodes identified by string ID using a Biolink-typed edge.
+    #[allow(clippy::too_many_arguments)]
+    pub fn link_nodes(
+        &mut self,
+        from_id: &str,
+        to_id: &str,
+        predicate: BiolinkPredicate,
+        tier: GraphifyConfidenceTier,
+        effect_size: f32,
+        source_dataset_id: &str,
+        source_file: &str,
+    ) -> Result<(), CausalGraphError> {
+        let from = self
+            .id_index
+            .get(from_id)
+            .copied()
+            .ok_or_else(|| CausalGraphError::UnknownNode(from_id.to_string()))?;
+        let to = self
+            .id_index
+            .get(to_id)
+            .copied()
+            .ok_or_else(|| CausalGraphError::UnknownNode(to_id.to_string()))?;
+        self.link(
+            from,
+            to,
+            predicate,
+            tier,
+            effect_size,
+            source_dataset_id,
+            source_file,
+        );
+        Ok(())
+    }
+
     fn insert_node(&mut self, node: UnifiedDatasetNode) -> NodeIndex {
         if let Some(&existing) = self.id_index.get(&node.id) {
             return existing;
@@ -1569,6 +1631,8 @@ impl AresUnifiedDatasetGraph {
                         pulse: ChannelWindowStats::from_welford(&pulse_acc, pulse_miss),
                         resp: ChannelWindowStats::from_welford(&resp_acc, resp_miss),
                         spo2: ChannelWindowStats::from_welford(&spo2_acc, spo2_miss),
+                        extra_channels: BTreeMap::new(),
+                        beat_intervals_present: false,
                     },
                 });
                 stats.nodes_added += 1;

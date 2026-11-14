@@ -1,0 +1,36 @@
+# ARES-MedOS Tier C Wearable Firmware Target Descriptor: Oxide Hubris / Embassy
+# References: https://github.com/oxidecomputer/hubris (MPL-2.0) & https://github.com/embassy-rs/embassy
+
+[firmware]
+kernel = "oxidecomputer/hubris"
+alt_prototyping_os = "embassy-rs/embassy"
+board = "stm32h743-nucleo-astronaut-wearable"
+kernel_loc_budget = 2200
+packet_format = "WearableSensorPacket (32 bytes, CRC-16-CCITT 0x1021)"
+sync_word = "0xAA55"
+
+[tasks.supervisor]
+priority = 0
+restart_faulted_drivers = true
+seu_counter_field = "supervisor_restart_count"
+watchdog_period_ms = 250
+
+[tasks.spi_ecg_adc]
+priority = 1
+mpu_isolated = true
+sample_rate_hz = 250
+emits_rr_intervals = true
+driver_chip = "ADS1292R"
+
+[tasks.i2c_ppg_sensor]
+priority = 2
+mpu_isolated = true
+sample_rate_hz = 125
+driver_chip = "MAX30102"
+
+[tasks.ble_tx]
+priority = 3
+mpu_isolated = true
+transport = "BLE 5.3 / UART DMA"
+packet_bytes = 32
+crc_polynomial = "0x1021"

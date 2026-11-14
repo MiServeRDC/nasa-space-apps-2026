@@ -1,0 +1,415 @@
+{
+  "dataset_name": "BIDMC PPG and Respiration Dataset",
+  "version": "1.0.0",
+  "dataset_url": "https://physionet.org/content/bidmc/1.0.0/",
+  "doi": "https://doi.org/10.13026/C2XW26",
+  "license": "Open Data Commons Attribution License v1.0 (ODC-By-1.0)",
+  "retrieved": "2026-11-14",
+  "purpose": "Offline evaluation of the vitals anomaly detector only (cargo run -p ares-server-cli -- --mode eval-anomaly). Not loaded by the engine at runtime.",
+  "evaluation_split": {
+    "development": "bidmc_04 .. bidmc_13 (plus bidmc_01, bidmc_02 in data/bidmc)",
+    "held_out": "bidmc_14 .. bidmc_53 (plus bidmc_03 in data/bidmc)"
+  },
+  "records": [
+    {
+      "record_id": "bidmc_04",
+      "file": "bidmc_04_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_04_Numerics.csv",
+      "sha256": "2d3f34558f11ae5ff4170793942c86fd76ecc9c11a3868fd9dbaabf3249ee121",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_05",
+      "file": "bidmc_05_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_05_Numerics.csv",
+      "sha256": "b26e17895c9961bf36c0172e0da2fd58120e30ab6df5c21a3cfc56665630c308",
+      "rows": 481,
+      "missing_cells": 12
+    },
+    {
+      "record_id": "bidmc_06",
+      "file": "bidmc_06_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_06_Numerics.csv",
+      "sha256": "d7b221639fe1baa3360544ac6507af78871ec190ac79a44f122ddde119c22d05",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_07",
+      "file": "bidmc_07_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_07_Numerics.csv",
+      "sha256": "ea43103b33f9cb4d5b99076d642f79819b971a5b177dae8e30718f32bd240d00",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_08",
+      "file": "bidmc_08_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_08_Numerics.csv",
+      "sha256": "a2d66b1e07d2845a3a9e50329bdea1288fa98f7adaca5cd8077cb091104c96f2",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_09",
+      "file": "bidmc_09_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_09_Numerics.csv",
+      "sha256": "f73d989891d2eed70868750aa9529c148bd90d771b4c8b199e815c68f00f7932",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_10",
+      "file": "bidmc_10_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_10_Numerics.csv",
+      "sha256": "fc697ba7af8bb74eed871ab0eba10f4913ad14633e9e6b6337cdc19d03fb6df0",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_11",
+      "file": "bidmc_11_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_11_Numerics.csv",
+      "sha256": "8adf747b0c52ea69cea47a8562149b68cb900b9b99215e6e17a33f88ad62f664",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_12",
+      "file": "bidmc_12_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_12_Numerics.csv",
+      "sha256": "9add05d655e275b955bd8462be9c65433eb9c6433d0c567f25b6f984ccdbd8d4",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_13",
+      "file": "bidmc_13_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_13_Numerics.csv",
+      "sha256": "62602513f381e50b3e7692ba3757995ea348f0896c5242b701cb105471addac1",
+      "rows": 481,
+      "missing_cells": 146
+    },
+    {
+      "record_id": "bidmc_14",
+      "file": "bidmc_14_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_14_Numerics.csv",
+      "sha256": "773a11554b7e4f1038bb02d8c3587c762a5e6d7ff28a08c76462800681d2ec14",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_15",
+      "file": "bidmc_15_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_15_Numerics.csv",
+      "sha256": "6091ee8d95ecdec37b150391a02bde9a60da56f76fb41f7ebbd5e15482b0fb4d",
+      "rows": 481,
+      "missing_cells": 3
+    },
+    {
+      "record_id": "bidmc_16",
+      "file": "bidmc_16_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_16_Numerics.csv",
+      "sha256": "678d1272874fdb6bea78981556729589ac2a56d055d95b980e1972a2a0f1ca26",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_17",
+      "file": "bidmc_17_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_17_Numerics.csv",
+      "sha256": "8dae48b1f0e48f105e0d838db6aff307ac24d2b403753e3f716b093190054b11",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_18",
+      "file": "bidmc_18_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_18_Numerics.csv",
+      "sha256": "4febc6cb99d1552096a299b4b17a1c6f1691028b4a11f29f55a6b8947045694d",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_19",
+      "file": "bidmc_19_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_19_Numerics.csv",
+      "sha256": "13175fb31a4aca05077f7bb322fd0cee4266e0f5a6354db3bb16a5c9606b3dbb",
+      "rows": 481,
+      "missing_cells": 208
+    },
+    {
+      "record_id": "bidmc_20",
+      "file": "bidmc_20_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_20_Numerics.csv",
+      "sha256": "2ea4edae03abe216a3625ac94e668dd41691e39cc1fa543f3da08dbb50df0d1e",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_21",
+      "file": "bidmc_21_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_21_Numerics.csv",
+      "sha256": "be4102f8b9aad57f2c286b0a3d7fbef55474234ea2c5ab769232dd6fd13e51f6",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_22",
+      "file": "bidmc_22_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_22_Numerics.csv",
+      "sha256": "13237e200810c0738d1ab09d47a078cf5b410b5ba0f831257396ddd19fdc9e46",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_23",
+      "file": "bidmc_23_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_23_Numerics.csv",
+      "sha256": "cd5f93648fc417c7bdf31c23e23d0fdfb08f06dce2dd0ae8d1111ed370eaeeca",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_24",
+      "file": "bidmc_24_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_24_Numerics.csv",
+      "sha256": "48b2d49f3f22fc9a156590a4366e29654b79ca03be19bb17b8250c89b6ff113a",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_25",
+      "file": "bidmc_25_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_25_Numerics.csv",
+      "sha256": "215ab08fc17791af1c0391d9ee7554d825518195c9dfb12f8e03135a06808c46",
+      "rows": 481,
+      "missing_cells": 2
+    },
+    {
+      "record_id": "bidmc_26",
+      "file": "bidmc_26_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_26_Numerics.csv",
+      "sha256": "d7ff9690fc6662cfb7a1cb1f66c99d3af71984cc6a6c42d5c3e242bb23b2f314",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_27",
+      "file": "bidmc_27_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_27_Numerics.csv",
+      "sha256": "5edb8cbfbc401f4a9ee67cd4e2933c4fdc0d3f83325cb8b51f1839f644e36a82",
+      "rows": 481,
+      "missing_cells": 4
+    },
+    {
+      "record_id": "bidmc_28",
+      "file": "bidmc_28_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_28_Numerics.csv",
+      "sha256": "6a26b5947bb249b60570edf601a05d12d69282d131671ddb03d34c9ba79d051c",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_29",
+      "file": "bidmc_29_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_29_Numerics.csv",
+      "sha256": "05d6eb6ad74bfde8af0bfffba3f0c81b5e5139589d376a693cb434fdc508250a",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_30",
+      "file": "bidmc_30_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_30_Numerics.csv",
+      "sha256": "a4f6a00823b0053586f2deb91820a34bb06468efba74503b3d20574f2e495f79",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_31",
+      "file": "bidmc_31_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_31_Numerics.csv",
+      "sha256": "179f04948e1be00583cf6d6c73427bbd05cd23cca9891eb60f72b333e58cd971",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_32",
+      "file": "bidmc_32_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_32_Numerics.csv",
+      "sha256": "1a9bb8fdde296519c2a265a2e73fab2e6b74ad63080960cdf0afbbb5668fd232",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_33",
+      "file": "bidmc_33_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_33_Numerics.csv",
+      "sha256": "eb99b7cb224b2dc21931a4dbd358f19adb0507dd263c1bd653c9e4d5a9a45817",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_34",
+      "file": "bidmc_34_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_34_Numerics.csv",
+      "sha256": "3cb5d0c349a1f480069dee797c5f51421c00cbd64ef271a228ab76f368720258",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_35",
+      "file": "bidmc_35_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_35_Numerics.csv",
+      "sha256": "8c468f327a2cdc44abdc12bdf8acbe3fc1cea9caeb30d43968e48b62760c7e7d",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_36",
+      "file": "bidmc_36_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_36_Numerics.csv",
+      "sha256": "7c7b922e9d6067fc673e17625c31b5897aeeef93e993532c31f0006b62115219",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_37",
+      "file": "bidmc_37_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_37_Numerics.csv",
+      "sha256": "300fd4400debdf1842adeb51d44d9a253214e5253cbadbf73babf7612d5634d4",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_38",
+      "file": "bidmc_38_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_38_Numerics.csv",
+      "sha256": "7e339a0c54c768da500f34641a650c0124cb920d923f04fb424f9b80b2951078",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_39",
+      "file": "bidmc_39_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_39_Numerics.csv",
+      "sha256": "52341da9b65964c09acc12fc7230497340aab7bf32564d91b890d48d9ee53b4d",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_40",
+      "file": "bidmc_40_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_40_Numerics.csv",
+      "sha256": "1bb3ae4e61696c243f722def012b1ad89fdf65a19073b1a20611a5e5626cb136",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_41",
+      "file": "bidmc_41_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_41_Numerics.csv",
+      "sha256": "2933b16b9804b9d021a730a11e197818ef066a4042c85f6f62a08dc7d8d00ad6",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_42",
+      "file": "bidmc_42_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_42_Numerics.csv",
+      "sha256": "7b25f6bce576d13e358ab97adb9a074d9a6aec62f99cb8805b5b6458120a968c",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_43",
+      "file": "bidmc_43_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_43_Numerics.csv",
+      "sha256": "60e50a2511efc98320e072489494cbdfd20f6f46dbf8322f64c1729d1ae645d6",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_44",
+      "file": "bidmc_44_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_44_Numerics.csv",
+      "sha256": "4338af6b68c4aadb8a950d11fcb96553e14f4fcf8f7294472d0cda7317c2baaa",
+      "rows": 481,
+      "missing_cells": 12
+    },
+    {
+      "record_id": "bidmc_45",
+      "file": "bidmc_45_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_45_Numerics.csv",
+      "sha256": "fadab2c4aba2b6b5bad3baafbfc8c4c0261eb51851d2a7df87964536436d5198",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_46",
+      "file": "bidmc_46_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_46_Numerics.csv",
+      "sha256": "39cb0e82ce91802867654aaa5d78cf78a56038fd8c7f1824fdc01a79a2fdd633",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_47",
+      "file": "bidmc_47_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_47_Numerics.csv",
+      "sha256": "5516d2582992039d501e080428138976b3187cf1ec6e71e3209d9d24df4f3e30",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_48",
+      "file": "bidmc_48_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_48_Numerics.csv",
+      "sha256": "3f3adb58676f34650e16382f5041f5e965b8a7dae2ca7a34fcd74bc95a14aacf",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_49",
+      "file": "bidmc_49_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_49_Numerics.csv",
+      "sha256": "ff8a9e10d1d5bd359575f84e7165684f8ac13b814d5d4f78c38d061b70ee35f4",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_50",
+      "file": "bidmc_50_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_50_Numerics.csv",
+      "sha256": "e3e42604187f4450e1c230a0c9d9ac5fe0da5b4d8f14262352e166e435dea8cf",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_51",
+      "file": "bidmc_51_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_51_Numerics.csv",
+      "sha256": "aa84390a77d24f848a50d25f6e5709b03db940ad81ffecf760251fdc33eec1e9",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_52",
+      "file": "bidmc_52_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_52_Numerics.csv",
+      "sha256": "df0d8e8d99d06b9532f15883b15c0d5330352bb5b0998ec2544b82d9519f9ce6",
+      "rows": 481,
+      "missing_cells": 0
+    },
+    {
+      "record_id": "bidmc_53",
+      "file": "bidmc_53_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_53_Numerics.csv",
+      "sha256": "a5b24a09b0deaf5f88d214b5e3d5dfe8624d6641e8d9deeba3fab45fbb9c8eb7",
+      "rows": 481,
+      "missing_cells": 0
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "evidence_boundary": "Optional external model weights are NOT bundled in git. Missing or unverified artifacts trigger clean DeterministicStub fallback, and all Timestral inference outputs remain ModelValidationStatus::ILLUSTRATIVE_UNVALIDATED until Phase 33 L5 clinical calibration gates pass.",
+  "artifacts": [
+    {
+      "model_id": "timestral-dhf-v1",
+      "file": "timestral.safetensors",
+      "artifact_kind": "SAFETENSORS_V1_WEIGHTS",
+      "bundled": false,
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "expected_config": {
+        "num_channels": 12,
+        "patch_len": 32,
+        "d_model": 32,
+        "n_heads": 4,
+        "d_ff": 64,
+        "num_layers": 4,
+        "rope_fraction": 0.5,
+        "rope_theta": 10000.0,
+        "rms_norm_eps": 1e-5,
+        "sigma_floor": 1e-4
+      },
+      "validation_status": "ILLUSTRATIVE_UNVALIDATED",
+      "notes": "External optional SafeTensors v1 weights for TimestralBackbone + QuantileHead. Not bundled until staged with verified SHA-256; triggers DeterministicStub fallback cleanly when absent."
+    },
+    {
+      "model_id": "whisper-tiny-en-q5_1",
+      "file": "ggml-tiny.en-q5_1.bin",
+      "artifact_kind": "WHISPER_GGML_Q5_1",
+      "bundled": false,
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "expected_config": null,
+      "validation_status": "ILLUSTRATIVE_UNVALIDATED",
+      "notes": "External optional offline Whisper GGML model (~31 MB) for --features offline-voice. Not bundled in git; stage locally and record its real SHA-256 before enabling offline ASR."
+    }
+  ]
+}

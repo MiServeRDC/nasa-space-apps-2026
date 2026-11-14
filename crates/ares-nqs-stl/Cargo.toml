@@ -5,8 +5,15 @@ edition = "2024"
 description = "Normalized Quantitative Semantics STL (NQS-STL), O(1) Lemire Monotonic Wedge, EWMA-OLS TTV Predictor & Mission Readiness Index (MRI)"
 license = "MIT OR Apache-2.0"
 
+[features]
+default = ["safetensors-loader"]
+safetensors-loader = []
+candle-safetensors = ["safetensors-loader"]
+
 [dependencies]
 ares-core-types = { path = "../ares-core-types" }
 ares-causal-graph = { path = "../ares-causal-graph" }
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sha2 = "0.10"
 thiserror = "2.0"

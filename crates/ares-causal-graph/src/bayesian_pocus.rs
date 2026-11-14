@@ -72,6 +72,101 @@ impl BayesianPocusObserver {
     }
 }
 
+/// Structural audit summary of `evaluate_two_stage_bayesian_pocus` across its input domain.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct BayesianPocusStructuralAudit {
+    pub pre_pocus_min_observed: f64,
+    pub pre_pocus_max_observed: f64,
+    pub pre_pocus_cap: f64,
+    pub post_pocus_min_observed: f64,
+    pub post_pocus_max_observed: f64,
+    pub post_pocus_floor: f64,
+    pub post_pocus_ceiling: f64,
+    pub uncalibrated_empty_gap: (f64, f64),
+    pub grid_samples_evaluated: usize,
+    pub empty_gap_invariants_hold: bool,
+}
+
+/// Sweeps the admissible `(tau_w, MQI, radiation_msv_d, pocus_thrombus_confirmed)` grid to verify
+/// the pre-POCUS cap (`0.45`), post-POCUS floor (`0.92`), and structurally empty gap `(0.45, 0.92)`.
+pub fn audit_bayesian_pocus_structural_bounds() -> BayesianPocusStructuralAudit {
+    use ares_core_types::telemetry::JugularFlowGrade;
+
+    let tau_grid = [0.0, 0.3, 0.6, 1.0, 1.2, 1.5, 1.8, 2.5, 3.5];
+    let mqi_grid = [0.0, 0.15, 0.25, 0.5, 0.75, 1.0];
+    let rad_grid = [0.0, 0.45, 1.5, 3.0, 5.0, 8.0];
+
+    let mut pre_min = f64::INFINITY;
+    let mut pre_max = f64::NEG_INFINITY;
+    let mut post_min = f64::INFINITY;
+    let mut post_max = f64::NEG_INFINITY;
+    let mut samples = 0usize;
+    let mut gap_violated = false;
+
+    for &tau_w in &tau_grid {
+        for &mqi in &mqi_grid {
+            for &rad in &rad_grid {
+                for confirmed in [false, true] {
+                    let jugular = JugularHemodynamics {
+                        ijv_csa_mm2: 72.0,
+                        ijv_vmax_cm_s: 6.0,
+                        tau_w_dyn_cm2: tau_w,
+                        flow_grade: if confirmed {
+                            JugularFlowGrade::OccludedThrombus
+                        } else {
+                            JugularFlowGrade::StagnantBidirectional
+                        },
+                        pocus_thrombus_confirmed: confirmed,
+                        lbnp_active: false,
+                        lbnp_pressure_mmhg: 0.0,
+                    };
+                    let musculo = Musculoskeletal {
+                        ared_daily_load_kgf: 100.0,
+                        soleus_csa_pct: 85.0,
+                        echo_intensity_au: 60.0,
+                        mqi_index: mqi,
+                        sclerostin_pmol_l: 30.0,
+                        urinary_calcium_mg_d: 200.0,
+                        gai_pct: 7.0,
+                    };
+                    let est = evaluate_two_stage_bayesian_pocus(&jugular, &musculo, rad);
+                    let p = est.thrombus_posterior;
+                    samples += 1;
+                    if p > PRE_POCUS_MAX_THROMBUS_PROB && p < 0.92 {
+                        gap_violated = true;
+                    }
+                    if confirmed {
+                        post_min = post_min.min(p);
+                        post_max = post_max.max(p);
+                        if !(0.92..=0.995).contains(&p) {
+                            gap_violated = true;
+                        }
+                    } else {
+                        pre_min = pre_min.min(p);
+                        pre_max = pre_max.max(p);
+                        if p > PRE_POCUS_MAX_THROMBUS_PROB {
+                            gap_violated = true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    BayesianPocusStructuralAudit {
+        pre_pocus_min_observed: pre_min,
+        pre_pocus_max_observed: pre_max,
+        pre_pocus_cap: PRE_POCUS_MAX_THROMBUS_PROB,
+        post_pocus_min_observed: post_min,
+        post_pocus_max_observed: post_max,
+        post_pocus_floor: 0.92,
+        post_pocus_ceiling: 0.995,
+        uncalibrated_empty_gap: (PRE_POCUS_MAX_THROMBUS_PROB, 0.92),
+        grid_samples_evaluated: samples,
+        empty_gap_invariants_hold: !gap_violated,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

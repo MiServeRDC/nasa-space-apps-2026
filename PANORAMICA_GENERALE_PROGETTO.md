@@ -1,215 +1,116 @@
 # PANORAMICA GENERALE DEL PROGETTO: ARES-Health
 
-> Evidence status (issue #12): scenario-derived physiology, risk/readiness scores and forecast ranges are illustrative and clinically unvalidated. Historical calibration, certification, universal-threshold and outcome claims below are not established. Use [the current evidence audit](docs/architecture/MODEL_EVIDENCE_AUDIT.md) for source applicability, parameters and permitted wording. Recorded terrestrial measurements remain distinct from simulation.
-## Master Blueprint Unificato per il Team (NASA Space Apps Challenge 2026)
+> **Stato delle Evidenze (Issue #11 & Issue #12):** Le registrazioni terrestri `PhysioNet BIDMC v1.0.0` (`RECORDED_TERRESTRIAL_BIDMC_CSV`) sono tenute rigorosamente distinte dai modelli fisiologici e predittivi di scenario, i quali sono **illustrativi e non validati clinicamente** (`ILLUSTRATIVE_UNVALIDATED`, `ILLUSTRATIVE_SCENARIO_RANGE`, `HEURISTIC_GATE_ACCEPTED`). Sui dati numerici `1 Hz` `BIDMC` privi di intervalli R-R nativi, `rmssd_ms` resta `null` (`BEAT_INTERVALS_NOT_AVAILABLE`) e non viene mai imputato alcun valore sano di default. Vedere [MODEL_EVIDENCE_AUDIT.md](docs/architecture/MODEL_EVIDENCE_AUDIT.md) per il registro completo di formule, limiti e lavoro di validazione richiesto.
 
-**Progetto:** ARES-Health (Autonomous Resilient Edge-native System for Astronaut Health)  
-**Lead Architect:** Fabio Malagutti (Ingegnere Informatico • Laureando Magistrale @ Università di Bologna)  
-**Sfida Ufficiale NASA:** "Create Health Monitoring Software for Astronauts on Space Missions"  
-**URL Ufficiale:** https://www.spaceappschallenge.org/2026/challenges/health-monitoring-software/  
-**Ambiente di Missione:** Transito Terra-Marte, Deep Space Habitat, Lunar Gateway, Superficie Marziana  
-**Modalità Operativa:** 100% Offline, Esecuzione Edge Deterministica, Air-Gapped, Zero Dipendenze Cloud  
+## Master Blueprint Unificato (NASA Space Apps Challenge 2026)
 
----
-
-## 1. In Cosa Consiste il Progetto (La Visione in Breve)
-
-ARES-Health è una piattaforma software medica edge-native per astronauti in missioni nello spazio profondo, progettata per operare in completa autonomia a bordo della navicella.
-
-* **Il Problema Reale (Il Muro della Velocità della Luce):**  
-  Sulla ISS gli astronauti comunicano in tempo reale con i medici di Houston. Verso Marte il segnale radio impiega da **8 a 48 minuti andata e ritorno** (con blackout fino a 14 giorni durante le congiunzioni solari). La telemedicina terrestre e i cloud convenzionali (AWS, OpenAI, Google Cloud) sono fisicamente inservibili.
-* **La Nostra Soluzione:**  
-  ARES-Health porta la mente del Flight Surgeon a bordo: un motore software autonomo in Safe Rust che raccoglie i dati fisiologici, valuta il decondizionamento complessivo tramite un grafo causale e guida l'astronauta in protocolli clinici esecutivi (Playbook).
-* **Il Mandato Ufficiale della Traccia:**  
-  La traccia NASA richiede tre azioni imperative: **GATHER** (raccogliere), **EVALUATE** (valutare) e **ACT** (agire).
+- **Progetto:** **ARES-Health** (*Autonomous Resilient Edge-native System for Astronaut Health*) / Workstation **`ARES-MedOS v0.1`**
+- **Lead Architect:** Fabio Malagutti (`@fabiomalagutti27-droid`, Università di Bologna)
+- **Team (`MiServeRDC/nasa-space-apps-2026`):** `@fabiomalagutti27-droid`, `@carolina2910`, `@fertech02`, `@LelloXV`, `@MiServeRDC`
+- **Sfida Ufficiale NASA:** *"Create Health Monitoring Software for Astronauts on Space Missions"* (`https://www.spaceappschallenge.org/2026/challenges/health-monitoring-software/`)
+- **Dominio Operativo:** Transito Terra-Marte, Deep Space Habitat, Lunar Gateway, Superficie Marziana (`0.38g`)
+- **Principi Operativi:** 100% Offline, Air-Gapped, Zero Dipendenze Cloud, Safe Rust 2024 (`8` crate, `0` `.unwrap()`/`.expect()` in produzione), Licenza **`MIT OR Apache-2.0`**
 
 ---
 
-## 2. Architettura Funzionale a 3 Fasi: Gather, Evaluate, Act
+## 1. Visione di Missione e Problema Operativo
 
-### Fase 1: GATHER (Acquisizione Dati a Basso Carico per l'Equipaggio)
-* **Radar Notturno Contactless (Crew Quarters):**  
-  Monitoraggio della frequenza cardiaca a riposo e della frequenza respiratoria durante il sonno tramite micro-radar RF / Wi-Fi CSI (Channel State Information), senza sensori adesivi a contatto con la pelle.  
-  *Vantaggio:* Elimina le dermatiti da contatto e l'insofferenza da monitoraggio h24.
-* **Biosegnali Indossabili con Filtro SQI:**  
-  Acquisizione di ECG, fotopletismografia (PPG) e attività muscolare filtrati con algoritmi di Signal Quality Index (SQI) basati su entropia spettrale per scartare gli artefatti da sudore fluttuante e movimento in microgravità.
-* **Biomarcatori Omici e Point-of-Care (POC):**  
-  Integrazione di test capillari da puntura del dito (Abbott i-STAT / rHEALTH) per tracciare biomarcatori di danno tissutale (Troponina I, Sclerostina, Irisina, cf-mtDNA).
+In orbita terrestre bassa (ISS) gli astronauti beneficiano di telemedicina quasi in tempo reale da Houston. Oltre l'orbita cislunare, la fisica delle comunicazioni rende impossibile l'architettura cloud:
 
-### Fase 2: EVALUATE (Motore Analitico Edge Deterministico in Rust)
-* **Dynamic Multi-Organ Bio-Causal Graph (ADHG):**  
-  Supera i cruscotti tradizionali che mostrano grafici slegati tra loro. Collega le variabili di cabina e l'assenza di peso a una cascata fisiopatologica interconnessa:
-  * Atrofia del muscolo soleo/gastrocnemio $\to$
-  * Crollo dell'Irisina circolante $\to$
-  * Iperattivazione della Sclerostina ossea (modello Frost-Hargens) $\to$
-  * Osteopenia accelerata (calcagno e vertebre L1-L4) con ipercalciuria renale $\to$
-  * Collasso della capacitanza venosa crurale e perdita di secretoma vasoprotettivo (miR-126) $\to$
-  * Ristagno e stasi nella vena giugulare interna (IJV) con rischio di trombosi venosa occlusiva ($\tau_w < 4.0\text{ dyn/cm}^2$).
-* **Normalized Quantitative Signal Temporal Logic (NQS-STL):**  
-  Sostituisce le soglie fisse (che causano falsi allarmi durante l'esercizio) con formule temporali matematiche. Adimensionalizza ogni parametro su una scala uniforme $\hat{\rho} \in (-\infty, +1.0]$:
-  * $\hat{\rho} > 0$: margine di sicurezza clinica;
-  * $\hat{\rho} \le 0$: violazione della soglia critica;
-  * Derivata temporale $\langle \dot{\rho} \rangle_{7\text{d}}$: stima del tempo residuo al collasso (Time-To-Violation, TTV) con 11-14 giorni di anticipo.
-* **Osservatore Bayesiano a Due Stadi (POCUS Episodico):**  
-  Poiché le ecografie non si fanno h24 ma settimanalmente, il sistema stima in continuo le variabili latenti (velocità giugulare, diametro del nervo ottico ONSD, qualità muscolare) allargando una banda di incertezza $\pm \sigma(t)$. All'esecuzione dell'ecografia di 2 minuti, la banda si contrae a zero ($\sigma \to 0$).
-* **Mission Readiness Index (MRI 0–100):**  
-  Indice sintetico globale di prontezza operativa (idoneità a EVA e manovre critiche).
-
-### Fase 3: ACT (Interfaccia Cockpit e NASA MedOps Playbook Runner)
-* **Cockpit OLED Dark-Mode:**  
-  Interfaccia a contrasto elevato con manichino 3D del corpo umano (WebGL/Three.js) che colora le aree corporee in base al decondizionamento.
-* **Console Interattiva What-If Stress-Test:**  
-  Quattro slider in tempo reale (ppCO2 cabina, carico ARED, pressione LBNP, giorno di missione) per dimostrare alla giuria che il motore ricalcola la risposta clinica in meno di 1 millisecondo.
-* **Runner dei Playbook Operativi (DAG) con Hard Clinical Safety Gates:**
-  * **Playbook #04 (Stasi Giugulare e Decondizionamento):** Guida ecografica POCUS assistita sul collo; **divieto assoluto di anticoagulanti empirici** se non c'è un trombo confermato (per prevenire emorragie intracraniche letali da trauma); attivazione camera a pressione negativa LBNP a $-30\text{ mmHg}$ per 45 min con **blocco anti-sincope automatico** (sfiato a 0 mmHg se la pressione sistolica scende di 15 mmHg); ricalibrazione carico eccentrico ARED (+15%) e supplementazione con Leucina e Citrato di Potassio.
-  * **Playbook #05 (Stabilità del Cammino allo Sbarco su Marte a 0.38g):** Calcolo del Gait Asymmetry Index (GAI) tramite sensori della tuta per prevenire cadute o lesioni articolari alla transizione gravitazionale.
-* **AI Copilot Locale (FastMCP):**  
-  Assistente di bordo offline che risponde a voce o testo interrogando il grafo deterministico tramite macro-tool compatti (< 150 token), garantendo l'assoluta assenza di allucinazioni mediche.
+- **Barriera della Velocità della Luce:** Nel transito verso Marte il ritardo radio unidirezionale (`OWLT`) varia tra **4 e 24 minuti** (**8–48 minuti andata e ritorno**), con blackout completi fino a **14 giorni** durante le congiunzioni solari (`NASA CHAPEA`, `NASA-STD-3001 Vol. 1 [V1 3006]` *Earth-Independent Medical Operations — EIMO*).
+- **I 5 Rischi `RIDGE`:** *Radiation*, *Isolation/Confinement*, *Distance from Earth*, *Gravity fields* ($0g \to 0.38g$) e *Hostile closed Environment*.
+- **Mandato Canonico NASA:** Chiudere a bordo il ciclo **`GATHER -> EVALUATE -> ACT`** senza connessioni esterne, preservando l'onestà sui dati mancanti e integrando interlock deterministici di sicurezza.
 
 ---
 
-## 3. Matrice delle Fonti: Da Dove Proviene Ogni Decisione Scientifica
+## 2. Ciclo Funzionale `GATHER -> EVALUATE -> ACT` (Implementazione Reale)
 
-| Componente di ARES-Health                  | Decisione Fisiologica / Clinica Adottata                                                                                            | Articolo / Fonte Scientifica di Riferimento                                                  |
-| :----------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------- |
-| **Stasi Venosa Giugulare**                 | Monitoraggio del flusso lento ($v_{\max} < 5\text{ cm/s}$) e del rischio di trombosi venosa occlusiva                               | **Dr. Serena Auñón-Chancellor** (NASA Flight Surgeon, *JAMA 2019* / *NEJM 2020*)             |
-| **Sindrome SANS e Pressione Oculare**      | Monitoraggio del diametro della guaina del nervo ottico ($\text{ONSD} > 5.8\text{ mm}$) e correlazione con $ppCO_2$                 | **Dr. Michael Barratt** (NASA Flight Surgeon/Astronauta, *Springer 2020*)                    |
-| **Supporto Decisionale Autonomo**          | Architettura di medicina indipendente dalla Terra per missioni esplorative (EIMO)                                                   | **Dr. Emmanuel Urquieta** (TRISH / Baylor College of Medicine)                               |
-| **Standard di Prontezza e Requisiti ExMC** | Standard medici di esplorazione NASA-STD-3001 e diagnostica Point-of-Care a basso volume                                            | **Dr. James Polk** (Chief Health & Medical Officer NASA)                                     |
-| **Biomarcatori Molecolari e cf-mtDNA**     | Mappatura del danno tissutale via cell-free RNA e DNA mitocondriale circolante                                                      | **Prof. Christopher Mason et al.** (*Nature SOMA Package 2024*, Inspiration4)                |
-| **Shear Stress Endoteliale ($\tau_w$)**    | Soglia critica pro-trombotica venosa $\tau_w < 4.0\text{ dyn/cm}^2$ sotto scarico gravitazionale                                    | **Bisserier et al.** (*npj Microgravity 2026*)                                               |
-| **Dose-Risposta Decompressione LBNP**      | Protocollo a dose calibrata di $-30\text{ mmHg}$ per $45\text{ min/die}$ per ripristinare il flusso giugulare                       | **Pappas et al.** (*Journal of Applied Physiology 2026*) & **NASA OCHMO MTB-007 (2026)**     |
-| **Asse Funzionale Muscolo-Osso**           | Il disuso spegne il *mechanostat* ($\varepsilon < 1000\ \mu\varepsilon$); il calo di irisina accelera la sclerostina                | **Al-Nuaimi & Hargens (2025/2026)**; Letteratura su Unità Muscolo-Osso (*EJAP 2026*)         |
-| **Qualità Muscolare ed Ecografia POCUS**   | Indice ecografico $\text{MQI}$ basato su spessore soleo ($\text{MT}$), angolo di pennazione ($\theta_{\text{penn}}$) ed ecogenicità | **Letteratura di Imaging Riabilitativo e Sarcopenia** (*J. Clin. Med. 2023*, *JCSM 2024*)    |
-| **Preabilitazione e Nutrizione**           | Condizionamento pre-volo con Leucina e Vitamina D per costruire riserva funzionale ($PRF_0$)                                        | **Studi Clinici di Preabilitazione Muscolare** (*Nutrients 2024*, *Scientific Reports 2026*) |
-| **Stabilità del Cammino a 0.38g**          | Alterazioni cinematiche, valgo dinamico e rischio di caduta al rientro su gravità parziale                                          | **Biomeccanica del Cammino e Fisiologia Articolare** (*Eur. J. Appl. Physiol. 2025*) & **NASA NLSP `BRSMFSR`** |
-| **Archivio Federato Multi-Agenzia OSDR**   | Calibrazione congiunta multi-omica (`cgene`), fisiologica (`alsda`) e bed-rest (`esa`: `OSD-51`, `OSD-195`, `OSD-570/571`, `OSD-818`) | **NASA Open Science Data Repository** (`https://osdr.nasa.gov/bio/repo/search?q=&data_source=cgene,alsda,esa&data_type=study`) |
-| **Esperimenti Analoghi & Epidemiologia**   | Riflesso da stiramento (`BRSMFSR`), risposta neuroendocrina al tilt (guardrail LBNP) e recupero osseo DXA/FRAX post-volo (`LSAH`)    | **NASA Life Sciences Portal (`NLSP` / `NASA-0000100`) & `LSAH`** (`https://nlsp.nasa.gov/explore?dataType=EXPERIMENTS...`, `https://nlsp.nasa.gov/resources/lsah`) |
-| **Standard Tecnici Ufficiali NASA**        | Requisiti obbligatori di salute equipaggio (`[V1 3001]–[V1 4001]`) e fattori umani/trend ambientali (`[V2 6001]–[V2 10001]`)         | **NASA-STD-3001 Vol. 1 Rev C & Vol. 2 Rev F (Jul 2026)** (`https://standards.nasa.gov/standard/NASA/NASA-STD-3001_VOL_1`, `VOL_2`) |
-| **Analoghi Marte/Isolamento & Commercial** | Validazione ritardo 22 min (378d Marte `CHAPEA`), biomarcatori vocali/sonno (`HERA`), POCUS (`TRISH EXPAND`) e Alendronato (`JAXA`) | **NASA `CHAPEA`, `HERA`, `DLR :envihab AGBRESA`, `TRISH EXPAND` (Mar 2026), `NASA-JAXA Bisphosphonates`, `PhysioNet CEBS` & `PPG-DaLiA`** |
+### Fase 1: `GATHER` (`crates/ares-telemetry-ingest`)
+- **Replay Deterministico `PhysioNet BIDMC v1.0.0` (`bidmc_replayer.rs`):** Ingestione `1.0 Hz` dei tracciati numerici `bidmc_01..03_Numerics.csv` (`481` righe `0..480 s`, `ODC-By-1.0`), verificati tramite `SHA-256` contro `data/bidmc/MANIFEST.json`, con trimming degli header con spazio iniziale (`" HR"`, `" PULSE"`, `" RESP"`, `" SpO2"`) e disaccoppiamento dal stream UI a `20 Hz`.
+- **Onestà sui Dati Mancanti (Issue #4 & Issue #11):** I `13` campioni assenti di `PULSE`/`SpO2` in `bidmc_01` restano `Option<f64>::None` (`null` / `MISSING`), mai sostituiti con `0.0`. Sui record puramente numerici `1 Hz`, `rmssd_ms` e i parametri HRV dipendenti restano `None` con motivazione esplicita `BEAT_INTERVALS_NOT_AVAILABLE` e severità `DATA_DEGRADED_MISSING_CHANNELS`.
+- **Euristica di Qualità Numerica & ZOH (`sqi_filter.rs`):** Calcola un'euristica di entropia sulle differenze di HR su coda a `16` campioni ($0.96 - 0.14\,h_{\text{norm}} - 0.18\,f_{\text{miss}}$) con *Zero-Order Hold* limitato a `30 s` (`HOLD_LAST_VALID` $\to$ `HELD_STALE` $\to$ `UNAVAILABLE`).
+- **DSP Pure-Rust Level-1 (`Fase 31 / L3`):** Demodulatore radar I/Q `60/5.2 GHz` con cascata biquad notch `60/120 Hz` Jury-stable per ventole ECLSS (`radar_csi_dsp.rs`), estrattore vocale `YIN` $F_0$/`HNR`/jitter/shimmer con `None` su silenzio (`vocal_acoustic_dsp.rs`), estrattore R-R Pan-Tompkins `125–500 Hz` + filtro ectopici di Malik $\pm 20\%$ per sole waveform ad alta frequenza (`waveform_rr_extractor.rs`), e pacchetto wearable `32 B` `WearableSensorPacket` con `CRC-16-CCITT` e contatore restart `Oxide Hubris`.
 
----
+### Fase 2: `EVALUATE` (`crates/ares-causal-graph` & `crates/ares-nqs-stl`)
+- **Grafo Causale `ADHG` e Modelli di Scenario (`crates/ares-causal-graph`):**
+  - *Meccanotrasduzione Muscolo-Osso (`mechanotransduction.rs`):* ODE di scenario della Sclerostina (`SOST`, `pmol/L`, soglia $\varepsilon_{\text{Frost}} = 1000\ \mu\varepsilon$) integrata con **RK4 a 12 passi fissi** (convergenza $O(h^4)$ verificata via Richardson step-halving `ratio >= 14.5`), affiancata da indicatori illustrativi `MQI`, calcio urinario e `GAI` (`0.38g`).
+  - *Emodinamica Giugulare CGS & `SANS` (`hemodynamics.rs`):* Calcolo dimensionalmente esatto in CGS dello shear stress endoteliale $\tau_w(t) = 2\mu v_{\max}(t)\sqrt{\pi/\text{IJV\_CSA}_{\text{cm}^2}(t)}$ ($\mu = 0.035\text{ Poise}$, `dyn/cm^2`) e proxy di scenario translaminare `ONSD`/`SANS`.
+  - *Osservatore Bayesiano `POCUS` a 2 Stadi (`bayesian_pocus.rs`):* Stadio 1 limitato a $P_{\text{pre}} \le 0.45$ in stasi isolata; solo `pocus_thrombus_confirmed == true` attiva lo Stadio 2 (`LR+ = 24.0`, clamp `0.92..0.995`).
+  - *`ARES-HyperGraph` & `AresUnifiedDatasetGraph`:* Compattazione longitudinale di Welford (`900 Sol` in `167,352 B < 200 KB`), `5` regioni anatomiche 3D `UBERON:`, `6` zone deontiche dell'habitat + Markov $D_{\text{KL}}$, descrittore `16 B` `#[repr(C, align(16))] BiomedicalEvidenceDescriptor` (`CRC-8`, lookup `O(1)` `41.0 ns p50`) e grafo unificato `AresUnifiedDatasetGraph` (`110` nodi, `326` archi Biolink, `24` dataset catalogati, `27` slice `BIDMC`, con adapter opzionali `--features parquet-ingest`).
+- **`NQS-STL` $O(1)$ & Co-Processore `Timestral` (`crates/ares-nqs-stl`):**
+  - Normalizzazione adimensionale su `[-2.0, +1.0]` e operatore di finestra scorrevole $\Box_{[t-W,t]}\hat{\rho}_k$ in tempo ammortizzato $O(1)$ tramite `LemireMinWedge` (verificato contro oracolo $O(W)$ su `2,000` sequenze).
+  - Co-processore pure-Rust `TimestralBackbone` (`CausalScaler` `asinh`/`sinh`, maschera canali mancanti, `RmsNorm`, `FusedSwiGlu`, `SinCosRoPe`, `DualAxisAttention`, caricatore `SafeTensors` verificato `SHA-256` con fallback deterministico) e testa monotona `QuantileHead` ($q_{0.05} \le q_{0.50} \le q_{0.95}$, `0` incroci su `10,000` traiettorie `proptest`).
+  - Gate `ConformalAbstentionGate` (`HEURISTIC_GATE_ACCEPTED` / `ABSTAINED_FALLBACK`), intervalli `TTV` etichettati `ILLUSTRATIVE_SCENARIO_RANGE` (`0.5..720 h`), e protocollo di calibrazione *subject-disjoint* `CQR` + Clopper-Pearson + Brier/ECE (`calibration_harness.rs`, Fase 33 `L5`) richiesto prima di qualsiasi passaggio da `ILLUSTRATIVE_UNVALIDATED`.
 
-## 4. Matrice delle Tecnologie: Quale Repository Open Source Importiamo
-
-Nel pieno rispetto della regola del **Fresh Code** dell'hackathon, non copiamo codice applicativo di altri: importiamo le seguenti librerie open source ufficiali come dipendenze standard (`Cargo.toml`, `requirements.txt`, `package.json`):
-
-| Dominio Tecnologico            | Nome Repository / Libreria GitHub                                       | Ruolo Specifico in ARES-Health                                                             | File di Riferimento nel Nostro Codice                  |
-| :----------------------------- | :---------------------------------------------------------------------- | :----------------------------------------------------------------------------------------- | :----------------------------------------------------- |
-| **Formal Verification (STL)**  | **`mstlo` (Mistletoe)** (Rust crate, arXiv 2026) & **`nickovic/rtamt`** | Calcolo ad altissima velocità del margine continuo di robustezza temporale $\hat{\rho}(t)$ | Dipendenza in `Cargo.toml` $\to$ modulo `src/stl.rs`   |
-| **DSP dei Biosegnali**         | **`neuropsychology/NeuroKit2`** (Python, MIT)                           | Estrazione onde R-peak, indici HRV (RMSSD, LF/HF) e frequenza respiratoria da ECG          | Script di preprocessing e generazione dati di test     |
-| **Dataset Clinici Waveform**   | **`wfdb-python`** (PhysioNet official library)                          | Ingestione e riproduzione di segnali elettrofisiologici reali di validazione               | Pipeline di test telemetrico                           |
-| **Radar Contactless CSI**      | **`Lu2024-project/ESP32-CSI`** & **`ruvnet/RuView`**                    | Algoritmi di estrazione Doppler da sottoportanti RF per battito e respiro a riposo         | Modulo driver di simulazione radar cabina              |
-| **Dataset Multi-Omici Spazio** | **`nasa/GeneLab`** & **NASA OSDR APIs**                                 | Curve di riferimento per Troponina I, Sclerostina, Irisina e cf-mtDNA                      | Driver dati di laboratorio di bordo                    |
-| **Topologia del Grafo**        | **`petgraph`** (Rust community standard)                                | Gestione in memoria della rete di nodi e archi del grafo causale ADHG                      | Dipendenza in `Cargo.toml` $\to$ modulo `src/graph.rs` |
-| **Server Concorrente UI**      | **`tokio`** + **`axum`** (Rust ecosystem)                               | Streaming WebSocket a 20 Hz verso il cockpit e ricezione comandi slider                    | Modulo `src/server.rs`                                 |
-| **Interfaccia Copilot AI**     | **`modelcontextprotocol/rust-sdk`** / FastMCP                           | Protocollo standard JSON-RPC su stdio per servire macro-tool (< 150 token) a LLM locale    | Modulo `src/mcp.rs`                                    |
-| **Frontend 3D e Rendering**    | **`pmndrs/react-three-fiber`** & **`three.js`**                         | Rendering WebGL del manichino anatomico 3D con gradienti termici di atrofia                | Componente `Astronaut3DModel.tsx`                      |
-| **Asset 3D Aperti NASA**       | **`nasa/NASA-3D-Resources`**                                            | Mesh 3D aperte per veicoli, habitat e sagome anatomiche                                    | Cartella asset statici del cockpit                     |
-| **UI Kit Dark-Mode**           | **`shadcn/ui`** + **`Tailwind CSS`**                                    | Componenti accessibili a contrasto elevato ottimizzati per display OLED                    | Cartella componenti UI del cockpit                     |
+### Fase 3: `ACT` (`crates/ares-medops-playbooks`, `ares-security-privacy`, `ares-server-cli`, `ares-desktop-os`, `ares-cockpit`)
+- **5 Playbook Cristallizzati Type-1 (`playbooks.rs`, `< 20 us`, zero LLM nel loop critico):**
+  1. `PLAYBOOK_01_VENOUS_STASIS_LBNP` (`-30 mmHg` LBNP `45 min` + calf pump + scansione IJV POCUS)
+  2. `PLAYBOOK_02_CONFIRMED_IJV_THROMBUS` (anticoagulazione sbloccata solo su trombo POCUS confermato + sospensione squat Valsalva su ARED)
+  3. `PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED` (carico ARED `>= 125 kgf` / `> 1000` microstrain + idratazione `>= 2.8 L/d` & citrato di potassio)
+  4. `PLAYBOOK_04_SANS_TRANSLAMINAR_MITIGATION` (cuffie venose agli arti inferiori `50 mmHg` + LBNP notturno)
+  5. `PLAYBOOK_05_SPE_RADIATION_SHELTER_CANS` (ingresso storm shelter se `CSA CANS > 1.5 mSv/d` + radioprotezione endoteliale)
+- **3 Hard Clinical Safety Gates (`safety_gates.rs`):**
+  - *Gate 1 (Anticoagulation Lock):* Blocca farmaci anticoagulanti se `pocus_thrombus_confirmed != true` (`GATE 1 LOCKED`).
+  - *Gate 2 (LBNP Anti-Syncope Auto-Vent):* Sfiato immediato a `0 mmHg` durante LBNP `-30 mmHg` se $\Delta\text{SBP} > 15\text{ mmHg}$ o $\text{HR} > 115\text{ bpm}$.
+  - *Gate 3 (`0.38g` Mars Suit Damping):* Attiva `+25%` smorzamento caviglia/ginocchio tuta EVA se `GAI > 12%`.
+- **Sicurezza, Privacy & Audit (`ares-security-privacy`):** 3 ruoli di riservatezza (`AstronautSelf`, `CrewMedicalOfficer`, `GroundFlightSurgeon`), catena hash `SHA-256` per override (`Sha256AuditLogger`), cifratura `ChaCha20-Poly1305` con `ZeroizeOnDrop` (`EphemeralDsnKey`), e scudo `<untrusted_telemetry_observation>` (`StrictMcpSanitizer`) contro *Indirect Prompt Injection*.
 
 ---
 
-## 5. Architettura Software Concreta (Opzione C: Ibrida Dual-Transport)
+## 3. Architettura Concreta: Workspace a 8 Crate Safe Rust + `ARES-MedOS`
 
-Il sistema è strutturato in due componenti disaccoppiate:
+La topologia effettiva del repository supera il prototipo iniziale monolitico con un workspace modulare a **8 crate Safe Rust 2024** e il cockpit **`ares-cockpit`** (`React 19`, `TypeScript 5.7`, `Tailwind CSS 4`, `Three.js` / `@react-three/fiber`):
 
-```
-+---------------------------------------+     +---------------------------------------+
-|     ASTRONAUT COCKPIT (UI Layer)      |     |    ON-BOARD EDGE AI COPILOT (LLM)     |
-|   React + TypeScript + Three.js 3D    |     |   Local Quantized Model (llama.cpp)   |
-|   OLED Theme #000000 + Sliders        |     |   Zero Cloud - Zero Allucinazioni     |
-+---------------------------------------+     +---------------------------------------+
-                    ^                                             ^
-                    | 20 Hz WebSocket + REST                      | JSON-RPC (FastMCP)
-                    | (127.0.0.1:8080 Loopback)                   | (Dedicated stdio Pipe)
-                    v                                             v
-+-------------------------------------------------------------------------------------+
-|                    ARES-ENGINE (Safe Rust Core Binary on Tokio)                     |
-|                Shared Synchronized State: Arc<RwLock<MissionState>>                 |
-|  * Dynamic Multi-Organ Bio-Causal Graph (ADHG) & Frost-Hargens ODE Solver           |
-|  * Normalized Quantitative Semantics STL Evaluator (NQS-STL, O(1) Monotonic Wedge)  |
-|  * Two-Stage Bayesian POCUS Observer & Deterministic MedOps Playbook State Machine  |
-+-------------------------------------------------------------------------------------+
-```
-
-1. **`ares-engine` (Backend Core in Safe Rust 2024 — Approfondimento Tecnico):**  
-   Binario nativo compilato, auto-contenuto ed estremamente performante (< 20 MB di RAM, latenza del ciclo di valutazione < 15 µs, zero garbage collection pauses). Progettato specificamente per l'avionica di bordo e l'isolamento air-gapped:
-   * **Modello di Concorrenza:** Gestito tramite runtime asincrono `tokio`, condivide in memoria un unico stato di missione thread-safe protetto da `Arc<RwLock<MissionState>>`.
-   * **Architettura Dual-Transport Concorrente:**
-     - *Trasporto 1 (Streaming UI su `127.0.0.1:8080`):* Server locale `axum` (HTTP REST + WebSocket) che invia al Cockpit lo snapshot del grafo, i margini $\hat{\rho}(t)$ e le bande bayesiane a 20 Hz, ricevendo in tempo reale i comandi What-If con tempo di ricalcolo inferiore a 1 ms.
-     - *Trasporto 2 (Canale AI Copilot su `stdio` FastMCP):* Pipeline JSON-RPC su standard input/output dedicata al modello quantizzato locale (Ollama / `llama.cpp`), isolata dal traffico grafico per evitare race condition sui descrittori di file.
-   * **I 5 Moduli Interni del Motore Rust (`src/`):**
-     - `src/telemetry.rs`: Ring buffer circolare lock-free multi-frequenza (100 Hz per ECG, 20 Hz per radar notturno, 1 Hz per avionica) con filtro SQI a entropia spettrale e notch armonico per le ventole ECLSS.
-     - `src/graph.rs`: Grafo causale eterogeneo (basato su `petgraph`), risolutore delle equazioni differenziali ordinarie di Frost-Hargens per la Sclerostina con termine di clearance plasmatica, calcolo dimensionale esatto dello shear stress endoteliale $\tau_w(t) = 2\mu v_{\max}\sqrt{\pi/\text{CSA}}$ e Osservatore Bayesiano a Due Stadi per le ecografie POCUS episodiche.
-     - `src/stl.rs`: Motore di monitoraggio Normalized Quantitative Semantics (NQS-STL) che valuta le formule temporali tramite Lemire Monotonic Wedges in tempo ammortizzato $O(1)$ su tre buffer (Hot a 1 s, Warm a 60 s, Cold a 1 h) e stima il Time-To-Violation (`TTV`) tramite regressione lineare EWMA-OLS a 7 giorni.
-     - `src/playbooks.rs`: Macchina a stati finiti deterministica per i DAG dei Playbook NASA MedOps con Hard Clinical Safety Gates (blocco anticoagulanti in sola stasi e sfiato LBNP anti-sincope).
-     - `src/mcp.rs`: Implementazione dei tre macro-tool compatti (< 150 token) conformi al Model Context Protocol per garantire inferenza locale a zero allucinazioni.
-
-2. **`ares-cockpit` (Frontend in React / TypeScript / Tailwind CSS / Three.js):**  
-   Applicazione a schermo singolo ottimizzata per la visualizzazione e l'interazione in microgravità:
-   * Gauge del Mission Readiness Index (MRI 0-100) con 4 sotto-indici;
-   * Manichino 3D del corpo umano con vertici colorati dinamicamente dal decondizionamento e archi causali di Bezier animati;
-   * Console "What-If Stress-Test" con slider per dimostrare il ricalcolo in tempo reale ai giudici;
-   * Runner interattivo dei Playbook MedOps con overlay grafico per ecografia POCUS.
+| Crate / Modulo | Responsabilità Architetturale Principale |
+| :--- | :--- |
+| `crates/ares-core-types` | Contratti telemetrici (`TelemetryPacket`, `ProvenanceManifest`), costanti `NASA-STD-3001`, `BinaryTelemetryFrame` (`128 B` `#[repr(C, align(64))]`, `CRC-32C`), tipi `Timestral` e `ModelValidationStatus`. |
+| `crates/ares-telemetry-ingest` | Replay `BIDMC v1.0.0` (`1 Hz`, `null`-safe), filtro `SQI`, overlay What-If, `WearableSensorPacket` (`32 B` `CRC-16`), moduli DSP puri (`radar_csi_dsp`, `vocal_acoustic_dsp`, `waveform_rr_extractor`). |
+| `crates/ares-causal-graph` | Grafo `ADHG` (`petgraph`), ODE RK4 Sclerostina, shear stress CGS $\tau_w$, osservatore POCUS, `ARES-HyperGraph` (Welford `900 Sol`, `UBERON:`, deontica), `BioKG` (`16 B`), `AresUnifiedDatasetGraph` (`24` fonti), `parquet_adapters`. |
+| `crates/ares-nqs-stl` | Normalizzatore `NQS-STL`, `LemireMinWedge` $O(1)$, `TimestralBackbone` + `QuantileHead` monotona, `ConformalAbstentionGate`, `SafeTensors` loader `SHA-256`, `calibration_harness` (Fase 33 `L5`). |
+| `crates/ares-medops-playbooks` | Esecutore DAG Type-1 (`#01–#05`), 3 Hard Clinical Safety Gates, grounding normativo `NASA-STD-3001` & `OCHMO MTB-007`. |
+| `crates/ares-security-privacy` | Privacy per ruolo (`NASA-STD-3001 Ch. 7`), catena `SHA-256`, AEAD `ChaCha20-Poly1305` (`ZeroizeOnDrop`), `StrictMcpSanitizer`. |
+| `crates/ares-server-cli` | Server `axum` (`127.0.0.1:8080`, `20 Hz` WS + REST `/api/snapshot`, `/api/stress-test`, `/api/os-status`, `/api/binary-frame`, `/api/mcp`), `FastMCP` `stdio` (`8` tool `<= 600 B`), `SeqlockTelemetryRing`, `edge_llm_bridge` (`OfflineTemplateCopilot`), `ares-calibrate`. |
+| `crates/ares-desktop-os` | Shell nativa `Tauri v2` `ARES-MedOS` (`Channel<Response>` `128 B`, `--mode desktop` / `desktop-smoke-test`, hook `whisper-rs` offline). |
+| `ares-cockpit/` | Cockpit OLED puro `#000000` (`[V2 10001]`): `OsSystemStatusBar`, `OsCommandPalette` (`Alt+Space`), `OsVoiceCopilot`, `ProvenanceInspector`, `BodyHeatmap` (`UBERON:` + `.glb` guard), `WhatIfConsole`, `MriAndStl`, `PlaybookRunner`. |
+| `deploy/medos/` & `scripts/` | Manifesti Tier B/C (`Asterinas`, `COSMIC` Wayland Kiosk, `Oxide Hubris`), `launch_ares_medos.sh`, `run_block_k_suite.sh`, `agent_probe.sh`, `build_submission_docs.sh`. |
 
 ---
 
-## 6. Regole di Gara, Fresh Code e Garanzia di Proprietà Intellettuale
+## 4. Avanzamento Blocchi `0–L` (Fasi `01–34`) & Metriche Verificate
 
-* **Regola del "Fresh Code" NASA:**  
-  Tutto il codice applicativo (logica del grafo in Rust, formule STL, layout React, integrazione dei playbook) viene scritto da zero durante le 48 ore dell'evento. L'uso di compilatori, librerie esterne e dataset aperti della NASA è pienamente lecito e incoraggiato.
-* **Architettura 100% Clean-Room:**  
-  Il progetto è completamente autonomo, indipendente e privo di vincoli commerciali o brevettuali preesistenti.
-* **Open Source License:**  
-  Il repository finale verrà rilasciato con licenza open source standard (MIT / Apache-2.0), conforme ai requisiti della NASA Space Apps Challenge.
-
----
-
-## 7. Divisione dei Ruoli nel Team per 5 Persone (Roadmap 48h)
-
-Con un team di 5 persone, l'allocazione del lavoro è perfettamente bilanciata per coprire l'intera pipeline di sviluppo senza colli di bottiglia:
-
-1. **Ruolo 1: Lead Systems Architect & Core Rust Backend Engineer (Fabio Malagutti):**  
-   * *Responsabilità:* Sviluppo del binario `ares-engine` in Safe Rust 2024.
-   * *Deliverable:* Modello dati `AstronautBiometrics`, risolutore differenziale Frost-Hargens e $\tau_w(t)$ in `src/graph.rs`, valutatore NQS-STL in $O(1)$ con TTV in `src/stl.rs`, server dual-transport `axum` (WebSocket su porta 8080) e server `stdio` FastMCP. Suite di test unitari (`cargo test`).
-2. **Ruolo 2: Frontend Cockpit & Real-Time Visualization Engineer:**  
-   * *Responsabilità:* Sviluppo dell'applicazione web `ares-cockpit` in React + TypeScript + Tailwind CSS (tema dark OLED `#000000`).
-   * *Deliverable:* Layout single-screen con header trifasico `[1. GATHER] -> [2. EVALUATE] -> [3. ACT]`, connessione WebSocket a 20 Hz con il backend Rust, console interattiva What-If con i 4 slider, e il runner visivo dei Playbook MedOps (step ecografico, protocollo LBNP con allarmi pressori).
-3. **Ruolo 3: 3D Graphics & Human-System Integration (HSI) Specialist:**  
-   * *Responsabilità:* Implementazione della visualizzazione tridimensionale interattiva in WebGL tramite `pmndrs/react-three-fiber` e `three.js`.
-   * *Deliverable:* Manichino olografico 3D dell'astronauta (mesh low-poly wireframe con sfere emissive per Cranio/SANS, Giugulare, Torace, Soleo e Calcagno), archi causali curvi animati di Bezier che mostrano la direzione del collasso fisiologico e gauge del Mission Readiness Index (MRI 0-100).
-4. **Ruolo 4: Biomedical Data Scientist & Sensor Fusion Specialist:**  
-   * *Responsabilità:* Pipeline di elaborazione dei segnali fisiologici e preparazione dei dataset dimostrativi.
-   * *Deliverable:* Dataset realistico di missione a 180 giorni ancorato a dati reali da NASA OSDR e PhysioNet (MIMIC/Fantasia) tramite `NeuroKit2` e `wfdb-python`, calibrazione numerica dei parametri delle equazioni differenziali (viscosità $\mu = 0.035\text{ Poise}$, soglia di Frost $1000\ \mu\varepsilon$), e simulatore delle tracce ecografiche POCUS (spessore muscolare e angolo di pennazione).
-5. **Ruolo 5: Clinical Storyteller, NASA Compliance & Video Pitch Producer:**  
-   * *Responsabilità:* Regia, montaggio del video pitch finale da 3 minuti e confezionamento della documentazione di gara.
-   * *Deliverable:* Video Pitch di 180 secondi ad altissimo impatto basato sullo storyboard cinematografico (*Hook 0-18s $\to$ Gather 18-48s $\to$ Evaluate 48-95s $\to$ Act 95-150s $\to$ Close 150-180s*), slide deck PDF riassuntivo per le domande della giuria, verifica di conformità con i 5 criteri di valutazione NASA (Impact, Creativity, Validity, Relevance, Presentation) e compilazione della pagina di progetto ufficiale su Space Apps.
+- **Blocchi `A–K` (`Fasi 01–28`):** Completati e verificati su `main` con **`126/126` test passanti su `28` suite**, `0` warning Clippy, `0` `.unwrap()`/`.expect()` in produzione (`crates/*/src/`).
+- **Metriche `--release` (`N = 1,000`, Block K4):**
+  - `SeqlockTelemetryRing::read_latest_bytes`: `p50 = 42.0 ns`, `p99 = 42.0 ns`, `p99.9 = 84.0 ns` (`+ CRC-32C`: `p50 = 791.0 ns`, `p99.9 = 959.0 ns`).
+  - Pipeline completo 1-tick: `p50 = 2.12 us`, `p99 = 2.25 us`, `p99.9 = 5.58 us`.
+  - `AresUnifiedDatasetGraph`: query `p50 = 16.25 us`, shortest path `p50 = 16.33 us`, `BioKG` O(1) `p50 = 41.0 ns`, `196,264 B` RAM stimata (`< 10 MB`).
+  - Compattatore longitudinale `900 Sol`: `167,352 B` (`< 200 KB`).
+- **Blocco `L` (`Fasi 29–34` / `L1–L6`):** Integrazione live bindings cockpit (`L1`), finestra nativa `Tauri v2` + `shm_bus` (`L2`), DSP puro Level-1 `GATHER` (`L3`), Edge LLM + Voice Copilot + `SafeTensors` (`L4`), adapter Parquet + harness di calibrazione *subject-disjoint* `CQR` (`L5`), e pipeline deterministica di sottomissione NASA Space Apps 2026 con `Typst 0.15.1` (`L6`).
 
 ---
 
-## 8. Guida Rapida ai Documenti di Approfondimento (Quali File Leggere per Ciascun Tema)
+## 5. Matrice Multi-Agenzia delle Fonti & Ruolo Probatorio (`24` Dataset Catalogati)
 
-Se tu o un membro del team volete approfondire specifici aspetti del sistema, ecco i file raccomandati:
+In `AresUnifiedDatasetGraph` (`data/knowledge_graph/GRAPH_REPORT.md`: `110` nodi, `326` archi Biolink, `24` dataset catalogati, `27` slice `BIDMC`) e nel dossier di sottomissione, ogni risorsa mantiene il proprio ruolo epistemico secondo [MODEL_EVIDENCE_AUDIT.md](docs/architecture/MODEL_EVIDENCE_AUDIT.md):
 
-* **DOVE APPROFONDIRE IL MOTORE RUST (Letture Consigliate):**
-  1. [03_Backend_Engine_and_Technology_Tradeoff.md](file:///Users/fabiomalagutti/Desktop/NASA_Space_Apps_2026/03_Backend_Engine_and_Technology_Tradeoff.md): **File fondamentale per il lato software/Rust.** Spiega in dettaglio perché Safe Rust fornisce un vantaggio competitivo incolmabile rispetto a Python o C++, il modello di memoria, la topologia dual-transport Tokio (`axum` WebSocket + `stdio` FastMCP), le struct Rust 2024 complete (`AstronautBiometrics`, `MedSTLRobustness`, `HabitatAvionics`), e la ripartizione dei 5 moduli del crate `ares-engine`.
-  2. [02_System_Architecture_and_Metrics.md](file:///Users/fabiomalagutti/Desktop/NASA_Space_Apps_2026/02_System_Architecture_and_Metrics.md): **File fondamentale per la matematica implementata in Rust.** Contiene la formalizzazione esatta del Grafo Causale Eterogeneo (ADHG), le equazioni differenziali ordinarie di Frost-Hargens per la Sclerostina, la formula dimensionale dello shear stress $\tau_w(t) = 2\mu v_{\max}\sqrt{\pi/\text{CSA}}$, l'Osservatore Bayesiano a Due Stadi per le ecografie POCUS e le formule matematiche NQS-STL.
-  3. [ARES_Health_Master_Architecture.md](file:///Users/fabiomalagutti/Desktop/NASA_Space_Apps_2026/ARES_Health_Master_Architecture.md): Documento di master specification architetturale che descrive i 7 livelli completi del sistema aerospaziale.
+| Categoria / Agenzia | Risorse & Identificativi | Ruolo in `ARES-Health` (`Evidence Role`) |
+| :--- | :--- | :--- |
+| **PhysioNet (Replay Primario)** | `BIDMC v1.0.0` (`bidmc_01..03`, `ODC-By-1.0`) | `RECORDED_REPLAY_INPUT`: sorgente reale `1 Hz`, `SHA-256` verificata, `13` null preservati. |
+| **NASA OSDR / GeneLab** | `OSD-51`, `OSD-195`, `OSD-570`, `OSD-571`, `OSD-635`, `OSD-818`, `Rodent Research RR-1..RR-10` | `BIOLOGICAL_CONTEXT_ONLY`: meccanismi trascrittomici, *ex vivo* SANS ed endoteliali in `BioKG`. |
+| **NASA HRP, NLSP, LSAH & Analoghi** | `HRP Risks`, `ARCHeR`, `Zero T2`, `CIPHER`, `NASA-0000100` (`BRSMFSR`, `BRSMPT`), `LSAH`, `CHAPEA`, `HERA` | `CATALOG_GRAPH_METADATA` / `NORMATIVE_REQUIREMENT_CONTEXT`. |
+| **Standard NASA** | `NASA-STD-3001 Vol. 1 Rev C & Vol. 2 Rev F`, `OCHMO MTB-007`, `NSRL GCR`, `ISS Acoustic` | `NORMATIVE_REQUIREMENT_CONTEXT`: clausole `[V1 3001]`–`[V2 10152]`, privacy e EIMO. |
+| **CSA, ESA, DLR, JAXA, TRISH** | `CSA CANS (2026)`, `Bio-Monitor`, `Vascular`, `MARROW`, `ESA Myotones`, `BRACE`, `AGBRESA`, `MARS-500`, `SIRIUS`, `EXPAND`, `Bisphosphonates` | `BIOLOGICAL_CONTEXT_ONLY` / `BIOMEDICAL_SCHEMA_CONTEXT`. |
+| **Benchmark Terrestri (PhysioNet / NIH / UCI)** | `CEBS`, `Fantasia`, `PPG-DaLiA`, `MIT-BIH`, `PTB-XL`, `MIMIC-IV`, `HiRID`, `Tilt Table`, `MESA`, `SHHS`, `Look AHEAD`, `GTEA` | `TECH_BENCHMARK_ONLY` / `CATALOG_GRAPH_METADATA` (inclusi target Parquet Phase 33). |
 
-* **DOVE APPROFONDIRE LA FISIOLOGIA E LA MEDICINA SPAZIALE:**
-  * [01_Medical_Physiological_Deep_Space_Foundations.md](file:///Users/fabiomalagutti/Desktop/NASA_Space_Apps_2026/01_Medical_Physiological_Deep_Space_Foundations.md): Fisiopatologia approfondita dell'asse soleo-venoso, shift dei fluidi cefalici, sindrome SANS e protocolli clinici con Hard Safety Gates.
-  * [06_Flight_Surgeons_Research_and_Cutting_Edge_Biomarkers.md](file:///Users/fabiomalagutti/Desktop/NASA_Space_Apps_2026/06_Flight_Surgeons_Research_and_Cutting_Edge_Biomarkers.md): Analisi delle pubblicazioni dei Flight Surgeon mondiali (Auñón-Chancellor, Barratt, Urquieta, Polk, Mason/Nature SOMA 2024) e la tassonomia dei biomarcatori a 6 livelli.
-  * [07_Recent_2026_Literature_Physiatry_Biomedical_Engineering.md](file:///Users/fabiomalagutti/Desktop/NASA_Space_Apps_2026/07_Recent_2026_Literature_Physiatry_Biomedical_Engineering.md): Rassegna della letteratura 2025-2026 sui trial LBNP in microgravità e Digital Twin.
+---
 
-* **DOVE APPROFONDIRE IL FRONTEND E L'ESPERIENZA UTENTE:**
-  * [04_Frontend_Astronaut_Cockpit_UX.md](file:///Users/fabiomalagutti/Desktop/NASA_Space_Apps_2026/04_Frontend_Astronaut_Cockpit_UX.md): Design del cockpit OLED, ergonomia in microgravità, mappa anatomica 3D e runner interattivo dei Playbook MedOps.
+## 6. Regole di Gara, Fresh Code, Trasparenza AI & Riferimenti
 
-* **DOVE APPROFONDIRE L'ECOSISTEMA OPEN SOURCE E IL VIDEO PITCH:**
-  * [08_Open_Source_Ecosystem_and_Comparative_Analysis.md](file:///Users/fabiomalagutti/Desktop/NASA_Space_Apps_2026/08_Open_Source_Ecosystem_and_Comparative_Analysis.md): Censimento delle librerie open source, analisi comparativa contro progetti simili e storyboard dettagliato da 180 secondi per il video pitch.
-
-* **DOVE CONSULTARE LE REGOLE UFFICIALI E I CRITERI DI VALUTAZIONE NASA:**
-  * [09_NASA_Space_Apps_Official_Rules_and_Judging_Guide.md](file:///Users/fabiomalagutti/Desktop/NASA_Space_Apps_2026/09_NASA_Space_Apps_Official_Rules_and_Judging_Guide.md): Guida ufficiale completa alla sfida 2026 (regole di team da 1 a 6 membri, Fresh Code policy, trasparenza e dichiarazione AI, formato demo obbligatorio video da 30s o slide deck da 7 slide, 5 criteri di valutazione e i 10 premi globali NASA).
-  * [10_Gemini_Argon_Review_and_Validation_Prompt.md](file:///Users/fabiomalagutti/Desktop/NASA_Space_Apps_2026/10_Gemini_Argon_Review_and_Validation_Prompt.md): Prompt master di red-teaming e validazione esterna per modelli di frontiera.
-  * [CONTRIBUTING.md](file:///Users/fabiomalagutti/Desktop/NASA_Space_Apps_2026/CONTRIBUTING.md): Protocolli di sviluppo multi-agente, convenzioni git e checklist di pre-commit.
-  * [contracts/telemetry_schema.json](file:///Users/fabiomalagutti/Desktop/NASA_Space_Apps_2026/contracts/telemetry_schema.json): Schema JSON formale della telemetria a 20 Hz scambiata tra motore Rust e interfaccia grafica.
+- **Fresh Code & Licenza:** Tutto il codice (`crates/`, `ares-cockpit/`, `scripts/`) è rilasciato con licenza duale **`MIT OR Apache-2.0`** ([LICENSE](LICENSE)) appoggiandosi esclusivamente a librerie open source standard (`tokio`, `axum`, `petgraph`, `tauri`, `react`, `three`, `typst`) e dataset pubblici citati.
+- **Trasparenza AI:** L'eventuale LLM locale (`edge_llm_bridge.rs` / `FastMCP` `<= 600 B`) opera esclusivamente in lettura consultiva (`DAL-E`), protetto da `<untrusted_telemetry_observation>` e con fallback deterministico `< 400 us`; nessun calcolo ODE o Safety Gate è delegato a modelli generativi.
+- **Documenti Chiave di Riferimento:**
+  - [MODEL_EVIDENCE_AUDIT.md](docs/architecture/MODEL_EVIDENCE_AUDIT.md) — Registro autorevole delle evidenze (Issue #12)
+  - [docs/scientific_references.md](docs/scientific_references.md) — Bibliografia peer-reviewed e standard (Sezioni `1–11`)
+  - [docs/plans/BLOCK_L_GAP_CLOSURE_ARCHITECTURE.md](docs/plans/BLOCK_L_GAP_CLOSURE_ARCHITECTURE.md) — Architettura Blocco L (`Fasi 29–34`)
+  - [docs/submission/NASA_2026_7_SLIDE_DECK.typ](docs/submission/NASA_2026_7_SLIDE_DECK.typ) & [docs/submission/NASA_SUBMISSION_PORTAL_READY.md](docs/submission/NASA_SUBMISSION_PORTAL_READY.md) — Pacchetto ufficiale di consegna NASA Space Apps 2026
+  - [09_NASA_Space_Apps_Official_Rules_and_Judging_Guide.md](09_NASA_Space_Apps_Official_Rules_and_Judging_Guide.md) & [11_Official_Submission_Guide_and_Ready_To_Paste_Form.md](11_Official_Submission_Guide_and_Ready_To_Paste_Form.md)
+  - [contracts/telemetry_schema.json](contracts/telemetry_schema.json) — Schema telemetrico condiviso Rust / TypeScript

@@ -1,0 +1,70 @@
+{
+  "timestamp_ms": 1794657720000,
+  "relative_recording_time_s": 132.0,
+  "source_record_id": "bidmc_01",
+  "mission_elapsed_days": 184.0,
+  "astronaut_id": "ASTRO-01",
+  "provenance_manifest": {
+    "biometrics_source": "RECORDED_TERRESTRIAL_BIDMC_CSV",
+    "biometrics_native_rate_hz": 1.0,
+    "ui_refresh_rate_hz": 20.0,
+    "scenario_overlay_mode": "SIMULATED_WHATIF_SCENARIO",
+    "dataset_provenance": "BIDMC v1.0.0",
+    "manifest_sha256_verified": true
+  },
+  "biometrics": {
+    "heart_rate_bpm": 91.0,
+    "pulse_rate_bpm": 90.0,
+    "respiration_rate_brpm": 22.0,
+    "spo2_percent": 94.0,
+    "rr_interval_ms": null,
+    "hrv_rmssd_ms": null,
+    "hrv_unavailable_reason": "BEAT_INTERVALS_NOT_AVAILABLE",
+    "core_temp_celsius": null,
+    "missing_channels": [
+      "rr_interval_ms",
+      "hrv_rmssd_ms"
+    ],
+    "quality_flags": [
+      "BEAT_INTERVALS_NOT_AVAILABLE",
+      "MANIFEST_SHA256_VERIFIED"
+    ]
+  },
+  "hemodynamics": {
+    "provenance": "DERIVED_COMPUTED",
+    "ijv_csa_cm2": 2.45,
+    "ijv_velocity_max_cm_s": 8.4,
+    "wall_shear_stress_dyn_cm2": 3.2,
+    "pocus_thrombus_confirmed": false,
+    "thrombosis_risk_score": 0.78
+  },
+  "musculoskeletal": {
+    "provenance": "DERIVED_COMPUTED",
+    "soleus_thickness_mm": 12.1,
+    "pennation_angle_deg": 13.1,
+    "bone_resorption_rate_pct": 1.85,
+    "mechanotransductive_index": 0.42
+  },
+  "environment": {
+    "provenance": "SIMULATED_SCENARIO_INPUT",
+    "cabin_co2_ppm": 6580.0,
+    "cabin_o2_kpa": 21.0,
+    "ambient_radiation_rate_ugy_h": 18.75,
+    "cumulative_radiation_mgy": 82.8
+  },
+  "safety_margins": {
+    "provenance": "DERIVED_FROM_HYBRID_SCENARIO",
+    "med_stl_rho_robustness": -0.32,
+    "time_to_violation_days": 0.0,
+    "ttv_most_likely_days": 0.0,
+    "ttv_p5_days": 0.0,
+    "mission_readiness_index": 36.0,
+    "alarm_level": "CRITICAL"
+  },
+  "active_playbook": {
+    "playbook_id": "PLAYBOOK_04_SANS_TRANSLAMINAR_MITIGATION",
+    "current_step": 1,
+    "total_steps": 4,
+    "step_instruction": "Verify CO2 scrubber status and initiate nightly LBNP -25 mmHg with anti-syncope guardrail armed."
+  }
+}
