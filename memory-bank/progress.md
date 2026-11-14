@@ -108,3 +108,5 @@
 - [x] Use male geometry for both profiles; FEMALE adjusts existing scenario parameters only. Exclude the rejected female assets and older temporary issue #13 code.
 - [x] Preserve asset attribution/licensing and verify pinned-source hashes; release session photo object URLs.
 - [x] Frontend lint/build, local fast repository probe and browser interaction/pure-replay availability checks passed. The existing Vite large-chunk warning remains. No hosted Actions or new clinical validation.
+
+- [x] Added the user's OpenScreen and Vercel UI SDK repositories to the reference list, with reviewed README/licence links, possible demo/interaction use and beta/integration status. No dependency installation or runtime integration.
