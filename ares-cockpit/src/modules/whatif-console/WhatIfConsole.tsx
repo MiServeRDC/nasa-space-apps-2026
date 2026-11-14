@@ -5,21 +5,27 @@ type NumericKey = Exclude<keyof WhatIf, 'sex'>;
 const SLIDERS: { key: NumericKey; label: string; unit: string; min: number; max: number; step: number; hint: string }[] = [
   { key: 'mission_day', label: 'Mission Day', unit: 'd', min: 0, max: 900, step: 1, hint: 'Days you have spent in microgravity' },
   { key: 'ppco2_mmhg', label: 'Cabin CO2', unit: 'mmHg', min: 0.5, max: 8, step: 0.1, hint: 'Keep below 4.0 mmHg to protect your vision' },
-  { key: 'ared_load_pct', label: 'ARED Exercise Load', unit: '%', min: 0, max: 150, step: 5, hint: 'Daily resistive training for muscles and bone' },
+  { key: 'ared_load_pct', label: 'ARED Exercise Load', unit: '%', min: 0, max: 150, step: 5, hint: 'Server echoes this value; Frost-Hargens ODE pending in backend' },
   { key: 'lbnp_mmhg', label: 'LBNP Leg Pressure', unit: 'mmHg', min: -50, max: 0, step: 1, hint: 'Pulls fluid back toward your legs' },
   { key: 'artifact_level', label: 'Signal Noise', unit: '', min: 0, max: 1, step: 0.05, hint: 'Sweat, fan vibration, or exercise motion' },
 ];
 
-export function WhatIfConsole({ value, onChange, ventEvent, onRearm }: {
+export function WhatIfConsole({ value, onChange, ventEvent, onRearm, isPureReplay }: {
   value: WhatIf;
   onChange: (w: WhatIf) => void;
   ventEvent: string | null;
   onRearm: () => void;
+  isPureReplay?: boolean;
 }) {
   const setSex = (sex: CrewSex) => onChange({ ...value, sex });
 
   return (
     <div className="space-y-2.5 text-xs">
+      {isPureReplay && (
+        <div className="rounded border border-advisory/60 bg-advisory/10 px-2.5 py-1.5 font-mono text-[11px] text-advisory">
+          PURE BIDMC REPLAY ACTIVE: recorded vitals are isolated from What-If controls.
+        </div>
+      )}
       <div className="flex items-center justify-between rounded-lg border border-gray-700 bg-gray-900/70 px-2.5 py-1.5 font-mono">
         <div>
           <div className="text-xs font-semibold text-gray-200">Crew Sex</div>

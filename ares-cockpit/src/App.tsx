@@ -61,8 +61,9 @@ export default function App() {
   const [evalTab, setEvalTab] = useState<EvalTab>('BODY_3D');
   const [injuries, setInjuries] = useState<InjuryMarker[]>([]);
 
-  const { packet, link } = useTelemetry(whatIf, thrombus, lastScanDay);
+  const { packet, link, recomputeLatencyUs } = useTelemetry(whatIf, thrombus, lastScanDay);
   const s = useMemo(() => evaluate(whatIf, lastScanDay), [whatIf, lastScanDay]);
+  const isPureReplay = packet.provenance_manifest.scenario_overlay_mode === 'NONE_PURE_REPLAY';
 
   const P = SEX_PROFILES[whatIf.sex];
 
@@ -98,17 +99,34 @@ export default function App() {
           {/* Compact status banner */}
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line bg-panel px-4 py-2.5">
             <div className="text-sm text-gray-200">
-              <span className="font-mono text-xs text-gray-500 mr-2">DAY {whatIf.mission_day}</span>
-              Main watch item:{' '}
-              <span className={`font-semibold ${s.rhoMin < 0 ? 'text-critical' : s.rhoMin < 0.4 ? 'text-advisory' : 'text-nominal'}`}>
-                {RISK_LABEL[s.worst]}
+              <span className="font-mono text-xs text-gray-500 mr-2">
+                {isPureReplay
+                  ? `${packet.source_record_id} @ ${packet.relative_recording_time_s.toFixed(0)}s`
+                  : `DAY ${whatIf.mission_day}`}
               </span>
-              <span className="ml-2 font-mono text-xs text-gray-400">(margin {s.rhoMin.toFixed(2)})</span>
+              {isPureReplay ? (
+                <span className="font-mono text-xs text-advisory">
+                  RECORDED TERRESTRIAL BIDMC ({packet.provenance_manifest.biometrics_native_rate_hz} Hz native / {packet.provenance_manifest.ui_refresh_rate_hz} Hz UI)
+                </span>
+              ) : (
+                <>
+                  Main watch item:{' '}
+                  <span className={`font-semibold ${s.rhoMin < 0 ? 'text-critical' : s.rhoMin < 0.4 ? 'text-advisory' : 'text-nominal'}`}>
+                    {RISK_LABEL[s.worst]}
+                  </span>
+                  <span className="ml-2 font-mono text-xs text-gray-400">(margin {s.rhoMin.toFixed(2)})</span>
+                </>
+              )}
             </div>
-            <div className="font-mono text-xs text-gray-400">
-              {ttv === null || ttv === undefined
-                ? 'Safe for > 100 days at current settings'
-                : ttv === 0 ? 'Action needed now' : `Estimated ${ttv} days until limit`}
+            <div className="flex items-center gap-3 font-mono text-xs text-gray-400">
+              {recomputeLatencyUs !== null && link === 'ENGINE_LIVE' && (
+                <span className="text-ok">recompute {recomputeLatencyUs} us</span>
+              )}
+              <span>
+                {ttv === null || ttv === undefined
+                  ? isPureReplay ? 'TTV UNAVAILABLE (8-min terrestrial)' : 'Safe for > 100 days at current settings'
+                  : ttv === 0 ? 'Action needed now' : `Estimated ${ttv} days until limit`}
+              </span>
             </div>
           </div>
 
@@ -117,10 +135,10 @@ export default function App() {
             <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                 {[
-                  ['Your Heart Rate', fmt(b.heart_rate_bpm), 'bpm'],
+                  ['Heart Rate (ECG)', fmt(b.heart_rate_bpm), 'bpm'],
+                  ['Pulse Rate (PPG)', fmt(b.pulse_rate_bpm), 'bpm'],
                   ['Blood Oxygen', fmt(b.spo2_percent, 1), '%'],
                   ['Breathing Rate', fmt(b.respiration_rate_brpm, 1), 'br/min'],
-                  ['Systolic BP', s.sbp.toFixed(0), 'mmHg'],
                 ].map(([k, v, u]) => (
                   <div key={k} className="rounded-lg border border-line bg-panel p-4">
                     <div className="text-xs text-gray-400">{k}</div>
@@ -132,12 +150,18 @@ export default function App() {
 
               <Card title="Live ECG & Signal Quality Check" tag={packet.provenance_manifest.biometrics_source} className="min-h-0 flex-1">
                 <div className="flex h-full flex-col justify-between gap-3">
-                  <EcgStrip hr={s.hr} artifact={whatIf.artifact_level} sqi={s.sqi} />
-                  <p className="text-sm text-gray-300">
-                    Your sensors are checked continuously before any alert is raised. If sweat, fan vibration, or exercise movement
-                    drops signal quality below 0.60, noisy readings are marked <span className="font-mono text-advisory">UNAVAILABLE</span> instead
-                    of triggering a false alarm.
-                  </p>
+                  <EcgStrip hr={b.heart_rate_bpm ?? s.hr} artifact={isPureReplay ? 0 : whatIf.artifact_level} sqi={isPureReplay ? 1 : s.sqi} />
+                  {b.missing_channels && b.missing_channels.length > 0 ? (
+                    <p className="font-mono text-xs text-advisory">
+                      MISSING CHANNELS: {b.missing_channels.join(', ')} (preserved as null / UNAVAILABLE, never coerced to 0).
+                    </p>
+                  ) : (
+                    <p className="text-sm text-gray-300">
+                      Your sensors are checked continuously before any alert is raised. If sweat, fan vibration, or exercise movement
+                      drops signal quality below 0.60, noisy readings are marked <span className="font-mono text-advisory">UNAVAILABLE</span> instead
+                      of triggering a false alarm.
+                    </p>
+                  )}
                 </div>
               </Card>
             </div>
@@ -181,7 +205,14 @@ export default function App() {
               )}
 
               {evalTab === 'POCUS' && (
-                <div className="grid min-h-0 flex-1 gap-3 md:grid-cols-2">
+                isPureReplay && packet.hemodynamics === null ? (
+                  <Card title="Ultrasound (Neck & Eye)" tag="NONE_PURE_REPLAY" className="min-h-0 flex-1">
+                    <div className="flex h-full items-center justify-center font-mono text-sm text-advisory">
+                      UNAVAILABLE IN PURE BIDMC REPLAY (hemodynamics and POCUS channels are null for terrestrial record {packet.source_record_id}).
+                    </div>
+                  </Card>
+                ) : (
+                  <div className="grid min-h-0 flex-1 gap-3 md:grid-cols-2">
                   <Card title="Neck Vein Ultrasound (IJV)" tag="SIMULATED POCUS" className="min-h-0">
                     <PocusIjv csa={s.csa} vmax={s.vmax} thrombus={thrombus} />
                     <div className="mt-2">
@@ -209,11 +240,19 @@ export default function App() {
                       LOG 2-MIN EYE SCAN NOW
                     </button>
                   </Card>
-                </div>
+                  </div>
+                )
               )}
 
               {evalTab === 'MUSCLE_BONE' && (
-                <Card title="Your Muscle, Bone & Mars Landing Readiness" tag="DERIVED" className="min-h-0 flex-1">
+                isPureReplay && packet.musculoskeletal === null ? (
+                  <Card title="Muscle, Bone & Mars Landing Readiness" tag="NONE_PURE_REPLAY" className="min-h-0 flex-1">
+                    <div className="flex h-full items-center justify-center font-mono text-sm text-advisory">
+                      UNAVAILABLE IN PURE BIDMC REPLAY (musculoskeletal channels are null for terrestrial record {packet.source_record_id}).
+                    </div>
+                  </Card>
+                ) : (
+                  <Card title="Your Muscle, Bone & Mars Landing Readiness" tag="DERIVED" className="min-h-0 flex-1">
                   <div className="flex h-full flex-col justify-between gap-4">
                     <div className="flex flex-wrap items-center gap-2 font-mono text-xs">
                       {['Calf muscle unloads', 'Irisin drops', 'Sclerostin rises', 'Bone weakens', 'Walking on Mars (0.38 g)'].map((t, i, a) => (
@@ -234,7 +273,8 @@ export default function App() {
                       Without daily resistive exercise on ARED, your calf muscle thins and signals your bones to lose density. Keeping your ARED load near 100% protects your skeleton for landing on Mars.
                     </p>
                   </div>
-                </Card>
+                  </Card>
+                )
               )}
 
               {evalTab === 'FORECAST' && (
@@ -294,7 +334,7 @@ export default function App() {
           </div>
           <div className="min-h-0 flex-1 rounded-lg border border-line bg-panel p-4">
             <div className="mb-2 font-mono text-xs tracking-widest text-gray-500">ADJUST CONDITIONS</div>
-            <WhatIfConsole value={whatIf} onChange={setWhatIf} ventEvent={ventEvent} onRearm={() => setVentEvent(null)} />
+            <WhatIfConsole value={whatIf} onChange={setWhatIf} ventEvent={ventEvent} onRearm={() => setVentEvent(null)} isPureReplay={isPureReplay} />
           </div>
         </aside>
       </div>
