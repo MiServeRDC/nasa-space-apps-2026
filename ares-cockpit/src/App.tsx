@@ -81,7 +81,8 @@ export default function App() {
     );
   }, [bleManager]);
 
-  const { packet, link, recomputeLatencyUs } = useTelemetry(whatIf, thrombus, lastScanDay);
+  const { packet, link, status } = useTelemetry(whatIf, thrombus, lastScanDay, true);
+  const recomputeLatencyUs = status.lastSyncLatencyUs;
   const s = useMemo(() => evaluate(whatIf, lastScanDay), [whatIf, lastScanDay]);
   const isPureReplay = packet.provenance_manifest.scenario_overlay_mode === 'NONE_PURE_REPLAY';
 

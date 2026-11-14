@@ -1344,6 +1344,7 @@ pub fn build_axum_router(state: Arc<SharedMissionState>) -> Router {
         .route("/api/snapshot", get(get_snapshot_handler))
         .route("/api/os-status", get(get_os_status_handler))
         .route("/api/binary-frame", get(get_binary_frame_handler))
+        .route("/api/audit-log", get(get_audit_log_handler))
         .route(
             "/api/mcp",
             post(post_mcp_handler).options(cors_preflight_handler),
@@ -1363,10 +1364,6 @@ pub fn build_axum_router(state: Arc<SharedMissionState>) -> Router {
         .route(
             "/api/copilot/stream",
             post(post_copilot_stream_handler).options(cors_preflight_handler),
-        )
-        .route(
-            "/api/audit-log",
-            get(get_audit_log_handler).options(cors_preflight_handler),
         )
         .layer(middleware::from_fn(loopback_cors_middleware))
         .with_state(state)
