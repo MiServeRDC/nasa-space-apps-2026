@@ -3,6 +3,7 @@
 - **Blocco Architetturale**: Blocco K (*System-Wide Testing, Chaos Engineering, Contract E2E & `NASA-STD-3001` Certification*, Fasi 25–28)
 - **Fase**: Fase 25 (`K1`)
 - **Stato**: `PLANNED (READY FOR EXECUTION)`
+- **Architettura Master di Blocco**: [`BLOCK_K_SYSTEM_TESTING_ARCHITECTURE.md`](BLOCK_K_SYSTEM_TESTING_ARCHITECTURE.md)
 - **Crate Target**: `crates/ares-core-types`, `crates/ares-causal-graph`, `crates/ares-nqs-stl`, `crates/ares-telemetry-ingest`
 - **Piani & Studi di Riferimento**: [`phase_05_C1`](phase_05_C1_frost_hargens_rk4_sclerostin_mqi_and_gai_plan.md), [`phase_06_C2`](phase_06_C2_jugular_shear_stress_lbnp_dose_response_and_sans_plan.md), [`phase_08_D1`](phase_08_D1_nqs_stl_normalizer_and_lemire_o1_sliding_window_plan.md), [`phase_15_H1`](phase_15_H1_timestral_patch_scaler_rope_backbone.md), [`phase_16_H2`](phase_16_H2_dhf_monotone_quantiles_conformal_gate.md), [`phase_19_I2`](phase_19_I2_biokg_16byte_descriptor_epistemic_reasoner.md), [`phase_21_J1`](phase_21_J1_zero_copy_binary_ipc_shm_protocol.md), [`phase_24_J4`](phase_24_J4_asterinas_framekernel_hubris_wearable_targets.md)
 - **Owner Principale**: `@fabiomalagutti27-droid` (con verifica `@MiServeRDC` e `@LelloXV`)
@@ -135,10 +136,9 @@ proptest! {
 
         let scaler = CausalScaler::default();
         let stats = ChannelCausalStats {
-            mean,
-            std_dev,
-            observed_count: 32,
-            last_valid: mean,
+            median: mean,
+            mad_scale: std_dev,
+            observed_ratio: 1.0,
         };
         let triplet: MonotoneQuantileTriplet =
             head.project_denormalized_triplet(&logits, &scaler, stats, conformal_pad);
@@ -156,7 +156,7 @@ proptest! {
 
         for (idx, &val) in values.iter().enumerate() {
             let t = idx as f64;
-            let got = wedge.push_and_min(t, val);
+            let got = wedge.push_and_evaluate(t, val);
 
             oracle_window.push_back((t, val));
             while let Some(&(t0, _)) = oracle_window.front() {
@@ -246,16 +246,18 @@ proptest! {
         prop_assert!((2.0..=28.0).contains(&musculo.gai_pct));
 
         let s_low = StressTestScenarioInput {
+            source_record_id: "bidmc_01".to_string(),
             flight_day,
             ared_daily_load_kgf: ared_load,
             radiation_dose_rate_msv_d: 0.8,
             lbnp_active: true,
             lbnp_pressure_mmhg: -p_low,
             pocus_thrombus_confirmed: false,
+            systolic_bp_drop_mmhg: 0.0,
         };
         let s_high = StressTestScenarioInput {
             lbnp_pressure_mmhg: -p_high,
-            ..s_low
+            ..s_low.clone()
         };
         let (j_low, sans_low) = compute_jugular_and_sans_state(&musculo, &s_low);
         let (j_high, sans_high) = compute_jugular_and_sans_state(&musculo, &s_high);
@@ -307,8 +309,8 @@ proptest! {
 // 2. Per ogni sottoinsieme casuale di bit in validity_mask (16 canali f32 @ 32..96: hr, pulse, resp,
 //    spo2, rmssd, mri, crs, sans, ijv_shear_pa, sost_pg_ml, radiation_msv_d, nqs_min_rho,
 //    ttv_q05_days, ttv_q50_days, ttv_q95_days, owlt_delay_sec), to_le_bytes() -> from_le_bytes()
-//    verifica magic (0x4152_4553), schema_version (1), Castagnoli crc32c (0x82F63B78 @ 104..108)
-//    e preserva bit-per-bit Some(v) vs None (nessun fallback a 0.0).
+//    verifica magic (ARES_BINARY_MAGIC = 0x4152_4553), schema_version (ARES_BINARY_VERSION = 1),
+//    Castagnoli crc32c (compute_crc32c @ 104..108) e preserva bit-per-bit Some(v) vs None (nessun fallback a 0.0).
 // 3. size_of::<WearableSensorPacket>() == 32 && align_of::<WearableSensorPacket>() == 4;
 //    to_le_bytes_with_crc() -> decode_and_verify() e invertibile per qualsiasi (node_id, channel_mask,
 //    supervisor_restart_count, hr, spo2, resp, rr, imu_rms_g finito), preservando

@@ -262,4 +262,37 @@ Studio architetturale completo documentato in [`docs/architecture/RUST_OS_AND_SH
 | **`eclipse-iceoryx/iceoryx2`** | `https://github.com/eclipse-iceoryx/iceoryx2` (`Apache-2.0/MIT`) | Zero-Copy Shared Memory IPC | [`phase_21_J1`](plans/phase_21_J1_zero_copy_binary_ipc_shm_protocol.md) — **Tier B Partitioned Bus:** Daemonless lock-free `POSIX shm` (`< 100 ns`, `ZeroCopySend`, `BinaryTelemetryFrame` 128 B). |
 | **`eclipse-zenoh/zenoh`** | `https://github.com/eclipse-zenoh/zenoh` (`EPL-2.0/Apache-2.0`) | Distributed Space/Edge Middleware | [`phase_21_J1`](plans/phase_21_J1_zero_copy_binary_ipc_shm_protocol.md) — **Tier B/C DSN Bridge:** Sub-microsecond local `shm` pub/sub + intermittent Mars-to-Earth Store-and-Forward synchronization. |
 
+---
+
+## 10. Software Assurance, Property-Based Testing & Chaos Verification References (Blocco K: Fasi 25–28)
+
+Architettura di verifica completa documentata in [`docs/plans/BLOCK_K_SYSTEM_TESTING_ARCHITECTURE.md`](plans/BLOCK_K_SYSTEM_TESTING_ARCHITECTURE.md) e piani implementativi dettagliati in [`phase_25_K1`](plans/phase_25_K1_property_based_numerical_ode_stl_verification.md), [`phase_26_K2`](plans/phase_26_K2_clinical_chaos_sensor_dropout_seu_fault_injection.md), [`phase_27_K3`](plans/phase_27_K3_full_stack_contract_cockpit_ipc_mcp_e2e.md) e [`phase_28_K4`](plans/phase_28_K4_nasa_std_3001_compliance_latency_memory_benchmark.md).
+
+- **QuickCheck & Shrinking Property-Based Testing (`proptest`):**
+  - *Autori*: Koen Claessen, John Hughes (Chalmers University of Technology)
+  - *Venue*: *"QuickCheck: A Lightweight Tool for Random Testing of Haskell Programs"*, *Proceedings of the 5th ACM SIGPLAN International Conference on Functional Programming (ICFP 2000)*, pp. 268–279 (`DOI: 10.1145/351240.351266`); implementazione Rust `proptest-rs/proptest` (`https://github.com/proptest-rs/proptest`, `MIT OR Apache-2.0`).
+  - *Fasi Collegate*: [`Fase 25 (K1)`](plans/phase_25_K1_property_based_numerical_ode_stl_verification.md)
+  - *Applicazione nel Progetto*: Generazione stocastica con *structural shrinking* deterministico (`PROPTEST_RNG_SEED`) per falsificare il non-crossing algebrico su `10,000` traiettorie avverse di `QuantileHead`, la parita differenziale $O(1)$ di `LemireMinWedge` vs oracolo $O(W)$, e i layout little-endian `16 B` / `32 B` / `128 B`.
+
+- **Richardson Extrapolation & Runge-Kutta Convergence Theory:**
+  - *Autori*: Lewis Fry Richardson, *"The Approximate Arithmetical Solution by Finite Differences of Physical Problems Involving Differential Equations"*, *Philosophical Transactions of the Royal Society of London A*, Vol. 210, pp. 307–357, 1911; John C. Butcher, *Numerical Methods for Ordinary Differential Equations* (3rd ed., Wiley, 2016, `ISBN: 978-1-119-12150-3`).
+  - *Fasi Collegate*: [`Fase 25 (K1)`](plans/phase_25_K1_property_based_numerical_ode_stl_verification.md)
+  - *Applicazione nel Progetto*: Verifica mediante *step-halving* ($h \to h/2$, rapporto di errore $E(h)/E(h/2) \ge 14.5$ attorno al valore teorico $2^4 = 16$) dell'accuratezza di quarto ordine di `step_sclerostin_rk4` contro la soluzione analitica esatta di Frost-Hargens.
+
+- **Chaos Engineering & Fault Injection for Resilient Distributed Systems:**
+  - *Autori*: Ali Basiri, Niosha Behnam, Ruud de Rooij, Lorin Hochstein, Luke Kosewski, Justin Reynolds, Casey Rosenthal (Netflix)
+  - *Venue*: *"Chaos Engineering"*, *IEEE Software*, Vol. 33, No. 3, pp. 35–41, 2016 (`DOI: 10.1109/MS.2016.60`); Angelopoulos, Candès, Tibshirani, *"Conformal PID Control for Time Series Prediction"*, *NeurIPS 2023* (`arXiv:2307.16895`).
+  - *Fasi Collegate*: [`Fase 26 (K2)`](plans/phase_26_K2_clinical_chaos_sensor_dropout_seu_fault_injection.md)
+  - *Applicazione nel Progetto*: Verifica di *steady-state hypothesis* sotto iniezione di dropout multi-canale (`NaN`, `Inf`, `None`, `BEAT_INTERVALS_NOT_AVAILABLE`), deriva di copertura `ConformalAbstentionGate`, e manomissione AEAD `ChaCha20-Poly1305` / catena `SHA-256`.
+
+- **Cyclic Redundancy Code (CRC) Hamming Distance & Castagnoli `CRC-32C` (`RFC 3720`):**
+  - *Autori*: Philip Koopman, Tridib Chakravarty, *"Cyclic Redundancy Code (CRC) Polynomial Selection for Embedded Networks"*, *IEEE/IFIP International Conference on Dependable Systems and Networks (DSN 2004)* (`DOI: 10.1109/DSN.2004.1311885`); *IETF RFC 3720* (`CRC-32C` polinomio Castagnoli `0x1EDC6F41` / riflesso `0x82F63B78`).
+  - *Fasi Collegate*: [`Fase 25 (K1)`](plans/phase_25_K1_property_based_numerical_ode_stl_verification.md), [`Fase 26 (K2)`](plans/phase_26_K2_clinical_chaos_sensor_dropout_seu_fault_injection.md), [`Fase 27 (K3)`](plans/phase_27_K3_full_stack_contract_cockpit_ipc_mcp_e2e.md)
+  - *Applicazione nel Progetto*: Garanzia matematica di distanza di Hamming $d_{\min} \ge 3$ per la rilevazione al `100%` di qualsiasi singolo bit-flip SEU su `BiomedicalEvidenceDescriptor` (`16 B`, `CRC-8`), `WearableSensorPacket` (`32 B`, `CRC-16-CCITT`) e `BinaryTelemetryFrame` (`128 B`, `CRC-32C`).
+
+- **NASA Software Assurance, Safety & Model VVUQ Standards (`NASA-STD-8739.8B`, `NASA-STD-8719.13C`, `NASA-STD-7009B`):**
+  - *Organizzazione*: National Aeronautics and Space Administration — *NASA-STD-8739.8B* (*Software Assurance and Software Safety Standard*, `https://standards.nasa.gov/standard/NASA/NASA-STD-8739.8`), *NASA-STD-8719.13C* (*Software Safety Standard*), *NASA-STD-7009B* (*Standard for Models and Simulations*, 2024), affiancati da Gil Tene, *"How NOT to Measure Latency"* (`HdrHistogram/HdrHistogram_rust`, 2015).
+  - *Fasi Collegate*: [`Fase 28 (K4)`](plans/phase_28_K4_nasa_std_3001_compliance_latency_memory_benchmark.md)
+  - *Applicazione nel Progetto*: Matrice di tracciabilita normativa eseguibile `[V1 3001]`–`[V2 10152]` + `OCHMO MTB-007` e metodologia statistica `p50`/`p99`/`p99.9` dopo warm-up L1/L2 senza *coordinated omission*.
+
 

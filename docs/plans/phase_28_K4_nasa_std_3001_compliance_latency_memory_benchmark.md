@@ -3,6 +3,7 @@
 - **Blocco Architetturale**: Blocco K (*System-Wide Testing, Chaos Engineering, Contract E2E & `NASA-STD-3001` Certification*, Fasi 25–28)
 - **Fase**: Fase 28 (`K4`)
 - **Stato**: `PLANNED (READY FOR EXECUTION)`
+- **Architettura Master di Blocco**: [`BLOCK_K_SYSTEM_TESTING_ARCHITECTURE.md`](BLOCK_K_SYSTEM_TESTING_ARCHITECTURE.md)
 - **Crate Target**: Tutti gli 8 crate del workspace (`ares-core-types` .. `ares-desktop-os`) + `scripts/agent_probe.sh`
 - **Piani & Studi di Riferimento**: [`phase_02_A2`](phase_02_A2_nasa_std_3001_constants_errors_and_security_traits_plan.md), [`phase_18_I1`](phase_18_I1_welford_longitudinal_compaction_spatial_deontic.md), [`phase_19_I2`](phase_19_I2_biokg_16byte_descriptor_epistemic_reasoner.md), [`phase_20_I3`](phase_20_I3_unified_dataset_graph_builder_graphify_mcp.md), [`phase_21_J1`](phase_21_J1_zero_copy_binary_ipc_shm_protocol.md), [`phase_22_J2`](phase_22_J2_ares_desktop_os_tauri_native_shell.md), [`RUST_OS_AND_SHELL_FEASIBILITY_STUDY.md`](../architecture/RUST_OS_AND_SHELL_FEASIBILITY_STUDY.md)
 - **Owner Principale**: `@fabiomalagutti27-droid` & `@MiServeRDC` (con verifica `@fertech02` e `@LelloXV`)
@@ -147,7 +148,7 @@ fn cert_realtime_latency_percentiles_20hz_loop_biokg_and_dataset_graph() {
         let t0 = Instant::now();
         let res = graph.query_by_keyword_or_id(kw, 5);
         graph_ns.push(t0.elapsed().as_nanos());
-        assert!(!res.matched_node_ids.is_empty());
+        assert!(res.matched_id.is_some());
     }
     graph_ns.sort_unstable();
     let graph_p99_us = percentile_sorted(&graph_ns, 0.99) / 1_000.0;
@@ -178,16 +179,13 @@ fn cert_900_sol_compactor_under_200kb_and_dataset_graph_under_10mb() {
         for bucket in 0..4u32 {
             let timestamp_s = (sol as f64) * 88_775.244 + (bucket as f64) * 900.0;
             let tick = PhysiologicalTick {
-                hr_bpm: Some(68.0 + (bucket as f64)),
-                spo2_pct: Some(98.2),
-                resp_brpm: Some(14.0),
-                rmssd_ms: None,
                 tau_w_dyn_cm2: 2.35,
                 sost_pmol_l: 28.0,
-                onsd_mm: 5.2,
-                rho_global: 0.78,
+                mqi: 0.92,
+                sans_index: 0.18,
+                rho_global: Some(0.78),
             };
-            compactor.observe(timestamp_s, &tick);
+            compactor.observe(timestamp_s, &tick).expect("observe 900-sol tick");
         }
     }
 

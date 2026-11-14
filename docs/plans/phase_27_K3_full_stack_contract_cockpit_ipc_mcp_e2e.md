@@ -3,12 +3,13 @@
 - **Blocco Architetturale**: Blocco K (*System-Wide Testing, Chaos Engineering, Contract E2E & `NASA-STD-3001` Certification*, Fasi 25–28)
 - **Fase**: Fase 27 (`K3`)
 - **Stato**: `PLANNED (READY FOR EXECUTION)`
+- **Architettura Master di Blocco**: [`BLOCK_K_SYSTEM_TESTING_ARCHITECTURE.md`](BLOCK_K_SYSTEM_TESTING_ARCHITECTURE.md)
 - **Crate & Directory Target**: `crates/ares-server-cli`, `crates/ares-desktop-os`, `crates/ares-causal-graph`, `ares-cockpit/`
 - **Piani & Studi di Riferimento**: [`phase_13_G1`](phase_13_G1_axum_20hz_websocket_and_sub_ms_stress_test_api_plan.md), [`phase_14_G2`](phase_14_G2_fastmcp_stdio_jsonrpc_context_mode_server_plan.md), [`phase_20_I3`](phase_20_I3_unified_dataset_graph_builder_graphify_mcp.md), [`phase_21_J1`](phase_21_J1_zero_copy_binary_ipc_shm_protocol.md), [`phase_22_J2`](phase_22_J2_ares_desktop_os_tauri_native_shell.md), [`phase_23_J3`](phase_23_J3_os_chrome_fastmcp_palette_dual_transport.md)
 - **Owner Principale**: `@fertech02` & `@carolina2910` (con supervisione `@fabiomalagutti27-droid`)
 - **File Target Previsti**:
   1. `crates/ares-server-cli/tests/e2e_dual_clock_http_and_mcp.rs` *(NEW — test HTTP `/api/snapshot`, `/api/binary-frame`, `/api/os-status`, `POST /api/stress-test`, `POST /api/mcp`, `WS /ws/telemetry` + invarianza doppio clock `1 Hz`/`20 Hz`)*
-  2. `crates/ares-desktop-os/tests/e2e_ipc_and_binary_fixture_export.rs` *(NEW — verifica `AresMedOsWorkstationShell` / `DesktopShellRuntime` in-process e generazione vettore binario `128 B` condiviso con TypeScript)*
+  2. `crates/ares-desktop-os/tests/e2e_ipc_and_binary_fixture_export.rs` *(NEW — verifica `AresMedOsWorkstationShell` / `DesktopShellConfig` in-process in `crates/ares-desktop-os/src/lib.rs` e generazione vettore binario `128 B` condiviso con TypeScript)*
   3. `ares-cockpit/src/lib/__tests__/binaryTelemetryDecoder.contract.test.ts` *(NEW — test di parita bit-esatta `DataView` su fixture prodotta da Rust, verifica `null` su `validity_mask` e fallback `useTelemetry.ts`)*
   4. `ares-cockpit/src/modules/os-shell/__tests__/osCommandPalette.e2e.test.ts` *(NEW — verifica integrazione `Alt+Space`/`Cmd+K` contro `POST /api/mcp` con tutti gli 8 tool `< 150` token / `<= 600` byte)*
 - **Budget E2E & Contratti**:
@@ -36,7 +37,7 @@ In un'architettura multi-linguaggio e multi-trasporto (`Rust 2024` backend + `Ta
 | **`tokio-rs/axum` & `tower::ServiceExt`** | `https://github.com/tokio-rs/axum` (`MIT`) | Test in-process ad alte prestazioni (`Router::oneshot`) su `/api/snapshot`, `/api/stress-test`, `/api/mcp`, `/api/binary-frame` e `/api/os-status` senza porte effimere instabili. |
 | **`tauri-apps/tauri` IPC Contract** | `https://github.com/tauri-apps/tauri` (`Apache-2.0 OR MIT`) | Test di serializzazione `InvokeResponseBody::Raw` (`128 B`) e fallback automatico verso `BROWSER_WEBSOCKET` quando `__TAURI_INTERNALS__` e assente. |
 | **Model Context Protocol (MCP) 2025-06-18 & `IoT-MCP`** | `https://modelcontextprotocol.io`; Bellagente et al., `arXiv:2502.16467` (2025) | Verifica conformita JSON-RPC 2.0 (`initialize`, `tools/list`, `tools/call`) su `stdio` e `HTTP` con cap stretto `MAX_MCP_CONTEXT_MODE_BYTES = 600`. |
-| **`vitest-dev/vitest` / Node `assert` ESM** | `https://github.com/vitest-dev/vitest` (`MIT`) | Verifica automatica in Node/TypeScript della decodifica `DataView` sui vettori binari `128 B` prodotti direttamente da Rust. |
+| **Node `v26+` (`--experimental-strip-types`) & `node:assert/strict`** | Runtime `Node v26.13.0` + `tsc -b --noEmit` (`ares-cockpit/package.json`) | Verifica automatica in Node/TypeScript a zero dipendenze aggiuntive della decodifica `DataView` sui vettori binari `128 B` prodotti direttamente da Rust. |
 
 ---
 
@@ -105,6 +106,7 @@ async fn e2e_dual_clock_invariance_under_stress_test_and_20hz_ticks() {
         lbnp_active: Some(false),
         lbnp_pressure_mmhg: Some(0.0),
         pocus_thrombus_confirmed: Some(false),
+        ..StressTestPatchRequest::default()
     };
     let req = Request::builder()
         .method("POST")
@@ -131,7 +133,7 @@ async fn e2e_http_post_api_mcp_all_8_tools_and_binary_frame_endpoint() {
     let state = SharedMissionState::from_data_dir(&bidmc_dir()).expect("init state");
     let app = build_axum_router(state);
 
-    // Verifica GET /api/binary-frame (esattamente 128 byte con magic ARES)
+    // Verifica GET /api/binary-frame (esattamente 128 byte con magic ARES_BINARY_MAGIC = 0x4152_4553 e ARES_BINARY_VERSION = 1)
     let bin_req = Request::builder()
         .method("GET")
         .uri("/api/binary-frame")
@@ -142,6 +144,7 @@ async fn e2e_http_post_api_mcp_all_8_tools_and_binary_frame_endpoint() {
     let bin_bytes = axum::body::to_bytes(bin_resp.into_body(), 4096).await.expect("bin bytes");
     assert_eq!(bin_bytes.len(), 128);
     assert_eq!(&bin_bytes[0..4], &0x4152_4553u32.to_le_bytes());
+    assert_eq!(&bin_bytes[4..6], &1u16.to_le_bytes());
 
     // Verifica GET /api/os-status
     let os_req = Request::builder()

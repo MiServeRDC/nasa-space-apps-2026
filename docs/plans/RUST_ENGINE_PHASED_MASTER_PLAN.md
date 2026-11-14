@@ -449,7 +449,8 @@ flowchart TD
 ---
 
 ### BLOCCO K — System-Wide Verification, Clinical Chaos Engineering & `NASA-STD-3001` Certification Harness (`Fasi 25–28`)
-* **Crate / Target:** Workspace completo (8 crate Rust + `ares-cockpit/` + `scripts/agent_probe.sh`)
+* **Architettura Master & Matrice Cross-Crate:** [`docs/plans/BLOCK_K_SYSTEM_TESTING_ARCHITECTURE.md`](BLOCK_K_SYSTEM_TESTING_ARCHITECTURE.md)
+* **Crate / Target:** Workspace completo (8 crate Rust + `ares-cockpit/` + `contracts/fixtures/` + `deploy/medos/` + `scripts/agent_probe.sh`)
 * **Owner Principale:** `@fabiomalagutti27-droid` (`test-architect-verifier` con `@MiServeRDC`, `@LelloXV`, `@fertech02`, `@carolina2910`)
 
 #### Fase 25 (`K1`): Mathematical, Dimensional & Property-Based Verification Suite (`proptest` / Algebraic Invariants Across ODEs, STL, Timestral Quantiles & Binary Layouts)
