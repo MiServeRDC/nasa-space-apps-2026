@@ -3,7 +3,7 @@
 
 use crate::bidmc_replayer::BidmcNumericRow;
 use crate::sqi_filter::SqiFilter;
-use ares_core_types::telemetry::{Biometrics, StressTestScenarioInput};
+use ares_core_types::telemetry::{Biometrics, HrvUnavailableReason, StressTestScenarioInput};
 
 /// Fonde una riga reale BIDMC (`RECORDED_TERRESTRIAL_BIDMC_CSV`) con gli input di scenario.
 #[inline]
@@ -12,25 +12,27 @@ pub fn merge_biometrics_with_scenario(
     scenario: &StressTestScenarioInput,
     sqi_filter: &mut SqiFilter,
 ) -> Biometrics {
-    let (sqi_score, rmssd_ms) = sqi_filter.evaluate_row(row);
-    let sdnn_ms = rmssd_ms.map(|r| (r * 1.32).clamp(15.0, 110.0));
-    let pnn50_pct = rmssd_ms.map(|r| ((r - 12.0) * 0.65).clamp(1.0, 48.0));
-    let lf_hf_ratio = rmssd_ms.map(|r| (110.0 / r.max(10.0)).clamp(0.8, 6.5));
-
+    let (sqi_score, _) = sqi_filter.evaluate_row(row);
     Biometrics {
         heart_rate_bpm: row.hr_bpm,
         pulse_rate_bpm: row.pulse_bpm,
         resp_rate_brpm: row.resp_brpm,
         spo2_pct: row.spo2_pct,
-        rmssd_ms,
-        sdnn_ms,
-        pnn50_pct,
-        lf_hf_ratio,
+        rmssd_ms: None,
+        hrv_unavailable_reason: Some(HrvUnavailableReason::BeatIntervalsNotAvailable),
+        sdnn_ms: None,
+        pnn50_pct: None,
+        lf_hf_ratio: None,
         vocal_f0_hz: Some(118.5),
         vocal_jitter_pct: Some(0.62),
         radiation_dose_rate_msv_d: scenario.radiation_dose_rate_msv_d.clamp(0.0, 50.0),
         sqi_score,
-        missing_channels: row.missing_channels.clone(),
+        missing_channels: row
+            .missing_channels
+            .iter()
+            .cloned()
+            .chain(["rmssd_ms", "sdnn_ms", "pnn50_pct", "lf_hf_ratio"].map(str::to_owned))
+            .collect(),
     }
 }
 
@@ -65,7 +67,7 @@ mod tests {
         assert_eq!(bio.heart_rate_bpm, Some(88.0));
         assert_eq!(bio.pulse_rate_bpm, None);
         assert_eq!(bio.spo2_pct, None);
-        assert_eq!(bio.missing_channels.len(), 2);
+        assert_eq!(bio.missing_channels.len(), 6);
         assert!((bio.radiation_dose_rate_msv_d - 1.8).abs() < f64::EPSILON);
         assert!(bio.sqi_score > 0.60);
     }

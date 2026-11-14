@@ -47,3 +47,14 @@
 1. **`@fabiomalagutti27-droid` (`Blocco H` `Fasi 15–17` & `Blocco I` `Fasi 18–20`):** Execute implementation of the Pure-Rust Timestral Grey-Box Forecaster in `crates/ares-nqs-stl` and the 3-Layer `ARES-HyperGraph` + 24-Dataset `ARES-DatasetGraph` in `crates/ares-causal-graph`.
 2. **`@carolina2910` (`Blocco J`, `ares-cockpit/`):** Implement `ares-cockpit/` (React 19 + Tailwind OLED `#000000` layout, `[1. GATHER] -> [2. EVALUATE] -> [3. ACT]` header, 3D Anatomical Heatmap driven by Layer-2 `AnatomicalRegion`, `NQS-STL` chart with non-crossing $[q_{0.05}, q_{0.50}, q_{0.95}]$ cone, and What-If Stress-Test Console connected to `127.0.0.1:8080`).
 3. **Full Team:** End-to-end integration test (`ares-server-cli` + `ares-cockpit`) and 180s + 30s pitch video recording.
+
+
+## Issue #11 backend correction on current main (2026-11-14)
+
+Implemented against `a6ce84f`, without integrating teammates' pending branches. Numeric-only replay no longer invents RMSSD, SDNN, pNN50 or LF/HF; it returns null with `BEAT_INTERVALS_NOT_AVAILABLE`. Nullable HRV-dependent global margin/MRI/TTV propagate through HTTP, WebSocket and MCP. Known non-HRV violations retain warning/emergency routing and existing privacy behavior. Complete synthetic-input unit fixtures still exercise the existing numerical model; no clinical validation is implied.
+
+Verification: `cargo test --workspace --locked --quiet` (45 tests passed), `cargo clippy --workspace --all-targets --locked -- -D warnings` passed, `cargo build --workspace --locked --quiet` passed. Actual local HTTP snapshot, WebSocket initial frame and MCP subprocess checked successfully for null propagation. Repository probe is recorded in the issue plan after its final run.
+
+Remaining: current main has only the cockpit README. Do not close full frontend acceptance or claim schema-wide end-to-end conformance. Repeat regression tests when integrating Lello's cached replay quality, Fertech's alternate wire projection, Carolina's cockpit and the planned forecaster. Track frontend/wire alignment under #8 and cadence under #10. Hosted Actions remain disabled.
+
+Final local repository gate: `bash scripts/agent_probe.sh --all` passed (check, all-target Clippy, 45 tests, production panic scan, dataset checksums and required documentation).

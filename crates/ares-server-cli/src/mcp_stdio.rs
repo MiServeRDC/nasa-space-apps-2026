@@ -62,11 +62,7 @@ pub fn handle_mcp_jsonrpc_request<S: McpInputSanitizer>(
             error: None,
         },
         "tools/call" => {
-            let tool_name = req
-                .params
-                .get("name")
-                .and_then(Value::as_str)
-                .unwrap_or("");
+            let tool_name = req.params.get("name").and_then(Value::as_str).unwrap_or("");
             let clean_name = match sanitizer.sanitize_mcp_query(tool_name) {
                 Ok(s) => s,
                 Err(e) => {
@@ -86,9 +82,10 @@ pub fn handle_mcp_jsonrpc_request<S: McpInputSanitizer>(
                     "src": latest_packet.source_record_id,
                     "t_rec_s": latest_packet.relative_recording_time_s,
                     "severity": latest_packet.alert_severity,
-                    "mri_pct": (latest_packet.nqs_stl.mri_pct * 10.0).round() / 10.0,
-                    "rho_global": (latest_packet.nqs_stl.rho_global * 100.0).round() / 100.0,
-                    "ttv_h": (latest_packet.nqs_stl.ttv_hours * 10.0).round() / 10.0,
+                    "mri_pct": latest_packet.nqs_stl.mri_pct.map(|value| (value * 10.0).round() / 10.0),
+                    "rho_global": latest_packet.nqs_stl.rho_global.map(|value| (value * 100.0).round() / 100.0),
+                    "ttv_h": latest_packet.nqs_stl.ttv_hours.map(|value| (value * 10.0).round() / 10.0),
+                    "hrv_unavailable_reason": latest_packet.biometrics.hrv_unavailable_reason,
                     "missing": latest_packet.biometrics.missing_channels
                 }),
                 "explain_causal_anomaly" | "query_organ_robustness" => {
@@ -107,10 +104,10 @@ pub fn handle_mcp_jsonrpc_request<S: McpInputSanitizer>(
                     })
                 }
                 "simulate_countermeasure_impact" => json!({
-                    "current_rho": (latest_packet.nqs_stl.rho_global * 100.0).round() / 100.0,
-                    "lbnp_30mmhg_delta_rho_h": 0.19,
-                    "ared_125kgf_delta_rho_h": 0.11,
-                    "projected_ttv_gain_h": 96.0
+                    "current_rho": latest_packet.nqs_stl.rho_global.map(|value| (value * 100.0).round() / 100.0),
+                    "lbnp_30mmhg_delta_rho_h": latest_packet.nqs_stl.rho_global.map(|_| 0.19),
+                    "ared_125kgf_delta_rho_h": latest_packet.nqs_stl.rho_global.map(|_| 0.11),
+                    "projected_ttv_gain_h": latest_packet.nqs_stl.rho_global.map(|_| 96.0)
                 }),
                 "get_medops_playbook" | "trigger_medops_action_playbook" => json!({
                     "playbook_id": latest_packet.active_playbook.playbook_id,
@@ -262,6 +259,40 @@ mod tests {
             let s = entry.as_str().expect("string item");
             assert!(s.starts_with("<untrusted_telemetry_observation>"));
             assert!(s.ends_with("</untrusted_telemetry_observation>"));
+        }
+    }
+    #[test]
+    fn mcp_summary_and_projection_preserve_unavailable_assessment() {
+        let packet = sample_state().latest_snapshot().expect("snapshot");
+        for tool in ["get_crew_health_summary", "simulate_countermeasure_impact"] {
+            let request = JsonRpcRequest {
+                jsonrpc: "2.0".into(),
+                id: Some(json!(1)),
+                method: "tools/call".into(),
+                params: json!({"name": tool}),
+            };
+            let response = handle_mcp_jsonrpc_request(&request, &packet, &StrictMcpSanitizer);
+            let result = response.result.expect("tool result");
+            let text = result["content"][0]["text"].as_str().expect("text payload");
+            let payload: Value = serde_json::from_str(text).expect("valid payload");
+            if tool == "get_crew_health_summary" {
+                assert_eq!(payload.get("mri_pct"), Some(&Value::Null));
+                assert_eq!(payload.get("rho_global"), Some(&Value::Null));
+                assert_eq!(payload.get("ttv_h"), Some(&Value::Null));
+                assert_eq!(
+                    payload["hrv_unavailable_reason"],
+                    "BEAT_INTERVALS_NOT_AVAILABLE"
+                );
+            } else {
+                for field in [
+                    "current_rho",
+                    "projected_ttv_gain_h",
+                    "lbnp_30mmhg_delta_rho_h",
+                    "ared_125kgf_delta_rho_h",
+                ] {
+                    assert_eq!(payload.get(field), Some(&Value::Null));
+                }
+            }
         }
     }
 }

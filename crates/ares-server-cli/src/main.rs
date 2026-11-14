@@ -60,18 +60,16 @@ async fn main() -> Result<()> {
             tracing::info!(
                 astronaut_id = %pkt.astronaut_id,
                 source_record_id = %pkt.source_record_id,
-                mri_pct = pkt.nqs_stl.mri_pct,
+                mri_pct = ?pkt.nqs_stl.mri_pct,
                 playbook_id = %pkt.active_playbook.playbook_id,
                 "ARES-Health smoke test completato con successo"
             );
             Ok(())
         }
-        ServerMode::McpOnly => {
-            tokio::task::spawn_blocking(move || run_mcp_stdio_loop(state))
-                .await
-                .context("join error sul task stdio FastMCP")?
-                .context("errore I/O nel loop stdio FastMCP")
-        }
+        ServerMode::McpOnly => tokio::task::spawn_blocking(move || run_mcp_stdio_loop(state))
+            .await
+            .context("join error sul task stdio FastMCP")?
+            .context("errore I/O nel loop stdio FastMCP"),
         ServerMode::WsOnly | ServerMode::WsAndMcp => {
             let ticker_state = state.clone();
             tokio::spawn(async move {

@@ -30,13 +30,17 @@ pub fn select_candidate_playbook(
             actions: vec![
                 CountermeasureAction {
                     action_id: "ACT_ANTICOAG_ENOXAPARIN".to_string(),
-                    label: "Initiate weight-adjusted Enoxaparin / Apixaban (POCUS thrombus verified)".to_string(),
+                    label:
+                        "Initiate weight-adjusted Enoxaparin / Apixaban (POCUS thrombus verified)"
+                            .to_string(),
                     category: "PHARMACOLOGICAL_UNLOCKED".to_string(),
                     delta_rho_per_hour: 0.22,
                 },
                 CountermeasureAction {
                     action_id: "ACT_SUSPEND_VALSALVA_ARED".to_string(),
-                    label: "Suspend high-Valsalva heavy ARED squats to prevent thrombus embolization".to_string(),
+                    label:
+                        "Suspend high-Valsalva heavy ARED squats to prevent thrombus embolization"
+                            .to_string(),
                     category: "MECHANICAL_RESTRICTION".to_string(),
                     delta_rho_per_hour: 0.15,
                 },
@@ -54,13 +58,16 @@ pub fn select_candidate_playbook(
             actions: vec![
                 CountermeasureAction {
                     action_id: "ACT_STORM_SHELTER_INGRESS".to_string(),
-                    label: "Relocate crew to polyethylene/water-shielded habitat core immediately".to_string(),
+                    label: "Relocate crew to polyethylene/water-shielded habitat core immediately"
+                        .to_string(),
                     category: "RADIATION_ALARA".to_string(),
                     delta_rho_per_hour: 0.28,
                 },
                 CountermeasureAction {
                     action_id: "ACT_ENDOTHELIAL_ANTIOXIDANT".to_string(),
-                    label: "Administer endothelial antioxidant & B-Complex radioprotective protocol".to_string(),
+                    label:
+                        "Administer endothelial antioxidant & B-Complex radioprotective protocol"
+                            .to_string(),
                     category: "METABOLIC_COUNTERMEASURE".to_string(),
                     delta_rho_per_hour: 0.09,
                 },
@@ -96,12 +103,15 @@ pub fn select_candidate_playbook(
     if nqs.rho_sans < 0.20 {
         return ActivePlaybook {
             playbook_id: "PLAYBOOK_04_SANS_TRANSLAMINAR_MITIGATION".to_string(),
-            title: "Playbook #04: SANS Translaminar Pressure & Venous Decongestion Protocol".to_string(),
+            title: "Playbook #04: SANS Translaminar Pressure & Venous Decongestion Protocol"
+                .to_string(),
             causal_chain_summary,
             safety_gates: default_gates,
             actions: vec![CountermeasureAction {
                 action_id: "ACT_VENOUS_THIGH_CUFFS".to_string(),
-                label: "Apply calibrated lower-extremity Venous Thigh Cuffs (50 mmHg) + nocturnal LBNP".to_string(),
+                label:
+                    "Apply calibrated lower-extremity Venous Thigh Cuffs (50 mmHg) + nocturnal LBNP"
+                        .to_string(),
                 category: "PHYSICAL_HEMODYNAMIC".to_string(),
                 delta_rho_per_hour: 0.14,
             }],
@@ -143,6 +153,7 @@ mod tests {
             resp_rate_brpm: Some(14.0),
             spo2_pct: Some(98.0),
             rmssd_ms: Some(44.0),
+            hrv_unavailable_reason: None,
             sdnn_ms: Some(58.0),
             pnn50_pct: Some(22.0),
             lf_hf_ratio: Some(1.8),
@@ -187,13 +198,13 @@ mod tests {
             rho_tau_w,
             rho_ared: 0.85,
             rho_sost: 0.80,
-            rho_rmssd: 0.75,
+            rho_rmssd: Some(0.75),
             rho_sans,
-            rho_global: rho_tau_w.min(rho_sans),
-            ttv_hours: 120.0,
-            ttv_ci95_low_hours: 90.0,
-            ttv_ci95_high_hours: 150.0,
-            mri_pct: 72.0,
+            rho_global: Some(rho_tau_w.min(rho_sans)),
+            ttv_hours: Some(120.0),
+            ttv_ci95_low_hours: Some(90.0),
+            ttv_ci95_high_hours: Some(150.0),
+            mri_pct: Some(72.0),
         }
     }
 
@@ -207,7 +218,11 @@ mod tests {
         let pb = select_candidate_playbook(&bio, &musc, &jug, &nqs, vec!["stasis".to_string()]);
         assert_eq!(pb.playbook_id, "PLAYBOOK_01_VENOUS_STASIS_LBNP");
         assert!(pb.safety_gates.anticoagulant_lock_active);
-        assert!(pb.actions.iter().any(|a| a.action_id == "ACT_LBNP_MINUS_30_MMHG"));
+        assert!(
+            pb.actions
+                .iter()
+                .any(|a| a.action_id == "ACT_LBNP_MINUS_30_MMHG")
+        );
     }
 
     #[test]

@@ -74,3 +74,18 @@
 ## Blocco J: Frontend Astronaut Cockpit & Pitch Finale (`ares-cockpit/` — `@carolina2910` & Team)
 - [ ] **Fase 21 (`J1`):** Layout React 19 + Tailwind OLED `#000000` (`NASA-STD-3001 Vol. 2`), barra `[1. GATHER] -> [2. EVALUATE] -> [3. ACT]`, 3D Anatomical Heatmap (`Three.js`), grafico `NQS-STL` con cono monotono $[q_{0.05}, q_{0.50}, q_{0.95}]$ e **What-If Stress-Test Console**.
 - [ ] **Fase 22 (`J2`):** Verifica finale end-to-end (`./scripts/agent_probe.sh --all`) e registrazione video demo (180s + 30s).
+
+
+## Issue #11 — HRV validity correction (current main baseline)
+
+- [x] Remove numeric-derived/default HRV and dependent healthy fallback.
+- [x] Preserve unavailable full assessments, explicit degraded state and known hazard handling.
+- [x] Update typed contracts, schema field documentation, historical-plan correction notices and integration checklist.
+- [x] Local workspace tests: 45 passed; strict all-target Clippy and build passed.
+- [x] Actual local HTTP snapshot, WebSocket first frame and MCP process verified.
+- [ ] Integrate/recheck executable cockpit when available; full #11 UI acceptance remains pending (#8).
+- [ ] Repeat compatibility checks after merging pending replay/alternate-server/forecasting work.
+
+The corrected behavior supersedes older phase descriptions implying numeric-only HRV or an always-available full MRI/TTV. No hosted Actions were started.
+
+Final local repository gate: `bash scripts/agent_probe.sh --all` passed (check, all-target Clippy, 45 tests, production panic scan, dataset checksums and required documentation).

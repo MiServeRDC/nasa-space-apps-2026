@@ -77,7 +77,7 @@ pub fn compute_mission_telemetry_tick(
         scenario,
     );
 
-    let system_phase = if nqs_stl.rho_global < 0.0 || jugular.pocus_thrombus_confirmed {
+    let system_phase = if nqs_stl.has_known_violation() || jugular.pocus_thrombus_confirmed {
         SystemPhase::Act
     } else {
         SystemPhase::Evaluate
@@ -371,7 +371,12 @@ mod tests {
             updated.active_playbook.playbook_id,
             "PLAYBOOK_01_VENOUS_STASIS_LBNP"
         );
-        assert!(updated.active_playbook.safety_gates.anticoagulant_lock_active);
+        assert!(
+            updated
+                .active_playbook
+                .safety_gates
+                .anticoagulant_lock_active
+        );
         assert!(
             state
                 .audit_logger
@@ -398,8 +403,70 @@ mod tests {
             updated.active_playbook.playbook_id,
             "PLAYBOOK_02_CONFIRMED_IJV_THROMBUS"
         );
-        assert!(!updated.active_playbook.safety_gates.anticoagulant_lock_active);
+        assert!(
+            !updated
+                .active_playbook
+                .safety_gates
+                .anticoagulant_lock_active
+        );
 
         let _router = build_axum_router(state);
+    }
+    #[test]
+    fn every_numeric_record_and_wrap_keeps_hrv_and_dependent_outputs_unavailable() {
+        for record in ["bidmc_01", "bidmc_02", "bidmc_03"] {
+            let path = workspace_bidmc_dir().join(format!("{record}_Numerics.csv"));
+            let mut replayer =
+                BidmcReplayer::from_csv_path(record, &path).expect("numeric fixture");
+            let count = replayer.rows().len();
+            let mut quality = SqiFilter::new();
+            let mut graph = AdhgCausalEngine::new();
+            let scenario = default_scenario_input();
+            for i in 0..=count {
+                let packet = compute_mission_telemetry_tick(
+                    &mut replayer,
+                    &mut quality,
+                    &mut graph,
+                    &scenario,
+                    i as f64,
+                );
+                assert_eq!(packet.source_record_id, record);
+                let value = serde_json::to_value(&packet).expect("serialize packet");
+                for channel in ["rmssd_ms", "sdnn_ms", "pnn50_pct", "lf_hf_ratio"] {
+                    assert_eq!(
+                        value["biometrics"].get(channel),
+                        Some(&serde_json::Value::Null)
+                    );
+                    assert!(
+                        packet
+                            .biometrics
+                            .missing_channels
+                            .iter()
+                            .any(|x| x == channel)
+                    );
+                }
+                assert_eq!(
+                    value["biometrics"]["hrv_unavailable_reason"],
+                    "BEAT_INTERVALS_NOT_AVAILABLE"
+                );
+                for field in [
+                    "rho_rmssd",
+                    "rho_global",
+                    "mri_pct",
+                    "ttv_hours",
+                    "ttv_ci95_low_hours",
+                    "ttv_ci95_high_hours",
+                ] {
+                    assert_eq!(value["nqs_stl"].get(field), Some(&serde_json::Value::Null));
+                }
+                assert_ne!(
+                    packet.alert_severity,
+                    ares_core_types::telemetry::AlertSeverity::Nominal
+                );
+                let decoded: TelemetryPacket =
+                    serde_json::from_value(value).expect("roundtrip packet");
+                assert_eq!(decoded, packet);
+            }
+        }
     }
 }
