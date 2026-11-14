@@ -49,3 +49,10 @@ No clinical threshold is introduced. Unit tests establish software behavior, not
 - Browser check not performed: executable cockpit is not on this baseline. The pre-existing full wire-contract mismatch remains #8; extending schema descriptions here does not fix that mismatch.
 
 Final local repository gate: `bash scripts/agent_probe.sh --all` passed (check, all-target Clippy, 45 tests, production panic scan, dataset checksums and required documentation).
+
+
+### PR #20 integration with main 4839090
+
+The phases 15-20 update arrived before merge. Ported null HRV guarantees into the new FastMCP router, optional Timestral assessment/RMSSD cones, masked global input, NqsEngine and longitudinal storage. Missing global values are not counted as zero observations, calibrated on zero padding, or converted back to finite TTV. An added regression runs the async forecaster repeatedly and checks its typed snapshot and compact output. Full local verification follows before merge.
+
+Integration verification on main `4839090`: `bash scripts/agent_probe.sh --all` passed, 83 tests passed, 0 failures and strict all-target Clippy passed.

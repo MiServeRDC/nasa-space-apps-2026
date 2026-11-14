@@ -9,4 +9,5 @@ license = "MIT OR Apache-2.0"
 ares-core-types = { path = "../ares-core-types" }
 petgraph = "0.7"
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 thiserror = "2.0"

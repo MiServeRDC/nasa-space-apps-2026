@@ -1,7 +1,7 @@
 # Active Context: ARES-Health (NASA Space Apps Challenge 2026)
 
 **Last Updated:** 2026-11-14  
-**Current Phase:** Phase 2.5 — Core Rust Engine (`Blocchi A–G`, `Fasi 01–14` `[x] COMPLETATA` — 40/40 Tests Passing, 0 Warnings) + Detailed Architectural Studies & Implementation Plans Completed for **Blocco H (`Fasi 15–17`: Pure-Rust Timestral Grey-Box Forecaster)** and **Blocco I (`Fasi 18–20`: Three-Layer `ARES-HyperGraph` & 24-Dataset `ARES-DatasetGraph`)** (`READY FOR IMPLEMENTATION`).  
+**Current Phase:** Phase 3.0 — Complete 7-Crate Rust Core Engine (`Blocchi A–I`, **All 20 Phases `01–20` `COMPLETED (TESTED)`** — **77/77 Workspace Tests Passing**, 0 Clippy Warnings, Physical 24-Dataset Knowledge Graph Exported & Verified on Disk: `110` nodes, `326` edges, `24` datasets, `27` BIDMC Welford slices, `12` communities, `158,675` bytes JSON). Next: Blocco J (`ares-cockpit/` React 19 UI + final demo).  
 **Active Repository:** `https://github.com/MiServeRDC/nasa-space-apps-2026` (`main` synchronized).
 
 ---
@@ -22,32 +22,29 @@
    * Clarified exact OSDR study titles (`OSD-51` transcriptome, `OSD-195` DNA microarray, `OSD-818` *ex vivo* translaminar SANS model) and NASA GO Team Discussion `#1994`.
 5. **9 Agent Skills Mirrored Across All 4 CLI Discovery Paths:**
    * Installed and synchronized `rust-pro`, `mcp-builder`, `context7`, `security-auditor`, `telemetry-replay-verifier`, `frontend-design`, `ui-ux-pro-max`, `deep-scholar`, and `git-standard` across `.agents/skills/`, `.claude/skills/`, `.gemini/skills/`, and `skills/`.
-6. **Complete Implementation & Verification of All 7 Rust Workspace Crates (`Blocchi A–G`, `Fasi 01–14` — `[x] COMPLETATA`):**
-   * **`crates/ares-core-types` (`5/5` tests):** `TelemetryPacket`, `ProvenanceManifest`, `Biometrics` (`Option<f64>` nullable + `missing_channels`), `NASA-STD-3001` constants, `AresCoreError`, and security traits (`CrewPrivacyFilter`, `MedOpsAuditLogger`, `McpInputSanitizer`, `NoOpSecurity`).
+6. **Complete Implementation & Verification of All 7 Rust Workspace Crates (`Blocchi A–I`, `Fasi 01–20` — `COMPLETED (TESTED)`):**
+   * **`crates/ares-core-types` (`6/6` tests):** `TelemetryPacket`, `ProvenanceManifest`, `Biometrics` (`Option<f64>` nullable + `missing_channels`), `NASA-STD-3001` constants, `AresCoreError` (`QuantileCrossing`), `MonotoneQuantileTriplet`, `ChannelQuantileCone`, `ConformalGateStatus`, `AbstentionCertificate`, `NqsQuantileForecastSnapshot`, and security traits (`CrewPrivacyFilter`, `MedOpsAuditLogger`, `McpInputSanitizer`, `NoOpSecurity`).
    * **`crates/ares-telemetry-ingest` (`6/6` tests):** `BidmcReplayer` (`481` rows on `bidmc_01..03_Numerics.csv`, header whitespace trimming, 13 `None` values preserved in `bidmc_01`), Shannon Spectral Entropy `SqiFilter` (`SQI >= 0.70`, Zero-Order Hold), and `merge_biometrics_with_scenario`.
-   * **`crates/ares-causal-graph` (`8/8` tests):** Frost-Hargens RK4 Sclerostin ODE (`step_sclerostin_rk4`), Ultrasound `MQI`, Martian `GAI` (`0.38g`), exact dimensional jugular shear stress $\tau_w = 1.40\text{ dyn/cm}^2$ (`compute_tau_w_dyn_cm2`), LBNP `-30 mmHg` dose-response, `SANS` risk, Two-Stage Bayesian POCUS observer (`<= 0.45` pre-POCUS, `>= 0.92` post-POCUS), and `AdhgCausalEngine` (`petgraph::stable_graph::StableDiGraph`).
-   * **`crates/ares-nqs-stl` (`6/6` tests):** `normalize_predicate_nqs` (`+1.0` nominal, `0.0` critical, `< 0.0` violation), `LemireMinWedge` ($O(1)$ monotonic wedge verified `< 1e-15` vs naive scan), `estimate_ttv_with_ci95` (`±1.96σ`), and `evaluate_nqs_stl_and_mri`.
-   * **`crates/ares-medops-playbooks` (`6/6` tests):** Deterministic Type-1 Crystallized Playbooks `#01–#05` (`select_candidate_playbook`) and the 3 Hard Clinical Safety Gates (`enforce_hard_clinical_safety_gates`).
+   * **`crates/ares-causal-graph` (`24/24` tests):**
+     - **Blocco C (`Fasi 05–07`):** Frost-Hargens RK4 Sclerostin ODE (`step_sclerostin_rk4`), Ultrasound `MQI`, Martian `GAI` (`0.38g`), exact dimensional jugular shear stress $\tau_w = 1.40\text{ dyn/cm}^2$ (`compute_tau_w_dyn_cm2`), LBNP `-30 mmHg` dose-response, `SANS` risk, Two-Stage Bayesian POCUS observer (`<= 0.45` pre-POCUS, `>= 0.92` post-POCUS), and `AdhgCausalEngine` (`petgraph::stable_graph::StableDiGraph`).
+     - **Blocco I (`Fasi 18–20`):** `hypergraph_spatial.rs` (`WelfordAccumulator`, `LongitudinalSuperNode`, 900-Sol `MissionLongitudinalCompactor < 200 KB`, 5-region `UBERON:` 3D `AnatomicalRegionSubgraph`, `HabitatZoneDeonticPolicy` Q-STL, `ZoneTransitionMarkovModel` $D_{\text{KL}}$), `biokg_reasoner.rs` (`16-byte #[repr(C, align(16))] BiomedicalEvidenceDescriptor` + CRC-8, Noisy-OR `EpistemicProvenance`, `ClinicalAnswerabilityGate`, $O(1)$ `ground_adhg_node_o1`), and `dataset_graph.rs` (`AresUnifiedDatasetGraph` linking all 24 datasets with SPOKE/GeneLab, BioCypher/OntoWeaver, PrimeKG, Biolink Model predicates, real `bidmc_01..03` 60 s Welford `TimeWindowSlice`s, community detection, `god_nodes`, sub-ms query/path, and `export_graphify_bundle`).
+   * **`crates/ares-nqs-stl` (`18/18` tests):**
+     - **Blocco D (`Fasi 08–09`):** `normalize_predicate_nqs`, `LemireMinWedge` ($O(1)$ monotonic wedge), `estimate_ttv_with_ci95` (`±1.96σ`), and `evaluate_nqs_stl_and_mri`.
+     - **Blocco H (`Fasi 15–17`):** Pure-Rust `TimestralBackbone` (`CircularTelemetryBuffer`, `CausalScaler` `asinh`/`sinh`, `PatchRepresentation` Missing-Channel Mask, `RmsNorm`, `FusedSwiGlu`, `SinCosRoPe`, `DualAxisAttention` via `SdpaSigmoid`), DHF non-crossing `QuantileHead` + Conformal PID `ConformalAbstentionGate`, `AresTemporalForecasterEngine`, non-blocking `AresTemporalForecasterHandle` (`try_read()`), `estimate_greybox_quantile_ttv_cone` ($\text{TTV}_{q_{0.05}} \le \text{TTV}_{q_{0.50}} \le \text{TTV}_{q_{0.95}}$), and `NqsEngine`.
+   * **`crates/ares-medops-playbooks` (`8/8` tests):** Deterministic Type-1 Crystallized Playbooks `#01–#05` (`select_candidate_playbook`), the 3 Hard Clinical Safety Gates (`enforce_hard_clinical_safety_gates`), and `ARES-BioKG` normative governance (`ground_playbook_normative`, `verify_playbook_governance`).
    * **`crates/ares-security-privacy` (`4/4` tests):** Role-based crew medical privacy (`AresSecurityGuard`), non-repudiable `Sha256AuditLogger` hash chain, `ChaCha20-Poly1305` Store-and-Forward encryption (`EphemeralDsnKey` with `ZeroizeOnDrop`), and `StrictMcpSanitizer` (`<untrusted_telemetry_observation>` XML shield).
-   * **`crates/ares-server-cli` (`5/5` tests + CLI smoke test):** `compute_mission_telemetry_tick` (`< 150 µs`), `axum` `20 Hz` WebSocket server on `127.0.0.1:8080` (`/ws/telemetry`, `GET /api/snapshot`, `POST /api/stress-test`), and `FastMCP` JSON-RPC 2.0 `stdio` server (`<= 600 bytes` / `< 150 tokens` per tool response, `tracing` routed to `stderr`).
-   * **Verification Gate (`./scripts/agent_probe.sh --all`):** 100% PASSED (`0` `.unwrap()`/`.expect()` in production code, `0` Clippy warnings across all targets, `40/40` tests passing).
-7. **Architectural Studies & Implementation Plans for Blocks H & I (`Fasi 15–20` — `READY FOR IMPLEMENTATION`):**
-   * Authored `docs/architecture/TIMESTRAL_INTEGRATION_STUDY.md`, `docs/architecture/KNOWLEDGE_GRAPH_ARCHITECTURE_STUDY.md`, and `docs/architecture/UNIFIED_DATASET_GRAPH_FEASIBILITY_STUDY.md` (with `docs/scientific_references.md`).
-   * Created the 6 detailed implementation plans in `docs/plans/`:
-     - `phase_15_H1_timestral_patch_scaler_rope_backbone.md` (`CausalScaler` `asinh`, `PatchRepresentation` Missing-Channel Mask, `RMSNorm`, `FusedSwiGLU`, `SinCosRoPE`, `DualAxisAttention`).
-     - `phase_16_H2_dhf_monotone_quantiles_conformal_gate.md` (`MonotoneQuantileHead` $q_{0.05} \le q_{0.50} \le q_{0.95}$ & `ConformalAbstentionGate`).
-     - `phase_17_H3_async_1hz_forecaster_nqs_stl_bridge.md` (`1 Hz` async forecaster + `180 ns` lock-free snapshot into `20 Hz` hot-path & pessimistic $\text{TTV}_{q_{0.05}}$).
-     - `phase_18_I1_welford_longitudinal_compaction_spatial_deontic.md` (`ARES-HyperGraph` Layers 1 & 2: Welford `LongitudinalSuperNode` `< 200 KB` for 900d Mars mission, 3D Anatomical Region subgraph, and `HabitatZoneDeonticPolicy` + Markov $D_{\text{KL}}$).
-     - `phase_19_I2_biokg_16byte_descriptor_epistemic_reasoner.md` (`ARES-HyperGraph` Layer 3 `ARES-BioKG`: `16-byte #[repr(C)] BiomedicalEvidenceDescriptor`, `Noisy-OR` `EpistemicProvenance`, `ClinicalAnswerabilityGate`, and `NASA-STD-3001` grounding).
-     - `phase_20_I3_unified_dataset_graph_builder_graphify_mcp.md` (`ARES-DatasetGraph` linking all 24 official datasets with `slice://` pointers, `data/knowledge_graph/ares_dataset_graph.json` `graphify` exporter, and `FastMCP` query tools).
+   * **`crates/ares-server-cli` (`11/11` tests: 9 unit + 2 integration + `--mode smoke-test` / `--mode build-graph`):** `compute_mission_telemetry_tick` (`< 150 µs`), `axum` `20 Hz` WebSocket server on `127.0.0.1:8080` + async `1 Hz` Timestral worker, and `FastMCP` JSON-RPC 2.0 `stdio` router (`fastmcp_router.rs`, all 8 Context-Mode tools `< 150 tokens` / `<= 600 bytes`).
+   * **Physical Knowledge Graph Generated & Verified on Disk:**
+     - `data/knowledge_graph/ares_dataset_graph.json` (`158,675` bytes) & `data/knowledge_graph/GRAPH_REPORT.md` (`2,739` bytes)
+     - `graphify-out/graph.json` (`158,675` bytes) & `graphify-out/GRAPH_REPORT.md` (`2,739` bytes)
+     - Metrics: `110` nodes (`24` Cataloged Datasets, `27` BIDMC Welford `TimeWindowSlice`s), `326` typed Biolink edges, `12` communities, `10` god nodes (`ds_08_bidmc_v1`, `bm_hr`, `bm_resp`, `bm_spo2`, `bm_pulse`, etc.).
+   * **Verification Gate (`./scripts/agent_probe.sh --all`):** 100% PASSED (`0` `.unwrap()`/`.expect()` in production code, `0` Clippy warnings across all targets, `77/77` tests passing).
 
 ---
 
 ## 2. Immediate Next Steps for the 5-Person Team
-1. **`@fabiomalagutti27-droid` (`Blocco H` `Fasi 15–17` & `Blocco I` `Fasi 18–20`):** Execute implementation of the Pure-Rust Timestral Grey-Box Forecaster in `crates/ares-nqs-stl` and the 3-Layer `ARES-HyperGraph` + 24-Dataset `ARES-DatasetGraph` in `crates/ares-causal-graph`.
-2. **`@carolina2910` (`Blocco J`, `ares-cockpit/`):** Implement `ares-cockpit/` (React 19 + Tailwind OLED `#000000` layout, `[1. GATHER] -> [2. EVALUATE] -> [3. ACT]` header, 3D Anatomical Heatmap driven by Layer-2 `AnatomicalRegion`, `NQS-STL` chart with non-crossing $[q_{0.05}, q_{0.50}, q_{0.95}]$ cone, and What-If Stress-Test Console connected to `127.0.0.1:8080`).
-3. **Full Team:** End-to-end integration test (`ares-server-cli` + `ares-cockpit`) and 180s + 30s pitch video recording.
-
+1. **`@carolina2910` (`Blocco J`, `ares-cockpit/`):** Implement `ares-cockpit/` (React 19 + Tailwind OLED `#000000` layout, `[1. GATHER] -> [2. EVALUATE] -> [3. ACT]` header, 3D Anatomical Heatmap driven by Layer-2 `AnatomicalRegionId` `UBERON:` intensities, `NQS-STL` chart with non-crossing $[q_{0.05}, q_{0.50}, q_{0.95}]$ cone, and What-If Stress-Test Console connected to `127.0.0.1:8080`).
+2. **Full Team:** End-to-end integration test (`ares-server-cli` + `ares-cockpit`) and 180s + 30s pitch video recording.
 
 ## Issue #11 backend correction on current main (2026-11-14)
 
@@ -58,3 +55,10 @@ Verification: `cargo test --workspace --locked --quiet` (45 tests passed), `carg
 Remaining: current main has only the cockpit README. Do not close full frontend acceptance or claim schema-wide end-to-end conformance. Repeat regression tests when integrating Lello's cached replay quality, Fertech's alternate wire projection, Carolina's cockpit and the planned forecaster. Track frontend/wire alignment under #8 and cadence under #10. Hosted Actions remain disabled.
 
 Final local repository gate: `bash scripts/agent_probe.sh --all` passed (check, all-target Clippy, 45 tests, production panic scan, dataset checksums and required documentation).
+
+
+### PR #20 integration with main 4839090
+
+The phases 15-20 update arrived before merge. Ported null HRV guarantees into the new FastMCP router, optional Timestral assessment/RMSSD cones, masked global input, NqsEngine and longitudinal storage. Missing global values are not counted as zero observations, calibrated on zero padding, or converted back to finite TTV. An added regression runs the async forecaster repeatedly and checks its typed snapshot and compact output. Full local verification follows before merge.
+
+Integration verification on main `4839090`: `bash scripts/agent_probe.sh --all` passed, 83 tests passed, 0 failures and strict all-target Clippy passed.

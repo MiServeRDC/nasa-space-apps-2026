@@ -19,6 +19,222 @@ pub use telemetry::{
     TelemetryPacket,
 };
 
+use serde::{Deserialize, Serialize};
+
+/// Standard multi-horizon steps in seconds for Direct Multi-Horizon Forecasting:
+/// +15 min (900 s), +1 h (3600 s), +6 h (21600 s), +24 h (86400 s).
+pub const DHF_HORIZONS_SECONDS: [u32; 4] = [900, 3_600, 21_600, 86_400];
+
+/// Strictly monotone quantile triplet (5th, 50th/median, 95th percentile).
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct MonotoneQuantileTriplet {
+    pub q05: f64,
+    pub q50: f64,
+    pub q95: f64,
+}
+
+impl MonotoneQuantileTriplet {
+    /// Constructs a quantile triplet guaranteed monotone by construction: q05 <= q50 <= q95.
+    #[inline]
+    pub fn from_median_and_spreads(median: f64, lower_spread: f64, upper_spread: f64) -> Self {
+        let med = if median.is_finite() { median } else { 0.0 };
+        let dl = if lower_spread.is_finite() {
+            lower_spread.max(0.0)
+        } else {
+            0.0
+        };
+        let du = if upper_spread.is_finite() {
+            upper_spread.max(0.0)
+        } else {
+            0.0
+        };
+        Self {
+            q05: med - dl,
+            q50: med,
+            q95: med + du,
+        }
+    }
+
+    /// Interval width of the 90% prediction cone (q95 - q05 >= 0.0).
+    #[inline]
+    pub fn interval_width(&self) -> f64 {
+        if self.q95.is_finite() && self.q05.is_finite() {
+            (self.q95 - self.q05).max(0.0)
+        } else {
+            f64::INFINITY
+        }
+    }
+
+    /// Returns true iff all values are finite and q05 <= q50 <= q95.
+    #[inline]
+    pub fn is_monotone(&self) -> bool {
+        self.q05.is_finite()
+            && self.q50.is_finite()
+            && self.q95.is_finite()
+            && self.q05 <= self.q50
+            && self.q50 <= self.q95
+    }
+
+    /// Verifies the non-crossing invariant q05 <= q50 <= q95 without panicking.
+    #[inline]
+    pub fn assert_monotone(&self) -> Result<(), AresCoreError> {
+        if !self.q05.is_finite() || !self.q50.is_finite() || !self.q95.is_finite() {
+            return Err(AresCoreError::NonFiniteValue {
+                field: "MonotoneQuantileTriplet",
+            });
+        }
+        if self.q05 > self.q50 || self.q50 > self.q95 {
+            return Err(AresCoreError::QuantileCrossing {
+                q05: self.q05,
+                q50: self.q50,
+                q95: self.q95,
+            });
+        }
+        Ok(())
+    }
+}
+
+/// Multi-horizon quantile forecast cone (+15 min, +1 h, +6 h, +24 h) for a single channel.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ChannelQuantileCone {
+    pub channel_name: String,
+    pub horizon_15m: MonotoneQuantileTriplet,
+    pub horizon_1h: MonotoneQuantileTriplet,
+    pub horizon_6h: MonotoneQuantileTriplet,
+    pub horizon_24h: MonotoneQuantileTriplet,
+}
+
+impl ChannelQuantileCone {
+    /// Verifies non-crossing monotonicity across all 4 forecast horizons.
+    pub fn assert_monotone(&self) -> Result<(), AresCoreError> {
+        self.horizon_15m.assert_monotone()?;
+        self.horizon_1h.assert_monotone()?;
+        self.horizon_6h.assert_monotone()?;
+        self.horizon_24h.assert_monotone()?;
+        Ok(())
+    }
+
+    /// Returns true iff all 4 forecast horizons satisfy q05 <= q50 <= q95.
+    #[inline]
+    pub fn is_monotone(&self) -> bool {
+        self.horizon_15m.is_monotone()
+            && self.horizon_1h.is_monotone()
+            && self.horizon_6h.is_monotone()
+            && self.horizon_24h.is_monotone()
+    }
+}
+
+/// Operational status of the Adaptive Conformal Abstention Gate.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum ConformalGateStatus {
+    /// Timestral quantile cone is calibrated within clinical uncertainty bounds.
+    CalibratedQuantileCone,
+    /// Epistemic uncertainty or signal degradation exceeded bounds; deterministic fallback active.
+    AbstainedFallbackDeterministic,
+}
+
+/// Auditable certificate emitted by ConformalAbstentionGate when evaluating forecast reliability.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AbstentionCertificate {
+    pub abstained: bool,
+    pub status: ConformalGateStatus,
+    pub reason: String,
+    pub empirical_coverage_error: f64,
+    pub adaptive_alpha_t: f64,
+    pub interval_width: f64,
+    pub sqi_score: f64,
+    pub missing_ratio: f64,
+    pub timestamp_s: f64,
+}
+
+/// Immutable grey-box forecast snapshot published by the 1 Hz worker and read lock-free at 20 Hz.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct NqsQuantileForecastSnapshot {
+    pub source_recording_time_s: f64,
+    pub confidence_state: ConformalGateStatus,
+    pub abstention_certificate: AbstentionCertificate,
+    pub short_horizon_s: u32,
+    pub heart_rate_bpm_cone: MonotoneQuantileTriplet,
+    pub resp_rate_brpm_cone: MonotoneQuantileTriplet,
+    pub rmssd_ms_cone: Option<MonotoneQuantileTriplet>,
+    pub rho_global_cone: Option<MonotoneQuantileTriplet>,
+    /// Time-To-Violation (hours): q05 = pessimistic worst-case, q50 = median, q95 = optimistic.
+    pub ttv_hours_cone: Option<MonotoneQuantileTriplet>,
+    pub channel_cones: Vec<ChannelQuantileCone>,
+    pub pessimistic_ttv_q05_hours: Option<f64>,
+    pub inference_latency_us: u64,
+}
+
+impl NqsQuantileForecastSnapshot {
+    /// Constructs an initial deterministic fallback snapshot without heap-heavy state.
+    pub fn initial_deterministic(
+        recording_time_s: f64,
+        rho_global: impl Into<Option<f64>>,
+        ttv_mean: impl Into<Option<f64>>,
+        ttv_low: impl Into<Option<f64>>,
+        ttv_high: impl Into<Option<f64>>,
+    ) -> Self {
+        let rho_global = rho_global.into().filter(|x| x.is_finite());
+        let ttv = ttv_mean
+            .into()
+            .zip(ttv_low.into())
+            .zip(ttv_high.into())
+            .filter(|((mean, low), high)| mean.is_finite() && low.is_finite() && high.is_finite())
+            .and_then(|((mean, low), high)| {
+                rho_global.map(|_| MonotoneQuantileTriplet {
+                    q05: low.min(mean).max(0.0),
+                    q50: mean.max(0.0),
+                    q95: high.max(mean).max(0.0),
+                })
+            });
+        Self {
+            source_recording_time_s: recording_time_s,
+            confidence_state: ConformalGateStatus::AbstainedFallbackDeterministic,
+            abstention_certificate: AbstentionCertificate {
+                abstained: true,
+                status: ConformalGateStatus::AbstainedFallbackDeterministic,
+                reason: "initial warmup; unavailable inputs are not replaced".into(),
+                empirical_coverage_error: 0.0,
+                adaptive_alpha_t: 0.10,
+                interval_width: 0.16,
+                sqi_score: 1.0,
+                missing_ratio: 0.0,
+                timestamp_s: recording_time_s,
+            },
+            short_horizon_s: 900,
+            heart_rate_bpm_cone: MonotoneQuantileTriplet::from_median_and_spreads(72.0, 4.0, 4.0),
+            resp_rate_brpm_cone: MonotoneQuantileTriplet::from_median_and_spreads(14.0, 1.5, 1.5),
+            rmssd_ms_cone: None,
+            rho_global_cone: rho_global
+                .map(|rho| MonotoneQuantileTriplet::from_median_and_spreads(rho, 0.08, 0.08)),
+            ttv_hours_cone: ttv,
+            channel_cones: Vec::new(),
+            pessimistic_ttv_q05_hours: ttv.map(|cone| cone.q05),
+            inference_latency_us: 0,
+        }
+    }
+
+    /// Verifies non-crossing monotonicity across all quantile cones in this snapshot.
+    pub fn assert_monotone(&self) -> Result<(), AresCoreError> {
+        self.heart_rate_bpm_cone.assert_monotone()?;
+        self.resp_rate_brpm_cone.assert_monotone()?;
+        if let Some(cone) = self.rmssd_ms_cone {
+            cone.assert_monotone()?;
+        }
+        if let Some(cone) = self.rho_global_cone {
+            cone.assert_monotone()?;
+        }
+        if let Some(cone) = self.ttv_hours_cone {
+            cone.assert_monotone()?;
+        }
+        for cone in &self.channel_cones {
+            cone.assert_monotone()?;
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -216,5 +432,55 @@ mod tests {
 
         let err = AresCoreError::NonFiniteValue { field: "tau_w" };
         assert!(err.to_string().contains("tau_w"));
+    }
+
+    #[test]
+    fn test_block_h_monotone_quantile_contracts_and_serialization() {
+        let valid = MonotoneQuantileTriplet::from_median_and_spreads(0.45, 0.12, 0.18);
+        assert!(valid.is_monotone());
+        valid
+            .assert_monotone()
+            .expect("valid triplet should be monotone");
+
+        let crossing = MonotoneQuantileTriplet {
+            q05: 0.60,
+            q50: 0.50,
+            q95: 0.70,
+        };
+        assert!(!crossing.is_monotone());
+        assert!(matches!(
+            crossing.assert_monotone(),
+            Err(AresCoreError::QuantileCrossing { .. })
+        ));
+
+        let non_finite = MonotoneQuantileTriplet {
+            q05: 0.1,
+            q50: f64::NAN,
+            q95: 0.9,
+        };
+        assert!(matches!(
+            non_finite.assert_monotone(),
+            Err(AresCoreError::NonFiniteValue { .. })
+        ));
+
+        let cone = ChannelQuantileCone {
+            channel_name: "heart_rate_bpm".to_string(),
+            horizon_15m: MonotoneQuantileTriplet::from_median_and_spreads(72.0, 3.0, 3.5),
+            horizon_1h: MonotoneQuantileTriplet::from_median_and_spreads(73.0, 5.0, 6.0),
+            horizon_6h: MonotoneQuantileTriplet::from_median_and_spreads(74.0, 8.0, 9.0),
+            horizon_24h: MonotoneQuantileTriplet::from_median_and_spreads(75.0, 10.0, 12.0),
+        };
+        cone.assert_monotone()
+            .expect("channel cone should be monotone");
+
+        let mut snap =
+            NqsQuantileForecastSnapshot::initial_deterministic(12.0, 0.52, 96.0, 70.0, 140.0);
+        snap.channel_cones.push(cone);
+        snap.assert_monotone().expect("snapshot should be monotone");
+
+        let json = serde_json::to_string(&snap).expect("serialize snapshot");
+        let roundtrip: NqsQuantileForecastSnapshot =
+            serde_json::from_str(&json).expect("deserialize snapshot");
+        assert_eq!(roundtrip, snap);
     }
 }

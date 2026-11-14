@@ -1,6 +1,50 @@
-//! Fase 09 (D2): Predittore Time-To-Violation (TTV) EWMA-OLS con banda di confidenza ±1.96σ.
+//! Fase 09 (D2) & Fase 17 (H3): Predittore Time-To-Violation (TTV) EWMA-OLS con banda di confidenza ±1.96σ
+//! e calcolo del cono TTV Grey-Box pessimistico al 5° percentile (TTV_q05 <= TTV_q50 <= TTV_q95).
+
+use ares_core_types::MonotoneQuantileTriplet;
 
 pub const MAX_HORIZON_HOURS: f64 = 720.0; // 30 giorni
+
+/// Computes the monotonic Grey-Box TTV cone [TTV_q05, TTV_q50, TTV_q95] in hours from the
+/// current NQS robustness `rho_global` and the predicted lower/median/upper robustness cone.
+/// `TTV_q05` is the pessimistic worst-case time-to-violation derived from `rho_cone.q05`.
+#[inline]
+pub fn estimate_greybox_quantile_ttv_cone(
+    current_rho: f64,
+    rho_cone: MonotoneQuantileTriplet,
+    horizon_hours: f64,
+) -> MonotoneQuantileTriplet {
+    if !current_rho.is_finite() || current_rho <= 0.0 {
+        return MonotoneQuantileTriplet {
+            q05: 0.0,
+            q50: 0.0,
+            q95: 0.0,
+        };
+    }
+    let dt = if horizon_hours.is_finite() {
+        horizon_hours.max(0.25)
+    } else {
+        1.0
+    };
+
+    let drop_q05 = ((current_rho - rho_cone.q05) / dt).max(0.0020);
+    let drop_q50 = ((current_rho - rho_cone.q50) / dt)
+        .max(0.0012)
+        .min(drop_q05);
+    let drop_q95 = ((current_rho - rho_cone.q95) / dt)
+        .max(0.0006)
+        .min(drop_q50);
+
+    let ttv_q05 = (current_rho / drop_q05).clamp(0.2, MAX_HORIZON_HOURS);
+    let ttv_q50 = (current_rho / drop_q50).clamp(ttv_q05, MAX_HORIZON_HOURS);
+    let ttv_q95 = (current_rho / drop_q95).clamp(ttv_q50, MAX_HORIZON_HOURS);
+
+    MonotoneQuantileTriplet {
+        q05: ttv_q05,
+        q50: ttv_q50,
+        q95: ttv_q95,
+    }
+}
 
 /// Calcola il Time-To-Violation (TTV in ore) e l'intervallo di confidenza al 95% (±1.96σ).
 #[inline]
