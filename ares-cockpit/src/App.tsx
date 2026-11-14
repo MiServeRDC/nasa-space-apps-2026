@@ -11,6 +11,9 @@ import type { InjuryMarker } from './types/injury';
 import { WhatIfConsole } from './modules/whatif-console/WhatIfConsole';
 import { PlaybookRunner } from './modules/playbook-runner/PlaybookRunner';
 import { EcgStrip, OcularOnsd, PocusIjv } from './modules/analysis-imaging/Imaging';
+import { UniversalBleHeartRateManager, type BleHeartRateMeasurement, type BleStatus } from './lib/bleHeartRate';
+import { buildOpenMHealthJson, buildHl7FhirJson, downloadJsonFile } from './lib/exportStandard';
+import { AuditChainModal } from './modules/audit-chain/AuditChainModal';
 
 type EvalTab = 'BODY_3D' | 'POCUS' | 'MUSCLE_BONE' | 'FORECAST';
 
@@ -60,6 +63,23 @@ export default function App() {
   const [activePhase, setActivePhase] = useState<Phase>('EVALUATE');
   const [evalTab, setEvalTab] = useState<EvalTab>('BODY_3D');
   const [injuries, setInjuries] = useState<InjuryMarker[]>([]);
+  const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
+  const [bleStatus, setBleStatus] = useState<BleStatus>('IDLE');
+  const [bleError, setBleError] = useState<string | null>(null);
+  const [bleData, setBleData] = useState<BleHeartRateMeasurement | null>(null);
+
+  const bleManager = useMemo(() => new UniversalBleHeartRateManager(), []);
+
+  useEffect(() => {
+    bleManager.setCallbacks(
+      (m) => setBleData(m),
+      (status, err) => {
+        setBleStatus(status);
+        if (err) setBleError(err);
+        else if (status === 'CONNECTED') setBleError(null);
+      }
+    );
+  }, [bleManager]);
 
   const { packet, link, recomputeLatencyUs } = useTelemetry(whatIf, thrombus, lastScanDay);
   const s = useMemo(() => evaluate(whatIf, lastScanDay), [whatIf, lastScanDay]);
@@ -91,6 +111,7 @@ export default function App() {
         activePhase={activePhase}
         recommendedPhase={recommendedPhase}
         onSelectPhase={setActivePhase}
+        onOpenAudit={() => setIsAuditModalOpen(true)}
       />
 
       <div className="mx-auto grid min-h-0 w-full max-w-[1600px] flex-1 gap-4 overflow-hidden p-4 lg:grid-cols-[1fr_340px]">
@@ -133,24 +154,26 @@ export default function App() {
           {/* PAGE 1: GATHER */}
           {activePhase === 'GATHER' && (
             <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
                 {[
-                  ['Heart Rate (ECG)', fmt(b.heart_rate_bpm), 'bpm'],
+                  ['Heart Rate (ECG)', fmt(bleData?.heartRateBpm ?? b.heart_rate_bpm), 'bpm'],
                   ['Pulse Rate (PPG)', fmt(b.pulse_rate_bpm), 'bpm'],
                   ['Blood Oxygen', fmt(b.spo2_percent, 1), '%'],
                   ['Breathing Rate', fmt(b.respiration_rate_brpm, 1), 'br/min'],
+                  ['Core Body Temp', isPureReplay ? 'UNAVAILABLE' : s.coreTempC.toFixed(1), isPureReplay ? 'terrestrial' : '°C (CBT)'],
+                  ['Radiation Dose', isPureReplay ? 'UNAVAILABLE' : s.cumulativeRadiationMsv.toFixed(1), isPureReplay ? 'terrestrial' : 'mSv (GCR)'],
                 ].map(([k, v, u]) => (
-                  <div key={k} className="rounded-lg border border-line bg-panel p-4">
-                    <div className="text-xs text-gray-400">{k}</div>
-                    <div className={`mt-1 font-mono text-3xl ${v === 'UNAVAILABLE' ? 'text-base text-advisory' : 'text-white'}`}>{v}</div>
-                    <div className="text-xs text-gray-600">{u}</div>
+                  <div key={k} className="rounded-lg border border-line bg-panel p-3">
+                    <div className="text-[11px] text-gray-400 truncate">{k}</div>
+                    <div className={`mt-1 font-mono text-2xl ${v === 'UNAVAILABLE' ? 'text-xs text-advisory py-2' : 'text-white'}`}>{v}</div>
+                    <div className="text-[10px] text-gray-500 truncate">{u}</div>
                   </div>
                 ))}
               </div>
 
               <Card title="Live ECG & Signal Quality Check" tag={packet.provenance_manifest.biometrics_source} className="min-h-0 flex-1">
                 <div className="flex h-full flex-col justify-between gap-3">
-                  <EcgStrip hr={b.heart_rate_bpm ?? s.hr} artifact={isPureReplay ? 0 : whatIf.artifact_level} sqi={isPureReplay ? 1 : s.sqi} />
+                  <EcgStrip hr={bleData?.heartRateBpm ?? b.heart_rate_bpm ?? s.hr} artifact={isPureReplay ? 0 : whatIf.artifact_level} sqi={isPureReplay ? 1 : s.sqi} />
                   {b.missing_channels && b.missing_channels.length > 0 ? (
                     <p className="font-mono text-xs text-advisory">
                       MISSING CHANNELS: {b.missing_channels.join(', ')} (preserved as null / UNAVAILABLE, never coerced to 0).
@@ -164,6 +187,111 @@ export default function App() {
                   )}
                 </div>
               </Card>
+
+              {/* Universal Hardware-Agnostic Wearables & Clinical Standards Export */}
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                {/* BLE GATT Ingestion */}
+                <div className="rounded-lg border border-line bg-panel p-4 font-mono text-xs">
+                  <div className="flex items-center justify-between border-b border-line pb-2">
+                    <span className="font-bold text-gray-200">UNIVERSAL WEARABLE (BLE GATT)</span>
+                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                      bleStatus === 'CONNECTED' ? 'bg-ok/20 text-ok border border-ok' :
+                      bleStatus === 'CONNECTING' ? 'bg-advisory/20 text-advisory border border-advisory' :
+                      'border border-line text-gray-500'
+                    }`}>
+                      {bleStatus}
+                    </span>
+                  </div>
+
+                  <p className="mt-2 text-gray-400 font-sans text-xs">
+                    Standard Bluetooth SIG Heart Rate Profile (0x180D). Pairs with Polar H10, Garmin, Movesense, Wahoo, or any BLE chest strap to stream real-time RR intervals.
+                  </p>
+
+                  {bleError && (
+                    <div className="mt-2 rounded border border-red-500/40 bg-red-950/30 p-2 text-[11px] text-red-300">
+                      {bleError}
+                    </div>
+                  )}
+
+                  {bleStatus === 'CONNECTED' && bleData && (
+                    <div className="mt-2 grid grid-cols-2 gap-2 rounded border border-line bg-black/60 p-2.5">
+                      <div>
+                        <div className="text-[10px] text-gray-500">DEVICE</div>
+                        <div className="truncate text-white font-bold">{bleData.deviceName}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-gray-500">LIVE HR</div>
+                        <div className="text-ok font-bold">{bleData.heartRateBpm} bpm</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-gray-500">RMSSD (HRV)</div>
+                        <div className="text-cyan-300 font-bold">
+                          {bleData.rmssdMs ? `${bleData.rmssdMs.toFixed(1)} ms` : 'BUFFERING...'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-gray-500">SDNN (HRV)</div>
+                        <div className="text-cyan-300 font-bold">
+                          {bleData.sdnnMs ? `${bleData.sdnnMs.toFixed(1)} ms` : 'BUFFERING...'}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="mt-3 flex gap-2">
+                    {bleStatus === 'CONNECTED' ? (
+                      <button
+                        type="button"
+                        onClick={() => bleManager.disconnect()}
+                        className="cursor-pointer rounded border border-red-500/60 bg-red-950/30 px-3 py-1 text-red-300 hover:bg-red-500 hover:text-black"
+                      >
+                        DISCONNECT SENSOR
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => bleManager.connect()}
+                        disabled={bleStatus === 'CONNECTING'}
+                        className="cursor-pointer rounded border border-cyan-400 bg-cyan-950/30 px-3 py-1 font-bold text-cyan-300 hover:bg-cyan-400 hover:text-black disabled:opacity-50"
+                      >
+                        + PAIR BLUETOOTH SENSOR
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Open Health Clinical Export */}
+                <div className="rounded-lg border border-line bg-panel p-4 font-mono text-xs">
+                  <div className="border-b border-line pb-2 font-bold text-gray-200">
+                    CLINICAL INTEROPERABILITY EXPORT
+                  </div>
+                  <p className="mt-2 text-gray-400 font-sans text-xs">
+                    Deterministic edge export for Earth synchronization. Compliant with Open mHealth (OMH v1.0) and HL7 FHIR R4 Vital Signs Profile with LOINC bindings.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const omh = buildOpenMHealthJson(packet, s);
+                        downloadJsonFile(`ares_open_mhealth_day${whatIf.mission_day}.json`, omh);
+                      }}
+                      className="cursor-pointer rounded border border-line bg-black/60 px-3 py-1.5 text-gray-200 hover:border-cyan-400 hover:text-cyan-300"
+                    >
+                      EXPORT OPEN mHEALTH (JSON)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const fhir = buildHl7FhirJson(packet, s);
+                        downloadJsonFile(`ares_fhir_vitals_day${whatIf.mission_day}.json`, fhir);
+                      }}
+                      className="cursor-pointer rounded border border-line bg-black/60 px-3 py-1.5 text-gray-200 hover:border-lime-400 hover:text-lime-300"
+                    >
+                      EXPORT HL7 FHIR R4 (JSON)
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -255,7 +383,7 @@ export default function App() {
                   <Card title="Your Muscle, Bone & Mars Landing Readiness" tag="DERIVED" className="min-h-0 flex-1">
                   <div className="flex h-full flex-col justify-between gap-4">
                     <div className="flex flex-wrap items-center gap-2 font-mono text-xs">
-                      {['Calf muscle unloads', 'Irisin drops', 'Sclerostin rises', 'Bone weakens', 'Walking on Mars (0.38 g)'].map((t, i, a) => (
+                      {['Calf muscle unloads', 'Irisin drops', 'Sclerostin rises', 'Bone resorption -> Hypercalciuria', 'Walking on Mars (0.38 g)'].map((t, i, a) => (
                         <span key={t} className="flex items-center gap-2">
                           <span className="rounded border border-line px-2.5 py-1 text-gray-200">{t}</span>
                           {i < a.length - 1 && <span className="text-gray-600">-&gt;</span>}
@@ -267,10 +395,17 @@ export default function App() {
                       <Metric label="Irisin hormone" value={s.irisin.toFixed(2)} unit="ng/mL" />
                       <Metric label="Sclerostin (bone brake)" value={s.sclerostin.toFixed(0)} unit="pmol/L" limit={`> ${P.sclerostinCritical} risk`} bad={s.sclerostin > P.sclerostinCritical} />
                       <Metric label="Heel bone loss (BMD)" value={s.bmdLossPct.toFixed(1)} unit="%" />
+                      <Metric
+                        label="Urinary calcium (stone risk)"
+                        value={`${s.urinaryCalciumMgD.toFixed(0)} [${s.nephrolithiasisRisk}]`}
+                        unit="mg/d"
+                        limit="> 250 risk"
+                        bad={s.urinaryCalciumMgD > 250}
+                      />
                       <Metric label="Expected Mars gait asymmetry" value={s.gaiPct.toFixed(1)} unit="%" limit={`> ${P.gaiCritical} risk`} bad={s.gaiPct > P.gaiCritical} />
                     </div>
                     <p className="text-sm text-gray-300">
-                      Without daily resistive exercise on ARED, your calf muscle thins and signals your bones to lose density. Keeping your ARED load near 100% protects your skeleton for landing on Mars.
+                      Without daily resistive exercise on ARED, your calf muscle thins and signals bones to resorb minerals. Excess calcium is filtered into urine, elevating nephrolithiasis (kidney stone) risk above 250 mg/d. Keeping ARED load near 100% preserves bone and prevents renal crystallization.
                     </p>
                   </div>
                   </Card>
@@ -338,6 +473,11 @@ export default function App() {
           </div>
         </aside>
       </div>
+
+      <AuditChainModal
+        isOpen={isAuditModalOpen}
+        onClose={() => setIsAuditModalOpen(false)}
+      />
     </div>
   );
 }

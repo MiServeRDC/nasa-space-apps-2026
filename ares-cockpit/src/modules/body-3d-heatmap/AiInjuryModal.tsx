@@ -43,14 +43,16 @@ export function AiInjuryModal({
       setVlmResult({
         title: existingInjury.title,
         severity: existingInjury.severity,
-        confidencePct: existingInjury.confidencePct,
+        qualityIndexPct: existingInjury.confidencePct ?? 92,
+        diagnosticStatus: 'ASSESSABLE',
         clinicalAssessment: existingInjury.summary,
         microgravityProtocol: 'Closed-circuit transparent containment bag irrigation to prevent dispersion of aerosolized blood droplets into spacecraft cabin.',
         careSteps: existingInjury.careSteps,
         dropletHazard: true,
         erythemaIndex: 0.62,
         tissueDisruptionPct: 38,
-        vlmModel: 'ARES-VLM-Edge (Air-Gapped Bio-KG)',
+        analysisEngine: 'ARES Edge Spectral Analyzer (NASA-STD-3001 Bio-KG Protocol)',
+        clinicalDisclaimer: 'Provisional edge triage heuristic only. Safety Gate 1 lockout enforced: never use for systemic anticoagulant titration without POCUS confirmation.',
         detectedAt: existingInjury.detectedAt,
       });
       return;
@@ -106,14 +108,14 @@ export function AiInjuryModal({
       : 'border-lime-500 bg-lime-950/40 text-lime-300';
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 p-4 backdrop-blur-md">
+    <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/95 p-4 backdrop-blur-md">
       <div className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-xl border-2 border-lime-400 bg-black p-5 shadow-[0_0_50px_rgba(163,230,53,0.25)]">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between border-b border-gray-800 pb-3 font-mono text-xs">
           <div className="flex items-center gap-2">
             <span className="rounded bg-lime-400 px-2 py-0.5 font-bold text-black">ARES EDGE-VISION</span>
-            <span className="text-sm font-bold text-white">VLM CLINICAL TRIAGE & WOUND PROTOCOL</span>
-            <span className="hidden text-gray-500 md:inline">| 100% AIR-GAPPED (NASA-STD-3001)</span>
+            <span className="text-sm font-bold text-white">PROVISIONAL WOUND TRIAGE & PROTOCOL</span>
+            <span className="hidden text-gray-500 md:inline">| AIR-GAPPED (NASA-STD-3001)</span>
           </div>
           <button
             type="button"
@@ -145,14 +147,14 @@ export function AiInjuryModal({
               {analyzing && (
                 <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-4 bg-lime-950/30">
                   <div className="flex justify-between font-mono text-[10px] text-lime-400">
-                    <span>EDGE-VLM SCANNING...</span>
-                    <span>TISSUE DISRUPTION EVAL</span>
+                    <span>EDGE-ANALYZER SCANNING...</span>
+                    <span>SPECTRAL DYNAMIC RANGE EVAL</span>
                   </div>
                   <div className="h-0.5 w-full bg-lime-400 shadow-[0_0_12px_#a3e635] animate-bounce" />
                   <div className="font-mono text-[10px] text-lime-300">
                     {scanStep === 1 && '[1/3] Ingesting visual telemetry & RGB spectral index...'}
-                    {scanStep === 2 && '[2/3] Segmenting tissue edges & erythema matrix...'}
-                    {scanStep === 3 && '[3/3] Synthesizing zero-g containment protocol...'}
+                    {scanStep === 2 && '[2/3] Segmenting tissue boundaries & luminance dynamic range...'}
+                    {scanStep === 3 && '[3/3] Correlating with NASA-STD-3001 Bio-KG containment rules...'}
                   </div>
                 </div>
               )}
@@ -164,7 +166,7 @@ export function AiInjuryModal({
                     FOV: {INJURY_REGIONS[region].label}
                   </span>
                   <span className="absolute right-1 bottom-1 font-mono text-[9px] text-lime-400">
-                    CONFIDENCE: {vlmResult?.confidencePct ?? 94}%
+                    IMAGE QUALITY: {vlmResult?.qualityIndexPct ?? 88}%
                   </span>
                 </div>
               )}
@@ -201,7 +203,7 @@ export function AiInjuryModal({
             </div>
           </div>
 
-          {/* Right Panel: Generated VLM Medical Response */}
+          {/* Right Panel: Generated Medical Response */}
           <div className="flex flex-col justify-between gap-3 font-mono text-xs">
             <div className="flex flex-col gap-3">
               {/* Severity & Model badge */}
@@ -209,14 +211,24 @@ export function AiInjuryModal({
                 <div className={`rounded border px-2.5 py-1 font-bold ${severityColor}`}>
                   SEVERITY: {vlmResult?.severity ?? 'EVALUATING...'}
                 </div>
-                <div className="text-[11px] text-gray-500">
-                  MODEL: <span className="text-gray-300">{vlmResult?.vlmModel ?? 'ARES-VLM'}</span>
+                <div className="text-[10px] text-gray-400">
+                  ENGINE: <span className="text-gray-200">{vlmResult?.analysisEngine ?? 'ARES Edge Spectral Analyzer'}</span>
                 </div>
+              </div>
+
+              {/* Status and Quality metrics */}
+              <div className="flex items-center justify-between rounded border border-gray-800 bg-gray-950 px-3 py-1.5 text-[11px]">
+                <span className="text-gray-400">
+                  FIDELITY STATUS: <b className={vlmResult?.diagnosticStatus === 'ASSESSABLE' ? 'text-lime-300' : 'text-amber-300'}>{vlmResult?.diagnosticStatus ?? 'ASSESSABLE'}</b>
+                </span>
+                <span className="text-gray-400">
+                  IMAGE QUALITY INDEX: <b className="text-white">{vlmResult?.qualityIndexPct ?? 90}%</b>
+                </span>
               </div>
 
               {/* Clinical Assessment */}
               <div className="rounded-lg border border-gray-800 bg-gray-950 p-3">
-                <div className="font-bold text-lime-400">1. EDGE-VLM CLINICAL DIAGNOSIS</div>
+                <div className="font-bold text-lime-400">1. MORPHOLOGICAL CLINICAL TRIAGE</div>
                 <p className="mt-1 text-gray-200 leading-relaxed font-sans text-xs">
                   {vlmResult?.clinicalAssessment || 'Morphological evaluation in progress...'}
                 </p>
@@ -224,7 +236,7 @@ export function AiInjuryModal({
                   <div className="mt-2 flex gap-3 text-[10px] text-gray-400">
                     <span>Erythema Index: <b className="text-white">{(vlmResult.erythemaIndex * 100).toFixed(0)}%</b></span>
                     <span>Tissue Disruption: <b className="text-white">{vlmResult.tissueDisruptionPct}%</b></span>
-                    <span>AI Confidence: <b className="text-lime-300">{vlmResult.confidencePct}%</b></span>
+                    <span>Dynamic Range: <b className="text-lime-300">{vlmResult.qualityIndexPct}%</b></span>
                   </div>
                 )}
               </div>
@@ -250,6 +262,12 @@ export function AiInjuryModal({
                     </li>
                   ))}
                 </ul>
+              </div>
+
+              {/* Clinical Safety Gate Disclaimer */}
+              <div className="rounded border border-amber-500/30 bg-amber-950/20 p-2 text-[10px] text-amber-200 leading-tight">
+                {vlmResult?.clinicalDisclaimer ||
+                  'Provisional edge triage heuristic only. Safety Gate 1 lockout enforced: never use for systemic anticoagulant titration without POCUS confirmation.'}
               </div>
             </div>
 

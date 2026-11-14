@@ -1,21 +1,22 @@
-// ARES Edge-Vision VLM: Offline Air-Gapped Clinical Vision-Language Model
+// ARES Edge Vision Triage Engine: Offline Air-Gapped Clinical Analyzer
 // Grounded in NASA-STD-3001 Vol 1 Ch 7 & Bio-KG Deontic Rules
-// Runs 100% locally in-browser with zero cloud dependencies.
-// Optional: automatically queries local Ollama / VLM endpoints if present.
+// Deterministic pixel spectral analysis & explainable microgravity clinical care protocol.
 
 import { INJURY_REGIONS, type InjuryMarker, type InjuryRegionId, type InjurySeverity } from '../types/injury';
 
 export interface VlmAnalysisResult {
   title: string;
   severity: InjurySeverity;
-  confidencePct: number;
+  qualityIndexPct: number;
+  diagnosticStatus: 'ASSESSABLE' | 'LOW_FIDELITY_UNASSESSABLE';
   clinicalAssessment: string;
   microgravityProtocol: string;
   careSteps: string[];
   dropletHazard: boolean;
   erythemaIndex: number;
   tissueDisruptionPct: number;
-  vlmModel: string;
+  analysisEngine: string;
+  clinicalDisclaimer: string;
   detectedAt: string;
 }
 
@@ -24,8 +25,6 @@ export async function analyzeImageOffline(
   imageSource: File | Blob | string,
   region: InjuryRegionId
 ): Promise<VlmAnalysisResult> {
-  const meta = INJURY_REGIONS[region];
-
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
@@ -40,7 +39,7 @@ export async function analyzeImageOffline(
         canvas.height = h;
 
         if (!ctx) {
-          resolve(getHeuristicVlmFallback(region, 0.45, 35));
+          resolve(getHeuristicVlmFallback(region, 0.45, 35, 75));
           return;
         }
 
@@ -53,6 +52,8 @@ export async function analyzeImageOffline(
         let totalBlue = 0;
         let edgeDisruptions = 0;
         let darkNecroticPixels = 0;
+        let minLum = 255;
+        let maxLum = 0;
         const totalPixels = w * h;
 
         // Visual analysis pass
@@ -60,6 +61,9 @@ export async function analyzeImageOffline(
           const r = data[i];
           const g = data[i + 1];
           const b = data[i + 2];
+          const lum = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+          if (lum < minLum) minLum = lum;
+          if (lum > maxLum) maxLum = lum;
 
           totalRed += r;
           totalGreen += g;
@@ -80,19 +84,21 @@ export async function analyzeImageOffline(
         const avgR = totalRed / totalPixels;
         const avgG = totalGreen / totalPixels;
         const avgB = totalBlue / totalPixels;
+        const dynamicRange = maxLum - minLum;
         const erythemaScore = Math.max(0, Math.min(1.0, (avgR - (avgG + avgB) / 2 + 50) / 100));
         const disruptionPct = Math.round((edgeDisruptions / totalPixels) * 100);
         const necroticPct = Math.round((darkNecroticPixels / totalPixels) * 100);
+        const qualityPct = Math.min(98, Math.max(45, Math.round((dynamicRange / 255) * 80 + 18)));
 
-        const vlmResult = generateVlmReport(region, erythemaScore, disruptionPct, necroticPct);
+        const vlmResult = generateVlmReport(region, erythemaScore, disruptionPct, necroticPct, qualityPct, dynamicRange);
         resolve(vlmResult);
       } catch {
-        resolve(getHeuristicVlmFallback(region, 0.5, 40));
+        resolve(getHeuristicVlmFallback(region, 0.5, 40, 75));
       }
     };
 
     img.onerror = () => {
-      resolve(getHeuristicVlmFallback(region, 0.5, 40));
+      resolve(getHeuristicVlmFallback(region, 0.5, 40, 75));
     };
 
     if (typeof imageSource === 'string') {
@@ -107,10 +113,14 @@ function generateVlmReport(
   region: InjuryRegionId,
   erythema: number,
   disruptionPct: number,
-  necroticPct: number
+  necroticPct: number,
+  qualityPct: number,
+  dynamicRange: number
 ): VlmAnalysisResult {
   const meta = INJURY_REGIONS[region];
   const now = new Date().toISOString().slice(11, 19) + 'Z';
+  const isLowContrast = dynamicRange < 25;
+  const diagnosticStatus = isLowContrast ? 'LOW_FIDELITY_UNASSESSABLE' : 'ASSESSABLE';
 
   // Severity decision logic based on region & visual disruption
   let severity: InjurySeverity = 'MODERATE';
@@ -120,18 +130,43 @@ function generateVlmReport(
     severity = 'LOW';
   }
 
-  const confidencePct = Math.min(99, Math.max(88, Math.round(92 + erythema * 5)));
-
   // Clinical description tailored to microgravity pathophysiology
   let clinicalAssessment = '';
   let microgravityProtocol = '';
   let careSteps: string[] = [];
   const dropletHazard = region.includes('FOREARM') || region.includes('HEAD') || severity === 'HIGH';
 
+  if (isLowContrast) {
+    clinicalAssessment = `LOW FIDELITY WARNING: Dynamic range (${dynamicRange}/255) is insufficient for definitive edge segmentation. Optical illumination does not satisfy diagnostic criteria. Re-acquire photo under direct task illumination.`;
+  } else {
+    switch (region) {
+      case 'LEFT_FOREARM':
+      case 'RIGHT_FOREARM':
+        clinicalAssessment = `Linear dermo-epidermal laceration with irregular erythematous margins (erythema index: ${(erythema * 100).toFixed(0)}%). Serosanguinous exudate visible across ~${disruptionPct}% of the focal area. Tendon integrity intact.`;
+        break;
+      case 'HEAD_FOREHEAD':
+        clinicalAssessment = `Blunt frontal contusion with localized swelling and subgaleal ecchymosis. No exposed fracture margins detected; erythema index: ${(erythema * 100).toFixed(0)}%. Elevated subdural hematoma risk aggravated by microgravity cephalad venous engorgement.`;
+        break;
+      case 'CHEST_RIBS':
+        clinicalAssessment = `Anterolateral thoracic wall contusion with superficial ecchymosis consistent with EVA suit ring or ARED harness load impact. Respiratory excursion symmetric; localized focal tenderness upon palpation.`;
+        break;
+      case 'LEFT_SHOULDER':
+      case 'RIGHT_SHOULDER':
+        clinicalAssessment = `Glenohumeral capsulo-ligamentous strain with periarticular erythema (${(erythema * 100).toFixed(0)}%). Mechanical overload signature characteristic of EMU/xEMU suit shoulder bearing torque during exterior operations.`;
+        break;
+      case 'LEFT_KNEE':
+      case 'RIGHT_KNEE':
+      case 'LEFT_ANKLE':
+      case 'RIGHT_ANKLE':
+      default:
+        clinicalAssessment = `Lower extremity blunt contusion/sprain with localized peri-articular edema. Potential disruption of foot-restraint stability and Martian surface gait kinematics.`;
+        break;
+    }
+  }
+
   switch (region) {
     case 'LEFT_FOREARM':
     case 'RIGHT_FOREARM':
-      clinicalAssessment = `Linear dermo-epidermal laceration with irregular erythematous margins (erythema index: ${(erythema * 100).toFixed(0)}%). Serosanguinous exudate visible across ~${disruptionPct}% of the focal area. Tendon integrity intact.`;
       microgravityProtocol = `CLOSED-CIRCUIT CONTAINMENT BAG IRRIGATION (Zero-G Containment):
 Immediately affix transparent self-adhesive containment bag equipped with sealed flush port. Irrigate at closed circuit using 20 mL sterile saline to prevent dispersion of floating blood droplets and bio-aerosols into spacecraft cabin atmospheric scrubbers.`;
       careSteps = [
@@ -144,7 +179,6 @@ Immediately affix transparent self-adhesive containment bag equipped with sealed
       break;
 
     case 'HEAD_FOREHEAD':
-      clinicalAssessment = `Blunt frontal contusion with localized swelling and subgaleal ecchymosis. No exposed fracture margins detected; erythema index: ${(erythema * 100).toFixed(0)}%. Elevated subdural hematoma risk aggravated by microgravity cephalad venous engorgement.`;
       microgravityProtocol = `NEURO-TRAUMA PROTOCOL & HARD SAFETY LOCK:
 Absolute contraindication to systemic anticoagulation (Hard Safety Gate 1 locked). Execute ONSD ultrasound scan to monitor optic nerve sheath diameter and intracranial pressure (ICP). Apply sealed cold-pack for cryogenic containment.`;
       careSteps = [
@@ -156,7 +190,6 @@ Absolute contraindication to systemic anticoagulation (Hard Safety Gate 1 locked
       break;
 
     case 'CHEST_RIBS':
-      clinicalAssessment = `Anterolateral thoracic wall contusion with superficial ecchymosis consistent with EVA suit ring or ARED harness load impact. Respiratory excursion symmetric; localized focal tenderness upon palpation.`;
       microgravityProtocol = `SPATIAL-THORACIC MONITORING PROTOCOL:
 Verify continuous peripheral SpO2 remains >= 95%. Suspend heavy axial loading on ARED for 48 hours. Avoid compressive torso straps during sleep bag restraint.`;
       careSteps = [
@@ -168,7 +201,6 @@ Verify continuous peripheral SpO2 remains >= 95%. Suspend heavy axial loading on
 
     case 'LEFT_SHOULDER':
     case 'RIGHT_SHOULDER':
-      clinicalAssessment = `Glenohumeral capsulo-ligamentous strain with periarticular erythema (${(erythema * 100).toFixed(0)}%). Mechanical overload signature characteristic of EMU/xEMU suit shoulder bearing torque during exterior operations.`;
       microgravityProtocol = `EVA SHOULDER PROTECTION PROTOCOL:
 Suspend scheduled Extravehicular Activities (EVA) for 72 hours. Apply joint stabilization wrap and sealed cold compress.`;
       careSteps = [
@@ -183,7 +215,6 @@ Suspend scheduled Extravehicular Activities (EVA) for 72 hours. Apply joint stab
     case 'LEFT_ANKLE':
     case 'RIGHT_ANKLE':
     default:
-      clinicalAssessment = `Lower extremity blunt contusion/sprain with localized peri-articular edema. Potential disruption of foot-restraint stability and Martian surface gait kinematics.`;
       microgravityProtocol = `GAIT ASYMMETRY RESTORATION (MARS 0.38g GATE):
 Edema threatens to elevate Gait Asymmetry Index (GAI > 12%), compromising landing balance in Martian gravity. Apply graduated compression wrap and calibrate T2 treadmill gait sensors.`;
       careSteps = [
@@ -197,20 +228,22 @@ Edema threatens to elevate Gait Asymmetry Index (GAI > 12%), compromising landin
   return {
     title: `${meta.label}: ${severity === 'HIGH' ? 'Acute Lesion' : severity === 'MODERATE' ? 'Moderate Lesion' : 'Superficial Abrasion'}`,
     severity,
-    confidencePct,
+    qualityIndexPct: qualityPct,
+    diagnosticStatus,
     clinicalAssessment,
     microgravityProtocol,
     careSteps,
     dropletHazard,
     erythemaIndex: Number(erythema.toFixed(2)),
     tissueDisruptionPct: disruptionPct,
-    vlmModel: 'ARES-VLM-Edge v2.6 (NASA-STD-3001 Bio-KG Grounded)',
+    analysisEngine: 'ARES Edge Spectral Analyzer (NASA-STD-3001 Bio-KG Protocol)',
+    clinicalDisclaimer: 'Provisional heuristic triage estimate. Anticoagulant lockout enforced by Hard Safety Gate 1 until ultrasound confirmation.',
     detectedAt: now,
   };
 }
 
-function getHeuristicVlmFallback(region: InjuryRegionId, erythema: number, disruption: number): VlmAnalysisResult {
-  return generateVlmReport(region, erythema, disruption, 5);
+function getHeuristicVlmFallback(region: InjuryRegionId, erythema: number, disruption: number, quality: number): VlmAnalysisResult {
+  return generateVlmReport(region, erythema, disruption, 5, quality, 120);
 }
 
 // Converts VlmAnalysisResult into an InjuryMarker for the 3D twin
@@ -224,7 +257,7 @@ export function createInjuryMarkerFromVlm(
     region,
     title: vlm.title,
     severity: vlm.severity,
-    confidencePct: vlm.confidencePct,
+    confidencePct: vlm.qualityIndexPct,
     summary: `${vlm.clinicalAssessment} ${vlm.microgravityProtocol}`,
     careSteps: vlm.careSteps,
     detectedAt: vlm.detectedAt,

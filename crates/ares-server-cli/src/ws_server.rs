@@ -519,7 +519,18 @@ pub fn build_axum_router(state: Arc<SharedMissionState>) -> Router {
         .route("/ws/telemetry", get(ws_telemetry_handler))
         .route("/api/snapshot", get(get_snapshot_handler))
         .route("/api/stress-test", post(post_stress_test_handler))
+        .route("/api/audit-log", get(get_audit_log_handler))
         .with_state(state)
+}
+
+async fn get_audit_log_handler(
+    State(state): State<Arc<SharedMissionState>>,
+) -> Result<Json<Vec<ares_core_types::security::AuditChainRecord>>, StatusCode> {
+    state
+        .audit_logger
+        .records()
+        .map(Json)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
 }
 
 async fn get_snapshot_handler(

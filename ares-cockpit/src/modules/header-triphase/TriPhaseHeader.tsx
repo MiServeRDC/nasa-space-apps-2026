@@ -34,12 +34,14 @@ export function TriPhaseHeader({
   activePhase,
   recommendedPhase,
   onSelectPhase,
+  onOpenAudit,
 }: {
   alarm: AlarmLevel;
   link: LinkState;
   activePhase: Phase;
   recommendedPhase: Phase;
   onSelectPhase: (p: Phase) => void;
+  onOpenAudit?: () => void;
 }) {
   const [profile, setProfile] = useState<Profile>(LATENCY_PROFILES[1]);
   const [now, setNow] = useState(() => new Date());
@@ -97,6 +99,15 @@ export function TriPhaseHeader({
         <span className={Number.isFinite(profile.oneWayS) ? 'text-gray-300' : 'font-bold text-critical'}>OWLT {fmt(profile.oneWayS)}</span>
         <span className={autonomous ? 'text-advisory' : 'text-ok'}>{autonomous ? 'ON-BOARD AUTONOMY' : 'GROUND LINK'}</span>
         <span className={link === 'ENGINE_LIVE' ? 'text-ok' : 'text-gray-500'}>{link === 'ENGINE_LIVE' ? 'ENGINE LIVE' : 'SIMULATION'}</span>
+        {onOpenAudit && (
+          <button
+            type="button"
+            onClick={onOpenAudit}
+            className="cursor-pointer rounded border border-cyan-400 bg-cyan-950/30 px-2.5 py-0.5 text-xs font-bold text-cyan-300 hover:bg-cyan-400 hover:text-black"
+          >
+            AUDIT CHAIN
+          </button>
+        )}
         <AlarmBadge level={alarm} />
         <span className="text-gray-500">{now.toISOString().slice(11, 19)}Z</span>
       </div>

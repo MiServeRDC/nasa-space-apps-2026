@@ -125,6 +125,10 @@ export interface ScenarioState {
   onsdMm: number; onsdSigmaMm: number; daysSinceScan: number;
   soleusMm: number; soleusLossPct: number; irisin: number; sclerostin: number;
   bmdLossPct: number; gaiPct: number;
+  urinaryCalciumMgD: number;
+  nephrolithiasisRisk: 'LOW' | 'MODERATE' | 'ELEVATED';
+  cumulativeRadiationMsv: number;
+  coreTempC: number;
   rho: Record<PredicateKey, number>;
   worst: PredicateKey;
   rhoMin: number; mri: number; sigma: number;
@@ -168,6 +172,18 @@ export function evaluate(w: WhatIf, lastScanDay: number = w.mission_day): Scenar
   const bmdLossPct = clamp((day / 30) * 0.9 * clamp(sclerostin / P.sclerostinNominal - 0.7, 0, 3), 0, 30);
   const gaiPct = P.gaiNominal + 0.6 * soleusLossPct;
 
+  // 6. Renal calcium excretion (nephrolithiasis risk) & Space environmental deconditioning
+  // Grounded in crates/ares-causal-graph/src/mechanotransduction.rs line 76:
+  const urinaryCalciumMgD = clamp(175.0 + 4.2 * Math.max(0, sclerostin - P.sclerostinNominal), 140.0, 420.0);
+  const nephrolithiasisRisk: 'LOW' | 'MODERATE' | 'ELEVATED' =
+    urinaryCalciumMgD > 250 ? 'ELEVATED' : urinaryCalciumMgD > 200 ? 'MODERATE' : 'LOW';
+
+  // Cosmic ionizing radiation dose (GCR background: 0.45 mSv/day per telemetry schema & ares-core-types)
+  const cumulativeRadiationMsv = Number((day * 0.45).toFixed(1));
+
+  // Core Body Temperature: circadian & convective shift (+0.65 to +0.8 °C 'Spaceflight Fever', Gunga et al. 2017)
+  const coreTempC = Number((37.0 + 0.65 * decon + 0.25 * Math.max(0, ared - 0.8)).toFixed(1));
+
   const rho: Record<PredicateKey, number> = {
     tau_w: nqs(tauW, P.tauWNominal, P.tauWCritical),
     onsd: nqs(onsdMm, P.onsdNominal, P.onsdCritical),
@@ -187,6 +203,7 @@ export function evaluate(w: WhatIf, lastScanDay: number = w.mission_day): Scenar
   return {
     decon, hr, sbp, sbpBaseline, spo2, resp, sqi, hrAccepted, csa, vmax, tauW,
     onsdMm, onsdSigmaMm, daysSinceScan, soleusMm, soleusLossPct, irisin, sclerostin, bmdLossPct, gaiPct,
+    urinaryCalciumMgD, nephrolithiasisRisk, cumulativeRadiationMsv, coreTempC,
     rho, worst, rhoMin, mri, sigma,
   };
 }
