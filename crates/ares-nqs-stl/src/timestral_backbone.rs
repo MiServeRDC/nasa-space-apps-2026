@@ -93,9 +93,7 @@ impl TimestralConfig {
                 reason: "d_ff and num_layers must be > 0",
             });
         }
-        if !self.rope_fraction.is_finite()
-            || self.rope_fraction <= 0.0
-            || self.rope_fraction > 1.0
+        if !self.rope_fraction.is_finite() || self.rope_fraction <= 0.0 || self.rope_fraction > 1.0
         {
             return Err(NqsStlError::InvalidConfig {
                 reason: "rope_fraction must be in (0.0, 1.0]",
@@ -437,7 +435,9 @@ impl PatchRepresentation {
             let end = start + patch_len;
             let slice_ch: Vec<Vec<Option<f64>>> =
                 channels.iter().map(|ch| ch[start..end].to_vec()).collect();
-            patches.push(Self::from_multivariate_window(&slice_ch, patch_len, scaler)?);
+            patches.push(Self::from_multivariate_window(
+                &slice_ch, patch_len, scaler,
+            )?);
         }
         Ok(patches)
     }
@@ -629,11 +629,7 @@ impl SinCosRoPe {
         })
     }
 
-    pub fn apply_in_place(
-        &self,
-        head_vec: &mut [f64],
-        pos_idx: usize,
-    ) -> Result<(), NqsStlError> {
+    pub fn apply_in_place(&self, head_vec: &mut [f64], pos_idx: usize) -> Result<(), NqsStlError> {
         if head_vec.len() != self.head_dim {
             return Err(NqsStlError::DimensionMismatch {
                 expected: self.head_dim,
@@ -846,12 +842,8 @@ impl DualAxisAttention {
                     scores.iter().map(|&sc| sigmoid_f64(sc) * inv_len).collect()
                 } else {
                     // Causal Softmax across temporal patches
-                    let max_sc = scores
-                        .iter()
-                        .copied()
-                        .fold(f64::NEG_INFINITY, f64::max);
-                    let mut exps: Vec<f64> =
-                        scores.iter().map(|&sc| (sc - max_sc).exp()).collect();
+                    let max_sc = scores.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+                    let mut exps: Vec<f64> = scores.iter().map(|&sc| (sc - max_sc).exp()).collect();
                     let sum_exp: f64 = exps.iter().sum::<f64>().max(1e-12);
                     for w in &mut exps {
                         *w /= sum_exp;
@@ -922,11 +914,7 @@ impl TimestralBackbone {
         for idx in 0..config.num_layers {
             blocks.push(TimestralBlock {
                 norm_attn: RmsNorm::new(config.d_model, config.rms_norm_eps)?,
-                attn: DualAxisAttention::deterministic(
-                    &config,
-                    config.layer_kind(idx),
-                    &mut prng,
-                )?,
+                attn: DualAxisAttention::deterministic(&config, config.layer_kind(idx), &mut prng)?,
                 norm_ffn: RmsNorm::new(config.d_model, config.rms_norm_eps)?,
                 ffn: FusedSwiGlu::deterministic(config.d_model, config.d_ff, &mut prng),
             });
@@ -1013,6 +1001,7 @@ mod tests {
             resp_rate_brpm: Some(15.0),
             spo2_pct: spo2,
             rmssd_ms: Some(38.0),
+            hrv_unavailable_reason: None,
             sdnn_ms: Some(49.0),
             pnn50_pct: Some(17.0),
             lf_hf_ratio: Some(1.6),
@@ -1085,7 +1074,11 @@ mod tests {
             let missing = (5..18).contains(&i);
             frames.push(make_biometrics_row(
                 Some(72.0 + (i as f64) * 0.1),
-                if missing { None } else { Some(71.5 + (i as f64) * 0.1) },
+                if missing {
+                    None
+                } else {
+                    Some(71.5 + (i as f64) * 0.1)
+                },
                 if missing { None } else { Some(98.0) },
             ));
         }
@@ -1094,15 +1087,24 @@ mod tests {
 
         let patch = PatchRepresentation::from_biometrics_slice(&frames, &scaler)
             .expect("biometrics patch should build");
-        assert_eq!(patch.dual_features_per_channel.len(), PHYSIOLOGICAL_CHANNELS);
+        assert_eq!(
+            patch.dual_features_per_channel.len(),
+            PHYSIOLOGICAL_CHANNELS
+        );
 
         for ch_feat in &patch.dual_features_per_channel {
             assert_eq!(ch_feat.len(), 2 * 32);
-            assert!(ch_feat.iter().all(|v| v.is_finite()), "NaN/Inf leaked into patch!");
+            assert!(
+                ch_feat.iter().all(|v| v.is_finite()),
+                "NaN/Inf leaked into patch!"
+            );
         }
         // Pulse channel (idx 1) has 13 missing flags = 1.0 in the second half [32..64]
         let pulse_mask = &patch.dual_features_per_channel[1][32..64];
-        let ones = pulse_mask.iter().filter(|&&m| (m - 1.0).abs() < 1e-12).count();
+        let ones = pulse_mask
+            .iter()
+            .filter(|&&m| (m - 1.0).abs() < 1e-12)
+            .count();
         assert_eq!(ones, 13);
         // Verify ZOH imputed values for missing steps [5..18] match step 4's scaled value
         let pulse_vals = &patch.dual_features_per_channel[1][0..32];
@@ -1137,8 +1139,7 @@ mod tests {
             num_layers: 2,
             ..TimestralConfig::default()
         };
-        let backbone_a =
-            TimestralBackbone::new_deterministic(cfg.clone()).expect("backbone A");
+        let backbone_a = TimestralBackbone::new_deterministic(cfg.clone()).expect("backbone A");
         let backbone_b = TimestralBackbone::new_deterministic(cfg).expect("backbone B");
 
         let scaler = CausalScaler::default();

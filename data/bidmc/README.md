@@ -16,3 +16,12 @@ Run `shasum -a 256 data/bidmc/bidmc_*_Numerics.csv` to verify integrity:
 * `bidmc_01_Numerics.csv`: `27d43794cf2e7150db10e8bfe61d2bfdb26873a8f1629ffc5fbee5c9a4eb6ef5` (Development & Missing-Value Handling Test — 481 rows, `0..480 s`, 13 missing `PULSE` and `SpO2` values)
 * `bidmc_02_Numerics.csv`: `99aef20b2846815d45ecde184da753de58c8a85b7dd7af74a2f4c5282013704d` (Development Clean Baseline — 481 rows, `0..480 s`, 0 missing values)
 * `bidmc_03_Numerics.csv`: `6666475c072fe079f35f1fffe0890a97b56d1086985f8a5d76a23b88eb6c6036` (Held-Out Evaluation Record — 481 rows, `0..480 s`, 0 missing values)
+
+
+## HRV input limitation (issue #11)
+
+The bundled numeric CSVs have no beat-to-beat intervals. RMSSD, SDNN, pNN50 and LF/HF are unavailable, including when the numeric quality score is high. They must not be synthesized from HR/respiration or held at a nominal default. The Rust overlay emits nulls, records their missing names and reports `BEAT_INTERVALS_NOT_AVAILABLE`.
+
+The full HRV-dependent MRI, global margin and TTV/bands are also unavailable. Known non-HRV violations remain visible; an incomplete assessment is not nominal. Tests with explicitly supplied synthetic HRV values test software behavior only. No waveform/beat-interval processing is added by this correction.
+
+See [issue #11 implementation plan](../../docs/plans/ISSUE_11_HRV_VALIDITY_PLAN.md). Future integrations must repeat the null-propagation tests, including server/MCP and cockpit handling. The current main has no executable cockpit; issue #8 remains the frontend/wire integration task.

@@ -89,7 +89,14 @@ fn serialize_under_budget(mut payload: Value) -> String {
         return s;
     }
     if let Some(obj) = payload.as_object_mut() {
-        for key in ["neighbors", "slices", "clauses", "steps", "deontic", "adhg_chain"] {
+        for key in [
+            "neighbors",
+            "slices",
+            "clauses",
+            "steps",
+            "deontic",
+            "adhg_chain",
+        ] {
             while s.len() > MAX_MCP_CONTEXT_MODE_BYTES {
                 let popped = obj
                     .get_mut(key)
@@ -179,9 +186,10 @@ pub fn handle_fastmcp_jsonrpc_request<S: McpInputSanitizer>(
                     "src": latest_packet.source_record_id,
                     "t_rec_s": latest_packet.relative_recording_time_s,
                     "severity": latest_packet.alert_severity,
-                    "mri_pct": round1(latest_packet.nqs_stl.mri_pct),
-                    "rho_global": round2(latest_packet.nqs_stl.rho_global),
-                    "ttv_h": round1(latest_packet.nqs_stl.ttv_hours),
+                    "mri_pct": latest_packet.nqs_stl.mri_pct.map(round1),
+                    "rho_global": latest_packet.nqs_stl.rho_global.map(round2),
+                    "ttv_h": latest_packet.nqs_stl.ttv_hours.map(round1),
+                    "hrv_unavailable_reason": latest_packet.biometrics.hrv_unavailable_reason,
                     "missing": latest_packet.biometrics.missing_channels
                 }),
                 "explain_causal_anomaly" | "query_organ_robustness" => {
@@ -200,10 +208,10 @@ pub fn handle_fastmcp_jsonrpc_request<S: McpInputSanitizer>(
                     })
                 }
                 "simulate_countermeasure_impact" => json!({
-                    "current_rho": round2(latest_packet.nqs_stl.rho_global),
-                    "lbnp_30mmhg_delta_rho_h": 0.19,
-                    "ared_125kgf_delta_rho_h": 0.11,
-                    "projected_ttv_gain_h": 96.0
+                    "current_rho": latest_packet.nqs_stl.rho_global.map(round2),
+                    "lbnp_30mmhg_delta_rho_h": latest_packet.nqs_stl.rho_global.map(|_| 0.19),
+                    "ared_125kgf_delta_rho_h": latest_packet.nqs_stl.rho_global.map(|_| 0.11),
+                    "projected_ttv_gain_h": latest_packet.nqs_stl.rho_global.map(|_| 96.0)
                 }),
                 "get_medops_playbook" | "trigger_medops_action_playbook" => json!({
                     "playbook_id": latest_packet.active_playbook.playbook_id,
@@ -211,8 +219,9 @@ pub fn handle_fastmcp_jsonrpc_request<S: McpInputSanitizer>(
                     "top_action": latest_packet.active_playbook.actions.first().map(|a| &a.action_id)
                 }),
                 "query_dataset_graph" => {
-                    let raw_query = extract_str_arg(&req.params, &["query", "keyword", "id", "dataset"])
-                        .unwrap_or("OSD-51");
+                    let raw_query =
+                        extract_str_arg(&req.params, &["query", "keyword", "id", "dataset"])
+                            .unwrap_or("OSD-51");
                     let clean_query = match sanitizer.sanitize_mcp_query(raw_query) {
                         Ok(q) => q,
                         Err(e) => {
@@ -291,17 +300,9 @@ pub fn handle_fastmcp_jsonrpc_request<S: McpInputSanitizer>(
                     json!({
                         "gate": gate_status_code(snap.confidence_state),
                         "abstained": snap.abstention_certificate.abstained,
-                        "rho_cone": [
-                            round2(snap.rho_global_cone.q05),
-                            round2(snap.rho_global_cone.q50),
-                            round2(snap.rho_global_cone.q95)
-                        ],
-                        "ttv_cone_h": [
-                            round1(snap.ttv_hours_cone.q05),
-                            round1(snap.ttv_hours_cone.q50),
-                            round1(snap.ttv_hours_cone.q95)
-                        ],
-                        "pessimistic_ttv_q05_h": round1(snap.pessimistic_ttv_q05_hours),
+                        "rho_cone": snap.rho_global_cone.map(|cone| [round2(cone.q05), round2(cone.q50), round2(cone.q95)]),
+                        "ttv_cone_h": snap.ttv_hours_cone.map(|cone| [round1(cone.q05), round1(cone.q50), round1(cone.q95)]),
+                        "pessimistic_ttv_q05_h": snap.pessimistic_ttv_q05_hours.map(round1),
                         "hr_cone": [
                             round1(snap.heart_rate_bpm_cone.q05),
                             round1(snap.heart_rate_bpm_cone.q50),
@@ -419,7 +420,11 @@ mod tests {
                 params: json!({ "name": tool, "arguments": {} }),
             };
             let resp = handle_fastmcp_jsonrpc_request(&req, &ctx, &sanitizer);
-            assert!(resp.error.is_none(), "Unexpected error on tool {tool}: {:?}", resp.error);
+            assert!(
+                resp.error.is_none(),
+                "Unexpected error on tool {tool}: {:?}",
+                resp.error
+            );
             let result = resp.result.expect("result present");
             let text = result["content"][0]["text"]
                 .as_str()
@@ -429,9 +434,11 @@ mod tests {
                 "Tool {tool} exceeded 600-byte Context-Mode cap: {} bytes ({text})",
                 text.len()
             );
-            let parsed: Value =
-                serde_json::from_str(text).expect("tool output must be valid JSON");
-            assert!(parsed.is_object(), "Tool {tool} output must be a JSON object");
+            let parsed: Value = serde_json::from_str(text).expect("tool output must be valid JSON");
+            assert!(
+                parsed.is_object(),
+                "Tool {tool} output must be a JSON object"
+            );
         }
     }
 
@@ -460,7 +467,12 @@ mod tests {
         let q_json: Value = serde_json::from_str(&q_text).expect("valid json");
         assert_eq!(q_json["datasets"], 24);
         assert!(q_json["schema"].as_str().expect("schema").contains("SPOKE"));
-        assert!(q_json["schema"].as_str().expect("schema").contains("Biolink"));
+        assert!(
+            q_json["schema"]
+                .as_str()
+                .expect("schema")
+                .contains("Biolink")
+        );
 
         // 2. explain_biomarker_path
         let p_req = JsonRpcRequest {
@@ -495,10 +507,10 @@ mod tests {
             .to_string();
         assert!(t_text.len() <= MAX_MCP_CONTEXT_MODE_BYTES);
         let t_json: Value = serde_json::from_str(&t_text).expect("valid json");
-        let rho = t_json["rho_cone"].as_array().expect("rho_cone array");
-        assert_eq!(rho.len(), 3);
-        assert!(rho[0].as_f64().expect("q05") <= rho[1].as_f64().expect("q50"));
-        assert!(rho[1].as_f64().expect("q50") <= rho[2].as_f64().expect("q95"));
+        assert_eq!(t_json.get("rho_cone"), Some(&Value::Null));
+        assert_eq!(t_json.get("ttv_cone_h"), Some(&Value::Null));
+        assert_eq!(t_json.get("pessimistic_ttv_q05_h"), Some(&Value::Null));
+        assert_eq!(t_json["abstained"], true);
 
         // 4. get_hypergraph_spatial_status
         let h_req = JsonRpcRequest {
