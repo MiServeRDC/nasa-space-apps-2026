@@ -1,5 +1,14 @@
 # Progress Tracking: ARES-Health (Autonomous Resilient Edge-native System for Astronaut Health)
 
+## Carbon High Independent Audit Resolutions & Verified Main Merge (2026-11-14)
+
+- [x] **Vulnerability 1 Resolved:** Aligned NASA OSDR metadata (`OSD-51`, `OSD-195`, `OSD-818`, `OSD-570/571`, Marshall-Goebel 2019 DOI) and eradicated all unjustified calibration claims in `MissionPortal.tsx`.
+- [x] **Vulnerability 2 Resolved:** Wired Block N physiological models, Playbooks `#01-#15`, and Safety Gates 4A/4B into live 20 Hz server (`ws_server.rs`) and UI badges (`App.tsx`, `PlaybookRunner.tsx`).
+- [x] **Vulnerability 3 Resolved:** Fixed Gate 1 anticoagulant filter specificity in `playbookCatalog.ts` (preserving non-anticoagulant drugs #10 and #13) and added TypeScript unit test suite.
+- [x] **Vulnerability 4 Resolved:** Eliminated Seqlock data race UB by replacing `UnsafeCell<[u8; 128]>` with `[AtomicU64; 16]`, removing all 3 `unsafe` blocks, and enforcing `#![forbid(unsafe_code)]` across all 9 crates (11 entrypoints).
+- [x] **Vulnerability 5 Resolved:** Wolf Amendment compliance (default `llama3.2:3b-instruct-q4_K_M`, duplicate Chinese scraper directories removed), `NASA_PITCH_HARD_CAP_SECONDS = 29.8` video limit, SI/AI disclosure in submission docs, `LICENSE-APACHE` + `CC-BY-SA-4.0` attribution, and `NASA_2026_7_SLIDE_DECK.typ` 7-slide deck refresh.
+- [x] **Merged into Main:** All patches cleanly merged into `main` (`ad3bab9`) and pushed to remotes.
+
 ## Approved medical-blue cockpit refresh (2026-11-14)
 
 - [x] Ported the user's local redesign onto main `e8c2927` using an isolated integration worktree.
