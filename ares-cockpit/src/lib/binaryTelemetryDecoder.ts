@@ -323,6 +323,180 @@ export const BINARY_PLAYBOOK_DEFAULTS: Record<number, BinaryPlaybookDefaultMeta>
       },
     ],
   },
+  10: {
+    playbook_id: 'PLAYBOOK_10_RENAL_LITHIASIS',
+    title: 'Playbook #10: Renal Lithiasis Hydration, Citrate Buffering & Bladder Protocol',
+    total_steps: 3,
+    step_instruction:
+      'Execute guided renal/bladder POCUS and initiate aggressive hydration with potassium citrate buffer',
+    causal_chain_summary: [
+      'BONE_RESORPTION_HYPERCALCIURIA',
+      'HYPERCAPNIC_CITRATE_SUPPRESSION',
+      'CALCIUM_OXALATE_SUPER_SATURATION',
+      'POCUS_TWINKLING_OR_OBSTRUCTION',
+    ],
+    actions: [
+      {
+        action_id: 'ACT_POCUS_RENAL_BLADDER_SCAN',
+        label: 'Execute guided renal and bladder ultrasound (assess hydronephrosis and bladder volume)',
+        category: 'DIAGNOSTIC_VERIFICATION',
+        delta_rho_per_hour: 0.12,
+      },
+      {
+        action_id: 'ACT_ORAL_HYDRATION_BOLUS_1000ML',
+        label: 'Administer 1.0 L balanced oral electrolyte solution over 60 minutes',
+        category: 'METABOLIC_COUNTERMEASURE',
+        delta_rho_per_hour: 0.25,
+      },
+      {
+        action_id: 'ACT_PHARMACOLOGICAL_POTASSIUM_CITRATE_30MEQ',
+        label: 'Initiate Potassium Citrate 30 mEq PO daily to alkalinize urine and chelate calcium',
+        category: 'PHARMACOLOGICAL_UNLOCKED',
+        delta_rho_per_hour: 0.18,
+      },
+    ],
+  },
+  11: {
+    playbook_id: 'PLAYBOOK_11_MARS_ENTRY_FLUID_LOADING',
+    title: 'Playbook #11: Mars Entry 0.38g Pre-Landing Fluid Loading & Orthostatic Protocol',
+    total_steps: 2,
+    step_instruction:
+      'Administer oral isotonic electrolyte fluid load and don lower-body compression garment before entry burn',
+    causal_chain_summary: [
+      'GAUER_HENRY_PLASMA_VOLUME_CONTRACTION',
+      'SPACEFLIGHT_HEMOLYSIS_MARROW',
+      'RE_ENTRY_DECELERATION_BLOOD_POOLING',
+      'ORTHOSTATIC_PRESUSPECTED_COLLAPSE',
+    ],
+    actions: [
+      {
+        action_id: 'ACT_ISOTONIC_SALT_WATER_LOADING_15ML_KG',
+        label: 'Ingest 15 mL/kg body mass of isotonic electrolyte solution within 2 hours of entry burn',
+        category: 'METABOLIC_COUNTERMEASURE',
+        delta_rho_per_hour: 0.28,
+      },
+      {
+        action_id: 'ACT_DON_ANTI_G_COMPRESSION_GARMENT',
+        label: 'Don inflatable abdominal-thigh compression garment set to 35-45 mmHg gradient',
+        category: 'PHYSICAL_HEMODYNAMIC',
+        delta_rho_per_hour: 0.22,
+      },
+    ],
+  },
+  12: {
+    playbook_id: 'PLAYBOOK_12_CIRCADIAN_LIGHT_HYGIENE',
+    title: 'Playbook #12: Mars Sol Circadian Phototherapy, Blue Enrichment & Sleep Hygiene',
+    total_steps: 2,
+    step_instruction:
+      'Deliver morning 480nm melanopic blue phototherapy and schedule evening optical blue depletion',
+    causal_chain_summary: [
+      'MARS_SOL_24_66H_PHASE_DESYNCHRONY',
+      'SLOW_WAVE_SLEEP_DEBT_ACCUMULATION',
+      'PVT_B_COGNITIVE_LAPSE_ACCELERATION',
+      'MELANOPIC_BLUE_LIGHT_ENTRAINMENT',
+    ],
+    actions: [
+      {
+        action_id: 'ACT_MELANOPIC_LIGHT_480NM_450LUX',
+        label: 'Deliver 45 minutes of 480 nm blue-enriched light (> 450 EDI lux) immediately upon waking',
+        category: 'ENVIRONMENTAL_CHECK',
+        delta_rho_per_hour: 0.20,
+      },
+      {
+        action_id: 'ACT_BLUE_DEPLETION_EVENING_FILTER',
+        label: 'Enforce optical blue-blocking eyewear (< 10 lux melanopic) starting 2 hours prior to scheduled sleep',
+        category: 'ENVIRONMENTAL_CHECK',
+        delta_rho_per_hour: 0.15,
+      },
+    ],
+  },
+  13: {
+    playbook_id: 'PLAYBOOK_13_VIRAL_IMMUNE_VALACYCLOVIR',
+    title: 'Playbook #13: Spaceflight Immune Dysregulation & Latent Herpesvirus Reactivation Protocol',
+    total_steps: 2,
+    step_instruction:
+      'Perform dermatome inspection and initiate oral Valacyclovir antiviral regimen (Gate 1 cleared)',
+    causal_chain_summary: [
+      'CHRONIC_GLUCOCORTICOID_ELEVATION',
+      'TH1_TH2_CYTOKINE_BALANCE_DEVIATION',
+      'LATENT_VZV_EBV_VIRAL_SHEDDING',
+      'ORAL_VALACYCLOVIR_INTERVENTION',
+    ],
+    actions: [
+      {
+        action_id: 'ACT_CLINICAL_DERMATOMIC_INSPECTION',
+        label: 'Perform targeted examination of cranial nerves (V1 ophthalmic branch) and thoracic dermatomes',
+        category: 'CLINICAL_ASSESSMENT',
+        delta_rho_per_hour: 0.10,
+      },
+      {
+        action_id: 'ACT_VALACYCLOVIR_ANTIVIRAL_THERAPY',
+        label: 'Initiate Oral Valacyclovir 1000 mg TID for 7 days (cleared by Gate 1 non-anticoagulant filter)',
+        category: 'PHARMACOLOGICAL_UNLOCKED',
+        delta_rho_per_hour: 0.25,
+      },
+    ],
+  },
+  14: {
+    playbook_id: 'PLAYBOOK_14_CO2_SCRUBBER_SANS',
+    title: 'Playbook #14: Cabin ppCO2 Hypercapnia Scrubbing & Ocular Vasodilation Mitigation',
+    total_steps: 2,
+    step_instruction:
+      'Inspect CDRA scrubbers, deploy cabin circulation fans, and suppress translaminar ocular pressure spikes',
+    causal_chain_summary: [
+      'CABIN_PPCO2_EXCEEDS_3_0_MMHG',
+      'CEREBRAL_ARTERIOLAR_VASODILATION',
+      'RETROBULBAR_VENOUS_PRESSURE_INCREASE',
+      'TRANSLAMINAR_GRADIENT_AMPLIFICATION',
+    ],
+    actions: [
+      {
+        action_id: 'ACT_INSPECT_CDRA_DESICCANT_BEDS',
+        label: 'Verify Carbon Dioxide Removal Assembly cycle timing and inspect backup LiOH canisters',
+        category: 'ENVIRONMENTAL_CHECK',
+        delta_rho_per_hour: 0.30,
+      },
+      {
+        action_id: 'ACT_DEPLOY_PORTABLE_CABIN_FANS',
+        label: 'Install supplementary duct fans in crew sleeping quarters to eliminate microgravity CO2 pockets',
+        category: 'ENVIRONMENTAL_CHECK',
+        delta_rho_per_hour: 0.15,
+      },
+    ],
+  },
+  15: {
+    playbook_id: 'PLAYBOOK_15_EFAST_TRAUMA_TRIAGE',
+    title: 'Playbook #15: eFAST Thoraco-Abdominal Trauma Triage & Needle Thoracostomy Protocol',
+    total_steps: 3,
+    step_instruction:
+      'Execute multi-window eFAST ultrasound triage and verify Gate 4 before thoracic needle decompression',
+    causal_chain_summary: [
+      'KINETIC_TRAUMA_OR_BAROTRAUMA_EVENT',
+      'POCUS_EFAST_FLUID_OR_LUNG_POINT',
+      'TENSION_PNEUMOTHORAX_SUSPICION',
+      'GATE4_DECOMPRESSION_OR_NEEDLE_RELEASE',
+    ],
+    actions: [
+      {
+        action_id: 'ACT_RAPID_5_WINDOW_EFAST_SCAN',
+        label: 'Execute systematic eFAST ultrasound protocol (RUQ, LUQ, pelvic, subxiphoid, bilateral thoracic)',
+        category: 'DIAGNOSTIC_VERIFICATION',
+        delta_rho_per_hour: 0.0,
+      },
+      {
+        action_id: 'ACT_PLEURAL_M_MODE_BARCODE_VERIFY',
+        label: 'Obtain thoracic M-mode clips over 2nd intercostal mid-clavicular line to assess seashore vs barcode sign',
+        category: 'DIAGNOSTIC_VERIFICATION',
+        delta_rho_per_hour: 0.0,
+      },
+      {
+        action_id: 'ACT_NEEDLE_DECOMPRESSION_2ND_ICL',
+        label: 'Perform emergency needle decompression 2nd intercostal mid-clavicular line (requires Gate 4 confirmation)',
+        category: 'INVASIVE_PROCEDURE',
+        delta_rho_per_hour: 0.35,
+      },
+    ],
+  },
 };
 
 export const ALERT_LEVEL_BY_CODE: Record<number, AlarmLevel> = {
@@ -707,7 +881,7 @@ export function mergeBinaryFrameIntoPacket(
   }
 
   const alarmLevel =
-    ALERT_LEVEL_BY_CODE[frame.active_alert_code] ?? prev.safety_margins.alarm_level;
+    ALERT_LEVEL_BY_CODE[frame.active_alert_code] ?? prev.safety_margins?.alarm_level ?? 'NOMINAL';
 
   const nextHemodynamics =
     prev.hemodynamics !== null && prev.hemodynamics !== undefined
@@ -753,7 +927,7 @@ export function mergeBinaryFrameIntoPacket(
   };
 
   const binaryDefault = BINARY_PLAYBOOK_DEFAULTS[frame.active_playbook_id];
-  let nextPlaybook: ActivePlaybook | null = prev.active_playbook ?? null;
+  let nextPlaybook: ActivePlaybook | null = null;
   if (binaryDefault) {
     const samePlaybook = prev.active_playbook?.playbook_id === binaryDefault.playbook_id;
     nextPlaybook = {
@@ -779,14 +953,9 @@ export function mergeBinaryFrameIntoPacket(
           : undefined) ?? binaryDefault.actions,
       safety_gates: safetyGates,
     };
-  } else if (prev.active_playbook !== null && prev.active_playbook !== undefined) {
-    nextPlaybook = {
-      ...prev.active_playbook,
-      playbook_id:
-        PLAYBOOK_ID_BY_CODE[frame.active_playbook_id] ??
-        prev.active_playbook.playbook_id,
-      safety_gates: safetyGates,
-    };
+  } else {
+    // If active_playbook_id is 0 or unknown, do not retain stale actions or instructions from previous playbook
+    nextPlaybook = null;
   }
 
   const modelValidationStatus: ModelValidationStatus =

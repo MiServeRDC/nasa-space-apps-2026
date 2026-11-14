@@ -465,23 +465,40 @@ export function useTelemetry(
         .invoke('subscribe_binary_telemetry', {
           onFrame: { __TAURI_CHANNEL_MARKER__: true, id: channelId },
         })
-        .catch(() => {
-          // If binary channel command is unavailable, snapshot polling still works
+        .catch((err) => {
+          console.warn(
+            '[ares-cockpit] Tauri binary subscription unavailable, active snapshot fallback engaged:',
+            err,
+          );
+          void hydrateTauriSnapshot();
         });
     }
 
+    // Periodic 1 Hz full snapshot refresh ensures extended panels (cones, anomalies, Block N)
+    // stay fresh (< 1s latency) even when binary frame header codes remain stable,
+    // and serves as an active fallback when binary streaming is unavailable.
+    const snapshotPollId = window.setInterval(() => {
+      if (!disposed) {
+        void hydrateTauriSnapshot();
+      }
+    }, 1000);
+
     const osPollId = window.setInterval(() => {
       if (!disposed) {
-        void tauri.invoke?.('get_os_status_bar_state').then((os) => {
-          if (!disposed && os && typeof os === 'object') {
-            setOsStatus(os as OsStatusBarState);
-          }
-        }).catch(() => {});
+        void tauri
+          .invoke?.('get_os_status_bar_state')
+          .then((os) => {
+            if (!disposed && os && typeof os === 'object') {
+              setOsStatus(os as OsStatusBarState);
+            }
+          })
+          .catch(() => {});
       }
     }, 1000);
 
     return () => {
       disposed = true;
+      window.clearInterval(snapshotPollId);
       window.clearInterval(osPollId);
     };
   }, [acceptBinaryBuffer, acceptRawPayload]);

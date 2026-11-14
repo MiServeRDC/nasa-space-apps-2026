@@ -1,5 +1,13 @@
 # Progress Tracking: ARES-Health (Autonomous Resilient Edge-native System for Astronaut Health)
 
+## Runtime Correctness & Verification Review (2026-11-15)
+
+- [x] **Problem 1 (Wearable Data vs Replay Overwrite & Provenance):** Decoupled sampling from 20 Hz UI refresh via `TelemetrySourceMode`. Sensor loss timeout (3.0s) emits `DataDegradedMissingChannels` (`"wearable_sensor_loss"`) without silent CSV fallback. Monotonicity check rejects out-of-order packets and handles supervisor restarts. Added `BiometricsSource::HardwareWearable`, wire/schema contracts, and 5 regression tests in `crates/ares-server-cli/tests/wearable_source_selection.rs`.
+- [x] **Problem 2 (Playbooks 10–15 Binary Protocol & Client Parity):** Extended `binary_ipc.rs` `playbook_id_to_u16` and added `playbook_id_from_u16` covering all 15 playbooks. Populated `BINARY_PLAYBOOK_DEFAULTS` in `binaryTelemetryDecoder.ts` for codes 10..15. Set `nextPlaybook = null` for unknown codes to eliminate action and instruction leakage.
+- [x] **Problem 3 & Problem 6 (Warm Multi-Sol Partitioning & Storage CRC Ambiguity):** Split multi-sol batches on append so each segment is homogeneous per sol. Implemented row-level sol and crew filtering in `read_telemetry_sol_range`. Disambiguated IEEE 802.3 CRC-32 and Castagnoli CRC-32C with dual-verification support. Added 3 regression tests in `crates/ares-storage-lsah/tests/mixed_sol_query.rs`.
+- [x] **Problem 4 (Desktop Snapshot Freshness & Native Tauri Fallback):** Implemented periodic 1 Hz full snapshot refresh in `useTelemetry.ts` to keep extended diagnostic panels fresh (< 1s latency). Handled subscription errors with active fallback to 1000 ms snapshot polling. Added unit test in `ares-cockpit/tests/tauri_freshness.test.ts`.
+- [x] **Problem 5 (Master Test Execution Report Scope & Benchmark Accuracy):** Retitled report to "Software Verification Report", adding prominent epistemic status notices (`ILLUSTRATIVE_UNVALIDATED`, Issue #12). Accurately distinguished 3-record BIDMC calibration from 53-subject cohort anomaly evaluation. Benchmarked both Pre-Block-N Core Algorithmic Microbenchmark (p99 = 4.75 us) and Live Workstation Engine Tick (p99 = 11.62 us). All 7 tiers verified cleanly.
+
 ## User-authorized optimization release (2026-11-14)
 
 The user now authorizes merging PR #31 into main. Integrated the newer main

@@ -77,10 +77,17 @@ pub mod backend {
             let mission_sol = sol_col.value(0);
             let mut min_seq = u64::MAX;
             let mut max_seq = 0u64;
+            let mut min_sol = u16::MAX;
+            let mut max_sol = 0u16;
             for i in 0..seq_col.len() {
                 let s = seq_col.value(i);
                 min_seq = min_seq.min(s);
                 max_seq = max_seq.max(s);
+            }
+            for i in 0..sol_col.len() {
+                let sol = sol_col.value(i);
+                min_sol = min_sol.min(sol);
+                max_sol = max_sol.max(sol);
             }
 
             let conn = Arc::clone(&self.conn);
@@ -124,6 +131,8 @@ pub mod backend {
             Ok(WarmSegmentMeta {
                 segment_id: seg_id,
                 mission_sol,
+                min_mission_sol: Some(min_sol),
+                max_mission_sol: Some(max_sol),
                 relative_path: format!("lancedb/lsah_telemetry_frames#seg_{seg_id}"),
                 row_count,
                 compressed_bytes: (row_count * 128) as u64,

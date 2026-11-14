@@ -118,6 +118,20 @@ pub struct OwltMarsCommState {
     pub label: String,
 }
 
+/// Modalità di selezione della sorgente telemetrica primaria.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default, clap::ValueEnum)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum TelemetrySourceMode {
+    /// Replay deterministico da dataset CSV terrestre (es. PhysioNet BIDMC v1.0.0).
+    #[default]
+    RecordedReplay,
+    /// Streaming hardware live da nodi wearable (es. Oxide Hubris / Embassy via Tier C).
+    LiveWearableHardware,
+}
+
+/// Timeout massimo senza pacchetti wearable prima di segnalare perdita del sensore (3.0 secondi).
+pub const WEARABLE_STALE_TIMEOUT: Duration = Duration::from_secs(3);
+
 /// Unified OS status bar state exposed by both Tauri IPC and `GET /api/os-status`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct OsStatusBarState {
@@ -242,12 +256,13 @@ pub fn compute_mission_telemetry_tick(
     .0
 }
 
-/// Vitals anomaly inputs of one tick: the latest detector report and whether
-/// the row carries a synthetic injected event (no longer a pure recording).
+/// Vitals anomaly inputs of one tick: the latest detector report, whether
+/// the row carries a synthetic injected event, and an optional source override.
 #[derive(Debug, Clone, Copy, Default)]
 struct VitalsContext<'a> {
     report: Option<&'a VitalsAnomalyReport>,
     injected: bool,
+    source_override: Option<BiometricsSource>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -386,7 +401,9 @@ fn compute_mission_telemetry_tick_from_row(
         model_validation_status:
             ares_core_types::telemetry::ModelValidationStatus::IllustrativeUnvalidated,
         provenance_manifest: ProvenanceManifest {
-            biometrics_source: if vitals.injected {
+            biometrics_source: if let Some(src) = vitals.source_override {
+                src
+            } else if vitals.injected {
                 BiometricsSource::SimulatedScenarioInput
             } else {
                 BiometricsSource::RecordedTerrestrialBidmcCsv
@@ -535,6 +552,12 @@ pub struct MissionRuntimeInner {
     pub eimo_autonomous_active: bool,
     pub last_timestral_latency_us: u64,
     pub last_ingest_latency_us: u64,
+    pub source_mode: TelemetrySourceMode,
+    pub last_wearable_packet_time: Option<Instant>,
+    pub active_wearable_node: Option<u8>,
+    pub last_wearable_sequence: Option<u32>,
+    pub last_wearable_uptime_ms: Option<u32>,
+    pub wearable_stale: bool,
 }
 
 impl MissionRuntimeInner {
@@ -874,6 +897,33 @@ impl SharedMissionState {
     pub fn request_shutdown(&self) {
         self.shutdown.send_replace(true);
     }
+
+    /// Imposta esplicitamente la modalità della sorgente telemetrica primaria.
+    /// Resetta in modo coerente le baseline del detector, dell'EWMA e dell'SQI.
+    pub fn set_source_mode(&self, mode: TelemetrySourceMode) {
+        let Ok(mut guard) = self.inner.write() else {
+            return;
+        };
+        if guard.source_mode != mode {
+            guard.source_mode = mode;
+            guard.sqi_filter = SqiFilter::default();
+            guard.anomaly_detector = VitalsAnomalyDetector::default();
+            guard.ewma_forecaster = EwmaResidualForecaster::default();
+            guard.latest_short_horizon_cones.clear();
+            guard.latest_short_horizon_abstention = None;
+            if mode == TelemetrySourceMode::LiveWearableHardware {
+                guard.wearable_stale = false;
+                guard.last_wearable_packet_time = Some(Instant::now());
+            }
+        }
+    }
+
+    /// Restituisce la modalità della sorgente telemetrica attualmente attiva.
+    pub fn source_mode(&self) -> TelemetrySourceMode {
+        self.inner
+            .read()
+            .map_or(TelemetrySourceMode::RecordedReplay, |g| g.source_mode)
+    }
     pub async fn enable_storage_at(&self, path: &Path) -> Result<(), LsahStorageError> {
         self.enable_storage(LsahStorageConfig::with_root_dir(path)).await
     }
@@ -974,6 +1024,7 @@ impl SharedMissionState {
                 VitalsContext {
                     report: Some(&latest_anomaly),
                     injected: false,
+                    source_override: None,
                 },
             );
 
@@ -1128,6 +1179,12 @@ impl SharedMissionState {
                 eimo_autonomous_active: true,
                 last_timestral_latency_us: 0,
                 last_ingest_latency_us: 0,
+                source_mode: TelemetrySourceMode::RecordedReplay,
+                last_wearable_packet_time: None,
+                active_wearable_node: None,
+                last_wearable_sequence: None,
+                last_wearable_uptime_ms: None,
+                wearable_stale: false,
             }),
             tx,
             binary_ring,
@@ -1174,28 +1231,65 @@ impl SharedMissionState {
     }
 
     /// Processes a Tier C `WearableSensorPacket` (Oxide Hubris / Embassy), updating SQI,
-    /// `seu_restart_count`, causal state, and publishing a 128-byte `BinaryTelemetryFrame`.
+    /// `seu_restart_count`, causal state, anomaly detector, and publishing a 128-byte `BinaryTelemetryFrame`.
     pub fn ingest_wearable_packet(
         &self,
         packet: &WearableSensorPacket,
     ) -> Option<ValidatedTelemetryFrame> {
         let start = Instant::now();
         let mut guard = self.inner.write().ok()?;
+
+        // Transition to LiveWearableHardware if not already active
+        if guard.source_mode != TelemetrySourceMode::LiveWearableHardware {
+            guard.source_mode = TelemetrySourceMode::LiveWearableHardware;
+            guard.sqi_filter = SqiFilter::default();
+            guard.anomaly_detector = VitalsAnomalyDetector::default();
+            guard.ewma_forecaster = EwmaResidualForecaster::default();
+            guard.latest_short_horizon_cones.clear();
+            guard.latest_short_horizon_abstention = None;
+        }
+
+        // Supervisor restart and sequence monotonicity check
+        let is_restart = packet.supervisor_restart_count > guard.seu_restart_count;
+        if is_restart {
+            guard.seu_restart_count = packet.supervisor_restart_count;
+            guard.last_wearable_sequence = None;
+        } else if guard
+            .last_wearable_sequence
+            .is_some_and(|last_seq| packet.sequence_num <= last_seq)
+            && guard.active_wearable_node == Some(packet.node_id)
+        {
+            // Out-of-order or duplicate packet: drop to avoid corrupting EWMA / detector state
+            return None;
+        }
+
         let scenario = guard.scenario.clone();
         let validated = packet.to_validated_frame(
             &format!("hubris_node_{:02}", packet.node_id),
             &scenario,
             &mut guard.sqi_filter,
         );
-        guard.seu_restart_count = guard
-            .seu_restart_count
-            .max(validated.supervisor_restart_count);
         guard.signal_quality = validated.sqi_evaluation.clone();
         guard.tick_counter = guard.tick_counter.saturating_add(1);
+        guard.last_wearable_packet_time = Some(Instant::now());
+        guard.active_wearable_node = Some(packet.node_id);
+        guard.last_wearable_sequence = Some(packet.sequence_num);
+        guard.last_wearable_uptime_ms = Some(packet.uptime_ms);
+        guard.wearable_stale = false;
+
+        // Process anomaly detector and short-horizon forecaster at native sample arrival rate
+        let ingest_start = Instant::now();
+        guard.latest_anomaly = guard.anomaly_detector.update(
+            validated.row.relative_time_s,
+            [validated.row.hr_bpm, validated.row.spo2_pct, validated.row.resp_brpm],
+        );
+        guard.last_ingest_latency_us = ingest_start.elapsed().as_micros() as u64;
+
         let elapsed = guard.mission_elapsed_s;
         let what_if_active = guard.what_if_active;
         let cabin_ppco2_mmhg = guard.cabin_ppco2_mmhg;
         let spot_poct = guard.spot_poct.clone();
+        let anomaly_report = guard.latest_anomaly.clone();
 
         let inner = &mut *guard;
         let (telemetry_packet, pocus_posterior, causal_chain) =
@@ -1211,14 +1305,21 @@ impl SharedMissionState {
                 spot_poct,
                 None,
                 None,
-                VitalsContext::default(),
+                VitalsContext {
+                    report: Some(&anomaly_report),
+                    injected: false,
+                    source_override: Some(BiometricsSource::HardwareWearable),
+                },
             );
         guard.latest_packet = telemetry_packet;
         guard.latest_pocus_posterior = pocus_posterior;
         guard.latest_causal_chain = causal_chain;
+        guard.latest_grounding = *ground_adhg_node_o1(primary_adhg_node_for_playbook(
+            &guard.latest_packet.active_playbook.playbook_id,
+        ));
+        guard.ingest_short_horizon_sample();
         guard.update_hypergraph_and_nqs_hot_path();
-        guard.last_ingest_latency_us = start.elapsed().as_micros() as u64;
-        guard.latest_recompute_latency_us = guard.last_ingest_latency_us;
+        guard.latest_recompute_latency_us = start.elapsed().as_micros() as u64;
 
         self.persist_packet(&guard.latest_packet);
 
@@ -1236,6 +1337,15 @@ impl SharedMissionState {
                 packet.node_id, packet.sequence_num, packet.supervisor_restart_count
             ),
         );
+
+        let wire = (self.tx.receiver_count() > 0).then(|| guard.capture_wire());
+        drop(guard);
+        if let Some(wire) = wire
+            && let Ok(json_str) = serde_json::to_string(&wire.into_wire_packet())
+        {
+            let _ = self.tx.send(json_str);
+        }
+
         Some(validated)
     }
 
@@ -1265,6 +1375,59 @@ impl SharedMissionState {
         let _publication = self.publication.lock().ok()?;
         let start = Instant::now();
         let mut guard = self.inner.write().ok()?;
+
+        if guard.source_mode == TelemetrySourceMode::LiveWearableHardware {
+            let now = Instant::now();
+            let is_stale = guard
+                .last_wearable_packet_time
+                .is_none_or(|t| now.duration_since(t) > WEARABLE_STALE_TIMEOUT);
+            guard.wearable_stale = is_stale;
+            guard.replay_elapsed = guard.replay_elapsed.saturating_add(dt);
+            guard.mission_elapsed_s = guard.replay_elapsed.as_secs_f64();
+            guard.tick_counter = guard.tick_counter.saturating_add(1);
+
+            let is_sleep = guard.habitat_state.current_zone == HabitatZoneId::SleepQuarters;
+            guard.circadian_oscillator.step_state(
+                dt.as_secs_f64() / 3600.0,
+                is_sleep,
+                0.85,
+                250.0,
+            );
+
+            if is_stale {
+                guard.latest_packet.alert_severity =
+                    guard.latest_packet.alert_severity.max(AlertSeverity::DataDegradedMissingChannels);
+                if !guard.latest_packet.biometrics.missing_channels.iter().any(|c| c == "wearable_sensor_loss") {
+                    guard.latest_packet.biometrics.missing_channels.push("wearable_sensor_loss".to_string());
+                }
+            }
+
+            guard.update_hypergraph_and_nqs_hot_path();
+            guard.latest_recompute_latency_us = start.elapsed().as_micros() as u64;
+
+            self.persist_packet(&guard.latest_packet);
+
+            let bin_frame = guard.build_binary_frame(
+                start.elapsed().as_nanos().min(u128::from(u32::MAX)) as u32,
+            );
+            self.binary_ring.publish(&bin_frame);
+            #[cfg(feature = "shm-ipc")]
+            if let Some(dispatcher) = &self.shm_dispatcher {
+                let owlt = guard.owlt_comm_state();
+                dispatcher.try_dispatch(&guard.latest_packet, &bin_frame, &owlt, false);
+            }
+
+            let snapshot_packet = guard.latest_packet.clone();
+            let wire = (self.tx.receiver_count() > 0).then(|| guard.capture_wire());
+            drop(guard);
+            if let Some(wire) = wire
+                && let Ok(json_str) = serde_json::to_string(&wire.into_wire_packet())
+            {
+                let _ = self.tx.send(json_str);
+            }
+            return Some(snapshot_packet);
+        }
+
         let previous_second = guard.replay_elapsed.as_secs();
         guard.replay_elapsed = guard.replay_elapsed.saturating_add(dt);
         let current_second = guard.replay_elapsed.as_secs();
@@ -1333,6 +1496,7 @@ impl SharedMissionState {
             VitalsContext {
                 report: Some(&anomaly_report),
                 injected,
+                source_override: None,
             },
         );
         guard.latest_packet = packet;
@@ -1500,6 +1664,7 @@ impl SharedMissionState {
             VitalsContext {
                 report: Some(&anomaly_report),
                 injected,
+                source_override: None,
             },
         );
         guard.latest_packet = packet;
@@ -1621,6 +1786,55 @@ async fn get_storage_status_handler(State(state): State<Arc<SharedMissionState>>
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SourceStatusResponse {
+    pub mode: TelemetrySourceMode,
+    pub active_source_id: String,
+    pub biometrics_source: BiometricsSource,
+    pub is_stale: bool,
+    pub last_wearable_sequence: Option<u32>,
+    pub last_wearable_node: Option<u8>,
+    pub supervisor_restart_count: u16,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SetSourceModeRequest {
+    pub mode: TelemetrySourceMode,
+}
+
+async fn get_source_status_handler(State(state): State<Arc<SharedMissionState>>) -> Json<SourceStatusResponse> {
+    let guard = state.inner.read().ok();
+    let resp = match guard {
+        Some(g) => SourceStatusResponse {
+            mode: g.source_mode,
+            active_source_id: g.latest_packet.source_record_id.clone(),
+            biometrics_source: g.latest_packet.provenance_manifest.biometrics_source,
+            is_stale: g.wearable_stale,
+            last_wearable_sequence: g.last_wearable_sequence,
+            last_wearable_node: g.active_wearable_node,
+            supervisor_restart_count: g.seu_restart_count,
+        },
+        None => SourceStatusResponse {
+            mode: TelemetrySourceMode::RecordedReplay,
+            active_source_id: "unknown".to_string(),
+            biometrics_source: BiometricsSource::RecordedTerrestrialBidmcCsv,
+            is_stale: false,
+            last_wearable_sequence: None,
+            last_wearable_node: None,
+            supervisor_restart_count: 0,
+        },
+    };
+    Json(resp)
+}
+
+async fn post_source_mode_handler(
+    State(state): State<Arc<SharedMissionState>>,
+    Json(payload): Json<SetSourceModeRequest>,
+) -> StatusCode {
+    state.set_source_mode(payload.mode);
+    StatusCode::OK
+}
+
 /// Costruisce il router Axum con `/ws/telemetry`, `GET /api/snapshot`,
 /// `POST /api/stress-test`, `POST /api/inject-anomaly`, `GET /api/os-status`,
 /// `GET /api/binary-frame` e `POST /api/mcp`.
@@ -1630,6 +1844,11 @@ pub fn build_axum_router(state: Arc<SharedMissionState>) -> Router {
         .route("/api/snapshot", get(get_snapshot_handler))
         .route("/api/os-status", get(get_os_status_handler))
         .route("/api/storage-status", get(get_storage_status_handler))
+        .route("/api/source-status", get(get_source_status_handler))
+        .route(
+            "/api/source-mode",
+            post(post_source_mode_handler).options(cors_preflight_handler),
+        )
         .route("/api/binary-frame", get(get_binary_frame_handler))
         .route("/api/audit-log", get(get_audit_log_handler))
         .route(

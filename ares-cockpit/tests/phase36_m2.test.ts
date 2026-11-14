@@ -5,8 +5,10 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
+  BINARY_PLAYBOOK_DEFAULTS,
   decodeBinaryTelemetryFrame,
   encodeTestBinaryTelemetryFrame,
+  mergeBinaryFrameIntoPacket,
   PLAYBOOK_ID_BY_CODE,
 } from '../src/lib/binaryTelemetryDecoder.ts';
 import {
@@ -150,13 +152,13 @@ test('telemetryValidation accepts BIDMC-SUBJECT-04..53 packets with vitals_anoma
   assert.notEqual(fmt.text, '0.0');
 });
 
-test('binaryTelemetryDecoder supports active_playbook_id 6..9 acute vitals playbooks', () => {
-  assert.equal(PLAYBOOK_ID_BY_CODE[6], 'PLAYBOOK_06_HYPOXEMIA_DESATURATION');
-  assert.equal(PLAYBOOK_ID_BY_CODE[7], 'PLAYBOOK_07_TACHYCARDIA_AUTONOMIC_STRESS');
-  assert.equal(PLAYBOOK_ID_BY_CODE[8], 'PLAYBOOK_08_SIGNAL_QUALITY_SENSOR_CHECK');
-  assert.equal(PLAYBOOK_ID_BY_CODE[9], 'PLAYBOOK_09_MULTIPARAMETER_DETERIORATION');
+test('binaryTelemetryDecoder supports all 1..15 playbooks in BINARY_PLAYBOOK_DEFAULTS', () => {
+  for (let code = 1; code <= 15; code++) {
+    assert.ok(PLAYBOOK_ID_BY_CODE[code], `missing PLAYBOOK_ID_BY_CODE for ${code}`);
+    assert.ok(BINARY_PLAYBOOK_DEFAULTS[code], `missing BINARY_PLAYBOOK_DEFAULTS for ${code}`);
+    assert.equal(BINARY_PLAYBOOK_DEFAULTS[code].playbook_id, PLAYBOOK_ID_BY_CODE[code]);
+    assert.ok(BINARY_PLAYBOOK_DEFAULTS[code].actions.length > 0, `empty actions for playbook ${code}`);
 
-  for (const code of [6, 7, 8, 9] as const) {
     const frameBytes = encodeTestBinaryTelemetryFrame({
       active_playbook_id: code,
       active_alert_code: 2,
@@ -164,8 +166,125 @@ test('binaryTelemetryDecoder supports active_playbook_id 6..9 acute vitals playb
     const decoded = decodeBinaryTelemetryFrame(frameBytes);
     assert.ok(decoded, `expected binary frame for playbook code ${code} to decode`);
     assert.equal(decoded.active_playbook_id, code);
-    assert.equal(PLAYBOOK_ID_BY_CODE[code], PLAYBOOK_ID_BY_CODE[decoded.active_playbook_id]);
+
+    const merged = mergeBinaryFrameIntoPacket(
+      {
+        source_record_id: 'test_node',
+        relative_recording_time_s: 1.0,
+        timestamp_ms: 1000,
+        astronaut_id: 'ASTRO-01',
+        system_phase: 'ACT',
+        alert_severity: 'WARNING',
+        model_validation_status: 'ILLUSTRATIVE_UNVALIDATED',
+        provenance_manifest: {
+          biometrics_source: 'HARDWARE_WEARABLE',
+          biometrics_native_rate_hz: 1.0,
+          ui_refresh_rate_hz: 20.0,
+          scenario_overlay_mode: 'NONE_PURE_REPLAY',
+        },
+        biometrics: {
+          heart_rate_bpm: 80,
+          pulse_rate_bpm: null,
+          resp_rate_brpm: 16,
+          spo2_pct: 98,
+          hrv_rmssd_ms: null,
+          sqi_score: 0.95,
+          radiation_dose_rate_msv_d: 0.1,
+          missing_channels: [],
+        },
+        safety_margins: {
+          provenance: 'DERIVED_FROM_HYBRID_SCENARIO' as const,
+          med_stl_rho_robustness: 0.5,
+          mission_readiness_index: 85.0,
+          alarm_level: 'WARNING' as const,
+        },
+        active_playbook: null,
+      },
+      decoded,
+    );
+    assert.ok(merged.active_playbook);
+    assert.equal(merged.active_playbook.playbook_id, PLAYBOOK_ID_BY_CODE[code]);
+    assert.equal(merged.active_playbook.title, BINARY_PLAYBOOK_DEFAULTS[code].title);
   }
+});
+
+test('binaryTelemetryDecoder transitions seamlessly (09 -> 10 -> 15 -> 09) without action leak', () => {
+  let currentPkt = {
+    source_record_id: 'test_node',
+    relative_recording_time_s: 1.0,
+    timestamp_ms: 1000,
+    astronaut_id: 'ASTRO-01',
+    system_phase: 'ACT' as const,
+    alert_severity: 'WARNING' as const,
+    model_validation_status: 'ILLUSTRATIVE_UNVALIDATED' as const,
+    provenance_manifest: {
+      biometrics_source: 'HARDWARE_WEARABLE' as const,
+      biometrics_native_rate_hz: 1.0,
+      ui_refresh_rate_hz: 20.0,
+      scenario_overlay_mode: 'NONE_PURE_REPLAY' as const,
+    },
+    biometrics: {
+      heart_rate_bpm: 80,
+      pulse_rate_bpm: null,
+      resp_rate_brpm: 16,
+      spo2_pct: 98,
+      hrv_rmssd_ms: null,
+      sqi_score: 0.95,
+      radiation_dose_rate_msv_d: 0.1,
+      missing_channels: [],
+    },
+    safety_margins: {
+      provenance: 'DERIVED_FROM_HYBRID_SCENARIO' as const,
+      med_stl_rho_robustness: 0.5,
+      mission_readiness_index: 85.0,
+      alarm_level: 'WARNING' as const,
+    },
+    active_playbook: null,
+  };
+
+  // 1. Playbook 09
+  let frame = decodeBinaryTelemetryFrame(encodeTestBinaryTelemetryFrame({ active_playbook_id: 9 }));
+  assert.ok(frame);
+  currentPkt = mergeBinaryFrameIntoPacket(currentPkt, frame);
+  assert.equal(currentPkt.active_playbook?.playbook_id, 'PLAYBOOK_09_MULTIPARAMETER_DETERIORATION');
+  assert.equal(currentPkt.active_playbook?.actions[0].action_id, 'AIRWAY_BREATHING_CIRCULATION_CHECK');
+
+  // 2. Transition to Playbook 10
+  frame = decodeBinaryTelemetryFrame(encodeTestBinaryTelemetryFrame({ active_playbook_id: 10 }));
+  assert.ok(frame);
+  currentPkt = mergeBinaryFrameIntoPacket(currentPkt, frame);
+  assert.equal(currentPkt.active_playbook?.playbook_id, 'PLAYBOOK_10_RENAL_LITHIASIS');
+  assert.equal(currentPkt.active_playbook?.title, 'Playbook #10: Renal Lithiasis Hydration, Citrate Buffering & Bladder Protocol');
+  assert.equal(currentPkt.active_playbook?.actions[0].action_id, 'ACT_POCUS_RENAL_BLADDER_SCAN');
+  // Prove no action leaked from Playbook 09
+  assert.equal(currentPkt.active_playbook?.actions.some((a) => a.action_id === 'AIRWAY_BREATHING_CIRCULATION_CHECK'), false);
+
+  // 3. Transition to Playbook 15
+  frame = decodeBinaryTelemetryFrame(encodeTestBinaryTelemetryFrame({ active_playbook_id: 15 }));
+  assert.ok(frame);
+  currentPkt = mergeBinaryFrameIntoPacket(currentPkt, frame);
+  assert.equal(currentPkt.active_playbook?.playbook_id, 'PLAYBOOK_15_EFAST_TRAUMA_TRIAGE');
+  assert.equal(currentPkt.active_playbook?.actions[0].action_id, 'ACT_RAPID_5_WINDOW_EFAST_SCAN');
+  assert.equal(currentPkt.active_playbook?.actions.some((a) => a.action_id === 'ACT_POCUS_RENAL_BLADDER_SCAN'), false);
+
+  // 4. Transition back to 09
+  frame = decodeBinaryTelemetryFrame(encodeTestBinaryTelemetryFrame({ active_playbook_id: 9 }));
+  assert.ok(frame);
+  currentPkt = mergeBinaryFrameIntoPacket(currentPkt, frame);
+  assert.equal(currentPkt.active_playbook?.playbook_id, 'PLAYBOOK_09_MULTIPARAMETER_DETERIORATION');
+  assert.equal(currentPkt.active_playbook?.actions[0].action_id, 'AIRWAY_BREATHING_CIRCULATION_CHECK');
+  assert.equal(currentPkt.active_playbook?.actions.some((a) => a.action_id === 'ACT_RAPID_5_WINDOW_EFAST_SCAN'), false);
+
+  // 5. Code 0 or unknown clears active_playbook
+  frame = decodeBinaryTelemetryFrame(encodeTestBinaryTelemetryFrame({ active_playbook_id: 0 }));
+  assert.ok(frame);
+  currentPkt = mergeBinaryFrameIntoPacket(currentPkt, frame);
+  assert.equal(currentPkt.active_playbook, null);
+
+  frame = decodeBinaryTelemetryFrame(encodeTestBinaryTelemetryFrame({ active_playbook_id: 99 }));
+  assert.ok(frame);
+  currentPkt = mergeBinaryFrameIntoPacket(currentPkt, frame);
+  assert.equal(currentPkt.active_playbook, null);
 });
 
 test('playbookCatalog preserves 5 Type-1 playbooks, 4 acute vitals playbooks (#06..#09), and 6 exploration playbooks (#10..#15)', () => {

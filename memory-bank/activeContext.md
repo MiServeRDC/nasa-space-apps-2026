@@ -1,5 +1,45 @@
 # Active Context: ARES-Health (NASA Space Apps Challenge 2026)
 
+## Full Resolution of Runtime Correctness & Verification Review (2026-11-15)
+
+Completed end-to-end resolution and verification of all 6 runtime correctness issues on branch `work/MiServeRDC-runtime-correctness` (base `bfee931`):
+
+1. **Problem 1 (Wearable Data vs CSV Replay Overwrite & Provenance):**
+   * Added `BiometricsSource::HardwareWearable` to `crates/ares-core-types/src/telemetry.rs` and mapped it to `PROVENANCE_HARDWARE_EDGE` in `crates/ares-storage-lsah/src/hot_ring.rs`.
+   * Added `"HARDWARE_WEARABLE"` to `contracts/telemetry_schema.json`, `ares-cockpit/src/types/telemetry.ts`, and `ProvenanceInspector.tsx`.
+   * In `crates/ares-server-cli/src/ws_server.rs`, decoupled sampling from 20 Hz UI refresh:
+     - Implemented `TelemetrySourceMode { RecordedReplay, LiveWearableHardware }` and `WEARABLE_STALE_TIMEOUT` (3.0s).
+     - In wearable mode, 20 Hz `advance_tick` advances mission time without overwriting biometrics with CSV rows.
+     - Detects sensor loss after 3.0s timeout and marks `DataDegradedMissingChannels` (`"wearable_sensor_loss"`) without silent CSV fallback.
+     - Ingests wearable packets at native rate into anomaly detector and EWMA forecasters; preserves null RMSSD (Issue #11).
+     - Sequence monotonicity check rejects out-of-order/duplicate packets and handles node supervisor restarts.
+     - Added REST endpoints `GET /api/source-status` and `POST /api/source-mode`, plus `--source` CLI flag in `crates/ares-server-cli/src/main.rs`.
+   * Added regression test suite `crates/ares-server-cli/tests/wearable_source_selection.rs` (5 tests passing).
+
+2. **Problem 2 (Playbooks 10–15 Binary Protocol & Client Parity):**
+   * In `crates/ares-core-types/src/binary_ipc.rs`, extended `playbook_id_to_u16` and added `playbook_id_from_u16` covering all 15 playbooks (1..15) and returning 0 / None for invalid IDs.
+   * In `ares-cockpit/src/lib/binaryTelemetryDecoder.ts`, added canonical titles, step counts, instructions, causal chains, and actions for codes 10 through 15 in `BINARY_PLAYBOOK_DEFAULTS`, matching `playbookCatalog.ts`.
+   * Set `nextPlaybook = null` for code 0 or unknown codes, preventing action and instruction leakage from previous playbooks.
+   * Extended tests in `ares-cockpit/tests/phase36_m2.test.ts` (roundtrip transitions `09 -> 10 -> 15 -> 09` and unknown clearing). All 35 cockpit tests passing.
+
+3. **Problem 3 & Problem 6 (Warm Multi-Sol Partitioning & Storage CRC Ambiguity):**
+   * In `crates/ares-storage-lsah/src/config.rs`: added `compute_storage_crc32_ieee` (IEEE 802.3 `crc32fast`, producing `0xcbf43926` for `b"123456789"`), `compute_storage_crc32c_castagnoli` (Castagnoli CRC-32C, producing `0xe3069283`), and `verify_segment_checksum` accepting either polynomial.
+   * In `crates/ares-storage-lsah/src/warm_trait.rs`: added `min_mission_sol` and `max_mission_sol` fields to `WarmSegmentMeta`.
+   * In `crates/ares-storage-lsah/src/warm_arrow_ipc.rs`: partitioned multi-sol batches on append so each segment is homogeneous per sol; updated `read_telemetry_sol_range` to filter row-by-row on both `mission_sol` and `crew_id`.
+   * Added test suite `crates/ares-storage-lsah/tests/mixed_sol_query.rs` (3 tests passing: partition isolation, engine push flow, and CRC known vectors).
+
+4. **Problem 4 (Desktop Snapshot Freshness & Native Tauri Fallback):**
+   * In `ares-cockpit/src/lib/useTelemetry.ts`, added a bounded 1 Hz interval refreshing `hydrateTauriSnapshot()` to keep extended panels (cones, anomalies, Block N) fresh even when binary frame header codes are stable.
+   * In `subscribe_binary_telemetry`, handled subscription failure with active fallback to 1000 ms snapshot polling, with clean unmount disposal.
+   * Added unit test suite `ares-cockpit/tests/tauri_freshness.test.ts`.
+
+5. **Problem 5 (Master Test Execution Report Scope, Unsupported Claims & Benchmark Accuracy):**
+   * In `scripts/run_all_test_tiers.sh` and `docs/evaluation/MASTER_TEST_EXECUTION_REPORT.md`:
+     - Retitled to "Master Test Execution & Software Verification Report", replacing "flight-ready" claims with explicit notices that scenario models remain illustrative and unvalidated (`ILLUSTRATIVE_UNVALIDATED`, Issue #12).
+     - Corrected Tier 5 scope description to 3 bundled BIDMC records (`bidmc_01..03`) under subject-disjoint anti-leakage constraints, distinguishing it from the 53-cohort anomaly evaluation.
+     - In `phase_28_k4_nasa_std_3001_bench.rs`, benchmarked both Pre-Block-N Core Algorithmic Microbenchmark (p99 = 4.75 us) and Live Workstation Engine Tick (p99 = 11.62 us).
+     - Ensured test plan runner fails closed on missing measurements. All 7 tiers pass cleanly.
+
 ## User-authorized optimization release (2026-11-14)
 
 The user now authorizes merging PR #31 into main. Integrated the newer main

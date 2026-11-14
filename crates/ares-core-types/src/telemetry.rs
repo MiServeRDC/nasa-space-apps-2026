@@ -36,6 +36,7 @@ pub enum AlertSeverity {
 pub enum BiometricsSource {
     RecordedTerrestrialBidmcCsv,
     SimulatedScenarioInput,
+    HardwareWearable,
 }
 
 /// Modalita di calcolo dei sottosistemi fisiopatologici e di scenario.

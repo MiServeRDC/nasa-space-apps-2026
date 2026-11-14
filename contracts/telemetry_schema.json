@@ -44,7 +44,7 @@
       "properties": {
         "biometrics_source": {
           "type": "string",
-          "enum": ["RECORDED_TERRESTRIAL_BIDMC_CSV", "RECORDED_TERRESTRIAL_WAVEFORM", "SIMULATED_SCENARIO_INPUT"],
+          "enum": ["RECORDED_TERRESTRIAL_BIDMC_CSV", "RECORDED_TERRESTRIAL_WAVEFORM", "SIMULATED_SCENARIO_INPUT", "HARDWARE_WEARABLE"],
           "description": "Explicit provenance of the primary biometric vitals."
         },
         "biometrics_native_rate_hz": {

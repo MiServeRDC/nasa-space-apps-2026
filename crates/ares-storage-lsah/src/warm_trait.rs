@@ -8,6 +8,10 @@ use serde::{Deserialize, Serialize};
 pub struct WarmSegmentMeta {
     pub segment_id: u64,
     pub mission_sol: u16,
+    #[serde(default)]
+    pub min_mission_sol: Option<u16>,
+    #[serde(default)]
+    pub max_mission_sol: Option<u16>,
     pub relative_path: String,
     pub row_count: usize,
     pub compressed_bytes: u64,

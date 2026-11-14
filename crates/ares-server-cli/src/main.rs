@@ -73,6 +73,10 @@ pub struct CliArgs {
     /// Enable local telemetry recording in this directory (off when omitted).
     #[arg(long)]
     pub storage_dir: Option<PathBuf>,
+
+    /// Primary telemetry input source mode (recorded-replay or live-wearable-hardware).
+    #[arg(long, value_enum, default_value_t = ares_server_cli::ws_server::TelemetrySourceMode::RecordedReplay)]
+    pub source: ares_server_cli::ws_server::TelemetrySourceMode,
 }
 
 fn resolve_repo_root(explicit: Option<&Path>, data_dir: &Path) -> PathBuf {
@@ -184,6 +188,7 @@ async fn main() -> Result<()> {
 
     let state = SharedMissionState::from_data_dir(&args.data_dir)
         .with_context(|| format!("impossibile inizializzare i dataset da {:?}", args.data_dir))?;
+    state.set_source_mode(args.source);
 
     match args.mode {
         ServerMode::BuildGraph | ServerMode::EvalAnomaly => unreachable!(),

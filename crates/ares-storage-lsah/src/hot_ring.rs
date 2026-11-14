@@ -201,6 +201,7 @@ impl HotLsahSlot {
         slot.provenance_code = match packet.provenance_manifest.biometrics_source {
             BiometricsSource::RecordedTerrestrialBidmcCsv => PROVENANCE_PHYSIONET_BIDMC,
             BiometricsSource::SimulatedScenarioInput => PROVENANCE_SCENARIO_OVERLAY,
+            BiometricsSource::HardwareWearable => PROVENANCE_HARDWARE_EDGE,
         };
         slot.validation_status_code = match packet.model_validation_status {
             ModelValidationStatus::IllustrativeUnvalidated => VALIDATION_ILLUSTRATIVE_UNVALIDATED,

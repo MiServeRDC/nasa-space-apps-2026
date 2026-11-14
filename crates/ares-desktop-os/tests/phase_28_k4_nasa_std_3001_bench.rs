@@ -709,6 +709,35 @@ fn cert_phase_28_k4_realtime_latency_percentiles_and_900_sol_memory_footprint() 
     let pl_p999_us = percentile_ns(&pipeline_ns, 0.999) / 1_000.0;
 
     // -------------------------------------------------------------------------
+    // Benchmark 4B: Live Workstation Engine Tick
+    // (compute_mission_telemetry_tick_from_row including Block N modules + Safety Gates + Ring)
+    // -------------------------------------------------------------------------
+    let bench_shell = AresMedOsWorkstationShell::initialize(DesktopShellConfig {
+        data_dir: bidmc_dir(),
+        enable_loopback_ws_mirror: false,
+        ..DesktopShellConfig::default()
+    })
+    .expect("init bench shell");
+
+    for _ in 0..WARMUP {
+        let res = bench_shell.advance_tick(Duration::from_millis(50));
+        let _ = black_box(res);
+    }
+
+    let mut live_tick_ns = Vec::with_capacity(ITERS);
+    for _ in 0..ITERS {
+        let t0 = Instant::now();
+        let frame = bench_shell.advance_tick(Duration::from_millis(50));
+        let elapsed = t0.elapsed().as_nanos();
+        let _ = black_box(frame);
+        live_tick_ns.push(elapsed);
+    }
+    live_tick_ns.sort_unstable();
+    let live_p50_us = percentile_ns(&live_tick_ns, 0.50) / 1_000.0;
+    let live_p99_us = percentile_ns(&live_tick_ns, 0.99) / 1_000.0;
+    let live_p999_us = percentile_ns(&live_tick_ns, 0.999) / 1_000.0;
+
+    // -------------------------------------------------------------------------
     // Memory Certification: 900 Martian Sols Compactor & 24-Dataset Graph
     // -------------------------------------------------------------------------
     let mut compactor =
@@ -776,7 +805,13 @@ fn cert_phase_28_k4_realtime_latency_percentiles_and_900_sol_memory_footprint() 
         "[{profile_tag}] ground_adhg_node_o1 + verify_crc (N={ITERS}): p50={bk_p50_ns:.1} ns, p99={bk_p99_ns:.1} ns, p99.9={bk_p999_ns:.1} ns"
     );
     println!(
-        "[{profile_tag}] End-to-End 1-Tick Pipeline (SQI->ADHG->NQS->MedOps->128B, N={ITERS}): p50={pl_p50_us:.2} us, p99={pl_p99_us:.2} us, p99.9={pl_p999_us:.2} us"
+        "[{profile_tag}] Pre-Block-N Core Algorithmic Microbenchmark (SQI->ADHG->NQS->MedOps->128B, N={ITERS}): p50={pl_p50_us:.2} us, p99={pl_p99_us:.2} us, p99.9={pl_p999_us:.2} us"
+    );
+    println!(
+        "[{profile_tag}] End-to-End 1-Tick Pipeline (Pre-Block-N Microbenchmark, N={ITERS}): p50={pl_p50_us:.2} us, p99={pl_p99_us:.2} us, p99.9={pl_p999_us:.2} us"
+    );
+    println!(
+        "[{profile_tag}] Live Workstation Engine Tick (Multi-Organ Block-N + Gates + Ring, N={ITERS}): p50={live_p50_us:.2} us, p99={live_p99_us:.2} us, p99.9={live_p999_us:.2} us"
     );
     println!(
         "[{profile_tag}] Memory MissionLongitudinalCompactor (900 Sols): {compactor_bytes} bytes (< {LONGITUDINAL_MEMORY_BUDGET_BYTES} bytes)"
@@ -812,6 +847,10 @@ fn cert_phase_28_k4_realtime_latency_percentiles_and_900_sol_memory_footprint() 
             pl_p99_us < 150.0,
             "End-to-end 1-tick pipeline p99={pl_p99_us:.2} us >= 150 us"
         );
+        assert!(
+            live_p99_us < 50_000.0,
+            "Live workstation engine tick p99={live_p99_us:.2} us >= 50000 us (20 Hz deadline)"
+        );
     }
     #[cfg(debug_assertions)]
     {
@@ -820,5 +859,6 @@ fn cert_phase_28_k4_realtime_latency_percentiles_and_900_sol_memory_footprint() 
         assert!(gp_p99_us < 20_000.0);
         assert!(bk_p99_ns < 100_000.0);
         assert!(pl_p99_us < 10_000.0);
+        assert!(live_p99_us < 500_000.0);
     }
 }

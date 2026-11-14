@@ -150,10 +150,42 @@ pub fn atomic_write_bytes(target: &Path, bytes: &[u8]) -> Result<(), LsahStorage
     Ok(())
 }
 
-/// Computes standard CRC-32C (Castagnoli) over an arbitrary byte slice.
+/// Computes IEEE 802.3 CRC-32 (the canonical algorithm historically used by ARES-Health LSAH storage files).
 #[inline]
-pub fn compute_crc32c(data: &[u8]) -> u32 {
+pub fn compute_storage_crc32_ieee(data: &[u8]) -> u32 {
     let mut hasher = crc32fast::Hasher::new();
     hasher.update(data);
     hasher.finalize()
+}
+
+/// Computes true Castagnoli CRC-32C (polynomial 0x82F6_3B78 reflected), matching the 128-byte binary IPC protocol.
+#[inline]
+pub fn compute_storage_crc32c_castagnoli(bytes: &[u8]) -> u32 {
+    let mut crc: u32 = 0xFFFF_FFFF;
+    for &byte in bytes {
+        crc ^= u32::from(byte);
+        for _ in 0..8 {
+            let mask = (crc & 1).wrapping_neg();
+            crc = (crc >> 1) ^ (0x82F6_3B78 & mask);
+        }
+    }
+    !crc
+}
+
+/// Compatibility alias preserving the legacy storage checksum signature (IEEE 802.3 CRC-32 via `crc32fast`).
+#[inline]
+pub fn compute_crc32c(data: &[u8]) -> u32 {
+    compute_storage_crc32_ieee(data)
+}
+
+/// Verifies a segment's checksum against either canonical IEEE 802.3 CRC-32 or Castagnoli CRC-32C.
+/// Returns true if either polynomial matches the recorded expected checksum.
+#[inline]
+pub fn verify_segment_checksum(data: &[u8], expected: u32) -> bool {
+    let ieee = compute_storage_crc32_ieee(data);
+    if ieee == expected {
+        return true;
+    }
+    let castagnoli = compute_storage_crc32c_castagnoli(data);
+    castagnoli == expected
 }

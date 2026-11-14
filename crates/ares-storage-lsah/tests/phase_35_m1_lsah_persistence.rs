@@ -208,6 +208,8 @@ impl WarmColumnarVectorBackend for MockSlowSsdBackend {
         Ok(WarmSegmentMeta {
             segment_id: id,
             mission_sol: 1,
+            min_mission_sol: Some(1),
+            max_mission_sol: Some(1),
             relative_path: format!("mock_{id}.arrow.zst"),
             row_count: batch.num_rows(),
             compressed_bytes: 512,

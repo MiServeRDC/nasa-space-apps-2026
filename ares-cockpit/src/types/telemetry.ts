@@ -5,7 +5,8 @@
 export type BiometricsSource =
   | 'RECORDED_TERRESTRIAL_BIDMC_CSV'
   | 'RECORDED_TERRESTRIAL_WAVEFORM'
-  | 'SIMULATED_SCENARIO_INPUT';
+  | 'SIMULATED_SCENARIO_INPUT'
+  | 'HARDWARE_WEARABLE';
 
 export type ScenarioOverlayMode =
   | 'NONE_PURE_REPLAY'
@@ -21,6 +22,7 @@ export type DataOrigin =
   | 'DERIVED_FROM_HYBRID_SCENARIO'
   | 'DERIVED_COMPUTED'
   | 'SIMULATED_SCENARIO_INPUT'
+  | 'HARDWARE_WEARABLE'
   | 'UNAVAILABLE';
 
 export type FreshnessStatus =
