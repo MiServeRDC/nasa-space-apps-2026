@@ -228,13 +228,13 @@ impl AdhgCausalEngine {
             jugular.ijv_csa_mm2, jugular.ijv_vmax_cm_s, jugular.tau_w_dyn_cm2, jugular.flow_grade
         ));
         chain.push(format!(
-            "Bayesian POCUS Stasis {:.0}% | Thrombus Posterior {:.0}% (POCUS Confirmed: {})",
-            pocus.stasis_probability * 100.0,
-            pocus.thrombus_posterior * 100.0,
+            "Illustrative stasis score {:.2} | Thrombus model score {:.2} (scenario POCUS flag: {})",
+            pocus.stasis_probability,
+            pocus.thrombus_posterior,
             jugular.pocus_thrombus_confirmed
         ));
         chain.push(format!(
-            "SANS Risk {:.2} (ONSD {:.2} mm, Choroidal Delta +{:.0} um)",
+            "Illustrative SANS index {:.2} (ONSD {:.2} mm, Choroidal Delta +{:.0} um)",
             sans.sans_risk_index, sans.onsd_mm, sans.choroidal_delta_um
         ));
 
@@ -278,7 +278,7 @@ mod tests {
         assert_eq!(chain.len(), 4);
         assert!(chain[0].contains("ARED Load"));
         assert!(chain[1].contains("Shear Stress tau_w"));
-        assert!(chain[2].contains("Bayesian POCUS"));
-        assert!(chain[3].contains("SANS Risk"));
+        assert!(chain[2].contains("Illustrative stasis score"));
+        assert!(chain[3].contains("Illustrative SANS index"));
     }
 }

@@ -144,11 +144,22 @@ export function OcularOnsd({ onsd, sigma }: { onsd: number; sigma: number }) {
   return <canvas ref={ref} width={W} height={H} className="w-full rounded border border-line" />;
 }
 
-/** Animated single-lead ECG with motion / sweat / ECLSS fan artifacts and spectral SQI gating. */
-export function EcgStrip({ hr, artifact, sqi }: { hr: number; artifact: number; sqi: number }) {
+/** Animated single-lead ECG visualizer with motion / sweat / ECLSS fan artifacts and spectral SQI gating.
+ *  When `hr === null`, the waveform blanks cleanly instead of substituting a fake heart rate. */
+export function EcgStrip({
+  hr,
+  artifact,
+  sqi,
+  isRecorded = false,
+}: {
+  hr: number | null;
+  artifact: number;
+  sqi: number;
+  isRecorded?: boolean;
+}) {
   const ref = useRef<HTMLCanvasElement>(null);
-  const params = useRef({ hr, artifact, sqi });
-  params.current = { hr, artifact, sqi };
+  const params = useRef({ hr, artifact, sqi, isRecorded });
+  params.current = { hr, artifact, sqi, isRecorded };
   useEffect(() => {
     const cv = ref.current;
     const ctx = cv?.getContext('2d');
@@ -158,35 +169,50 @@ export function EcgStrip({ hr, artifact, sqi }: { hr: number; artifact: number; 
     let raf = 0;
     const g = (t: number, mu: number, s: number, a: number) => a * Math.exp(-((t - mu) ** 2) / (2 * s * s));
     const draw = (now: number) => {
-      const { hr: h, artifact: a, sqi: q } = params.current;
-      const rejected = q < SQI_REJECT_THRESHOLD;
+      const { hr: h, artifact: a, sqi: q, isRecorded: rec } = params.current;
+      const missingHr = h === null || !Number.isFinite(h) || h <= 0;
+      const rejected = !missingHr && q < SQI_REJECT_THRESHOLD;
       ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, EW, EH);
       ctx.strokeStyle = '#0f2a1a';
       for (let x = 0; x < EW; x += 20) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, EH); ctx.stroke(); }
       for (let y = 0; y < EH; y += 20) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(EW, y); ctx.stroke(); }
-      if (rejected) { ctx.fillStyle = 'rgba(244,63,94,0.12)'; ctx.fillRect(0, 0, EW, EH); }
-      const period = 60 / h;
-      const secondsShown = 4;
-      const t0 = now / 1000;
-      ctx.strokeStyle = rejected ? '#f43f5e' : '#4ade80';
+      if (rejected || missingHr) {
+        ctx.fillStyle = missingHr ? 'rgba(250,204,21,0.08)' : 'rgba(244,63,94,0.12)';
+        ctx.fillRect(0, 0, EW, EH);
+      }
+
+      ctx.strokeStyle = missingHr ? '#facc15' : rejected ? '#f43f5e' : '#4ade80';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      for (let x = 0; x < EW; x++) {
-        const t = t0 - secondsShown + (x / EW) * secondsShown;
-        const ph = ((t % period) + period) % period / period;
-        let v = g(ph, 0.18, 0.025, 0.15) + g(ph, 0.37, 0.01, -0.15) + g(ph, 0.4, 0.012, 1.0) + g(ph, 0.43, 0.01, -0.25) + g(ph, 0.68, 0.045, 0.3);
-        v += a * (0.35 * Math.sin(2 * Math.PI * 0.3 * t) + 0.12 * Math.sin(2 * Math.PI * 47 * t) + 0.5 * (r() - 0.5));
-        const y = EH * 0.65 - v * EH * 0.45;
-        if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      if (missingHr) {
+        const y = EH * 0.65;
+        ctx.moveTo(0, y);
+        ctx.lineTo(EW, y);
+      } else {
+        const period = 60 / h;
+        const secondsShown = 4;
+        const t0 = now / 1000;
+        for (let x = 0; x < EW; x++) {
+          const t = t0 - secondsShown + (x / EW) * secondsShown;
+          const ph = ((t % period) + period) % period / period;
+          let v = g(ph, 0.18, 0.025, 0.15) + g(ph, 0.37, 0.01, -0.15) + g(ph, 0.4, 0.012, 1.0) + g(ph, 0.43, 0.01, -0.25) + g(ph, 0.68, 0.045, 0.3);
+          v += a * (0.35 * Math.sin(2 * Math.PI * 0.3 * t) + 0.12 * Math.sin(2 * Math.PI * 47 * t) + 0.5 * (r() - 0.5));
+          const y = EH * 0.65 - v * EH * 0.45;
+          if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
       }
       ctx.stroke();
       ctx.lineWidth = 1;
       ctx.font = '12px monospace';
-      ctx.fillStyle = rejected ? '#f43f5e' : '#4ade80';
-      ctx.fillText(`ECG LEAD II   SQI ${q.toFixed(2)}   ${rejected ? 'SAMPLE REJECTED (SQI < 0.60)' : 'ACCEPTED'}`, 8, 16);
+      ctx.fillStyle = missingHr ? '#facc15' : rejected ? '#f43f5e' : '#4ade80';
+      const statusText = missingHr
+        ? 'ECG HR MISSING - WAVEFORM BLANKED (NEVER COERCED TO 0)'
+        : `ECG LEAD II   SQI ${q.toFixed(2)}   ${rejected ? 'SAMPLE REJECTED (SQI < 0.60)' : `ACCEPTED (HR ${h.toFixed(0)} BPM)`}`;
+      ctx.fillText(statusText, 8, 16);
       ctx.fillStyle = '#6b7280';
-      ctx.fillText('SIMULATED', EW - 80, EH - 8);
+      const tag = rec ? 'SYNTHETIC VISUALIZER (RECORDED HR)' : 'SIMULATED';
+      ctx.fillText(tag, EW - ctx.measureText(tag).width - 8, EH - 8);
       raf = requestAnimationFrame(draw);
     };
     raf = requestAnimationFrame(draw);

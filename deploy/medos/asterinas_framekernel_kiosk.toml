@@ -1,0 +1,43 @@
+# ARES-MedOS Tier B Host Target Descriptor: Asterinas Framekernel
+# Reference: Peng et al., USENIX ATC 2025 (arXiv:2506.03876) & ACM APsys 2024
+# Repository: https://github.com/asterinas/asterinas (MPL-2.0)
+
+[kernel]
+name = "asterinas-framekernel"
+repo = "https://github.com/asterinas/asterinas"
+paper = "Peng et al., USENIX ATC 2025 (arXiv:2506.03876)"
+ostd_unsafe_tcb_pct = 14.0
+linux_abi_syscalls_min = 210
+target_arch = ["x86_64-unknown-linux-musl", "aarch64-unknown-linux-musl"]
+zero_copy_shm_bus = "iceoryx2"
+
+[arinc653_partitions.telemetry_ingest]
+binary = "ares-server-cli"
+args = ["--mode", "ws-only", "--shm-ipc"]
+criticality = "LEVEL_A_ACQUISITION"
+memory_limit_mb = 32
+period_ms = 50
+shm_mount = "/dev/shm/ares_iceoryx2"
+network_bind = "127.0.0.1:8080"
+
+[arinc653_partitions.causal_ode_stl]
+module = "ares-causal-graph + ares-nqs-stl"
+criticality = "LEVEL_A_EVALUATION"
+memory_limit_mb = 48
+period_ms = 50
+max_tick_budget_us = 150
+
+[arinc653_partitions.timestral_forecaster]
+module = "ares-nqs-stl::AresTemporalForecasterEngine"
+criticality = "LEVEL_B_FORECAST"
+memory_limit_mb = 32
+period_ms = 1000
+non_blocking_reader = true
+
+[arinc653_partitions.medops_ui_shell]
+binary = "ares-desktop-os"
+criticality = "NON_CRITICAL_DISPLAY"
+memory_limit_mb = 128
+restart_on_fault = true
+ipc_ring_size = 64
+frame_bytes = 128

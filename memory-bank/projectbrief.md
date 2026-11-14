@@ -1,5 +1,7 @@
 # Project Brief: ARES-Health (NASA Space Apps Challenge 2026)
 
+> Current evidence status (#12): implemented scenario models and configured policies are illustrative/unvalidated. Earlier claims of calibrated risk, clinically verified equations, certification or guaranteed forecast coverage are not established. See [MODEL_EVIDENCE_AUDIT.md](../docs/architecture/MODEL_EVIDENCE_AUDIT.md). Numerical behavior and treatment policies are unchanged by this audit.
+
 ## 1. System Charter & Core Mission
 **ARES-Health** (*Autonomous Resilient Edge-native System for Astronaut Health*) is an offline, air-gapped, deterministic clinical decision support and health monitoring platform engineered for the **2026 NASA Space Apps Challenge** (Track: *"Create Health Monitoring Software for Astronauts on Space Missions"*, `https://www.spaceappschallenge.org/2026/challenges/health-monitoring-software/`).
 

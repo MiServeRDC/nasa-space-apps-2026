@@ -1,5 +1,7 @@
 # `ares-server-cli` — Dual-Transport Tokio Orchestrator (`axum` $20\text{ Hz}$ WebSocket + `stdio` FastMCP)
 
+> Evidence status (#12): model outputs are illustrative/unvalidated. Historical calibrated-confidence, clinical-probability, certification and readiness claims are superseded by [the evidence audit](../../docs/architecture/MODEL_EVIDENCE_AUDIT.md). Numerical gate acceptance is heuristic.
+
 **Assigned Owner:** `@fertech02` (`work/fertech02`)  
 
 ## Scope

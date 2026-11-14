@@ -1,0 +1,69 @@
+{
+  "active_playbook": null,
+  "astronaut_id": "BIDMC-SUBJECT-01",
+  "biometrics": {
+    "core_temp_celsius": null,
+    "heart_rate_bpm": 92.0,
+    "hrv_rmssd_ms": null,
+    "missing_channels": [
+      "pulse_rate_bpm",
+      "spo2_percent"
+    ],
+    "pulse_rate_bpm": null,
+    "respiration_rate_brpm": 23.0,
+    "rr_interval_ms": null,
+    "spo2_percent": null
+  },
+  "environment": {
+    "ambient_radiation_rate_ugy_h": 22.0,
+    "cabin_co2_ppm": 7105.263157894737,
+    "cabin_ppco2_mmhg": 5.4,
+    "cumulative_radiation_mgy": 31.0,
+    "provenance": "SIMULATED_SCENARIO_INPUT"
+  },
+  "hemodynamics": {
+    "ijv_csa_cm2": 1.1,
+    "ijv_velocity_max_cm_s": 12.0,
+    "pocus_thrombus_confirmed": false,
+    "provenance": "SIMULATED_SCENARIO_INPUT",
+    "thrombosis_risk_score": null,
+    "wall_shear_stress_dyn_cm2": 6.4
+  },
+  "medops": {
+    "gates": {
+      "anticoagulation_locked": true,
+      "gait_suit_damping_pct": 0.0,
+      "lbnp_autosafe_vent": false
+    },
+    "interventions": [],
+    "priority_actions": [],
+    "triggered_playbooks": []
+  },
+  "mission_elapsed_days": 184.0,
+  "musculoskeletal": {
+    "bmd_loss_pct_per_month": 0.4,
+    "gait_asymmetry_index_pct": null,
+    "post_landing": false,
+    "provenance": "SIMULATED_SCENARIO_INPUT",
+    "soleus_volume_loss_pct": 1.2
+  },
+  "provenance_manifest": {
+    "biometrics_native_rate_hz": 1.0,
+    "biometrics_source": "RECORDED_TERRESTRIAL_BIDMC_CSV",
+    "scenario_overlay_mode": "SIMULATED_WHATIF_SCENARIO",
+    "ui_refresh_rate_hz": 20.0
+  },
+  "relative_recording_time_s": 111.0,
+  "safety_margins": {
+    "alarm_level": "DATA_DEGRADED_MISSING_CHANNELS",
+    "med_stl_rho_robustness": null,
+    "mission_readiness_index": null,
+    "pending_sources": [
+      "PENDING_ARES_NQS_STL"
+    ],
+    "provenance": "DERIVED_FROM_HYBRID_SCENARIO",
+    "time_to_violation_days": null
+  },
+  "source_record_id": "bidmc_01",
+  "timestamp_ms": 1794657600000
+}

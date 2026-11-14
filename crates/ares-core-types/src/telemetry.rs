@@ -24,6 +24,7 @@ pub enum SystemPhase {
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum AlertSeverity {
     Nominal,
+    DataDegradedMissingChannels,
     Caution,
     Warning,
     CriticalEmergency,
@@ -41,6 +42,8 @@ pub enum BiometricsSource {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ScenarioOverlayMode {
+    NonePureReplay,
+    SimulatedWhatifScenario,
     DerivedAndSimulated,
 }
 
@@ -65,6 +68,28 @@ pub enum JugularFlowGrade {
     OccludedThrombus,
 }
 
+/// Validation status of the current demonstration models, not of recorded vitals.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum ModelValidationStatus {
+    #[default]
+    IllustrativeUnvalidated,
+}
+
+/// The current TTV bounds are scenario sensitivity ranges, not calibrated confidence limits.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum TtvIntervalKind {
+    IllustrativeScenarioRange,
+}
+
+/// Why numeric replay cannot provide beat-to-beat HRV measurements.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum HrvUnavailableReason {
+    BeatIntervalsNotAvailable,
+}
+
 /// Segnali biometrici, autonomici ed esposizione radiologica (`1. GATHER`).
 /// I campi provenienti da sensori fisici o CSV BIDMC usano `Option<f64>` per non
 /// convertire mai campioni mancanti (`NaN`/vuoti) in falsi zeri fisiologici.
@@ -75,6 +100,8 @@ pub struct Biometrics {
     pub resp_rate_brpm: Option<f64>,
     pub spo2_pct: Option<f64>,
     pub rmssd_ms: Option<f64>,
+    #[serde(default)]
+    pub hrv_unavailable_reason: Option<HrvUnavailableReason>,
     pub sdnn_ms: Option<f64>,
     pub pnn50_pct: Option<f64>,
     pub lf_hf_ratio: Option<f64>,
@@ -123,13 +150,28 @@ pub struct NqsStlMargins {
     pub rho_tau_w: f64,
     pub rho_ared: f64,
     pub rho_sost: f64,
-    pub rho_rmssd: f64,
+    pub rho_rmssd: Option<f64>,
     pub rho_sans: f64,
-    pub rho_global: f64,
-    pub ttv_hours: f64,
-    pub ttv_ci95_low_hours: f64,
-    pub ttv_ci95_high_hours: f64,
-    pub mri_pct: f64,
+    pub rho_global: Option<f64>,
+    pub ttv_hours: Option<f64>,
+    /// Legacy field name: illustrative lower bound, no calibrated 95% guarantee.
+    pub ttv_ci95_low_hours: Option<f64>,
+    /// Legacy field name: illustrative upper bound, no calibrated 95% guarantee.
+    pub ttv_ci95_high_hours: Option<f64>,
+    pub mri_pct: Option<f64>,
+    #[serde(default)]
+    pub ttv_interval_kind: Option<TtvIntervalKind>,
+}
+
+impl NqsStlMargins {
+    /// Known violations remain actionable when the complete assessment is unavailable.
+    pub fn has_known_violation(&self) -> bool {
+        [self.rho_tau_w, self.rho_ared, self.rho_sost, self.rho_sans]
+            .into_iter()
+            .any(|rho| rho < 0.0)
+            || self.rho_rmssd.is_some_and(|rho| rho < 0.0)
+            || self.rho_global.is_some_and(|rho| rho < 0.0)
+    }
 }
 
 /// Stato dei 3 Hard Clinical Safety Gates salvavita (`3. ACT`).
@@ -173,6 +215,8 @@ pub struct TelemetryPacket {
     pub system_phase: SystemPhase,
     pub alert_severity: AlertSeverity,
     pub provenance_manifest: ProvenanceManifest,
+    #[serde(default)]
+    pub model_validation_status: ModelValidationStatus,
     pub biometrics: Biometrics,
     pub musculoskeletal: Musculoskeletal,
     pub jugular_hemodynamics: JugularHemodynamics,

@@ -1,29 +1,32 @@
-//! Entrypoint CLI per `ares-server-cli` (Dual-Transport: Axum 20 Hz WebSocket + FastMCP stdio).
+//! Entrypoint CLI per `ares-server-cli` (Dual-Transport: Axum 20 Hz WebSocket + FastMCP stdio + Timestral 1 Hz + ARES-DatasetGraph).
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, ensure};
+use ares_causal_graph::dataset_graph::AresUnifiedDatasetGraph;
 use ares_server_cli::mcp_stdio::run_mcp_stdio_loop;
 use ares_server_cli::ws_server::{SharedMissionState, build_axum_router};
 use clap::{Parser, ValueEnum};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum ServerMode {
-    /// Avvia sia il server Axum HTTP/WebSocket (20 Hz) sia il loop FastMCP su `stdio`.
+    /// Avvia sia il server Axum HTTP/WebSocket (20 Hz) + worker Timestral 1 Hz sia il loop FastMCP su `stdio`.
     WsAndMcp,
-    /// Avvia solo il server Axum HTTP/WebSocket su `127.0.0.1:8080`.
+    /// Avvia solo il server Axum HTTP/WebSocket su `127.0.0.1:8080` + worker Timestral 1 Hz.
     WsOnly,
     /// Avvia solo il server FastMCP JSON-RPC 2.0 su `stdio`.
     McpOnly,
-    /// Esegue un ciclo deterministico di smoke-test e termina con codice 0.
+    /// Esegue replay completo (7 crate + Timestral + HyperGraph), genera ed esporta il grafo a 24 dataset su disco e verifica tutti i file.
     SmokeTest,
+    /// Costruisce `AresUnifiedDatasetGraph` (24 dataset + slice BIDMC) ed esporta i 4 file del knowledge graph su disco.
+    BuildGraph,
 }
 
 #[derive(Debug, Parser)]
 #[command(
     name = "ares-server-cli",
     version,
-    about = "ARES-Health Dual-Transport Orchestrator (20 Hz Axum WebSocket + FastMCP stdio)"
+    about = "ARES-Health Dual-Transport Orchestrator (20 Hz Axum WebSocket + FastMCP stdio + Timestral + ARES-DatasetGraph)"
 )]
 pub struct CliArgs {
     /// Modalita operativa del server.
@@ -37,6 +40,70 @@ pub struct CliArgs {
     /// Percorso della directory contenente i file CSV PhysioNet BIDMC v1.0.0.
     #[arg(long, default_value = "data/bidmc")]
     pub data_dir: PathBuf,
+
+    /// Percorso della root del repository per l'esportazione di `data/knowledge_graph/` e `graphify-out/`.
+    #[arg(long)]
+    pub repo_root: Option<PathBuf>,
+}
+
+fn resolve_repo_root(explicit: Option<&Path>, data_dir: &Path) -> PathBuf {
+    if let Some(root) = explicit {
+        return root.to_path_buf();
+    }
+    if let Some(parent) = data_dir.parent()
+        && parent.file_name().and_then(|n| n.to_str()) == Some("data")
+        && let Some(grandparent) = parent.parent()
+    {
+        if grandparent.as_os_str().is_empty() {
+            return PathBuf::from(".");
+        }
+        return grandparent.to_path_buf();
+    }
+    PathBuf::from(".")
+}
+
+fn export_and_verify_graph_bundle(graph: &AresUnifiedDatasetGraph, repo_root: &Path) -> Result<()> {
+    let stats = graph
+        .export_graphify_bundle(repo_root)
+        .context("impossibile esportare il knowledge graph su disco")?;
+
+    let expected_paths = [
+        repo_root
+            .join("data")
+            .join("knowledge_graph")
+            .join("ares_dataset_graph.json"),
+        repo_root
+            .join("data")
+            .join("knowledge_graph")
+            .join("GRAPH_REPORT.md"),
+        repo_root.join("graphify-out").join("graph.json"),
+        repo_root.join("graphify-out").join("GRAPH_REPORT.md"),
+    ];
+
+    let mut sizes = Vec::with_capacity(expected_paths.len());
+    for path in &expected_paths {
+        let meta = std::fs::metadata(path).with_context(|| {
+            format!("file grafo atteso non trovato su disco: {}", path.display())
+        })?;
+        ensure!(
+            meta.len() > 0,
+            "file grafo vuoto su disco: {}",
+            path.display()
+        );
+        sizes.push((path.display().to_string(), meta.len()));
+    }
+
+    tracing::info!(
+        nodes = stats.node_count,
+        edges = stats.edge_count,
+        datasets = stats.dataset_count,
+        communities = stats.community_count,
+        slices = stats.time_window_slice_count,
+        god_nodes = ?stats.god_node_ids,
+        files = ?sizes,
+        "ARES-DatasetGraph esportato e verificato su disco"
+    );
+    Ok(())
 }
 
 #[tokio::main]
@@ -49,20 +116,50 @@ async fn main() -> Result<()> {
         .init();
 
     let args = CliArgs::parse();
+    let repo_root = resolve_repo_root(args.repo_root.as_deref(), &args.data_dir);
+
+    if args.mode == ServerMode::BuildGraph {
+        let bidmc_opt = args.data_dir.is_dir().then_some(args.data_dir.as_path());
+        let graph = AresUnifiedDatasetGraph::build_with_bidmc_dir(bidmc_opt)
+            .context("errore durante la costruzione di AresUnifiedDatasetGraph")?;
+        export_and_verify_graph_bundle(&graph, &repo_root)?;
+        return Ok(());
+    }
+
     let state = SharedMissionState::from_data_dir(&args.data_dir)
         .with_context(|| format!("impossibile inizializzare i dataset da {:?}", args.data_dir))?;
 
     match args.mode {
+        ServerMode::BuildGraph => unreachable!(),
         ServerMode::SmokeTest => {
-            let pkt = state
-                .advance_tick(Duration::from_millis(50))
-                .context("errore durante il calcolo del tick di smoke-test")?;
+            let mut last_pkt = None;
+            for _ in 0..20 {
+                last_pkt = Some(
+                    state
+                        .advance_tick(Duration::from_millis(50))
+                        .context("errore durante il tick 20 Hz di smoke-test")?,
+                );
+            }
+            let q_snap = state
+                .run_1hz_timestral_step()
+                .context("errore durante l'inferenza Timestral 1 Hz di smoke-test")?;
+            let pkt = last_pkt.context("nessun TelemetryPacket generato nello smoke-test")?;
+            let ctx = state
+                .fastmcp_context()
+                .context("contesto FastMCP non disponibile nello smoke-test")?;
+
+            export_and_verify_graph_bundle(&state.dataset_graph, &repo_root)?;
+
             tracing::info!(
                 astronaut_id = %pkt.astronaut_id,
                 source_record_id = %pkt.source_record_id,
-                mri_pct = pkt.nqs_stl.mri_pct,
+                mri_pct = ?pkt.nqs_stl.mri_pct,
                 playbook_id = %pkt.active_playbook.playbook_id,
-                "ARES-Health smoke test completato con successo"
+                timestral_gate = ?q_snap.confidence_state,
+                pessimistic_ttv_q05_h = ?q_snap.pessimistic_ttv_q05_hours,
+                hottest_uberon = %ctx.heatmap.hottest_region.uberon_curie(),
+                biokg_clause = %ctx.grounding.normative_clause.official_code(),
+                "ARES-Health smoke test completo (7 crate + Timestral + ARES-HyperGraph + ARES-DatasetGraph) completato con successo"
             );
             Ok(())
         }
@@ -84,6 +181,19 @@ async fn main() -> Result<()> {
                 }
             });
 
+            let timestral_state = state.clone();
+            tokio::spawn(async move {
+                let mut interval = tokio::time::interval(Duration::from_secs(1));
+                loop {
+                    interval.tick().await;
+                    let worker_state = timestral_state.clone();
+                    let _ = tokio::task::spawn_blocking(move || {
+                        let _ = worker_state.run_1hz_timestral_step();
+                    })
+                    .await;
+                }
+            });
+
             if args.mode == ServerMode::WsAndMcp {
                 let mcp_state = state.clone();
                 tokio::task::spawn_blocking(move || {
@@ -95,7 +205,7 @@ async fn main() -> Result<()> {
             let listener = tokio::net::TcpListener::bind(&args.bind)
                 .await
                 .with_context(|| format!("impossibile eseguire il bind su {}", args.bind))?;
-            tracing::info!(bind = %args.bind, "Server Axum 20 Hz attivo");
+            tracing::info!(bind = %args.bind, "Server Axum 20 Hz + Timestral 1 Hz attivo");
             axum::serve(listener, app)
                 .await
                 .context("errore runtime nel server Axum")

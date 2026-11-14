@@ -222,6 +222,8 @@ export function buildPacket(w: WhatIf, tick: number, thrombus: boolean | null, l
       biometrics_native_rate_hz: 20,
       ui_refresh_rate_hz: 20,
       scenario_overlay_mode: 'SIMULATED_WHATIF_SCENARIO',
+      dataset_provenance: 'LOCAL_WHATIF_SIMULATOR',
+      manifest_sha256_verified: false,
     },
     biometrics: {
       heart_rate_bpm: s.hrAccepted ? s.hr : null,
@@ -230,8 +232,13 @@ export function buildPacket(w: WhatIf, tick: number, thrombus: boolean | null, l
       spo2_percent: s.spo2,
       rr_interval_ms: null,
       hrv_rmssd_ms: null,
+      hrv_unavailable_reason: 'BEAT_INTERVALS_NOT_AVAILABLE',
       core_temp_celsius: null,
-      missing_channels: s.hrAccepted ? [] : ['heart_rate_bpm', 'pulse_rate_bpm'],
+      sqi_score: s.sqi,
+      missing_channels: s.hrAccepted ? ['rr_interval_ms', 'hrv_rmssd_ms'] : ['heart_rate_bpm', 'pulse_rate_bpm', 'rr_interval_ms', 'hrv_rmssd_ms'],
+      quality_flags: s.hrAccepted
+        ? ['LOCAL_OFFLINE_SIMULATION', 'BEAT_INTERVALS_NOT_AVAILABLE']
+        : ['LOCAL_OFFLINE_SIMULATION', 'SQI_REJECTED', 'BEAT_INTERVALS_NOT_AVAILABLE'],
     },
     hemodynamics: {
       provenance: 'DERIVED_COMPUTED',
@@ -259,9 +266,17 @@ export function buildPacket(w: WhatIf, tick: number, thrombus: boolean | null, l
       provenance: 'DERIVED_FROM_HYBRID_SCENARIO',
       med_stl_rho_robustness: s.rhoMin,
       time_to_violation_days: ttv,
+      ttv_most_likely_days: ttv,
+      ttv_horizon_days: 100,
+      ttv_no_crossing_within_horizon: ttv === null,
       mission_readiness_index: s.mri,
       alarm_level: s.hrAccepted ? alarmFor(s.rhoMin) : 'DATA_DEGRADED_MISSING_CHANNELS',
+      per_predicate_rho: { ...s.rho },
     },
     active_playbook: null,
+    quality_flags: s.hrAccepted
+      ? ['LOCAL_OFFLINE_SIMULATION', 'BEAT_INTERVALS_NOT_AVAILABLE']
+      : ['LOCAL_OFFLINE_SIMULATION', 'SQI_REJECTED', 'BEAT_INTERVALS_NOT_AVAILABLE'],
+    is_local_simulation: true,
   };
 }

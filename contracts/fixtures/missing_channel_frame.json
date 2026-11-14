@@ -1,0 +1,50 @@
+{
+  "timestamp_ms": 1794657699000,
+  "relative_recording_time_s": 111.0,
+  "source_record_id": "bidmc_01",
+  "mission_elapsed_days": null,
+  "astronaut_id": "BIDMC-SUBJECT-01",
+  "provenance_manifest": {
+    "biometrics_source": "RECORDED_TERRESTRIAL_BIDMC_CSV",
+    "biometrics_native_rate_hz": 1.0,
+    "ui_refresh_rate_hz": 20.0,
+    "scenario_overlay_mode": "NONE_PURE_REPLAY",
+    "dataset_provenance": "BIDMC v1.0.0",
+    "manifest_sha256_verified": true
+  },
+  "biometrics": {
+    "heart_rate_bpm": 92.0,
+    "pulse_rate_bpm": null,
+    "respiration_rate_brpm": 23.0,
+    "spo2_percent": null,
+    "rr_interval_ms": null,
+    "hrv_rmssd_ms": null,
+    "hrv_unavailable_reason": "BEAT_INTERVALS_NOT_AVAILABLE",
+    "core_temp_celsius": null,
+    "missing_channels": [
+      "pulse_rate_bpm",
+      "spo2_percent",
+      "rr_interval_ms",
+      "hrv_rmssd_ms"
+    ],
+    "quality_flags": [
+      "BEAT_INTERVALS_NOT_AVAILABLE",
+      "CHANNEL_NAN_DROPOUT",
+      "MANIFEST_SHA256_VERIFIED"
+    ]
+  },
+  "hemodynamics": null,
+  "musculoskeletal": null,
+  "environment": null,
+  "safety_margins": {
+    "provenance": "DERIVED_FROM_RECORDED_BIDMC",
+    "med_stl_rho_robustness": null,
+    "time_to_violation_days": null,
+    "mission_readiness_index": null,
+    "alarm_level": "DATA_DEGRADED_MISSING_CHANNELS",
+    "pending_sources": [
+      "UNSUPPORTED_BY_TERRESTRIAL_RECORD"
+    ]
+  },
+  "active_playbook": null
+}

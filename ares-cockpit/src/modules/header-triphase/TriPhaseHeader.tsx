@@ -29,14 +29,18 @@ export function AlarmBadge({ level }: { level: AlarmLevel }) {
 }
 
 export function TriPhaseHeader({
+  astronautId,
   alarm,
   link,
+  wsConnected,
   activePhase,
   recommendedPhase,
   onSelectPhase,
 }: {
+  astronautId: string;
   alarm: AlarmLevel;
   link: LinkState;
+  wsConnected: boolean;
   activePhase: Phase;
   recommendedPhase: Phase;
   onSelectPhase: (p: Phase) => void;
@@ -55,7 +59,7 @@ export function TriPhaseHeader({
     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-black px-4 py-2 font-mono text-sm">
       <div className="flex items-center gap-3">
         <span className="text-lg font-bold tracking-widest text-nominal">ARES-HEALTH</span>
-        <span className="text-gray-500">ASTRO-01</span>
+        <span className="text-gray-400">{astronautId}</span>
       </div>
 
       <nav className="flex items-center gap-2" aria-label="Cockpit pages">
@@ -96,7 +100,9 @@ export function TriPhaseHeader({
         </select>
         <span className={Number.isFinite(profile.oneWayS) ? 'text-gray-300' : 'font-bold text-critical'}>OWLT {fmt(profile.oneWayS)}</span>
         <span className={autonomous ? 'text-advisory' : 'text-ok'}>{autonomous ? 'ON-BOARD AUTONOMY' : 'GROUND LINK'}</span>
-        <span className={link === 'ENGINE_LIVE' ? 'text-ok' : 'text-gray-500'}>{link === 'ENGINE_LIVE' ? 'ENGINE CONNECTED' : link === 'ENGINE_STALE' ? 'ENGINE DATA STALE / INVALID' : 'LOCAL SIMULATION'}</span>
+        <span className={link === 'ENGINE_LIVE' ? 'text-ok' : 'text-warning'}>
+          {link === 'ENGINE_LIVE' ? (wsConnected ? 'ENGINE WS LIVE' : 'ENGINE SNAPSHOT') : 'LOCAL SIMULATION'}
+        </span>
         <AlarmBadge level={alarm} />
         <span className="text-gray-500">{now.toISOString().slice(11, 19)}Z</span>
       </div>

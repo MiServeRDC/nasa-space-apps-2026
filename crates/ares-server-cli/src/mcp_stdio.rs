@@ -1,155 +1,63 @@
 //! Fase 14 (G2): Server Nativo FastMCP JSON-RPC 2.0 su `stdio` con compressione Context-Mode (< 150 token).
 
-use crate::ws_server::SharedMissionState;
-use ares_core_types::constants::MAX_MCP_CONTEXT_MODE_BYTES;
+pub use crate::fastmcp_router::{JsonRpcRequest, JsonRpcResponse, handle_fastmcp_jsonrpc_request};
+use crate::ws_server::{FastMcpRuntimeContext, SharedMissionState};
+use ares_causal_graph::adhg_graph::AdhgNodeKind;
+use ares_causal_graph::biokg_reasoner::ground_adhg_node_o1;
+use ares_causal_graph::dataset_graph::AresUnifiedDatasetGraph;
+use ares_causal_graph::hypergraph_spatial::{
+    AnatomicalRegionSubgraph, AnatomicalRiskInputs, HabitatEnvironmentState,
+    HabitatZoneDeonticPolicy, HabitatZoneId,
+};
+use ares_core_types::NqsQuantileForecastSnapshot;
 use ares_core_types::security::McpInputSanitizer;
 use ares_core_types::telemetry::TelemetryPacket;
 use ares_security_privacy::sanitizer::StrictMcpSanitizer;
-use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::io::{self, BufRead, Write};
 use std::sync::Arc;
 
-#[derive(Debug, Clone, Deserialize)]
-pub struct JsonRpcRequest {
-    pub jsonrpc: String,
-    pub id: Option<Value>,
-    pub method: String,
-    #[serde(default)]
-    pub params: Value,
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct JsonRpcResponse {
-    pub jsonrpc: &'static str,
-    pub id: Value,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub result: Option<Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub error: Option<Value>,
-}
-
-/// Gestisce una richiesta JSON-RPC 2.0 in modalita Context-Mode (< 150 token / <= 600 byte).
+/// Gestisce una richiesta JSON-RPC 2.0 in modalita Context-Mode (< 150 token / <= 600 byte)
+/// usando un singolo `TelemetryPacket` e il grafo canonico dei 24 dataset.
 pub fn handle_mcp_jsonrpc_request<S: McpInputSanitizer>(
     req: &JsonRpcRequest,
     latest_packet: &TelemetryPacket,
     sanitizer: &S,
 ) -> JsonRpcResponse {
-    let id = req.id.clone().unwrap_or(Value::Null);
-
-    match req.method.as_str() {
-        "initialize" => JsonRpcResponse {
-            jsonrpc: "2.0",
-            id,
-            result: Some(json!({
-                "protocolVersion": "2025-06-18",
-                "serverInfo": { "name": "ares-health-fastmcp", "version": "1.0.0" },
-                "capabilities": { "tools": {} }
-            })),
-            error: None,
-        },
-        "tools/list" => JsonRpcResponse {
-            jsonrpc: "2.0",
-            id,
-            result: Some(json!({
-                "tools": [
-                    { "name": "get_crew_health_summary", "description": "Compact <150-token NQS-STL & MRI readiness summary" },
-                    { "name": "explain_causal_anomaly", "description": "4-hop ADHG causal chain for active physiological degradation" },
-                    { "name": "simulate_countermeasure_impact", "description": "Deterministic delta-rho & TTV projection for LBNP/ARED countermeasures" },
-                    { "name": "get_medops_playbook", "description": "Active Type-1 MedOps Playbook (#01-#05) and 3 Hard Safety Gates status" }
-                ]
-            })),
-            error: None,
-        },
-        "tools/call" => {
-            let tool_name = req
-                .params
-                .get("name")
-                .and_then(Value::as_str)
-                .unwrap_or("");
-            let clean_name = match sanitizer.sanitize_mcp_query(tool_name) {
-                Ok(s) => s,
-                Err(e) => {
-                    return JsonRpcResponse {
-                        jsonrpc: "2.0",
-                        id,
-                        result: None,
-                        error: Some(json!({ "code": -32602, "message": e.to_string() })),
-                    };
-                }
-            };
-
-            let compact_payload = match clean_name.as_str() {
-                "get_crew_health_summary" | "get_astronaut_health_summary" => json!({
-                    "astronaut": latest_packet.astronaut_id,
-                    "fd": latest_packet.flight_day,
-                    "src": latest_packet.source_record_id,
-                    "t_rec_s": latest_packet.relative_recording_time_s,
-                    "severity": latest_packet.alert_severity,
-                    "mri_pct": (latest_packet.nqs_stl.mri_pct * 10.0).round() / 10.0,
-                    "rho_global": (latest_packet.nqs_stl.rho_global * 100.0).round() / 100.0,
-                    "ttv_h": (latest_packet.nqs_stl.ttv_hours * 10.0).round() / 10.0,
-                    "missing": latest_packet.biometrics.missing_channels
-                }),
-                "explain_causal_anomaly" | "query_organ_robustness" => {
-                    let wrapped_chain: Vec<String> = latest_packet
-                        .active_playbook
-                        .causal_chain_summary
-                        .iter()
-                        .take(3)
-                        .map(|s| sanitizer.wrap_untrusted_observation(s))
-                        .collect();
-                    json!({
-                        "rho_tau_w": (latest_packet.nqs_stl.rho_tau_w * 100.0).round() / 100.0,
-                        "rho_ared": (latest_packet.nqs_stl.rho_ared * 100.0).round() / 100.0,
-                        "rho_sans": (latest_packet.nqs_stl.rho_sans * 100.0).round() / 100.0,
-                        "adhg_chain": wrapped_chain
-                    })
-                }
-                "simulate_countermeasure_impact" => json!({
-                    "current_rho": (latest_packet.nqs_stl.rho_global * 100.0).round() / 100.0,
-                    "lbnp_30mmhg_delta_rho_h": 0.19,
-                    "ared_125kgf_delta_rho_h": 0.11,
-                    "projected_ttv_gain_h": 96.0
-                }),
-                "get_medops_playbook" | "trigger_medops_action_playbook" => json!({
-                    "playbook_id": latest_packet.active_playbook.playbook_id,
-                    "gates": latest_packet.active_playbook.safety_gates,
-                    "top_action": latest_packet.active_playbook.actions.first().map(|a| &a.action_id)
-                }),
-                other => {
-                    return JsonRpcResponse {
-                        jsonrpc: "2.0",
-                        id,
-                        result: None,
-                        error: Some(
-                            json!({ "code": -32601, "message": format!("unknown tool: {other}") }),
-                        ),
-                    };
-                }
-            };
-
-            let mut serialized = compact_payload.to_string();
-            if serialized.len() > MAX_MCP_CONTEXT_MODE_BYTES {
-                serialized.truncate(MAX_MCP_CONTEXT_MODE_BYTES);
-            }
-
-            JsonRpcResponse {
-                jsonrpc: "2.0",
-                id,
-                result: Some(json!({
-                    "content": [{ "type": "text", "text": serialized }]
-                })),
-                error: None,
-            }
-        }
-        other => JsonRpcResponse {
-            jsonrpc: "2.0",
-            id,
-            result: None,
-            error: Some(json!({ "code": -32601, "message": format!("method not found: {other}") })),
-        },
-    }
+    let mut sub = AnatomicalRegionSubgraph::new();
+    let heatmap = sub.compute_body_heatmap(&AnatomicalRiskInputs {
+        sans_index: Some(latest_packet.sans_ocular.sans_risk_index),
+        tau_w_dyn_cm2: Some(latest_packet.jugular_hemodynamics.tau_w_dyn_cm2),
+        rmssd_ms: latest_packet.biometrics.rmssd_ms,
+        sost_pmol_l: Some(latest_packet.musculoskeletal.sclerostin_pmol_l),
+        mqi_deficit_fraction: Some((1.0 - latest_packet.musculoskeletal.mqi_index).clamp(0.0, 1.0)),
+        gai_pct: Some(latest_packet.musculoskeletal.gai_pct),
+    });
+    let policy = HabitatZoneDeonticPolicy::default();
+    let habitat_assessment = policy.evaluate(&HabitatEnvironmentState {
+        current_zone: HabitatZoneId::SleepQuarters,
+        radiation_dose_rate_msv_d: latest_packet.biometrics.radiation_dose_rate_msv_d,
+        gai_pct: latest_packet.musculoskeletal.gai_pct,
+        pocus_thrombus_confirmed: latest_packet.jugular_hemodynamics.pocus_thrombus_confirmed,
+        lbnp_dwell_s: 0.0,
+        sleep_quarters_noise_dba: 44.0,
+    });
+    let quantile_snapshot = Arc::new(NqsQuantileForecastSnapshot::initial_deterministic(
+        latest_packet.relative_recording_time_s,
+        latest_packet.nqs_stl.rho_global,
+        latest_packet.nqs_stl.ttv_hours,
+        latest_packet.nqs_stl.ttv_ci95_low_hours,
+        latest_packet.nqs_stl.ttv_ci95_high_hours,
+    ));
+    let ctx = FastMcpRuntimeContext {
+        latest_packet: latest_packet.clone(),
+        quantile_snapshot,
+        heatmap,
+        habitat_assessment,
+        grounding: *ground_adhg_node_o1(AdhgNodeKind::AredMechanicalLoad),
+        dataset_graph: Arc::new(AresUnifiedDatasetGraph::build_core()),
+    };
+    handle_fastmcp_jsonrpc_request(req, &ctx, sanitizer)
 }
 
 /// Loop bloccante su `stdin`/`stdout` per il trasporto FastMCP JSON-RPC 2.0.
@@ -165,8 +73,8 @@ pub fn run_mcp_stdio_loop(state: Arc<SharedMissionState>) -> io::Result<()> {
         }
         let response = match serde_json::from_str::<JsonRpcRequest>(&line) {
             Ok(req) => {
-                if let Some(pkt) = state.latest_snapshot() {
-                    handle_mcp_jsonrpc_request(&req, &pkt, &sanitizer)
+                if let Some(ctx) = state.fastmcp_context() {
+                    handle_fastmcp_jsonrpc_request(&req, &ctx, &sanitizer)
                 } else {
                     JsonRpcResponse {
                         jsonrpc: "2.0",
@@ -195,6 +103,7 @@ pub fn run_mcp_stdio_loop(state: Arc<SharedMissionState>) -> io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ares_core_types::constants::MAX_MCP_CONTEXT_MODE_BYTES;
     use std::path::PathBuf;
 
     fn sample_state() -> Arc<SharedMissionState> {
@@ -262,6 +171,40 @@ mod tests {
             let s = entry.as_str().expect("string item");
             assert!(s.starts_with("<untrusted_telemetry_observation>"));
             assert!(s.ends_with("</untrusted_telemetry_observation>"));
+        }
+    }
+    #[test]
+    fn mcp_summary_and_projection_preserve_unavailable_assessment() {
+        let packet = sample_state().latest_snapshot().expect("snapshot");
+        for tool in ["get_crew_health_summary", "simulate_countermeasure_impact"] {
+            let request = JsonRpcRequest {
+                jsonrpc: "2.0".into(),
+                id: Some(json!(1)),
+                method: "tools/call".into(),
+                params: json!({"name": tool}),
+            };
+            let response = handle_mcp_jsonrpc_request(&request, &packet, &StrictMcpSanitizer);
+            let result = response.result.expect("tool result");
+            let text = result["content"][0]["text"].as_str().expect("text payload");
+            let payload: Value = serde_json::from_str(text).expect("valid payload");
+            if tool == "get_crew_health_summary" {
+                assert_eq!(payload.get("mri_pct"), Some(&Value::Null));
+                assert_eq!(payload.get("rho_global"), Some(&Value::Null));
+                assert_eq!(payload.get("ttv_h"), Some(&Value::Null));
+                assert_eq!(
+                    payload["hrv_unavailable_reason"],
+                    "BEAT_INTERVALS_NOT_AVAILABLE"
+                );
+            } else {
+                for field in [
+                    "current_rho",
+                    "projected_ttv_gain_h",
+                    "lbnp_30mmhg_delta_rho_h",
+                    "ared_125kgf_delta_rho_h",
+                ] {
+                    assert_eq!(payload.get(field), Some(&Value::Null));
+                }
+            }
         }
     }
 }

@@ -84,6 +84,7 @@ dependencies = [
  "ares-core-types",
  "petgraph",
  "serde",
+ "serde_json",
  "thiserror",
 ]
 
@@ -94,6 +95,28 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
+]
+
+[[package]]
+name = "ares-desktop-os"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ares-causal-graph",
+ "ares-core-types",
+ "ares-medops-playbooks",
+ "ares-nqs-stl",
+ "ares-security-privacy",
+ "ares-server-cli",
+ "ares-telemetry-ingest",
+ "axum",
+ "clap",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

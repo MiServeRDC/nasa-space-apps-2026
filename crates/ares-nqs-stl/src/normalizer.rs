@@ -39,9 +39,9 @@ pub fn compute_atomic_nqs_margins(
     tau_w_dyn_cm2: f64,
     ared_load_kgf: f64,
     sost_pmol_l: f64,
-    rmssd_ms: f64,
+    rmssd_ms: Option<f64>,
     sans_risk_index: f64,
-) -> (f64, f64, f64, f64, f64) {
+) -> (f64, f64, f64, Option<f64>, f64) {
     let rho_tau_w = normalize_predicate_nqs(
         tau_w_dyn_cm2,
         TAU_W_NOMINAL_DYN_CM2,
@@ -60,12 +60,14 @@ pub fn compute_atomic_nqs_margins(
         SOST_CRITICAL_PMOL_L,
         PredicatePolarity::LowerIsSafer,
     );
-    let rho_rmssd = normalize_predicate_nqs(
-        rmssd_ms,
-        RMSSD_NOMINAL_MS,
-        RMSSD_CRITICAL_MS,
-        PredicatePolarity::HigherIsSafer,
-    );
+    let rho_rmssd = rmssd_ms.filter(|x| x.is_finite() && *x > 0.0).map(|value| {
+        normalize_predicate_nqs(
+            value,
+            RMSSD_NOMINAL_MS,
+            RMSSD_CRITICAL_MS,
+            PredicatePolarity::HigherIsSafer,
+        )
+    });
     let rho_sans = normalize_predicate_nqs(
         sans_risk_index,
         SANS_NOMINAL_INDEX,
@@ -109,11 +111,11 @@ mod tests {
     #[test]
     fn test_atomic_nqs_margins_eliminate_scale_dominance() {
         let (r_tau, r_ared, r_sost, r_rmssd, r_sans) =
-            compute_atomic_nqs_margins(2.80, 125.0, 24.0, 48.0, 0.15);
+            compute_atomic_nqs_margins(2.80, 125.0, 24.0, Some(48.0), 0.15);
         assert!((r_tau - 1.0).abs() < 1e-12);
         assert!((r_ared - 1.0).abs() < 1e-12);
         assert!((r_sost - 1.0).abs() < 1e-12);
-        assert!((r_rmssd - 1.0).abs() < 1e-12);
+        assert!((r_rmssd.unwrap() - 1.0).abs() < 1e-12);
         assert!((r_sans - 1.0).abs() < 1e-12);
     }
 }

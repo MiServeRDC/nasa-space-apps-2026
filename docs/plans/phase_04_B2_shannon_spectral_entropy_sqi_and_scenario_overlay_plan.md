@@ -1,5 +1,7 @@
 # Piano Implementativo Definitivo — Fase 04 (B2): Shannon Spectral Entropy Signal Quality Index (`SQI >= 0.70`) & Scenario Overlay Merger
 
+> Superseded for HRV availability by [issue #11](ISSUE_11_HRV_VALIDITY_PLAN.md): numeric-only CSVs produce no HRV. Any proxy/default RMSSD, non-null complete MRI/global/TTV on missing HRV, or test expecting such values below is historical design, not current behavior. Known non-HRV hazards remain evaluated.
+
 - **Blocco Architetturale**: Blocco B (*Motore di Replay Deterministico `BIDMC v1.0.0`, Filtro `SQI` & Scenario Overlay — `1. GATHER`*, Fasi 03–04)
 - **Fase**: Fase 04 (`B2`)
 - **Stato**: PIANO DEFINITIVO APPROVATO PER IMPLEMENTAZIONE (`READY FOR IMPLEMENTATION`)

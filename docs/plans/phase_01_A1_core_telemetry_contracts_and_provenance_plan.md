@@ -1,5 +1,7 @@
 # Piano Implementativo Definitivo — Fase 01 (A1): Core Telemetry Contracts, Provenance Separation & Nullable Sensor Schema
 
+> Superseded for HRV availability by [issue #11](ISSUE_11_HRV_VALIDITY_PLAN.md): numeric-only CSVs produce no HRV. Any proxy/default RMSSD, non-null complete MRI/global/TTV on missing HRV, or test expecting such values below is historical design, not current behavior. Known non-HRV hazards remain evaluated.
+
 - **Blocco Architetturale**: Blocco A (*Fondamenta Contrattuali, Costanti Normative & Trait di Sicurezza*, Fasi 01–02)
 - **Fase**: Fase 01 (`A1`)
 - **Stato**: PIANO DEFINITIVO APPROVATO PER IMPLEMENTAZIONE (`READY FOR IMPLEMENTATION`)

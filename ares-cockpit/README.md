@@ -25,30 +25,13 @@ npm run build
 
 ## Data Flow
 
-* `src/lib/useTelemetry.ts` connects to `ws://127.0.0.1:8080/ws` (`ares-server-cli`). Incoming frames must match `contracts/telemetry_schema.json` (mirrored in `src/types/telemetry.ts`). What-If slider changes are sent back as `{ "type": "what_if", ... }`.
-* When the engine is offline the cockpit falls back to `src/lib/scenario.ts`, a deterministic local preview model. Every value it produces is tagged `SIMULATED_SCENARIO_INPUT` / `DERIVED_COMPUTED`; the authoritative evaluators remain in `ares-causal-graph` and `ares-nqs-stl`.
-* Null channels are rendered as `UNAVAILABLE`, never coerced to 0 (experienceLog Entry 006).
+* `src/lib/useTelemetry.ts` fetches cold-start state from `GET http://127.0.0.1:8080/api/snapshot`, subscribes to the 20 Hz stream at `ws://127.0.0.1:8080/ws/telemetry` (`ares-server-cli`), and forwards What-If overrides via `POST http://127.0.0.1:8080/api/stress-test` (re-syncing active overrides on open and reconnect).
+* All incoming JSON frames pass through `isValidTelemetryPayload` and `normalizeTelemetryPacket` (`src/lib/telemetryValidation.ts`), supporting both `contracts/telemetry_schema.json` and `ares-server-cli` payloads while rejecting malformed frames without overwriting the last valid packet.
+* When the engine is offline the cockpit falls back to `src/lib/scenario.ts`, a deterministic local preview model clearly isolated from recorded BIDMC telemetry.
+* Null channels (`pulse_rate_bpm`, `spo2_percent`, `hrv_rmssd_ms`, `time_to_violation_days`) are rendered explicitly as `MISSING` or `UNAVAILABLE (BEAT_INTERVALS_NOT_AVAILABLE)` / `UNAVAILABLE (NO R-R)` and are never coerced to 0 or `> 100 d`.
+* `src/modules/provenance/ProvenanceInspector.tsx` exposes dataset provenance (`BIDMC v1.0.0` / `MANIFEST SHA-256 verified`), `missing_channels`, `quality_flags` (`BEAT_INTERVALS_NOT_AVAILABLE`, `HOLD_LAST_VALID`), and an accessible per-indicator evidence drawer.
 
 ## Safety Gates in the UI
 
 * Gate 1: Playbook #05 anticoagulation step stays LOCKED unless the POCUS finding is `CONFIRMED`.
 * Gate 2: LBNP auto-vents to 0 mmHg when SBP drops > 15 mmHg or HR > 115 bpm, with an `AUTO_VENT_LBNP_CHAMBER` alert.
-
-### Fernando server integration (issues #8 and #22)
-
-Start Fernando's server from its own checkout at commit
-[`4b5d86f`](https://github.com/MiServeRDC/nasa-space-apps-2026/commit/4b5d86f)
-with `cargo run --manifest-path crates/ares-server-cli/Cargo.toml --bin ares-engine -- serve --replay bidmc_01`.
-Then run `npm ci` and `npm run dev` in this cockpit. Vite forwards
-`/ws/telemetry` and `/api/stress-test` to the server on loopback port 8080.
-Keep the server replay mode unchanged until opting in to its What-If overlay.
-The four supported sliders are sent as a POST after opt-in and on reconnect.
-Crew sex, signal noise and scan controls remain local simulation inputs.
-
-In Gather, expect BIDMC terrestrial ICU provenance, a 1 Hz recording clock,
-and unavailable PULSE and SpO2 at seconds 111–123. Forecast and readiness can
-also be unavailable. The ECG, anatomy and other local previews are simulations.
-
-Sources: [Fernando's public wire contract and fixtures](https://github.com/MiServeRDC/nasa-space-apps-2026/pull/22),
-[Carolina's cockpit baseline](https://github.com/MiServeRDC/nasa-space-apps-2026/commit/2da0989)
-and [PhysioNet BIDMC v1.0.0](https://physionet.org/content/bidmc/1.0.0/).

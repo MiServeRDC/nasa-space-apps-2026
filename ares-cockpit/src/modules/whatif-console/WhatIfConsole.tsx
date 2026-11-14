@@ -10,16 +10,52 @@ const SLIDERS: { key: NumericKey; label: string; unit: string; min: number; max:
   { key: 'artifact_level', label: 'Signal Noise', unit: '', min: 0, max: 1, step: 0.05, hint: 'Sweat, fan vibration, or exercise motion' },
 ];
 
-export function WhatIfConsole({ value, onChange, ventEvent, onRearm }: {
+export function WhatIfConsole({
+  value,
+  onChange,
+  ventEvent,
+  onRearm,
+  link,
+  overlayActive,
+  onToggleOverlay,
+  onSyncNow,
+}: {
   value: WhatIf;
   onChange: (w: WhatIf) => void;
   ventEvent: string | null;
   onRearm: () => void;
+  link: 'ENGINE_LIVE' | 'LOCAL_SIMULATION';
+  overlayActive: boolean;
+  onToggleOverlay: (active: boolean) => void;
+  onSyncNow: () => void;
 }) {
   const setSex = (sex: CrewSex) => onChange({ ...value, sex });
 
   return (
     <div className="space-y-2.5 text-xs">
+      <div className="rounded border border-warning/40 bg-warning/10 p-2 font-mono text-[11px] text-warning">
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-bold">SIMULATED WHAT-IF OVERLAY</span>
+          {link === 'ENGINE_LIVE' && (
+            <button
+              type="button"
+              onClick={() => onToggleOverlay(!overlayActive)}
+              className={`cursor-pointer rounded border px-2 py-0.5 text-[10px] ${
+                overlayActive ? 'border-warning bg-warning text-black font-bold' : 'border-line text-gray-300'
+              }`}
+            >
+              {overlayActive ? 'OVERLAY: ON' : 'OVERLAY: OFF'}
+            </button>
+          )}
+        </div>
+        <div className="mt-1 text-[10px] text-gray-300">
+          {link === 'ENGINE_LIVE'
+            ? overlayActive
+              ? 'Syncing What-If overrides via POST /api/stress-test. Recorded BIDMC channels remain unchanged.'
+              : 'Observing engine stream. Adjust sliders or click OVERLAY: ON to test scenarios without altering recorded BIDMC history.'
+            : 'Engine offline: sliders drive the local deterministic preview model.'}
+        </div>
+      </div>
       <div className="flex items-center justify-between rounded-lg border border-gray-700 bg-gray-900/70 px-2.5 py-1.5 font-mono">
         <div>
           <div className="text-xs font-semibold text-gray-200">Crew Sex</div>
@@ -66,10 +102,27 @@ export function WhatIfConsole({ value, onChange, ventEvent, onRearm }: {
           </button>
         </div>
       )}
-      <div className="flex items-center justify-between pt-1">
-        <button className="rounded border border-line px-2.5 py-1 font-mono text-gray-300 hover:border-nominal"
-          onClick={() => onChange(DEFAULT_WHATIF)}>RESET</button>
-        <span className="font-mono text-[11px] text-gray-600">WHAT-IF SIMULATOR</span>
+      <div className="flex items-center justify-between gap-2 pt-1">
+        <button
+          type="button"
+          className="cursor-pointer rounded border border-line px-2.5 py-1 font-mono text-gray-300 hover:border-nominal"
+          onClick={() => {
+            onChange(DEFAULT_WHATIF);
+            onToggleOverlay(false);
+          }}
+        >
+          RESET
+        </button>
+        {link === 'ENGINE_LIVE' && overlayActive && (
+          <button
+            type="button"
+            className="cursor-pointer rounded border border-nominal px-2.5 py-1 font-mono text-nominal hover:bg-nominal/15"
+            onClick={onSyncNow}
+          >
+            RESYNC POST
+          </button>
+        )}
+        <span className="font-mono text-[11px] text-gray-500">WHAT-IF SIMULATOR</span>
       </div>
     </div>
   );

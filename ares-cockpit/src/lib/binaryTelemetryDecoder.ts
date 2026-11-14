@@ -1,0 +1,605 @@
+// Zero-copy DataView decoder & deterministic encoder for the 128-byte little-endian
+// ARES-MedOS BinaryTelemetryFrame ABI (Phase 21 J1 / Phase 23 J3).
+// Strict Mode: zero emojis, strict nullability (missing channels never coerced to 0).
+
+import type { AlarmLevel, TelemetryPacket } from '../types/telemetry';
+
+export const ARES_BINARY_MAGIC = 0x41524553; // "ARES"
+export const ARES_BINARY_SCHEMA_VERSION = 1;
+export const ARES_BINARY_FRAME_BYTES = 128;
+export const ARES_BINARY_CRC_OFFSET = 104;
+
+// ARINC-653 partition health bits (`partition_status` byte at offset 6)
+export const PARTITION_TELEMETRY_INGEST = 1 << 0;
+export const PARTITION_CAUSAL_ODE_STL = 1 << 1;
+export const PARTITION_TIMESTRAL_FORECASTER = 1 << 2;
+export const PARTITION_MEDOPS_UI_SHELL = 1 << 3;
+export const PARTITION_ALL_HEALTHY_MASK = 0x0f;
+
+// Habitat Deontic mask (`deontic_habitat_mask` byte at offset 7)
+export const DEONTIC_ZONE_CODE_MASK = 0x07;
+export const DEONTIC_VIOLATES_POLICY = 1 << 3;
+export const DEONTIC_EVA_FORBIDDEN = 1 << 4;
+export const DEONTIC_SHELTER_MANDATORY = 1 << 5;
+export const DEONTIC_EIMO_AUTONOMOUS_ACTIVE = 1 << 6;
+
+export const HABITAT_ZONE_NAMES = [
+  'SLEEP_QUARTERS',
+  'ARED_EXERCISE_BAY',
+  'LBNP_CHAMBER',
+  'MEDOPS_ULTRASOUND_BAY',
+  'RADIATION_STORM_SHELTER',
+  'EVA_AIRLOCK',
+] as const;
+
+export type HabitatZoneCodeName = (typeof HABITAT_ZONE_NAMES)[number];
+
+// `validity_mask` bits (offset 24..28): 1 = finite present, 0 = null / NaN
+export const MASK_HR_BPM = 1 << 0;
+export const MASK_PULSE_BPM = 1 << 1;
+export const MASK_RESP_BRPM = 1 << 2;
+export const MASK_SPO2_PCT = 1 << 3;
+export const MASK_RMSSD_MS = 1 << 4;
+export const MASK_MRI_SCORE = 1 << 5;
+export const MASK_CRS_SCORE = 1 << 6;
+export const MASK_SANS_RISK = 1 << 7;
+export const MASK_IJV_SHEAR_PA = 1 << 8;
+export const MASK_SOST_PG_ML = 1 << 9;
+export const MASK_RADIATION_MSV_D = 1 << 10;
+export const MASK_NQS_MIN_RHO = 1 << 11;
+export const MASK_TTV_Q05_DAYS = 1 << 12;
+export const MASK_TTV_Q50_DAYS = 1 << 13;
+export const MASK_TTV_Q95_DAYS = 1 << 14;
+export const MASK_OWLT_DELAY_SEC = 1 << 15;
+
+// `quality_flags_mask` bits (offset 28..32)
+export const FLAG_WHAT_IF_ACTIVE = 1 << 0;
+export const FLAG_POCUS_CONFIRMED = 1 << 1;
+export const FLAG_LBNP_ACTIVE = 1 << 2;
+export const FLAG_GATE1_ANTICOAG_LOCK = 1 << 3;
+export const FLAG_GATE2_LBNP_VENT = 1 << 4;
+export const FLAG_GATE3_EVA_DAMPING = 1 << 5;
+export const FLAG_BEAT_INTERVALS_NOT_AVAILABLE = 1 << 6;
+export const FLAG_ILLUSTRATIVE_UNVALIDATED = 1 << 7;
+export const FLAG_CHANNEL_NAN_DROPOUT = 1 << 8;
+export const FLAG_CONFORMAL_ABSTAINED = 1 << 9;
+export const FLAG_SEU_RECOVERY_ACTIVE = 1 << 10;
+
+export const PLAYBOOK_ID_BY_CODE: Record<number, string> = {
+  0: 'NONE',
+  1: 'PLAYBOOK_01_VENOUS_STASIS_LBNP',
+  2: 'PLAYBOOK_02_CONFIRMED_IJV_THROMBUS',
+  3: 'PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED',
+  4: 'PLAYBOOK_04_SANS_TRANSLAMINAR_MITIGATION',
+  5: 'PLAYBOOK_05_SPE_RADIATION_SHELTER_CANS',
+};
+
+export const ALERT_LEVEL_BY_CODE: Record<number, AlarmLevel> = {
+  0: 'NOMINAL',
+  1: 'DATA_DEGRADED_MISSING_CHANNELS',
+  2: 'ADVISORY',
+  3: 'WARNING',
+  4: 'CRITICAL',
+};
+
+export interface DecodedBinaryTelemetryFrame {
+  magic: number;
+  schema_version: number;
+  partition_status: number;
+  deontic_habitat_mask: number;
+  seq: number;
+  timestamp_ms: number;
+  validity_mask: number;
+  quality_flags_mask: number;
+  hr_bpm: number | null;
+  pulse_bpm: number | null;
+  resp_brpm: number | null;
+  spo2_pct: number | null;
+  rmssd_ms: number | null;
+  mri_score: number | null;
+  crs_score: number | null;
+  sans_risk: number | null;
+  ijv_shear_pa: number | null;
+  sost_pg_ml: number | null;
+  radiation_msv_d: number | null;
+  nqs_min_rho: number | null;
+  ttv_q05_days: number | null;
+  ttv_q50_days: number | null;
+  ttv_q95_days: number | null;
+  owlt_delay_sec: number | null;
+  active_playbook_id: number;
+  active_alert_code: number;
+  ipc_latency_ns: number;
+  crc32c: number;
+  // Derived convenience flags for OS Chrome & clinical invariants
+  hrv_unavailable_reason: 'BEAT_INTERVALS_NOT_AVAILABLE' | null;
+  illustrative_unvalidated: boolean;
+  habitat_zone_code: number;
+  habitat_zone: HabitatZoneCodeName;
+  violates_policy: boolean;
+  eva_airlock_forbidden: boolean;
+  storm_shelter_mandatory: boolean;
+  eimo_autonomous_active: boolean;
+  partitions_healthy_count: number;
+}
+
+export interface EncodeTestBinaryFrameInput {
+  schema_version: number;
+  partition_status: number;
+  deontic_habitat_mask: number;
+  seq: number;
+  timestamp_ms: number;
+  quality_flags_mask: number;
+  hr_bpm: number | null;
+  pulse_bpm: number | null;
+  resp_brpm: number | null;
+  spo2_pct: number | null;
+  rmssd_ms: number | null;
+  mri_score: number | null;
+  crs_score: number | null;
+  sans_risk: number | null;
+  ijv_shear_pa: number | null;
+  sost_pg_ml: number | null;
+  radiation_msv_d: number | null;
+  nqs_min_rho: number | null;
+  ttv_q05_days: number | null;
+  ttv_q50_days: number | null;
+  ttv_q95_days: number | null;
+  owlt_delay_sec: number | null;
+  active_playbook_id: number;
+  active_alert_code: number;
+  ipc_latency_ns: number;
+}
+
+// Precomputed Castagnoli CRC-32C lookup table (reflected polynomial 0x82F63B78).
+const CRC32C_TABLE: Uint32Array = (() => {
+  const table = new Uint32Array(256);
+  for (let i = 0; i < 256; i += 1) {
+    let crc = i;
+    for (let j = 0; j < 8; j += 1) {
+      crc = (crc & 1) !== 0 ? 0x82f63b78 ^ (crc >>> 1) : crc >>> 1;
+    }
+    table[i] = crc >>> 0;
+  }
+  return table;
+})();
+
+/** Computes Castagnoli CRC-32C (init 0xFFFFFFFF, xorout 0xFFFFFFFF) over `bytes[0..length]`. */
+export function computeCrc32c(bytes: Uint8Array, length: number = ARES_BINARY_CRC_OFFSET): number {
+  let crc = 0xffffffff;
+  const limit = Math.min(length, bytes.byteLength);
+  for (let i = 0; i < limit; i += 1) {
+    crc = CRC32C_TABLE[(crc ^ bytes[i]) & 0xff] ^ (crc >>> 8);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function readU64LittleEndian(view: DataView, offset: number): number {
+  const lo = view.getUint32(offset, true);
+  const hi = view.getUint32(offset + 4, true);
+  return hi * 4294967296 + lo;
+}
+
+function writeU64LittleEndian(view: DataView, offset: number, value: number): void {
+  const safe = Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0;
+  const lo = safe >>> 0;
+  const hi = Math.floor(safe / 4294967296) >>> 0;
+  view.setUint32(offset, lo, true);
+  view.setUint32(offset + 4, hi, true);
+}
+
+function readMaskedFloat32(
+  view: DataView,
+  byteOffset: number,
+  validityMask: number,
+  bit: number,
+): number | null {
+  if ((validityMask & bit) === 0) return null;
+  const val = view.getFloat32(byteOffset, true);
+  return Number.isFinite(val) ? val : null;
+}
+
+function writeMaskedFloat32(
+  view: DataView,
+  byteOffset: number,
+  value: number | null,
+  bit: number,
+  validityMask: number,
+): number {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    view.setFloat32(byteOffset, value, true);
+    return validityMask | bit;
+  }
+  view.setFloat32(byteOffset, Number.NaN, true);
+  return validityMask & ~bit;
+}
+
+function countHealthyPartitions(partitionStatus: number): number {
+  let count = 0;
+  if ((partitionStatus & PARTITION_TELEMETRY_INGEST) !== 0) count += 1;
+  if ((partitionStatus & PARTITION_CAUSAL_ODE_STL) !== 0) count += 1;
+  if ((partitionStatus & PARTITION_TIMESTRAL_FORECASTER) !== 0) count += 1;
+  if ((partitionStatus & PARTITION_MEDOPS_UI_SHELL) !== 0) count += 1;
+  return count;
+}
+
+/**
+ * Zero-copy DataView decoder for the 128-byte little-endian `BinaryTelemetryFrame`.
+ * Returns `null` if size, magic (`0x41524553`), schema version, or CRC-32C check fails.
+ * Preserves strict nullability (`null` when `validity_mask` bit is 0 or `BEAT_INTERVALS_NOT_AVAILABLE`).
+ */
+export function decodeBinaryTelemetryFrame(
+  input: ArrayBuffer | Uint8Array,
+): DecodedBinaryTelemetryFrame | null {
+  const bytes =
+    input instanceof Uint8Array
+      ? input
+      : new Uint8Array(input);
+
+  if (bytes.byteLength !== ARES_BINARY_FRAME_BYTES) {
+    return null;
+  }
+
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const magic = view.getUint32(0, true);
+  if (magic !== ARES_BINARY_MAGIC) {
+    return null;
+  }
+
+  const schema_version = view.getUint16(4, true);
+  if (schema_version !== ARES_BINARY_SCHEMA_VERSION) {
+    return null;
+  }
+
+  const expectedCrc = computeCrc32c(bytes, ARES_BINARY_CRC_OFFSET);
+  const crc32c = view.getUint32(ARES_BINARY_CRC_OFFSET, true);
+  if (crc32c !== expectedCrc) {
+    return null;
+  }
+
+  const partition_status = view.getUint8(6);
+  const deontic_habitat_mask = view.getUint8(7);
+  const seq = readU64LittleEndian(view, 8);
+  const timestamp_ms = readU64LittleEndian(view, 16);
+  const validity_mask = view.getUint32(24, true);
+  const quality_flags_mask = view.getUint32(28, true);
+
+  const beatIntervalsUnavailable =
+    (quality_flags_mask & FLAG_BEAT_INTERVALS_NOT_AVAILABLE) !== 0;
+
+  const hr_bpm = readMaskedFloat32(view, 32, validity_mask, MASK_HR_BPM);
+  const pulse_bpm = readMaskedFloat32(view, 36, validity_mask, MASK_PULSE_BPM);
+  const resp_brpm = readMaskedFloat32(view, 40, validity_mask, MASK_RESP_BRPM);
+  const spo2_pct = readMaskedFloat32(view, 44, validity_mask, MASK_SPO2_PCT);
+  const rawRmssd = readMaskedFloat32(view, 48, validity_mask, MASK_RMSSD_MS);
+  // Enforce Issue #11 invariant: RMSSD is never valid when beat intervals are unavailable.
+  const rmssd_ms = beatIntervalsUnavailable ? null : rawRmssd;
+  const mri_score = readMaskedFloat32(view, 52, validity_mask, MASK_MRI_SCORE);
+  const crs_score = readMaskedFloat32(view, 56, validity_mask, MASK_CRS_SCORE);
+  const sans_risk = readMaskedFloat32(view, 60, validity_mask, MASK_SANS_RISK);
+  const ijv_shear_pa = readMaskedFloat32(view, 64, validity_mask, MASK_IJV_SHEAR_PA);
+  const sost_pg_ml = readMaskedFloat32(view, 68, validity_mask, MASK_SOST_PG_ML);
+  const radiation_msv_d = readMaskedFloat32(view, 72, validity_mask, MASK_RADIATION_MSV_D);
+  const nqs_min_rho = readMaskedFloat32(view, 76, validity_mask, MASK_NQS_MIN_RHO);
+  const ttv_q05_days = readMaskedFloat32(view, 80, validity_mask, MASK_TTV_Q05_DAYS);
+  const ttv_q50_days = readMaskedFloat32(view, 84, validity_mask, MASK_TTV_Q50_DAYS);
+  const ttv_q95_days = readMaskedFloat32(view, 88, validity_mask, MASK_TTV_Q95_DAYS);
+  const owlt_delay_sec = readMaskedFloat32(view, 92, validity_mask, MASK_OWLT_DELAY_SEC);
+
+  const active_playbook_id = view.getUint16(96, true);
+  const active_alert_code = view.getUint16(98, true);
+  const ipc_latency_ns = view.getUint32(100, true);
+
+  const habitat_zone_code = deontic_habitat_mask & DEONTIC_ZONE_CODE_MASK;
+  const habitat_zone =
+    HABITAT_ZONE_NAMES[habitat_zone_code] ?? 'MEDOPS_ULTRASOUND_BAY';
+
+  return {
+    magic,
+    schema_version,
+    partition_status,
+    deontic_habitat_mask,
+    seq,
+    timestamp_ms,
+    validity_mask,
+    quality_flags_mask,
+    hr_bpm,
+    pulse_bpm,
+    resp_brpm,
+    spo2_pct,
+    rmssd_ms,
+    mri_score,
+    crs_score,
+    sans_risk,
+    ijv_shear_pa,
+    sost_pg_ml,
+    radiation_msv_d,
+    nqs_min_rho,
+    ttv_q05_days,
+    ttv_q50_days,
+    ttv_q95_days,
+    owlt_delay_sec,
+    active_playbook_id,
+    active_alert_code,
+    ipc_latency_ns,
+    crc32c,
+    hrv_unavailable_reason: beatIntervalsUnavailable
+      ? 'BEAT_INTERVALS_NOT_AVAILABLE'
+      : null,
+    illustrative_unvalidated:
+      (quality_flags_mask & FLAG_ILLUSTRATIVE_UNVALIDATED) !== 0,
+    habitat_zone_code,
+    habitat_zone,
+    violates_policy: (deontic_habitat_mask & DEONTIC_VIOLATES_POLICY) !== 0,
+    eva_airlock_forbidden: (deontic_habitat_mask & DEONTIC_EVA_FORBIDDEN) !== 0,
+    storm_shelter_mandatory: (deontic_habitat_mask & DEONTIC_SHELTER_MANDATORY) !== 0,
+    eimo_autonomous_active:
+      (deontic_habitat_mask & DEONTIC_EIMO_AUTONOMOUS_ACTIVE) !== 0,
+    partitions_healthy_count: countHealthyPartitions(partition_status),
+  };
+}
+
+/**
+ * Deterministic 128-byte little-endian encoder helper for self-tests and parity checks.
+ */
+export function encodeTestBinaryTelemetryFrame(
+  overrides: Partial<EncodeTestBinaryFrameInput> = {},
+): ArrayBuffer {
+  const defaults: EncodeTestBinaryFrameInput = {
+    schema_version: ARES_BINARY_SCHEMA_VERSION,
+    partition_status: PARTITION_ALL_HEALTHY_MASK,
+    deontic_habitat_mask: 3 | DEONTIC_EIMO_AUTONOMOUS_ACTIVE,
+    seq: 1,
+    timestamp_ms: 1794657600000,
+    quality_flags_mask:
+      FLAG_BEAT_INTERVALS_NOT_AVAILABLE | FLAG_ILLUSTRATIVE_UNVALIDATED,
+    hr_bpm: 78,
+    pulse_bpm: 77,
+    resp_brpm: 16,
+    spo2_pct: 98,
+    rmssd_ms: null,
+    mri_score: null,
+    crs_score: 0.25,
+    sans_risk: 0.18,
+    ijv_shear_pa: 0.62,
+    sost_pg_ml: 34.5,
+    radiation_msv_d: 0.45,
+    nqs_min_rho: null,
+    ttv_q05_days: null,
+    ttv_q50_days: null,
+    ttv_q95_days: null,
+    owlt_delay_sec: 852,
+    active_playbook_id: 3,
+    active_alert_code: 1,
+    ipc_latency_ns: 24000,
+  };
+
+  const cfg: EncodeTestBinaryFrameInput = { ...defaults, ...overrides };
+  const buffer = new ArrayBuffer(ARES_BINARY_FRAME_BYTES);
+  const bytes = new Uint8Array(buffer);
+  const view = new DataView(buffer);
+
+  view.setUint32(0, ARES_BINARY_MAGIC, true);
+  view.setUint16(4, cfg.schema_version, true);
+  view.setUint8(6, cfg.partition_status & 0xff);
+  view.setUint8(7, cfg.deontic_habitat_mask & 0xff);
+  writeU64LittleEndian(view, 8, cfg.seq);
+  writeU64LittleEndian(view, 16, cfg.timestamp_ms);
+
+  let validityMask = 0;
+  validityMask = writeMaskedFloat32(view, 32, cfg.hr_bpm, MASK_HR_BPM, validityMask);
+  validityMask = writeMaskedFloat32(view, 36, cfg.pulse_bpm, MASK_PULSE_BPM, validityMask);
+  validityMask = writeMaskedFloat32(view, 40, cfg.resp_brpm, MASK_RESP_BRPM, validityMask);
+  validityMask = writeMaskedFloat32(view, 44, cfg.spo2_pct, MASK_SPO2_PCT, validityMask);
+
+  const effectiveRmssd =
+    (cfg.quality_flags_mask & FLAG_BEAT_INTERVALS_NOT_AVAILABLE) !== 0
+      ? null
+      : cfg.rmssd_ms;
+  validityMask = writeMaskedFloat32(view, 48, effectiveRmssd, MASK_RMSSD_MS, validityMask);
+  validityMask = writeMaskedFloat32(view, 52, cfg.mri_score, MASK_MRI_SCORE, validityMask);
+  validityMask = writeMaskedFloat32(view, 56, cfg.crs_score, MASK_CRS_SCORE, validityMask);
+  validityMask = writeMaskedFloat32(view, 60, cfg.sans_risk, MASK_SANS_RISK, validityMask);
+  validityMask = writeMaskedFloat32(view, 64, cfg.ijv_shear_pa, MASK_IJV_SHEAR_PA, validityMask);
+  validityMask = writeMaskedFloat32(view, 68, cfg.sost_pg_ml, MASK_SOST_PG_ML, validityMask);
+  validityMask = writeMaskedFloat32(view, 72, cfg.radiation_msv_d, MASK_RADIATION_MSV_D, validityMask);
+  validityMask = writeMaskedFloat32(view, 76, cfg.nqs_min_rho, MASK_NQS_MIN_RHO, validityMask);
+  validityMask = writeMaskedFloat32(view, 80, cfg.ttv_q05_days, MASK_TTV_Q05_DAYS, validityMask);
+  validityMask = writeMaskedFloat32(view, 84, cfg.ttv_q50_days, MASK_TTV_Q50_DAYS, validityMask);
+  validityMask = writeMaskedFloat32(view, 88, cfg.ttv_q95_days, MASK_TTV_Q95_DAYS, validityMask);
+  validityMask = writeMaskedFloat32(view, 92, cfg.owlt_delay_sec, MASK_OWLT_DELAY_SEC, validityMask);
+
+  view.setUint32(24, validityMask >>> 0, true);
+  view.setUint32(28, cfg.quality_flags_mask >>> 0, true);
+
+  view.setUint16(96, cfg.active_playbook_id, true);
+  view.setUint16(98, cfg.active_alert_code, true);
+  view.setUint32(100, cfg.ipc_latency_ns >>> 0, true);
+
+  const crc = computeCrc32c(bytes, ARES_BINARY_CRC_OFFSET);
+  view.setUint32(ARES_BINARY_CRC_OFFSET, crc, true);
+
+  return buffer;
+}
+
+/**
+ * Merges a decoded 128-byte `BinaryTelemetryFrame` into an existing `TelemetryPacket`
+ * without converting missing channels (`null`) to `0`.
+ */
+export function mergeBinaryFrameIntoPacket(
+  prev: TelemetryPacket,
+  frame: DecodedBinaryTelemetryFrame,
+): TelemetryPacket {
+  const missing: string[] = [];
+  if (frame.hr_bpm === null) missing.push('heart_rate_bpm');
+  if (frame.pulse_bpm === null) missing.push('pulse_rate_bpm');
+  if (frame.resp_brpm === null) missing.push('respiration_rate_brpm');
+  if (frame.spo2_pct === null) missing.push('spo2_percent');
+  if (frame.rmssd_ms === null) missing.push('hrv_rmssd_ms');
+
+  const flags: string[] = [];
+  if (frame.hrv_unavailable_reason === 'BEAT_INTERVALS_NOT_AVAILABLE') {
+    flags.push('BEAT_INTERVALS_NOT_AVAILABLE');
+  }
+  if (
+    (frame.quality_flags_mask & FLAG_CHANNEL_NAN_DROPOUT) !== 0 ||
+    frame.pulse_bpm === null ||
+    frame.spo2_pct === null
+  ) {
+    flags.push('CHANNEL_NAN_DROPOUT');
+  }
+  if (frame.illustrative_unvalidated) {
+    flags.push('ILLUSTRATIVE_UNVALIDATED');
+  }
+  if ((frame.quality_flags_mask & FLAG_CONFORMAL_ABSTAINED) !== 0) {
+    flags.push('CONFORMAL_ABSTAINED');
+  }
+
+  const alarmLevel =
+    ALERT_LEVEL_BY_CODE[frame.active_alert_code] ?? prev.safety_margins.alarm_level;
+
+  const nextHemodynamics =
+    prev.hemodynamics !== null && prev.hemodynamics !== undefined
+      ? {
+          ...prev.hemodynamics,
+          wall_shear_stress_dyn_cm2:
+            frame.ijv_shear_pa !== null
+              ? frame.ijv_shear_pa * 10
+              : prev.hemodynamics.wall_shear_stress_dyn_cm2,
+          sans_risk_index:
+            frame.sans_risk !== null
+              ? frame.sans_risk
+              : prev.hemodynamics.sans_risk_index,
+          pocus_thrombus_confirmed:
+            (frame.quality_flags_mask & FLAG_POCUS_CONFIRMED) !== 0,
+          lbnp_active: (frame.quality_flags_mask & FLAG_LBNP_ACTIVE) !== 0,
+        }
+      : prev.hemodynamics;
+
+  const nextMusculoskeletal =
+    prev.musculoskeletal !== null && prev.musculoskeletal !== undefined
+      ? {
+          ...prev.musculoskeletal,
+          // 1 pmol/L ~= 22.5 pg/mL (22.5 kDa sclerostin)
+          sclerostin_pmol_l:
+            frame.sost_pg_ml !== null
+              ? frame.sost_pg_ml / 22.5
+              : prev.musculoskeletal.sclerostin_pmol_l,
+        }
+      : prev.musculoskeletal;
+
+  const nextPlaybook =
+    prev.active_playbook !== null && prev.active_playbook !== undefined
+      ? {
+          ...prev.active_playbook,
+          playbook_id:
+            PLAYBOOK_ID_BY_CODE[frame.active_playbook_id] ??
+            prev.active_playbook.playbook_id,
+          safety_gates: {
+            anticoagulant_lock_active:
+              (frame.quality_flags_mask & FLAG_GATE1_ANTICOAG_LOCK) !== 0,
+            lbnp_auto_vent_armed:
+              (frame.quality_flags_mask & FLAG_GATE2_LBNP_VENT) !== 0,
+            eva_suit_damping_active:
+              (frame.quality_flags_mask & FLAG_GATE3_EVA_DAMPING) !== 0,
+          },
+        }
+      : prev.active_playbook;
+
+  return {
+    ...prev,
+    timestamp_ms: frame.timestamp_ms,
+    biometrics: {
+      ...prev.biometrics,
+      heart_rate_bpm: frame.hr_bpm,
+      pulse_rate_bpm: frame.pulse_bpm,
+      respiration_rate_brpm: frame.resp_brpm,
+      spo2_percent: frame.spo2_pct,
+      hrv_rmssd_ms: frame.rmssd_ms,
+      hrv_unavailable_reason: frame.hrv_unavailable_reason,
+      radiation_dose_rate_msv_d:
+        frame.radiation_msv_d ?? prev.biometrics.radiation_dose_rate_msv_d,
+      missing_channels: missing,
+      quality_flags: flags,
+    },
+    hemodynamics: nextHemodynamics,
+    musculoskeletal: nextMusculoskeletal,
+    safety_margins: {
+      ...prev.safety_margins,
+      med_stl_rho_robustness: frame.nqs_min_rho,
+      mission_readiness_index: frame.mri_score,
+      time_to_violation_days: frame.ttv_q50_days,
+      ttv_most_likely_days: frame.ttv_q50_days,
+      ttv_p5_days: frame.ttv_q05_days,
+      ttv_p95_days: frame.ttv_q95_days,
+      alarm_level: alarmLevel,
+    },
+    active_playbook: nextPlaybook,
+    hypergraph_spatial: {
+      ...(prev.hypergraph_spatial ?? {}),
+      habitat_zone: frame.habitat_zone,
+    },
+    timestral_quantiles: {
+      ...(prev.timestral_quantiles ?? {}),
+      conformal_status:
+        (frame.quality_flags_mask & FLAG_CONFORMAL_ABSTAINED) !== 0
+          ? 'ABSTAINED_FALLBACK'
+          : prev.timestral_quantiles?.conformal_status,
+      ttv_q05_days: frame.ttv_q05_days,
+      ttv_q50_days: frame.ttv_q50_days,
+      ttv_q95_days: frame.ttv_q95_days,
+    },
+    quality_flags: flags,
+  };
+}
+
+/** Deterministic self-test verifying 128-byte layout, nullability, and CRC-32C rejection. */
+export function runBinaryTelemetrySelfTest(): { passed: boolean; details: string[] } {
+  const details: string[] = [];
+
+  const buf = encodeTestBinaryTelemetryFrame({
+    pulse_bpm: null,
+    spo2_pct: null,
+    rmssd_ms: 42.5, // must be nulled by FLAG_BEAT_INTERVALS_NOT_AVAILABLE
+    quality_flags_mask:
+      FLAG_BEAT_INTERVALS_NOT_AVAILABLE |
+      FLAG_ILLUSTRATIVE_UNVALIDATED |
+      FLAG_CHANNEL_NAN_DROPOUT,
+  });
+
+  if (buf.byteLength !== ARES_BINARY_FRAME_BYTES) {
+    details.push(`Expected 128 bytes, got ${buf.byteLength}`);
+    return { passed: false, details };
+  }
+
+  const decoded = decodeBinaryTelemetryFrame(buf);
+  if (!decoded) {
+    details.push('Failed to decode valid 128-byte BinaryTelemetryFrame');
+    return { passed: false, details };
+  }
+  if (decoded.pulse_bpm !== null || decoded.spo2_pct !== null) {
+    details.push('Missing BIDMC channels were coerced instead of staying null');
+    return { passed: false, details };
+  }
+  if (
+    decoded.rmssd_ms !== null ||
+    decoded.hrv_unavailable_reason !== 'BEAT_INTERVALS_NOT_AVAILABLE'
+  ) {
+    details.push('Issue #11 BEAT_INTERVALS_NOT_AVAILABLE invariant violated');
+    return { passed: false, details };
+  }
+
+  // Flip 1 bit in payload and verify CRC-32C rejects corrupted frame
+  const corrupted = new Uint8Array(buf.slice(0));
+  corrupted[32] ^= 0x01;
+  if (decodeBinaryTelemetryFrame(corrupted) !== null) {
+    details.push('CRC-32C failed to reject single-bit corruption');
+    return { passed: false, details };
+  }
+
+  details.push('128B ABI roundtrip OK');
+  details.push('validity_mask null preservation OK');
+  details.push('BEAT_INTERVALS_NOT_AVAILABLE invariant OK');
+  details.push('Castagnoli CRC-32C SEU rejection OK');
+  return { passed: true, details };
+}

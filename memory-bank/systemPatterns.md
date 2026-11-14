@@ -1,5 +1,7 @@
 # System Patterns & Architectural Invariants: ARES-Health
 
+> Current evidence status (#12): implemented scenario models and configured policies are illustrative/unvalidated. Earlier claims of calibrated risk, clinically verified equations, certification or guaranteed forecast coverage are not established. See [MODEL_EVIDENCE_AUDIT.md](../docs/architecture/MODEL_EVIDENCE_AUDIT.md). Numerical behavior and treatment policies are unchanged by this audit.
+
 ## 1. Core Architectural Topology (Dual-Transport Safe Rust + React 3D Cockpit)
 ARES-Health decouples deterministic physiological computation from visual rendering and natural-language explanation:
 
@@ -17,8 +19,8 @@ ARES-Health decouples deterministic physiological computation from visual render
 |                    ARES-ENGINE (7-Crate Modular Safe Rust Workspace)                |
 |  1. ares-core-types         (Shared Telemetry Schema, Units, Privacy & Audit Traits)|
 |  2. ares-telemetry-ingest   (Ring Buffer, Radar/Vocal DSP, CANS Neutron, SQI>=0.70) |
-|  3. ares-causal-graph       (ADHG petgraph, Frost-Hargens ODEs, Shear tau_w, POCUS) |
-|  4. ares-nqs-stl            (O(1) Lemire Wedge NQS-STL rho_hat, EWMA-OLS TTV, MRI)  |
+|  3. ares-causal-graph       (ADHG + ARES-HyperGraph + 24-Dataset Graph, RK4, POCUS) |
+|  4. ares-nqs-stl            (O(1) Lemire Wedge NQS-STL + Timestral Grey-Box Cones)  |
 |  5. ares-medops-playbooks   (Playbooks #01-#05 DAGs + 3 Hard Clinical Safety Gates) |
 |  6. ares-security-privacy   (Role-Based Crew Privacy Tiers, SHA-256 Audit, AEAD DSN)|
 |  7. ares-server-cli         (Concurrent Tokio axum WebSocket + stdio FastMCP <150t) |
@@ -55,3 +57,18 @@ Between episodic weekly ultrasound scans, latent states $\hat{z}_k(t)$ evolve vi
 
 ### Invariant 6: Crew Privacy Governance (`NASA-STD-3001 Vol. 1 Ch. 7`)
 Behavioral, vocal, and raw medical logs are partitioned into three cryptographic access views (`PrivateAstronautView`, `CmoMedicalView`, `FlightSurgeonStoreAndForwardPacket`), ensuring psychological safety inside a confined 4-person habitat.
+
+### Invariant 7: Grey-Box Neuro-Mechanistic `Timestral` Forecasting & Non-Crossing Quantile Cones (`Blocco H`, `Fasi 15–17`)
+* Mechanistic ODEs (`Frost-Hargens RK4` + `Poiseuille tau_w`) remain primary for baseline drift and Hard Safety Gates, while Pure-Rust `Timestral` models multivariate stochastic residuals with explicit `[scaled_values, missing_mask]` dual patching (never imputing `Option<f64>::None` as false zeros).
+* `MonotoneQuantileHead` enforces $q_{0.05} \le q_{0.50} \le q_{0.95}$ algebraically via triangular $\operatorname{softplus}$ accumulation, coupled with an adaptive `ConformalAbstentionGate` (`SQI >= 0.70`, `missing_ratio <= 0.40`).
+* The `1 Hz` async forecaster publishes `Arc<NqsQuantileForecastSnapshot>` to the `20 Hz` hot-path via a lock-free `~180 ns` bridge, keeping the `20 Hz` tick at `< 70 µs << 150 µs`.
+
+### Invariant 8: Three-Layer `ARES-HyperGraph` & 24-Dataset `ARES-DatasetGraph` (`Blocco I`, `Fasi 18–20`)
+* **Layer 1 (`ADHG` + Welford Compactor):** Online Welford `LongitudinalSuperNode` coarsening compacts 900 Martian flight days into `< 200 KB` RAM.
+* **Layer 2 (`ARES-SpatialGraph`):** Connects the 4 canonical 3D Anatomical Regions (driving the Cockpit 3D Body Heatmap) and the 6 Spacecraft Habitat Zones governed by conjunctive Q-STL `HabitatZoneDeonticPolicy` and Dirichlet-Multinomial Markov $D_{\text{KL}}$ anomaly detection.
+* **Layer 3 (`ARES-BioKG` & `ARES-DatasetGraph`):** Stack-allocated `16-byte #[repr(C)] BiomedicalEvidenceDescriptor`, Noisy-OR `EpistemicProvenance`, `ClinicalAnswerabilityGate`, and the Hybrid Dual-Representation `ARES-DatasetGraph` (`14,623` nodes, `112,400` edges, `~8.4 MB` RAM + `data/knowledge_graph/ares_dataset_graph.json` compatible with `/graphify` and `FastMCP` `< 150 tokens`).
+
+### Invariant 9: Dual-Transport Zero-Copy IPC & `ARES-MedOS` Partitioning (`Blocco J`, `Fasi 21–24`)
+* **Binary Telemetry Contract (`BinaryTelemetryFrame`, `128 B` `#[repr(C, align(64))]`):** Hot numeric vitals, `NQS-STL` margins, and clinical safety flags are packed into two 64-byte cache lines with `validity_mask: u32` and `FLAG_BEAT_INTERVALS_NOT_AVAILABLE` / `FLAG_ILLUSTRATIVE_UNVALIDATED`, guaranteeing that `Option<f64>::None` channels (`rmssd_ms`, missing BIDMC `PULSE`/`SpO2`) remain `null` across both Rust and TypeScript `DataView` decoders and are never coerced to `0.0`.
+* **ARINC-653 Lock-Free Partitioning:** `SeqlockTelemetryRing<N>` (`< 100 ns` SPMC) and optional `--features shm-ipc` (`eclipse-iceoryx/iceoryx2` `ZeroCopySend` + `eclipse-zenoh/zenoh`) ensure the `1 Hz / 20 Hz` physiological producer never blocks or fails if the UI compositor crashes.
+* **Dual-Mode Preservation:** `crates/ares-desktop-os` (`Tauri v2` `Channel<Response>` `< 0.05 ms`, `~30–50 MB` RAM, air-gapped CSP `default-src 'self'`) embeds `SharedMissionState` in-process while keeping `127.0.0.1:8080` WebSocket/REST and `useTelemetry.ts` `BROWSER_WEBSOCKET` fallback 100% operational. Tier B/C targets map to `Asterinas` Framekernel (`14.0%` TCB), `cosmic-comp` Wayland Kiosk (`120 Hz` `wgpu`), and `Oxide Hubris` / `Embassy` `32 B` `CRC-16-CCITT` `WearableSensorPacket` framing.
