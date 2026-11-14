@@ -1,0 +1,211 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ARESHealthTelemetryPacket",
+  "description": "Standardized biometric and environmental telemetry packet transmitted at 20 Hz from ares-engine (Safe Rust) to ares-cockpit (React / Three.js) and local MCP agents.",
+  "type": "object",
+  "required": [
+    "timestamp_ms",
+    "mission_elapsed_days",
+    "astronaut_id",
+    "biometrics",
+    "hemodynamics",
+    "musculoskeletal",
+    "environment",
+    "safety_margins"
+  ],
+  "properties": {
+    "timestamp_ms": {
+      "type": "integer",
+      "description": "Unix timestamp in milliseconds of sample acquisition."
+    },
+    "mission_elapsed_days": {
+      "type": "number",
+      "description": "Elapsed days since deep-space transit departure (Earth-Mars transit day 1 to 1000)."
+    },
+    "astronaut_id": {
+      "type": "string",
+      "enum": ["ASTRO-01", "ASTRO-02", "ASTRO-03", "ASTRO-04"],
+      "description": "Identifier of the crew member monitored."
+    },
+    "biometrics": {
+      "type": "object",
+      "required": ["heart_rate_bpm", "hrv_rmssd_ms", "spo2_percent", "core_temp_celsius", "respiration_rate_brpm"],
+      "properties": {
+        "heart_rate_bpm": {
+          "type": "number",
+          "minimum": 30.0,
+          "maximum": 220.0,
+          "description": "Instantaneous heart rate in beats per minute."
+        },
+        "rr_interval_ms": {
+          "type": "number",
+          "minimum": 250.0,
+          "maximum": 2000.0,
+          "description": "R-to-R wave interval in milliseconds."
+        },
+        "hrv_rmssd_ms": {
+          "type": "number",
+          "minimum": 5.0,
+          "maximum": 150.0,
+          "description": "Root mean square of successive differences for autonomic tone."
+        },
+        "spo2_percent": {
+          "type": "number",
+          "minimum": 70.0,
+          "maximum": 100.0,
+          "description": "Blood oxygen saturation percentage."
+        },
+        "core_temp_celsius": {
+          "type": "number",
+          "minimum": 34.0,
+          "maximum": 42.0,
+          "description": "Core body temperature (elevated in spaceflight-associated fever)."
+        },
+        "respiration_rate_brpm": {
+          "type": "number",
+          "minimum": 6.0,
+          "maximum": 45.0,
+          "description": "Respiration rate in breaths per minute."
+        }
+      }
+    },
+    "hemodynamics": {
+      "type": "object",
+      "required": ["ijv_csa_cm2", "ijv_velocity_max_cm_s", "wall_shear_stress_dyn_cm2", "thrombosis_risk_score"],
+      "properties": {
+        "ijv_csa_cm2": {
+          "type": "number",
+          "minimum": 0.2,
+          "maximum": 6.0,
+          "description": "Internal Jugular Vein Cross-Sectional Area in cm^2 (normal 0.8-1.5, deconditioned >2.5)."
+        },
+        "ijv_velocity_max_cm_s": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 100.0,
+          "description": "Peak systolic/mean blood flow velocity in cm/s (stasis <5.0)."
+        },
+        "wall_shear_stress_dyn_cm2": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 50.0,
+          "description": "Endothelial wall shear stress in dyn/cm^2 (normal 8-15, critical prothrombotic collapse <4.0)."
+        },
+        "thrombosis_risk_score": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Virchow's Triad probability score computed by ADHG causal graph."
+        }
+      }
+    },
+    "musculoskeletal": {
+      "type": "object",
+      "required": ["soleus_thickness_mm", "pennation_angle_deg", "bone_resorption_rate_pct", "mechanotransductive_index"],
+      "properties": {
+        "soleus_thickness_mm": {
+          "type": "number",
+          "minimum": 5.0,
+          "maximum": 25.0,
+          "description": "Ultrasound soleus muscle thickness in mm (atrophy <11.0)."
+        },
+        "pennation_angle_deg": {
+          "type": "number",
+          "minimum": 8.0,
+          "maximum": 35.0,
+          "description": "Fascicle pennation angle in degrees (loss of architectural force transmission <13.0)."
+        },
+        "bone_resorption_rate_pct": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 5.0,
+          "description": "Monthly rate of trabecular bone mineral density loss."
+        },
+        "mechanotransductive_index": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "Daily normalized strain stimulus from ARED exercise loading."
+        }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "required": ["cabin_co2_ppm", "ambient_radiation_rate_ugy_h", "cumulative_radiation_mgy"],
+      "properties": {
+        "cabin_co2_ppm": {
+          "type": "number",
+          "minimum": 300.0,
+          "maximum": 10000.0,
+          "description": "Cabin carbon dioxide partial pressure in ppm."
+        },
+        "cabin_o2_kpa": {
+          "type": "number",
+          "minimum": 15.0,
+          "maximum": 25.0,
+          "description": "Cabin oxygen partial pressure in kPa."
+        },
+        "ambient_radiation_rate_ugy_h": {
+          "type": "number",
+          "minimum": 5.0,
+          "maximum": 50000.0,
+          "description": "Instantaneous dosimeter reading in microGray per hour."
+        },
+        "cumulative_radiation_mgy": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 2000.0,
+          "description": "Total mission accumulated ionizing radiation dose in milliGray."
+        }
+      }
+    },
+    "safety_margins": {
+      "type": "object",
+      "required": ["med_stl_rho_robustness", "time_to_violation_days", "mission_readiness_index", "alarm_level"],
+      "properties": {
+        "med_stl_rho_robustness": {
+          "type": "number",
+          "description": "Normalized Quantitative Satisfaction (NQS-STL) degree in (-inf, +1.0]. Positive is safe, negative is violated."
+        },
+        "time_to_violation_days": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 100.0,
+          "description": "Estimated remaining days before critical safety envelope violation."
+        },
+        "mission_readiness_index": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 100.0,
+          "description": "Composite score of EVA/landing physical readiness (0 to 100)."
+        },
+        "alarm_level": {
+          "type": "string",
+          "enum": ["NOMINAL", "ADVISORY", "WARNING", "CRITICAL"],
+          "description": "Automated alarm tier according to NASA flight medical rules."
+        }
+      }
+    },
+    "active_playbook": {
+      "type": "object",
+      "properties": {
+        "playbook_id": {
+          "type": "string",
+          "description": "Identifier of active clinical guideline, e.g. MEDOPS-PB-04-JUGULAR-STASIS."
+        },
+        "current_step": {
+          "type": "integer",
+          "description": "Index of current instruction step."
+        },
+        "total_steps": {
+          "type": "integer",
+          "description": "Total number of steps in active protocol."
+        },
+        "step_instruction": {
+          "type": "string",
+          "description": "Actionable medical instruction presented to crew."
+        }
+      }
+    }
+  }
+}

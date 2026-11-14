@@ -1,0 +1,9 @@
+# .cursorrules: Cursor Configuration for ARES-Health
+# Universal Agent Rules: Refer to AGENTS.md
+
+- Strict Invariant: 100% offline edge-native execution. Zero external cloud API calls.
+- Strict Invariant: ZERO EMOJIS in any file, comment, or message.
+- Mathematical rigor: Wall shear stress tau_w in dyn/cm2, mechanical strain in microstrain, NQS-STL robustness in (-inf, +1.0].
+- Safe Rust (ares-engine): Tokio async concurrency, Arc<RwLock<MissionState>>, dual-transport (axum 127.0.0.1:8080 + stdio FastMCP). No unwrap() in library code.
+- Cockpit (ares-cockpit): React + TypeScript + Tailwind CSS (OLED dark theme #000000) + Three.js / React-Three-Fiber 3D.
+- Skills available in .agents/skills/ (deep-scholar, rust-pro, frontend-design, git-standard).

@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 320" width="100%" height="100%" style="background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <defs>
+    <filter id="shadow-c" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#0f172a" flood-opacity="0.08" />
+    </filter>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#dc2626" />
+    </marker>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#0284c7" />
+    </marker>
+  </defs>
+
+  <rect x="260" y="12" width="400" height="30" rx="15" fill="#0f172a" />
+  <text x="460" y="32" text-anchor="middle" fill="#ffffff" font-size="12" font-weight="700" letter-spacing="1">CASCATA FISIOPATOLOGICA ACCOPPIATA (GRAFO ADHG)</text>
+
+  <!-- Row 1: Muscle and Bone -->
+  <!-- Box A: Microgravity -->
+  <g transform="translate(30, 60)" filter="url(#shadow-c)">
+    <rect width="180" height="90" rx="10" fill="#ffffff" stroke="#64748b" stroke-width="2" />
+    <rect width="180" height="26" rx="10" fill="#f1f5f9" />
+    <path d="M 0 16 L 0 26 L 180 26 L 180 16 Z" fill="#f1f5f9" />
+    <text x="90" y="18" text-anchor="middle" fill="#334155" font-size="11" font-weight="700">Microgravita' (0g)</text>
+    <text x="12" y="46" fill="#0f172a" font-size="10.5" font-weight="600">Assenza carico posturale</text>
+    <text x="12" y="62" fill="#64748b" font-size="9.5">Disuso muscolare</text>
+    <text x="12" y="78" fill="#64748b" font-size="9.5">Scarico meccanico cronico</text>
+  </g>
+
+  <!-- Arrow A -> B -->
+  <line x1="220" y1="105" x2="250" y2="105" stroke="#dc2626" stroke-width="2.5" marker-end="url(#arrow-red)" />
+
+  <!-- Box B: Sarcopenia -->
+  <g transform="translate(260, 60)" filter="url(#shadow-c)">
+    <rect width="190" height="90" rx="10" fill="#ffffff" stroke="#ea580c" stroke-width="2" />
+    <rect width="190" height="26" rx="10" fill="#ffedd5" />
+    <path d="M 0 16 L 0 26 L 190 26 L 190 16 Z" fill="#ffedd5" />
+    <text x="95" y="18" text-anchor="middle" fill="#c2410c" font-size="11" font-weight="700">Atrofia Soleo / Polpaccio</text>
+    <text x="12" y="46" fill="#0f172a" font-size="10.5" font-weight="600">-1.5% spessore / mese</text>
+    <text x="12" y="62" fill="#c2410c" font-size="9.5" font-weight="600">Crollo Irisina circolante</text>
+    <text x="12" y="78" fill="#64748b" font-size="9.5">Perdita secretoma miR-126</text>
+  </g>
+
+  <!-- Arrow B -> C -->
+  <line x1="460" y1="105" x2="490" y2="105" stroke="#dc2626" stroke-width="2.5" marker-end="url(#arrow-red)" />
+
+  <!-- Box C: Bone Osteopenia -->
+  <g transform="translate(500, 60)" filter="url(#shadow-c)">
+    <rect width="190" height="90" rx="10" fill="#ffffff" stroke="#b45309" stroke-width="2" />
+    <rect width="190" height="26" rx="10" fill="#fef3c7" />
+    <path d="M 0 16 L 0 26 L 190 26 L 190 16 Z" fill="#fef3c7" />
+    <text x="95" y="18" text-anchor="middle" fill="#92400e" font-size="11" font-weight="700">Osteopenia &amp; Sclerostina</text>
+    <text x="12" y="46" fill="#0f172a" font-size="10.5" font-weight="600">Modello Frost-Hargens ODE</text>
+    <text x="12" y="62" fill="#92400e" font-size="9.5" font-weight="600">Perdita BMD Calcagno e L1-L4</text>
+    <text x="12" y="78" fill="#64748b" font-size="9.5">Ipercalciuria (rischio calcoli)</text>
+  </g>
+
+  <!-- Arrow C -> D (downwards) -->
+  <line x1="595" y1="160" x2="595" y2="195" stroke="#dc2626" stroke-width="2.5" marker-end="url(#arrow-red)" />
+
+  <!-- Row 2: Hemodynamics and Thrombosis -->
+  <!-- Box D: Venous Compliance Loss -->
+  <g transform="translate(500, 205)" filter="url(#shadow-c)">
+    <rect width="190" height="95" rx="10" fill="#ffffff" stroke="#0284c7" stroke-width="2" />
+    <rect width="190" height="26" rx="10" fill="#e0f2fe" />
+    <path d="M 0 16 L 0 26 L 190 26 L 190 16 Z" fill="#e0f2fe" />
+    <text x="95" y="18" text-anchor="middle" fill="#0369a1" font-size="11" font-weight="700">Perdita Capacitanza Crurale</text>
+    <text x="12" y="46" fill="#0f172a" font-size="10.5" font-weight="600">Collasso seni venosi soleo</text>
+    <text x="12" y="62" fill="#0369a1" font-size="9.5" font-weight="600">~2 Litri fluidi verso la testa</text>
+    <text x="12" y="78" fill="#64748b" font-size="9.5">Ipervolemia toraco-cefalica</text>
+  </g>
+
+  <!-- Arrow D -> E (leftwards) -->
+  <line x1="490" y1="252" x2="460" y2="252" stroke="#dc2626" stroke-width="2.5" marker-end="url(#arrow-red)" />
+
+  <!-- Box E: Jugular Stasis -->
+  <g transform="translate(260, 205)" filter="url(#shadow-c)">
+    <rect width="190" height="95" rx="10" fill="#ffffff" stroke="#7c3aed" stroke-width="2" />
+    <rect width="190" height="26" rx="10" fill="#f3e8ff" />
+    <path d="M 0 16 L 0 26 L 190 26 L 190 16 Z" fill="#f3e8ff" />
+    <text x="95" y="18" text-anchor="middle" fill="#6d28d9" font-size="11" font-weight="700">Stasi Giugulare Interna (IJV)</text>
+    <text x="12" y="46" fill="#0f172a" font-size="10.5" font-weight="600">IJV-CSA &gt; 2.5 cm² (sovradistesa)</text>
+    <text x="12" y="62" fill="#6d28d9" font-size="9.5" font-weight="600">Flusso lento v &lt; 5 cm/s</text>
+    <text x="12" y="78" fill="#dc2626" font-size="9.5" font-weight="700">tau_w &lt; 4.0 dyn/cm² (critico)</text>
+  </g>
+
+  <!-- Arrow E -> F (leftwards) -->
+  <line x1="250" y1="252" x2="220" y2="252" stroke="#dc2626" stroke-width="2.5" marker-end="url(#arrow-red)" />
+
+  <!-- Box F: Thrombosis Risk -->
+  <g transform="translate(30, 205)" filter="url(#shadow-c)">
+    <rect width="180" height="95" rx="10" fill="#ffffff" stroke="#dc2626" stroke-width="2.5" />
+    <rect width="180" height="26" rx="10" fill="#fee2e2" />
+    <path d="M 0 16 L 0 26 L 180 26 L 180 16 Z" fill="#fee2e2" />
+    <text x="90" y="18" text-anchor="middle" fill="#b91c1c" font-size="11" font-weight="700">Rischio Trombosi Venosa</text>
+    <text x="12" y="46" fill="#b91c1c" font-size="10.5" font-weight="700">TRIADE DI VIRCHOW</text>
+    <text x="12" y="62" fill="#334155" font-size="9.5">Stasi + Danno Endoteliale</text>
+    <text x="12" y="78" fill="#dc2626" font-size="9.5" font-weight="600">TTV residuo: 11-14 giorni</text>
+  </g>
+</svg>
