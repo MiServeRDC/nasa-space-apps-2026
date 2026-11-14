@@ -29,5 +29,5 @@
 1. **`@fabiomalagutti27-droid`:** Initialize `crates/ares-core-types`, `crates/ares-causal-graph`, and `crates/ares-nqs-stl`.
 2. **`@MiServeRDC`:** Initialize `crates/ares-security-privacy` (role-based crew privacy views, SHA-256 hash-chain audit logger for MedOps overrides, ChaCha20-Poly1305 Store-and-Forward DSN packet encryption).
 3. **`@LelloXV`:** Initialize `crates/ares-telemetry-ingest` (ring buffer, Doppler radar + vocal DSP simulation, `CSA CANS` radiation stream, spectral entropy `SQI` filter).
-4. **`@carolina2910`:** Initialize `ares-cockpit/` (React + Tailwind OLED `#000000` layout, Tri-Phase Header, 3D Anatomical Heatmap, What-If Stress-Test Console sliders).
+4. **`@carolina2910`:** `ares-cockpit/` v0.1 scaffolded on `work/carolina2910` (Vite + React 19 + TS + Tailwind v4 + R3F): Tri-Phase Header with OWLT simulator, MRI gauge + NQS-STL chart with 1.96 sigma band and TTV, 3D wireframe heatmap with causal arcs, What-If console with LBNP auto-vent (Gate 2), Playbook #04/#05 runner with anticoagulation lock (Gate 1), WebSocket client to `127.0.0.1:8080/ws` with offline local-simulation fallback. Next: `npm install` + build verification, align WS frame format with `@fertech02`.
 5. **`@fertech02`:** Initialize `crates/ares-medops-playbooks` and `crates/ares-server-cli` (`axum` $20\text{ Hz}$ WebSocket + `stdio` FastMCP server).

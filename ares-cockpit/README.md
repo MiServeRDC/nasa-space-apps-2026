@@ -9,3 +9,27 @@
 3. `body-3d-heatmap/`: Interactive `Three.js` / `@react-three/fiber` 3D anatomical mesh highlighting Soleus $\text{MQI}$, Calcaneus/Femoral `SOST` osteopenia, Jugular $\tau_w$ stasis, and Optic $\text{ONSD}$ SANS with causal bezier arcs.
 4. `playbook-runner/`: Deterministic NASA MedOps Playbook #04 & #05 interactive DAG runner with visible Hard Clinical Safety Gate lock badges.
 5. `whatif-console/`: Live `< 1 ms` What-If Stress-Test sliders (`ppCO2`, `ARED Load`, `LBNP Pressure`, `Mission Day`) + bottom voice/text Local FastMCP AI Copilot bar.
+
+
+## Quickstart
+
+Requires Node.js 20+ (`winget install OpenJS.NodeJS.LTS`).
+
+```bash
+cd ares-cockpit
+npm install
+npm run dev      # http://127.0.0.1:5173
+npm run lint     # TypeScript strict type-check
+npm run build
+```
+
+## Data Flow
+
+* `src/lib/useTelemetry.ts` connects to `ws://127.0.0.1:8080/ws` (`ares-server-cli`). Incoming frames must match `contracts/telemetry_schema.json` (mirrored in `src/types/telemetry.ts`). What-If slider changes are sent back as `{ "type": "what_if", ... }`.
+* When the engine is offline the cockpit falls back to `src/lib/scenario.ts`, a deterministic local preview model. Every value it produces is tagged `SIMULATED_SCENARIO_INPUT` / `DERIVED_COMPUTED`; the authoritative evaluators remain in `ares-causal-graph` and `ares-nqs-stl`.
+* Null channels are rendered as `UNAVAILABLE`, never coerced to 0 (experienceLog Entry 006).
+
+## Safety Gates in the UI
+
+* Gate 1: Playbook #05 anticoagulation step stays LOCKED unless the POCUS finding is `CONFIRMED`.
+* Gate 2: LBNP auto-vents to 0 mmHg when SBP drops > 15 mmHg or HR > 115 bpm, with an `AUTO_VENT_LBNP_CHAMBER` alert.
