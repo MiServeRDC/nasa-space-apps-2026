@@ -1,0 +1,17 @@
+---
+description: Scoped rules for Astronaut Cockpit frontend development (ares-cockpit)
+globs: ares-cockpit/**, *.tsx, *.ts, package.json
+---
+
+# Frontend Cockpit Engineering Rules (ares-cockpit)
+
+1. Ergonomics: Strictly pure black OLED theme (`#000000`) with high contrast (Emerald green for nominal, Amber for warning, Red for critical violation).
+2. Human Factors: Minimum touch target size $48 \times 48\text{ px}$. Minimum font size $14\text{ px}$.
+3. Header: Always display the tri-phase status bar: `[1. GATHER] -> [2. EVALUATE] -> [3. ACT]`.
+4. WebSocket Communication: Connect to `ws://127.0.0.1:8080/ws` with automatic reconnection backoff. Process 20 Hz state updates.
+5. 3D WebGL Visualization:
+   - Use `pmndrs/react-three-fiber` and `three.js`.
+   - Wireframe holographic human mesh with 5 emissive organ nodes (Skull, Neck, Chest, Calf, Calcaneus) mapped to normalized STL margins.
+   - Animated dynamic Bezier causal arcs.
+6. Playbook Execution:
+   - Enforce hard safety gates (anticoagulation lockout on isolated stasis; LBNP auto-vent on systolic drop > 15 mmHg).

@@ -6,11 +6,30 @@ Reviewed November 13, 2026. This list supports preparation; it does not prescrib
 
 - [Challenge statement](https://www.spaceappschallenge.org/2026/challenges/health-monitoring-software/)
 - [Challenge resources](https://www.spaceappschallenge.org/2026/challenges/health-monitoring-software/?tab=resources)
+- [Official Project Submission Guide](https://www.spaceappschallenge.org/resources/project-submission-guide/)
 - [NASA: five hazards of human spaceflight](https://www.nasa.gov/hrp/hazards/)
 - [NASA: human spaceflight risks](https://www.nasa.gov/hrp/risks/)
+<<<<<<< HEAD
 - [NASA: ongoing HRP research](https://www.nasa.gov/hrp/ongoing-hrp-research/)
 - [Monitoring Radiation for Astronaut Health](https://www.asc-csa.gc.ca/eng/news/articles/2026/2026-02-26-monitoring-radiation-astronaut-health.asp)
 - [Why do we conduct science experiments in space?](https://www.asc-csa.gc.ca/eng/iss/science/why-do-we-conduct-science-experiments-in-space.asp)
+=======
+- [NASA: ongoing HRP research (`ARCHeR`, `Venous Haemostasis`, `Zero T2`, `CIPHER`, `Thigh Cuff`, `B-Complex`)](https://www.nasa.gov/hrp/ongoing-hrp-research/)
+- [NASA OSDR Federated Multi-Agency Search (`cgene`, `alsda`, `esa`: `OSD-51`, `OSD-195`, `OSD-570/571`, `OSD-818`)](https://osdr.nasa.gov/bio/repo/search?q=&data_source=cgene,alsda,esa&data_type=study)
+- [NASA Life Sciences Portal (NLSP) — Experiments Explorer (`FAP`, `SMCCP`, `BRSMFSR`, `BRSMPT`)](https://nlsp.nasa.gov/explore?dataType=EXPERIMENTS&sortBy=dateAdded_desc&page=1&limit=25&view=table)
+- [NASA Open Data Portal Catalog for NLSP (`NASA-0000100`)](https://data.nasa.gov/dataset/nasa-life-sciences-portal-nlsp)
+- [NASA Lifetime Surveillance of Astronaut Health (`LSAH`)](https://nlsp.nasa.gov/resources/lsah)
+- [NASA-STD-3001 Volume 1 Rev C: Crew Health (`[V1 3001]–[V1 4001]`)](https://standards.nasa.gov/standard/NASA/NASA-STD-3001_VOL_1) and [NASA Reference Page](https://www.nasa.gov/reference/nasa-std-3001v1/)
+- [NASA-STD-3001 Volume 2 Rev F (Jul 2026): Human Factors, Habitability, and Environmental Health (`[V2 6001]–[V2 10001]`)](https://standards.nasa.gov/standard/NASA/NASA-STD-3001_VOL_2)
+- [CSA CANS (Feb 26, 2026): Monitoring Radiation for Astronaut Health (Canadian Active Neutron Spectrometer)](https://www.asc-csa.gc.ca/eng/news/articles/2026/2026-02-26-monitoring-radiation-astronaut-health.asp)
+- [CSA ISS Science: Accelerated Aging, `Bio-Monitor`, `Vascular Aging` & `MARROW`](https://www.asc-csa.gc.ca/eng/iss/science/why-do-we-conduct-science-experiments-in-space.asp)
+- [ESA `Myotones` (Sept 2026, ISS Expedition 75) & `BRACE` 60-Day HDBR](https://www.esa.int/ESA_Multimedia/Images/2026/09/Myotones_Studying_muscle_adaptation_to_weightlessness)
+- [NASA `CHAPEA` 378-Day Mars Habitat Simulation (Missions 1 & 2)](https://www.nasa.gov/humans-in-space/chapea/) and [NASA `HERA`](https://www.nasa.gov/mission/hera/)
+- [DLR `:envihab` Joint NASA-ESA-DLR `AGBRESA` & `SANS-CM` Bed Rest Studies](https://www.nasa.gov/mission/envihab/)
+- [NASA TRISH `EXPAND` Commercial Spaceflight Database & `HERMES` Platform (Opened March 2026)](https://www.nasa.gov/hrp/the-translational-research-institute-for-space-health-trish/)
+- [Joint NASA-JAXA `Bisphosphonates` Bone Loss Countermeasure Study](https://humans-in-space.jaxa.jp/en/biz-lab/experiment/theme/detail/000626.html)
+- [PhysioNet `CEBS` (ECG, Breathing & Seismocardiograms) & `Fantasia`](https://physionet.org/content/cebsdb/1.0.0/)
+>>>>>>> 1c39c9ec77a73002c463c9af162953f9fca33626
 
 ## Papers
 

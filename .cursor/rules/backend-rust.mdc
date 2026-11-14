@@ -1,0 +1,24 @@
+---
+description: Scoped rules for Rust backend engine development (ares-engine)
+globs: ares-engine/**, src/**, Cargo.toml
+---
+
+# Rust Backend Engineering Rules (ares-engine)
+
+1. Follow Safe Rust 2024 idioms. No `unsafe` code unless strictly audited and documented.
+2. Thread concurrency: Use `tokio` async runtime with `Arc<RwLock<MissionState>>` for shared state.
+3. Transport separation:
+   - WebSocket streaming at 20 Hz on `127.0.0.1:8080` via `axum`.
+   - `stdio` JSON-RPC dedicated to FastMCP macro-tools (< 150 tokens) for local AI copilot.
+4. Mathematical consistency:
+   - Wall shear stress: `tau_w = 2.0 * mu * v_max * (std::f32::consts::PI / csa).sqrt()` in dyn/cm2.
+   - Sclerostin ODE: Include Frost Mechanostat threshold (1000 microstrain) and first-order clearance term.
+   - NQS-STL: Evaluate normalized margins in $O(1)$ amortized time using monotonic sliding windows.
+5. Error handling:
+   - Zero panics: No `.unwrap()` or `.expect()` in non-test code. Use `thiserror` for internal errors and `anyhow::Result` in CLI binaries.
+6. Verify with:
+   ```bash
+   cargo check --workspace
+   cargo test --workspace -- --nocapture
+   cargo clippy --workspace -- -D warnings
+   ```

@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 480" width="100%" height="100%" style="background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <defs>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#0f172a" flood-opacity="0.08" />
+    </filter>
+    <marker id="arrow-down" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#0284c7" />
+    </marker>
+    <marker id="arrow-up" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#0284c7" />
+    </marker>
+    <marker id="arrow-purple-down" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#7c3aed" />
+    </marker>
+    <marker id="arrow-purple-up" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#7c3aed" />
+    </marker>
+  </defs>
+
+  <!-- Title Badge -->
+  <rect x="250" y="15" width="400" height="34" rx="17" fill="#0f172a" />
+  <text x="450" y="37" text-anchor="middle" fill="#ffffff" font-size="13" font-weight="700" letter-spacing="1.5">ARES-HEALTH DUAL-TRANSPORT TOPOLOGY</text>
+
+  <!-- Box 1: Astronaut Cockpit (Top Left) -->
+  <g transform="translate(40, 70)" filter="url(#shadow)">
+    <rect width="380" height="130" rx="12" fill="#ffffff" stroke="#0284c7" stroke-width="2" />
+    <rect width="380" height="36" rx="12" fill="#e0f2fe" />
+    <path d="M 0 24 L 0 36 L 380 36 L 380 24 Z" fill="#e0f2fe" />
+    <text x="20" y="24" fill="#0369a1" font-size="14" font-weight="700">ASTRONAUT COCKPIT (UI Layer)</text>
+    <text x="360" y="24" text-anchor="end" fill="#0284c7" font-size="11" font-weight="600">PORT 8080</text>
+    
+    <text x="20" y="58" fill="#0f172a" font-size="12" font-weight="600">React 19 • TypeScript • Tailwind CSS • Three.js WebGL</text>
+    <text x="20" y="78" fill="#475569" font-size="11">• OLED Dark-Theme (#000000) ergonomico per microgravita'</text>
+    <text x="20" y="96" fill="#475569" font-size="11">• Console What-If Stress-Test con 4 slider tempo reale (&lt;1 ms)</text>
+    <text x="20" y="114" fill="#475569" font-size="11">• Runner MedOps Playbook con overlay guida ecografica POCUS</text>
+  </g>
+
+  <!-- Box 2: Local AI Copilot (Top Right) -->
+  <g transform="translate(480, 70)" filter="url(#shadow)">
+    <rect width="380" height="130" rx="12" fill="#ffffff" stroke="#7c3aed" stroke-width="2" />
+    <rect width="380" height="36" rx="12" fill="#f3e8ff" />
+    <path d="M 0 24 L 0 36 L 380 36 L 380 24 Z" fill="#f3e8ff" />
+    <text x="20" y="24" fill="#6d28d9" font-size="14" font-weight="700">ON-BOARD EDGE AI COPILOT</text>
+    <text x="360" y="24" text-anchor="end" fill="#7c3aed" font-size="11" font-weight="600">STDIO PIPELINE</text>
+    
+    <text x="20" y="58" fill="#0f172a" font-size="12" font-weight="600">Quantized Local LLM (llama.cpp / Ollama)</text>
+    <text x="20" y="78" fill="#475569" font-size="11">• 100% Offline • Zero Dipendenze Cloud • Air-Gapped</text>
+    <text x="20" y="96" fill="#475569" font-size="11">• Macro-Tool FastMCP compatti (&lt;150 token di contesto)</text>
+    <text x="20" y="114" fill="#475569" font-size="11">• Zero Allucinazioni: ancorato al grafo causale matematico</text>
+  </g>
+
+  <!-- Interconnect Pipes / Arrows -->
+  <!-- Left pipe -->
+  <line x1="230" y1="205" x2="230" y2="250" stroke="#0284c7" stroke-width="2.5" marker-end="url(#arrow-down)" />
+  <line x1="235" y1="250" x2="235" y2="205" stroke="#0284c7" stroke-width="2.5" marker-end="url(#arrow-up)" />
+  <rect x="110" y="214" width="240" height="24" rx="6" fill="#ffffff" stroke="#bae6fd" stroke-width="1.5" />
+  <text x="230" y="230" text-anchor="middle" fill="#0369a1" font-size="10.5" font-weight="700">20 Hz WebSocket + REST (axum)</text>
+
+  <!-- Right pipe -->
+  <line x1="670" y1="205" x2="670" y2="250" stroke="#7c3aed" stroke-width="2.5" marker-end="url(#arrow-purple-down)" />
+  <line x1="675" y1="250" x2="675" y2="205" stroke="#7c3aed" stroke-width="2.5" marker-end="url(#arrow-purple-up)" />
+  <rect x="555" y="214" width="235" height="24" rx="6" fill="#ffffff" stroke="#ddd6fe" stroke-width="1.5" />
+  <text x="672" y="230" text-anchor="middle" fill="#6d28d9" font-size="10.5" font-weight="700">JSON-RPC FastMCP (stdio Pipe)</text>
+
+  <!-- Box 3: Safe Rust Core Engine (Bottom Big Box) -->
+  <g transform="translate(40, 260)" filter="url(#shadow)">
+    <rect width="820" height="200" rx="14" fill="#ffffff" stroke="#0f172a" stroke-width="2.5" />
+    <rect width="820" height="42" rx="14" fill="#0f172a" />
+    <path d="M 0 28 L 0 42 L 820 42 L 820 28 Z" fill="#0f172a" />
+    <text x="24" y="27" fill="#ffffff" font-size="15" font-weight="700">ARES-ENGINE (Safe Rust Core Binary • Tokio Runtime)</text>
+    <text x="796" y="27" text-anchor="end" fill="#38bdf8" font-size="12" font-weight="600">Arc&lt;RwLock&lt;MissionState&gt;&gt; • RAM &lt; 20 MB • Latenza &lt; 15 µs</text>
+    
+    <!-- 5 Internal Modules in columns -->
+    <!-- Mod 1: Telemetry -->
+    <g transform="translate(18, 56)">
+      <rect width="148" height="128" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+      <rect width="148" height="26" rx="8" fill="#e2e8f0" />
+      <path d="M 0 16 L 0 26 L 148 26 L 148 16 Z" fill="#e2e8f0" />
+      <text x="74" y="17" text-anchor="middle" fill="#0f172a" font-size="11" font-weight="700">telemetry.rs</text>
+      <text x="8" y="44" fill="#334155" font-size="9.5" font-weight="600">• Multi-Rate Ring Buffer</text>
+      <text x="8" y="60" fill="#64748b" font-size="9">(ECG 100Hz, Radar 20Hz)</text>
+      <text x="8" y="80" fill="#334155" font-size="9.5" font-weight="600">• Filtro SQI Spettrale</text>
+      <text x="8" y="96" fill="#64748b" font-size="9">Reiezione artefatti sudore</text>
+      <text x="8" y="116" fill="#334155" font-size="9.5" font-weight="600">• Notch Armonico ECLSS</text>
+    </g>
+
+    <!-- Mod 2: Graph -->
+    <g transform="translate(178, 56)">
+      <rect width="148" height="128" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+      <rect width="148" height="26" rx="8" fill="#e2e8f0" />
+      <path d="M 0 16 L 0 26 L 148 26 L 148 16 Z" fill="#e2e8f0" />
+      <text x="74" y="17" text-anchor="middle" fill="#0f172a" font-size="11" font-weight="700">graph.rs</text>
+      <text x="8" y="44" fill="#334155" font-size="9.5" font-weight="600">• Grafo Causale ADHG</text>
+      <text x="8" y="60" fill="#64748b" font-size="9">Topologia petgraph</text>
+      <text x="8" y="80" fill="#334155" font-size="9.5" font-weight="600">• ODE Frost-Hargens</text>
+      <text x="8" y="96" fill="#64748b" font-size="9">Sclerostina e atrofia</text>
+      <text x="8" y="116" fill="#334155" font-size="9.5" font-weight="600">• Shear Stress tau_w</text>
+    </g>
+
+    <!-- Mod 3: STL -->
+    <g transform="translate(338, 56)">
+      <rect width="148" height="128" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+      <rect width="148" height="26" rx="8" fill="#e2e8f0" />
+      <path d="M 0 16 L 0 26 L 148 26 L 148 16 Z" fill="#e2e8f0" />
+      <text x="74" y="17" text-anchor="middle" fill="#0f172a" font-size="11" font-weight="700">stl.rs</text>
+      <text x="8" y="44" fill="#334155" font-size="9.5" font-weight="600">• Monitor NQS-STL</text>
+      <text x="8" y="60" fill="#64748b" font-size="9">Scala rho in (-inf, +1]</text>
+      <text x="8" y="80" fill="#334155" font-size="9.5" font-weight="600">• Lemire Wedges O(1)</text>
+      <text x="8" y="96" fill="#64748b" font-size="9">Valutazione finestra STL</text>
+      <text x="8" y="116" fill="#334155" font-size="9.5" font-weight="600">• Stima TTV a 14 giorni</text>
+    </g>
+
+    <!-- Mod 4: Playbooks -->
+    <g transform="translate(498, 56)">
+      <rect width="148" height="128" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+      <rect width="148" height="26" rx="8" fill="#e2e8f0" />
+      <path d="M 0 16 L 0 26 L 148 26 L 148 16 Z" fill="#e2e8f0" />
+      <text x="74" y="17" text-anchor="middle" fill="#0f172a" font-size="11" font-weight="700">playbooks.rs</text>
+      <text x="8" y="44" fill="#334155" font-size="9.5" font-weight="600">• MedOps State Machine</text>
+      <text x="8" y="60" fill="#64748b" font-size="9">DAG clinici deterministici</text>
+      <text x="8" y="80" fill="#dc2626" font-size="9.5" font-weight="700">• Hard Safety Gate #1</text>
+      <text x="8" y="96" fill="#64748b" font-size="9">No anticoagulanti in stasi</text>
+      <text x="8" y="116" fill="#dc2626" font-size="9.5" font-weight="700">• Hard Safety Gate #2</text>
+    </g>
+
+    <!-- Mod 5: MCP -->
+    <g transform="translate(658, 56)">
+      <rect width="144" height="128" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5" />
+      <rect width="144" height="26" rx="8" fill="#e2e8f0" />
+      <path d="M 0 16 L 0 26 L 144 26 L 144 16 Z" fill="#e2e8f0" />
+      <text x="72" y="17" text-anchor="middle" fill="#0f172a" font-size="11" font-weight="700">mcp.rs</text>
+      <text x="8" y="44" fill="#334155" font-size="9.5" font-weight="600">• FastMCP Server</text>
+      <text x="8" y="60" fill="#64748b" font-size="9">JSON-RPC su stdio</text>
+      <text x="8" y="80" fill="#334155" font-size="9.5" font-weight="600">• 3 Macro-Tool</text>
+      <text x="8" y="96" fill="#64748b" font-size="9">get_mission_status</text>
+      <text x="8" y="110" fill="#64748b" font-size="9">explain_causal_path</text>
+      <text x="8" y="124" fill="#64748b" font-size="9">run_what_if_stress</text>
+    </g>
+  </g>
+</svg>
