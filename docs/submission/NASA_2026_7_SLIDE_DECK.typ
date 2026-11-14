@@ -156,7 +156,7 @@
             ],
             [
               #text(weight: "bold", fill: amber-warn, size: 8.5pt)[3. ACT] \
-              Type-1 MedOps Playbooks `#01-#05` (`< 20 us`) guarded by 3 Hard Clinical Safety Gates and FastMCP copilot.
+              15 MedOps Playbooks `#01-#15` (`< 20 us`) guarded by 4 Hard Clinical Safety Gates and FastMCP copilot.
             ],
           )
         ]
@@ -166,7 +166,7 @@
           columns: (1fr, 1fr),
           gutter: 6pt,
           kpi-box("ROUND-TRIP DELAY", "8 - 48 min", "Plus 14d blackout", red-crit),
-          kpi-box("RUST WORKSPACE", "8 Crates", "Safe Rust 2024, 0 panics", green-ok),
+          kpi-box("RUST WORKSPACE", "9 Crates", "Safe Rust 2024, 0 unsafe", green-ok),
           kpi-box("1-TICK PIPELINE", "5.58 us", "Release p99.9 latency", cyan-nom),
           kpi-box("SEQLOCK 128B IPC", "42.0 ns", "p50 zero-copy read", cyan-nom),
         )
@@ -308,34 +308,35 @@
 )
 
 // ============================================================================
-// SLIDE 5: ACT — TYPE-1 MEDOPS PLAYBOOKS & 3 HARD SAFETY GATES
+// SLIDE 5: ACT — 15 MEDOPS PLAYBOOKS & 4 HARD SAFETY GATES
 // ============================================================================
 #ares-slide(
   "SLIDE 05 | PILLAR 3: ACT",
-  "ACT: Deterministic Type-1 MedOps Playbooks & 3 Hard Safety Gates",
+  "ACT: 15 Deterministic MedOps Playbooks & 4 Hard Safety Gates",
   "Zero-LLM critical path (< 20 us DAG selection) enforcing physiological interlocks before countermeasure action",
   [
     #grid(
       columns: (1.05fr, 1fr),
       gutter: 10pt,
       [
-        #ares-card("5 Type-1 Crystallized Playbooks (ares-medops-playbooks)", "DETERMINISTIC DAG", cyan-nom)[
-          Compiled directly as pure-Rust state machines (`select_candidate_playbook`) grounded to `NASA-STD-3001` & `OCHMO MTB-007`:
-          #v(3pt)
-          - *Playbook #01 (`VENOUS_STASIS_LBNP`):* `-30 mmHg` LBNP (`45 min`) + calf contractions + bilateral IJV POCUS exam.
-          - *Playbook #02 (`CONFIRMED_IJV_THROMBUS`):* Unlocks weight-adjusted anticoagulation *only* after B-mode thrombus confirmation + suspends heavy Valsalva ARED squats.
-          - *Playbook #03 (`SARCOPENIA_OSTEOPENIA_ARED`):* `>= 125 kgf` (`> 1000` microstrain) ARED loading + `>= 2.8 L/d` hydration & potassium citrate.
-          - *Playbook #04 (`SANS_TRANSLAMINAR_MITIGATION`):* `50 mmHg` lower-extremity venous thigh cuffs + nocturnal LBNP.
-          - *Playbook #05 (`SPE_RADIATION_SHELTER_CANS`):* Storm shelter ingress when `CSA CANS > 1.5 mSv/d` + endothelial radioprotection.
+        #ares-card("15 MedOps Playbooks (#01-#15)", "DETERMINISTIC DAG", cyan-nom)[
+          Compiled directly as pure-Rust state machines (`select_candidate_playbook_ext`) grounded to `NASA-STD-3001` & `OCHMO MTB-007`:
+          #v(2pt)
+          #set text(size: 7.9pt)
+          - *Type-1 Chronic (#01-#05):* Venous stasis LBNP (#01), IJV thrombus (#02), Sarcopenia/ARED (#03), SANS (#04), SPE shelter (#05).
+          - *Acute Vitals (#06-#09):* Desaturation O2 (#06), Tachycardia/Vagal (#07), Hypotension LBNP stop (#08), Bradypnea (#09).
+          - *Exploration Block N (#10-#15):* Hypercalciuria (#10), Orthostatic LBNP (#11), Mars Sol sleep (#12), Neuro-immune viral (#13), Cabin CO2 (#14), Spaceflight anemia (#15).
         ]
       ],
       [
-        #ares-card("The 3 Hard Clinical Safety Gates (safety_gates.rs)", "HARD INTERLOCKS", red-crit)[
-          - *Gate 1 — Anticoagulation Lock (`anticoagulant_lock_active`):* Blocks Enoxaparin/Apixaban (`GATE 1 LOCKED`) during isolated stasis when `pocus_thrombus_confirmed != true`, preventing catastrophic EVA trauma hemorrhage.
-          - *Gate 2 — LBNP Anti-Syncope Auto-Vent (`lbnp_auto_vent_armed`):* Immediately vents `-30 mmHg` LBNP chamber to `0 mmHg` (`AUTO_VENT_LBNP_CHAMBER_0_MMHG`) if $Delta"SBP" > 15 " mmHg"$ or $"HR" > 115 " bpm"$.
-          - *Gate 3 — 0.38g Mars EVA Suit Damping (`eva_suit_damping_active`):* Automatically engages `+25%` ankle/knee exoskeletal damping whenever Martian `GAI > 12%`.
+        #ares-card("4 Hard Clinical Safety Gates (safety_gates.rs)", "HARD INTERLOCKS", red-crit)[
+          #set text(size: 7.9pt)
+          - *Gate 1 — Anticoagulation Lock:* Blocks anticoagulants without POCUS B-mode clot confirmation; preserves non-anticoagulant drugs.
+          - *Gate 2 — LBNP Auto-Vent:* Auto-vents LBNP chamber to `0 mmHg` if $Delta"SBP" > 15 " mmHg"$ or $"HR" > 115 " bpm"$.
+          - *Gate 3 — 0.38g EVA Suit Damping:* Engages ankle/knee damping whenever Martian `GAI > 12%`.
+          - *Gate 4A/4B — Decompression & EVA Locks:* Gate 4A locks invasive chest procedures; Gate 4B interlocks EVA fitness No-Go on cognitive/hemodynamic failure.
         ]
-        #v(6pt)
+        #v(4pt)
         #ares-card("Non-Repudiable Security & Privacy (ares-security-privacy)", "FIPS 180-4 / RFC 8439", green-ok)[
           - *3-Role Privacy:* `AstronautSelf`, `CrewMedicalOfficer`, `GroundFlightSurgeon` (`NASA-STD-3001 Vol. 1 Ch. 7`).
           - *Audit & DSN Crypto:* Chained `SHA-256` override log + `ChaCha20-Poly1305` AEAD with `ZeroizeOnDrop` ephemeral keys.
@@ -346,27 +347,28 @@
 )
 
 // ============================================================================
-// SLIDE 6: ARES-MEDOS EDGE ARCHITECTURE — 8-CRATE RUST, 128B IPC & FASTMCP
+// SLIDE 6: ARES-MEDOS EDGE ARCHITECTURE — 9-CRATE RUST, 128B IPC & FASTMCP
 // ============================================================================
 #ares-slide(
   "SLIDE 06 | SYSTEM ARCHITECTURE & CREATIVITY",
-  "ARES-MedOS: 8-Crate Safe Rust 2024, 128B Seqlock IPC & FastMCP",
+  "ARES-MedOS: 9-Crate Safe Rust 2024, 128B Seqlock IPC & FastMCP",
   "Air-gapped Tauri v2 workstation shell + #000000 OLED cockpit + bounded edge copilot (<= 600 B)",
   [
     #grid(
       columns: (1.05fr, 1fr),
       gutter: 10pt,
       [
-        #ares-card("8-Crate Safe Rust 2024 Workspace", "0 UNWRAP/EXPECT IN SRC", green-ok)[
-          #set text(size: 8.3pt)
-          1. `ares-core-types`: Telemetry contracts, `BinaryTelemetryFrame` (`128 B`), `NASA-STD-3001` constants.
+        #ares-card("9-Crate Safe Rust 2024 Workspace", "FORBID(UNSAFE_CODE)", green-ok)[
+          #set text(size: 7.6pt)
+          1. `ares-core-types`: Telemetry contracts, `BinaryTelemetryFrame` (`128 B`), AtomicU64 Seqlock.
           2. `ares-telemetry-ingest`: `BidmcReplayer`, `SqiFilter`, `WearableSensorPacket` (`32 B`), Level-1 DSP.
-          3. `ares-causal-graph`: `ADHG`, `RK4`, `tau_w`, POCUS, `HyperGraph`, `DatasetGraph`, Parquet adapters.
-          4. `ares-nqs-stl`: `LemireMinWedge`, `Timestral`, `SafeTensors` loader, `calibration_harness`.
-          5. `ares-medops-playbooks`: Playbooks `#01-#05`, Gates `1-3`, `ARES-BioKG` grounding.
+          3. `ares-causal-graph`: `ADHG`, `RK4`, `tau_w`, POCUS, `HyperGraph`, `DatasetGraph`, Block N models.
+          4. `ares-nqs-stl`: `LemireMinWedge`, `Timestral`, `SafeTensors` loader, 10-margin evaluation.
+          5. `ares-medops-playbooks`: Playbooks `#01-#15`, Hard Safety Gates `1, 2, 3, 4A, 4B`.
           6. `ares-security-privacy`: `SHA-256` audit chain, `ChaCha20-Poly1305`, `StrictMcpSanitizer`.
-          7. `ares-server-cli`: `axum` `20 Hz` WS (`127.0.0.1:8080`), `FastMCP`, `shm_bus`, `edge_llm_bridge`.
-          8. `ares-desktop-os`: `Tauri v2` native shell (`Channel<Response>`), `OsStatus`, `whisper-rs` hook.
+          7. `ares-storage-lsah`: Longitudinal Mission Archive, Parquet/Arrow export, SHA-256 integrity.
+          8. `ares-server-cli`: `axum` `20 Hz` WS (`127.0.0.1:8080`), `FastMCP`, `edge_llm_bridge`.
+          9. `ares-desktop-os`: `Tauri v2` native shell (`Channel<Response>`), `OsStatus`, `whisper-rs` hook.
         ]
       ],
       [
@@ -421,7 +423,7 @@
         ]
         #v(6pt)
         #ares-card("Immediate Terrestrial Health Spin-Offs", "GALACTIC IMPACT", green-ok)[
-          - *Rural & Disaster Offline ICUs:* Zero-cloud `8`-crate telemetry & deterministic triage in connectivity blackouts.
+          - *Rural & Disaster Offline ICUs:* Zero-cloud `9`-crate telemetry & deterministic triage in connectivity blackouts.
           - *Geriatric & Bedridden Sarcopenia:* Ultrasound soleus `MQI` + `GAI` fall-risk screening.
           - *Polar / Subsea Expeditions:* High-contrast OLED cockpit & contactless nocturnal cardiorespiratory monitoring.
         ]

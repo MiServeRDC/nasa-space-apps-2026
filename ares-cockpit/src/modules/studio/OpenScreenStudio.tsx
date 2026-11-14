@@ -79,7 +79,9 @@ export const CLINICAL_KEYFRAMES: ClinicalAnnotationKeyframe[] = [
   },
 ];
 
-const SCENARIO_TOTAL_SECONDS = 120;
+export const NASA_PITCH_HARD_CAP_SECONDS = 29.8;
+export const FULL_TOUR_SECONDS = 120;
+const SCENARIO_TOTAL_SECONDS = FULL_TOUR_SECONDS;
 
 function SpringCameraRig({
   targetPreset,
@@ -156,6 +158,8 @@ export function OpenScreenStudio({
   const [playbackTimeS, setPlaybackTimeS] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [playbackRate, setPlaybackRate] = useState<number>(1.0);
+  const [studioMode, setStudioMode] = useState<'30S_PITCH' | '120S_TOUR'>('30S_PITCH');
+  const totalScenarioSeconds = studioMode === '30S_PITCH' ? NASA_PITCH_HARD_CAP_SECONDS : FULL_TOUR_SECONDS;
 
   // Find active keyframe based on current timeline position
   const activeKeyframe = [...CLINICAL_KEYFRAMES]
@@ -170,16 +174,16 @@ export function OpenScreenStudio({
     const timer = window.setInterval(() => {
       setPlaybackTimeS((prev) => {
         const next = prev + (intervalMs / 1000) * playbackRate;
-        if (next >= SCENARIO_TOTAL_SECONDS) {
+        if (next >= totalScenarioSeconds) {
           setIsPlaying(false);
-          return SCENARIO_TOTAL_SECONDS;
+          return totalScenarioSeconds;
         }
         return next;
       });
     }, intervalMs);
 
     return () => window.clearInterval(timer);
-  }, [isPlaying, playbackRate]);
+  }, [isPlaying, playbackRate, totalScenarioSeconds]);
 
   // Handle switching camera target with spring physics
   const triggerCameraZoom = (preset: CameraPreset) => {
@@ -463,7 +467,32 @@ export function OpenScreenStudio({
             {/* Time Stamp */}
             <div className="rounded border border-line bg-black px-2.5 py-1 text-gray-200">
               <span className="font-bold text-nominal">{formatScrubberTime(playbackTimeS)}</span>
-              <span className="text-gray-500"> / {formatScrubberTime(SCENARIO_TOTAL_SECONDS)}</span>
+              <span className="text-gray-500"> / {formatScrubberTime(totalScenarioSeconds)}</span>
+            </div>
+
+            {/* Mode Selector (Hard Cap <= 29.8s for NASA 30s rule) */}
+            <div className="flex items-center gap-1 rounded border border-line bg-black p-0.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setStudioMode('30S_PITCH');
+                  if (playbackTimeS > NASA_PITCH_HARD_CAP_SECONDS) setPlaybackTimeS(NASA_PITCH_HARD_CAP_SECONDS);
+                }}
+                className={`cursor-pointer rounded px-2 py-0.5 text-[10px] transition-colors ${
+                  studioMode === '30S_PITCH' ? 'bg-nominal font-bold text-black' : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                30s NASA PITCH
+              </button>
+              <button
+                type="button"
+                onClick={() => setStudioMode('120S_TOUR')}
+                className={`cursor-pointer rounded px-2 py-0.5 text-[10px] transition-colors ${
+                  studioMode === '120S_TOUR' ? 'bg-nominal font-bold text-black' : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                120s FULL TOUR
+              </button>
             </div>
 
             {/* Speed Multiplier */}
@@ -497,7 +526,7 @@ export function OpenScreenStudio({
           <input
             type="range"
             min={0}
-            max={SCENARIO_TOTAL_SECONDS}
+            max={totalScenarioSeconds}
             step={0.1}
             value={playbackTimeS}
             onChange={(e) => setPlaybackTimeS(parseFloat(e.target.value))}
@@ -506,8 +535,8 @@ export function OpenScreenStudio({
 
           {/* Clinical keyframe markers on timeline */}
           <div className="relative mt-1 flex h-6 w-full items-center">
-            {CLINICAL_KEYFRAMES.map((kf) => {
-              const pct = (kf.timeS / SCENARIO_TOTAL_SECONDS) * 100;
+            {CLINICAL_KEYFRAMES.filter((kf) => kf.timeS <= totalScenarioSeconds).map((kf) => {
+              const pct = (kf.timeS / totalScenarioSeconds) * 100;
               const isActive = activeKeyframe.label === kf.label;
               return (
                 <button
