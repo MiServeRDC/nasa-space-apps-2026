@@ -55,4 +55,7 @@ pub enum LsahStorageError {
 
     #[error("backend error: {0}")]
     Backend(String),
+
+    #[error("warm flusher could not drain {pending_rows} rows: {reason}")]
+    FlushIncomplete { pending_rows: usize, reason: String },
 }

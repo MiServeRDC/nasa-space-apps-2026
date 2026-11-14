@@ -1,5 +1,50 @@
 # Active Context: ARES-Health (NASA Space Apps Challenge 2026)
 
+## User-authorized optimization release (2026-11-14)
+
+The user now authorizes merging PR #31 into main. Integrated the newer main
+`d1d6227` (Phase 37 scenario tests only; no production changes). Preserved both
+sets of memory records. The 6 added Rust scenario tests and all 32 frontend tests pass. Previous
+212 Rust / 15 desktop results remain the baseline for unchanged production
+code; the added Rust suite brings the default test inventory to 218. Run the
+fast probe before the release commit, then merge PR #31 and fast-forward the
+clean local main clone. Actions stays disabled.
+
+## Integration of concurrent main updates (2026-11-14)
+
+Merged `origin/main` at `3516da4` into the optimization branch. Preserved the
+team’s Block N/gate, atomic IPC, metadata, licensing and submission changes.
+Combined-tree verification passed: 212 default Rust tests, 15 desktop tests,
+26 frontend tests, all-target Clippy, lint/build, the browser/process harness and
+the unchanged generated anomaly evaluation tables. Main-entry size with these
+additional team changes is 435.70 kB (132.23 kB gzip). Hosted Actions stay disabled.
+Published as draft PR #31: https://github.com/MiServeRDC/nasa-space-apps-2026/pull/31.
+Branch `work/MiServeRDC-optimization` is pushed; this task does not merge main.
+
+## Reliability/performance optimization completed (2026-11-14)
+
+User authorized resolving all reviewed reliability/performance weaknesses, one at
+a time, on `work/MiServeRDC-optimization` (isolated worktree `/tmp/ares-optimization`,
+base `2b0a9bc`). Plan: `docs/plans/PROJECT_OPTIMIZATION_IMPLEMENTATION.md`.
+Backend work is verified: retained/acknowledged Warm batches, retries and explicit
+shutdown errors, partial deadlines, manifest rollback, explicit runtime storage
+(`--storage-dir`), exclusive writer lease, sequence recovery and null-HRV readback.
+Coherent wire snapshots are encoded outside the mission lock with ordered
+publication. The default workspace has 212 passing tests and all-target Clippy is
+clean; the desktop tauri-runtime configuration has 15 passing tests. Frontend is
+also verified: unused simulation pauses, geometry memoization, local lazy panels,
+adaptive/saved quality, hidden/covered viewport suspension and pooled atlas
+materials. Main entry is 435.70 kB (132.23 kB gzip); actual atlas material objects
+drop from 3,746 to 11. All 26 Node tests, lint/build and browser/process checks pass,
+including reconnect, alarm delivery, lazy-load failure isolation and shutdown with
+a real WebSocket still connected. Longer validation runs 8 hours each of stationary,
+artificial drift and dropout streams; delayed scores are cross-checked independently
+and retained history remains at 8,940 entries. The horizon-scaled experimental gain
+stays false: it improves synthetic width stability but worsens real development
+coverage. Detector/forecast table results remain unchanged; no clinical validation
+is implied. Reproduction and limits are in `docs/operations/PROJECT_OPTIMIZATION.md`
+and `docs/evaluation/OPTIMIZATION_RESULTS.md`. Work is complete on the dedicated
+branch for review. Hosted Actions remain disabled; no main merge is requested here.
 ## Phase 37 (M3): End-to-End Mission Scenario Harnesses & Tier 7 Verification (2026-11-14)
 
 Completed full implementation and verification of Tier 7 of the Master Test Plan (`ARES_HEALTH_MASTER_TEST_PLAN.md`):

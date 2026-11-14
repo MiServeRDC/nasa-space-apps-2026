@@ -3,6 +3,10 @@
 > Evidence status (issue #12): scenario-derived physiology, risk/readiness scores and forecast ranges are illustrative and clinically unvalidated. Historical calibration, certification, universal-threshold and outcome claims below are not established. Use [the current evidence audit](docs/architecture/MODEL_EVIDENCE_AUDIT.md) for source applicability, parameters and permitted wording. Recorded terrestrial measurements remain distinct from simulation.
 ## NASA Space Apps Challenge 2026 Master Dossier
 
+Local recording, adaptive cockpit rendering and reproducible optimization checks:
+[operations guide](docs/operations/PROJECT_OPTIMIZATION.md) and
+[measured results](docs/evaluation/OPTIMIZATION_RESULTS.md).
+
 **Candidate & Lead Architect:** Fabio Malagutti (Computer Engineer • M.Sc. Student @ University of Bologna)  
 **Location:** Bologna, Italy  
 **Competition:** NASA Space Apps Challenge 2026 (November 14–15, 2026)  

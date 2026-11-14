@@ -45,12 +45,16 @@ pub struct DesktopCliArgs {
 
     #[arg(long, default_value_t = 20)]
     pub telemetry_hz: u32,
+
+    /// Enable explicit local telemetry persistence (not used by smoke tests).
+    #[arg(long)]
+    pub storage_dir: Option<PathBuf>,
 }
 
-fn spawn_workstation_loops(rt: &tokio::runtime::Runtime, shell: Arc<AresMedOsWorkstationShell>, bind_addr: String) {
+fn spawn_workstation_loops(rt: &tokio::runtime::Runtime, shell: Arc<AresMedOsWorkstationShell>, bind_addr: String) -> Vec<tokio::task::JoinHandle<()>> {
     let period_ms = (1000 / u64::from(shell.config.telemetry_hz.max(1))).max(10);
     let tick_shell = Arc::clone(&shell);
-    rt.spawn(async move {
+    let ticker = rt.spawn(async move {
         let frame_period = Duration::from_millis(period_ms);
         let mut interval = tokio::time::interval_at(
             tokio::time::Instant::now() + frame_period,
@@ -63,7 +67,7 @@ fn spawn_workstation_loops(rt: &tokio::runtime::Runtime, shell: Arc<AresMedOsWor
     });
 
     let timestral_shell = Arc::clone(&shell);
-    rt.spawn(async move {
+    let forecaster = rt.spawn(async move {
         let mut interval = tokio::time::interval(Duration::from_secs(1));
         loop {
             interval.tick().await;
@@ -75,7 +79,7 @@ fn spawn_workstation_loops(rt: &tokio::runtime::Runtime, shell: Arc<AresMedOsWor
         }
     });
 
-    rt.spawn(async move {
+    let server = rt.spawn(async move {
         let app = build_axum_router(shell.mission.clone());
         match tokio::net::TcpListener::bind(&bind_addr).await {
             Ok(listener) => {
@@ -97,6 +101,7 @@ fn spawn_workstation_loops(rt: &tokio::runtime::Runtime, shell: Arc<AresMedOsWor
             }
         }
     });
+    vec![ticker, forecaster, server]
 }
 
 fn main() -> Result<()> {
@@ -111,6 +116,8 @@ fn main() -> Result<()> {
     } else {
         args.mode
     };
+    anyhow::ensure!(args.storage_dir.is_none() || effective_mode != DesktopMode::DesktopSmokeTest,
+        "--storage-dir is not supported in desktop-smoke-test mode");
     let data_dir = resolve_medos_data_dir(args.data_dir.as_deref())
         .context("failed locating BIDMC data directory")?;
 
@@ -142,12 +149,20 @@ fn main() -> Result<()> {
                 .enable_all()
                 .build()
                 .context("failed building Tokio multi-thread runtime")?;
-            spawn_workstation_loops(&rt, shell, args.bind);
+            if let Some(path) = args.storage_dir {
+                rt.block_on(shell.mission.enable_storage_at(&path))
+                    .context("failed opening local telemetry storage")?;
+            }
+            let tasks = spawn_workstation_loops(&rt, Arc::clone(&shell), args.bind);
+            let result = rt.block_on(async {
+                tokio::signal::ctrl_c().await.context("failed waiting for shutdown signal")
+            });
+            shell.mission.request_shutdown();
             rt.block_on(async {
-                tokio::signal::ctrl_c()
-                    .await
-                    .context("failed waiting for shutdown signal")
-            })
+                for task in tasks { task.abort(); let _ = task.await; }
+                shell.mission.shutdown_storage().await
+            }).context("failed draining local telemetry storage")?;
+            result
         }
         DesktopMode::NativeWindow => {
             #[cfg(feature = "tauri-native")]
@@ -174,12 +189,20 @@ fn main() -> Result<()> {
                 .enable_all()
                 .build()
                 .context("failed building Tokio multi-thread runtime")?;
-            spawn_workstation_loops(&rt, shell, args.bind);
+            if let Some(path) = args.storage_dir {
+                rt.block_on(shell.mission.enable_storage_at(&path))
+                    .context("failed opening local telemetry storage")?;
+            }
+            let tasks = spawn_workstation_loops(&rt, Arc::clone(&shell), args.bind);
+            let result = rt.block_on(async {
+                tokio::signal::ctrl_c().await.context("failed waiting for shutdown signal")
+            });
+            shell.mission.request_shutdown();
             rt.block_on(async {
-                tokio::signal::ctrl_c()
-                    .await
-                    .context("failed waiting for shutdown signal")
-            })
+                for task in tasks { task.abort(); let _ = task.await; }
+                shell.mission.shutdown_storage().await
+            }).context("failed draining local telemetry storage")?;
+            result
         }
     }
 }

@@ -69,6 +69,8 @@ use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::sync::{Arc, RwLock};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use ares_storage_lsah::{LsahStorageConfig, LsahStorageEngine, LsahStorageError, LsahStorageStatusDto};
 use std::time::{Duration, Instant};
 use thiserror::Error;
 use tokio::sync::broadcast;
@@ -430,6 +432,67 @@ pub struct FastMcpRuntimeContext {
     pub dataset_graph: Arc<AresUnifiedDatasetGraph>,
 }
 
+/// Coherent publication data. Captured under the mission lock; JSON conversion
+/// and encoding happen only after that lock has been released.
+struct MissionWireSnapshot {
+    latest_quantile_snapshot: Arc<NqsQuantileForecastSnapshot>,
+    latest_anomaly: VitalsAnomalyReport,
+    replay_elapsed: Duration,
+    injection: Option<AnomalyInjection>,
+    latest_heatmap: BodyHeatmap,
+    latest_habitat_assessment: HabitatDeonticAssessment,
+    latest_grounding: NormativeClinicalGrounding,
+    latest_packet: TelemetryPacket,
+    scenario: StressTestScenarioInput,
+    what_if_active: bool,
+    cabin_ppco2_mmhg: f64,
+    latest_pocus_posterior: f64,
+    latest_causal_chain: Vec<String>,
+    latest_recompute_latency_us: u64,
+}
+
+impl MissionWireSnapshot {
+    fn into_wire_packet(self) -> WireTelemetryPacket {
+        let timestral_quantiles =
+            serde_json::to_value(&*self.latest_quantile_snapshot).unwrap_or(serde_json::Value::Null);
+        let mut vitals_anomaly =
+            serde_json::to_value(&self.latest_anomaly).unwrap_or(serde_json::Value::Null);
+        if let Some(obj) = vitals_anomaly.as_object_mut() {
+            let now_s = self.replay_elapsed.as_secs() as f64;
+            let injection = self.injection.filter(|i| i.is_active(now_s)).map(|i| {
+                serde_json::json!({
+                    "kind": i.kind,
+                    "description": i.kind.description(),
+                    "onset_s": i.onset_s,
+                    "elapsed_s": now_s - i.onset_s,
+                    "duration_s": i.kind.duration_s(),
+                })
+            });
+            obj.insert("injection".to_string(), serde_json::json!(injection));
+        }
+        let hypergraph_spatial = serde_json::json!({
+            "hottest_region": self.latest_heatmap.hottest_region,
+            "cells": self.latest_heatmap.cells,
+            "habitat_zone": self.latest_habitat_assessment.current_zone,
+            "violates_policy": self.latest_habitat_assessment.violates_policy,
+            "rho_current_location": self.latest_habitat_assessment.rho_current_location,
+            "biokg_clause": self.latest_grounding.normative_clause.official_code(),
+        });
+        WireTelemetryPacket::from_context(WirePacketContext {
+            packet: &self.latest_packet,
+            scenario: &self.scenario,
+            what_if_active: self.what_if_active,
+            cabin_ppco2_mmhg: self.cabin_ppco2_mmhg,
+            pocus_posterior: self.latest_pocus_posterior,
+            causal_chain: self.latest_causal_chain,
+            timestral_quantiles,
+            vitals_anomaly,
+            hypergraph_spatial,
+            recompute_latency_us: self.latest_recompute_latency_us,
+        })
+    }
+}
+
 /// Stato mutabile interno protetto da RwLock per la pipeline a 20 Hz, Timestral 1 Hz e HyperGraph.
 pub struct MissionRuntimeInner {
     pub replayer: BidmcReplayer,
@@ -589,44 +652,23 @@ impl MissionRuntimeInner {
         self.latest_grounding = *ground_adhg_node_o1(adhg_node);
     }
 
-    fn to_wire_packet(&self) -> WireTelemetryPacket {
-        let timestral_quantiles =
-            serde_json::to_value(&*self.latest_quantile_snapshot).unwrap_or(serde_json::Value::Null);
-        let mut vitals_anomaly =
-            serde_json::to_value(&self.latest_anomaly).unwrap_or(serde_json::Value::Null);
-        if let Some(obj) = vitals_anomaly.as_object_mut() {
-            let now_s = self.replay_elapsed.as_secs() as f64;
-            let injection = self.injection.filter(|i| i.is_active(now_s)).map(|i| {
-                serde_json::json!({
-                    "kind": i.kind,
-                    "description": i.kind.description(),
-                    "onset_s": i.onset_s,
-                    "elapsed_s": now_s - i.onset_s,
-                    "duration_s": i.kind.duration_s(),
-                })
-            });
-            obj.insert("injection".to_string(), serde_json::json!(injection));
-        }
-        let hypergraph_spatial = serde_json::json!({
-            "hottest_region": self.latest_heatmap.hottest_region,
-            "cells": self.latest_heatmap.cells,
-            "habitat_zone": self.latest_habitat_assessment.current_zone,
-            "violates_policy": self.latest_habitat_assessment.violates_policy,
-            "rho_current_location": self.latest_habitat_assessment.rho_current_location,
-            "biokg_clause": self.latest_grounding.normative_clause.official_code(),
-        });
-        WireTelemetryPacket::from_context(WirePacketContext {
-            packet: &self.latest_packet,
-            scenario: &self.scenario,
+    fn capture_wire(&self) -> MissionWireSnapshot {
+        MissionWireSnapshot {
+            latest_quantile_snapshot: self.latest_quantile_snapshot.clone(),
+            latest_anomaly: self.latest_anomaly.clone(),
+            replay_elapsed: self.replay_elapsed,
+            injection: self.injection,
+            latest_heatmap: self.latest_heatmap.clone(),
+            latest_habitat_assessment: self.latest_habitat_assessment.clone(),
+            latest_grounding: self.latest_grounding,
+            latest_packet: self.latest_packet.clone(),
+            scenario: self.scenario.clone(),
             what_if_active: self.what_if_active,
             cabin_ppco2_mmhg: self.cabin_ppco2_mmhg,
-            pocus_posterior: self.latest_pocus_posterior,
-            causal_chain: self.latest_causal_chain.clone(),
-            timestral_quantiles,
-            vitals_anomaly,
-            hypergraph_spatial,
-            recompute_latency_us: self.latest_recompute_latency_us,
-        })
+            latest_pocus_posterior: self.latest_pocus_posterior,
+            latest_causal_chain: self.latest_causal_chain.clone(),
+            latest_recompute_latency_us: self.latest_recompute_latency_us,
+        }
     }
 
     fn run_1hz_timestral_inference(
@@ -806,7 +848,18 @@ impl MissionRuntimeInner {
 
 /// Stato condiviso tra il server Axum HTTP/WebSocket, il co-processore Timestral 1 Hz,
 /// il ring buffer binario zero-copy Seqlock e il server FastMCP su `stdio`.
+struct RuntimeStorage {
+    engine: Arc<LsahStorageEngine>,
+    // An OS lease prevents simultaneous CLI/desktop writers from sharing a root.
+    _lease: std::fs::File,
+}
+
 pub struct SharedMissionState {
+    shutdown: tokio::sync::watch::Sender<bool>,
+    publication: std::sync::Mutex<()>,
+    storage: RwLock<Option<Arc<RuntimeStorage>>>,
+    storage_sequence: AtomicU64,
+    storage_accepting: AtomicBool,
     pub inner: RwLock<MissionRuntimeInner>,
     pub tx: broadcast::Sender<String>,
     pub binary_ring: Arc<SeqlockTelemetryRing<64>>,
@@ -818,6 +871,76 @@ pub struct SharedMissionState {
 }
 
 impl SharedMissionState {
+    pub fn request_shutdown(&self) {
+        self.shutdown.send_replace(true);
+    }
+    pub async fn enable_storage_at(&self, path: &Path) -> Result<(), LsahStorageError> {
+        self.enable_storage(LsahStorageConfig::with_root_dir(path)).await
+    }
+    /// Enable explicit, local-only recording. Open/recovery runs outside Tokio
+    /// workers; ordinary read-only test constructors never create a store.
+    pub async fn enable_storage(&self, config: LsahStorageConfig) -> Result<(), LsahStorageError> {
+        if self.storage.read().map_err(|e| LsahStorageError::Backend(e.to_string()))?.is_some() {
+            return Err(LsahStorageError::InvalidConfig("storage already enabled".into()));
+        }
+        let (engine, lease) = tokio::task::spawn_blocking(move || {
+            let root = config.validate()?;
+            std::fs::create_dir_all(&root)?;
+            let lease = std::fs::OpenOptions::new().read(true).write(true).create(true).truncate(false)
+                .open(root.join(".writer.lock"))?;
+            lease.try_lock().map_err(|e| LsahStorageError::Backend(format!("storage writer lease unavailable: {e}")))?;
+            let engine = LsahStorageEngine::open(config)?;
+            Ok::<_, LsahStorageError>((engine,lease))
+        }).await
+            .map_err(|e| LsahStorageError::Backend(e.to_string()))??;
+        let mut storage = self.storage.write().map_err(|e| LsahStorageError::Backend(e.to_string()))?;
+        if storage.is_some() {
+            return Err(LsahStorageError::InvalidConfig("storage already enabled".into()));
+        }
+        self.storage_sequence.store(engine.max_sequence_id(), Ordering::Release);
+        engine.start_background_flusher();
+        *storage = Some(Arc::new(RuntimeStorage {engine:Arc::new(engine),_lease:lease}));
+        self.storage_accepting.store(true, Ordering::Release);
+        Ok(())
+    }
+
+    /// Called while the mission writer owns the current ordered sample. This
+    /// stages fixed-size rows in RAM; no filesystem work occurs on the hot path.
+    fn persist_packet(&self, packet: &TelemetryPacket) {
+        if !self.storage_accepting.load(Ordering::Acquire) { return; }
+        if let Ok(storage) = self.storage.read()
+            && let Some(engine) = storage.as_ref()
+        {
+            let sequence = self.storage_sequence.fetch_add(1, Ordering::AcqRel) + 1;
+            let timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |d| d.as_millis().min(i64::MAX as u128) as i64);
+            let sol = ((packet.mission_Elapsed_seconds / MARS_SOL_SECONDS).floor() + 1.0)
+                .clamp(1.0, f64::from(u16::MAX)) as u16;
+            engine.engine.push_telemetry_packet(sequence, timestamp, sol, packet);
+        }
+    }
+
+    pub fn storage_status(&self) -> Option<LsahStorageStatusDto> {
+        let storage = self.storage.read().ok()?.clone();
+        storage.map(|s| s.engine.status())
+    }
+
+    pub async fn shutdown_storage(&self) -> Result<(), LsahStorageError> {
+        // Synchronize with producers before the final drain.
+        {
+            let _writer = self.inner.write().map_err(|e| LsahStorageError::Backend(e.to_string()))?;
+            self.storage_accepting.store(false, Ordering::Release);
+        }
+        let engine = self.storage.read().map_err(|e| LsahStorageError::Backend(e.to_string()))?.clone();
+        if let Some(engine) = engine {
+            engine.engine.stop_background_flusher().await?;
+            let engine_ref = Arc::clone(&engine);
+            tokio::task::spawn_blocking(move || engine_ref.engine.flush_warm_now()).await
+                .map_err(|e| LsahStorageError::Backend(e.to_string()))??;
+        }
+        Ok(())
+    }
+
     /// Inizializza lo stato condiviso caricando `bidmc_01..03_Numerics.csv`,
     /// inizializzando Timestral (Blocco H), `ARES-HyperGraph` e `ARES-DatasetGraph` (Blocco I).
     pub fn from_data_dir(data_dir: &Path) -> Result<Arc<Self>, ServerRuntimeError> {
@@ -1010,6 +1133,11 @@ impl SharedMissionState {
             binary_ring,
             audit_logger,
             dataset_graph,
+            publication: std::sync::Mutex::new(()),
+            shutdown: tokio::sync::watch::channel(false).0,
+            storage: RwLock::new(None),
+            storage_sequence: AtomicU64::new(0),
+            storage_accepting: AtomicBool::new(false),
             edge_llm_config,
             #[cfg(feature = "shm-ipc")]
             shm_dispatcher,
@@ -1092,6 +1220,8 @@ impl SharedMissionState {
         guard.last_ingest_latency_us = start.elapsed().as_micros() as u64;
         guard.latest_recompute_latency_us = guard.last_ingest_latency_us;
 
+        self.persist_packet(&guard.latest_packet);
+
         let frame = guard.build_binary_frame((start.elapsed().as_nanos()).min(u128::from(u32::MAX)) as u32);
         self.binary_ring.publish(&frame);
         #[cfg(feature = "shm-ipc")]
@@ -1132,6 +1262,7 @@ impl SharedMissionState {
     /// Avanza il clock di replay (`dt`, tipicamente `50 ms` a 20 Hz), mantenendo
     /// i canali registrati BIDMC bloccati alla cadenza nativa di `1 Hz` (`1000 ms`).
     pub fn advance_tick(&self, dt: Duration) -> Option<TelemetryPacket> {
+        let _publication = self.publication.lock().ok()?;
         let start = Instant::now();
         let mut guard = self.inner.write().ok()?;
         let previous_second = guard.replay_elapsed.as_secs();
@@ -1216,6 +1347,8 @@ impl SharedMissionState {
         guard.update_hypergraph_and_nqs_hot_path();
         guard.latest_recompute_latency_us = start.elapsed().as_micros() as u64;
 
+        self.persist_packet(&guard.latest_packet);
+
         let bin_frame = guard.build_binary_frame(
             start.elapsed().as_nanos().min(u128::from(u32::MAX)) as u32,
         );
@@ -1227,8 +1360,10 @@ impl SharedMissionState {
         }
 
         let snapshot_packet = guard.latest_packet.clone();
-        if self.tx.receiver_count() > 0
-            && let Ok(json_str) = serde_json::to_string(&guard.to_wire_packet())
+        let wire = (self.tx.receiver_count() > 0).then(|| guard.capture_wire());
+        drop(guard);
+        if let Some(wire) = wire
+            && let Ok(json_str) = serde_json::to_string(&wire.into_wire_packet())
         {
             let _ = self.tx.send(json_str);
         }
@@ -1306,6 +1441,7 @@ impl SharedMissionState {
         &self,
         kind: Option<InjectedAnomalyKind>,
     ) -> Result<WireTelemetryPacket, InjectAnomalyError> {
+        let _publication = self.publication.lock().map_err(|_| InjectAnomalyError::StateUnavailable)?;
         let _ = self.inject_anomaly(kind)?;
         let wire = self
             .latest_wire_snapshot()
@@ -1332,6 +1468,7 @@ impl SharedMissionState {
         &self,
         patch: StressTestPatchRequest,
     ) -> Option<WireTelemetryPacket> {
+        let _publication = self.publication.lock().ok()?;
         let start = Instant::now();
         let mut guard = self.inner.write().ok()?;
         let mut next_ppco2 = guard.cabin_ppco2_mmhg;
@@ -1385,7 +1522,9 @@ impl SharedMissionState {
             dispatcher.try_dispatch(&guard.latest_packet, &bin_frame, &owlt, true);
         }
 
-        let wire_snapshot = guard.to_wire_packet();
+        let captured = guard.capture_wire();
+        drop(guard);
+        let wire_snapshot = captured.into_wire_packet();
         let _ = self.audit_logger.append_audit_event(
             CrewRole::CrewMedicalOfficer,
             &format!(
@@ -1409,7 +1548,8 @@ impl SharedMissionState {
 
     /// Legge una copia dell'ultimo `WireTelemetryPacket` compatibile con `contracts/telemetry_schema.json`.
     pub fn latest_wire_snapshot(&self) -> Option<WireTelemetryPacket> {
-        self.inner.read().ok().map(|g| g.to_wire_packet())
+        let snapshot = self.inner.read().ok()?.capture_wire();
+        Some(snapshot.into_wire_packet())
     }
 
     /// Estrae il contesto completo e compatto per il router `FastMCP` (< 150 token).
@@ -1474,6 +1614,13 @@ async fn cors_preflight_handler() -> StatusCode {
     StatusCode::NO_CONTENT
 }
 
+async fn get_storage_status_handler(State(state): State<Arc<SharedMissionState>>) -> Response {
+    match tokio::task::spawn_blocking(move || state.storage_status()).await {
+        Ok(status) => Json(serde_json::json!({"enabled": status.is_some(), "status": status})).into_response(),
+        Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    }
+}
+
 /// Costruisce il router Axum con `/ws/telemetry`, `GET /api/snapshot`,
 /// `POST /api/stress-test`, `POST /api/inject-anomaly`, `GET /api/os-status`,
 /// `GET /api/binary-frame` e `POST /api/mcp`.
@@ -1482,6 +1629,7 @@ pub fn build_axum_router(state: Arc<SharedMissionState>) -> Router {
         .route("/ws/telemetry", get(ws_telemetry_handler))
         .route("/api/snapshot", get(get_snapshot_handler))
         .route("/api/os-status", get(get_os_status_handler))
+        .route("/api/storage-status", get(get_storage_status_handler))
         .route("/api/binary-frame", get(get_binary_frame_handler))
         .route("/api/audit-log", get(get_audit_log_handler))
         .route(
@@ -1676,19 +1824,30 @@ async fn ws_telemetry_handler(
 }
 
 async fn handle_ws_client(mut socket: WebSocket, state: Arc<SharedMissionState>) {
+    let mut shutdown = state.shutdown.subscribe();
+    if *shutdown.borrow() { return; }
     if let Some(initial) = state.latest_wire_snapshot()
         && let Ok(text) = serde_json::to_string(&initial)
-        && socket.send(Message::Text(text.into())).await.is_err()
     {
-        return;
+        let sent = tokio::select! {
+            _ = shutdown.changed() => false,
+            result = socket.send(Message::Text(text.into())) => result.is_ok(),
+        };
+        if !sent { return; }
     }
 
     let mut rx = state.tx.subscribe();
-    while let Ok(payload) = rx.recv().await {
-        if socket.send(Message::Text(payload.into())).await.is_err() {
-            break;
-        }
+    loop {
+        let sent = tokio::select! {
+            _ = shutdown.changed() => false,
+            result = async {
+                let Ok(payload) = rx.recv().await else { return false; };
+                socket.send(Message::Text(payload.into())).await.is_ok()
+            } => result,
+        };
+        if !sent { break; }
     }
+    let _ = tokio::time::timeout(Duration::from_secs(1),socket.send(Message::Close(None))).await;
 }
 
 #[cfg(test)]

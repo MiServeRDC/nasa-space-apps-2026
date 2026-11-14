@@ -78,4 +78,7 @@ pub trait WarmColumnarVectorBackend: Send + Sync {
 
     /// Returns total committed Warm telemetry segments and total compressed bytes.
     fn warm_stats(&self) -> (usize, u64, usize);
+
+    /// Highest durably committed telemetry sequence, for restart-safe numbering.
+    fn max_sequence_id(&self) -> u64 { 0 }
 }

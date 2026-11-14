@@ -1,5 +1,44 @@
 # Progress Tracking: ARES-Health (Autonomous Resilient Edge-native System for Astronaut Health)
 
+## User-authorized optimization release (2026-11-14)
+
+The user now authorizes merging PR #31 into main. Integrated the newer main
+`d1d6227` (Phase 37 scenario tests only; no production changes). Preserved both
+sets of memory records. The 6 added Rust scenario tests and all 32 frontend tests pass. Previous
+212 Rust / 15 desktop results remain the baseline for unchanged production
+code; the added Rust suite brings the default test inventory to 218. Run the
+fast probe before the release commit, then merge PR #31 and fast-forward the
+clean local main clone. Actions stays disabled.
+
+## Integration of concurrent main updates (2026-11-14)
+
+Merged `origin/main` at `3516da4` into the optimization branch. Preserved the
+team’s Block N/gate, atomic IPC, metadata, licensing and submission changes.
+Combined-tree verification passed: 212 default Rust tests, 15 desktop tests,
+26 frontend tests, all-target Clippy, lint/build, the browser/process harness and
+the unchanged generated anomaly evaluation tables. Main-entry size with these
+additional team changes is 435.70 kB (132.23 kB gzip). Hosted Actions stay disabled.
+Published as draft PR #31: https://github.com/MiServeRDC/nasa-space-apps-2026/pull/31.
+Branch `work/MiServeRDC-optimization` is pushed; this task does not merge main.
+
+## Reliability/performance optimization (2026-11-14)
+
+- [x] Warm batch acknowledgement/retry, error observability, partial deadlines and
+  manifest rollback; five fault/recovery regression tests pass.
+- [x] Explicit CLI/desktop recording, single-writer lease, restart sequences,
+  status and final drain; runtime/reopen/null-HRV and real-process shutdown pass.
+- [x] JSON construction/encoding moved outside the mission lock with publication order retained.
+- Backend checks: 212 default Rust tests, 15 desktop tauri-runtime tests, clean
+  workspace/all-target Clippy.
+- [x] Paused unused fallback simulation and stabilized expensive anatomical rendering;
+  split optional local UI; added adaptive quality, viewport suspension and regional
+  material pooling. All 26 frontend tests, lint/build and browser/process checks pass.
+- [x] Eight-hour stationary/drift/dropout comparisons with independent delayed
+  scoring; one-hour bounded-state/blackout test; development-only controller
+  comparison. Candidate remains disabled after worse real development coverage.
+- [x] Final operations, evidence registry, reproduction commands and measured
+  limitations documented. No change to clinical defaults or validation status.
+
 ## Carbon High Independent Audit Resolutions & Verified Main Merge (2026-11-14)
 
 - [x] **Vulnerability 1 Resolved:** Aligned NASA OSDR metadata (`OSD-51`, `OSD-195`, `OSD-818`, `OSD-570/571`, Marshall-Goebel 2019 DOI) and eradicated all unjustified calibration claims in `MissionPortal.tsx`.

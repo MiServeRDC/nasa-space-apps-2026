@@ -178,6 +178,7 @@ export function useTelemetry(
     habitat: number;
   } | null>(null);
   const inputsRef = useRef({ whatIf, thrombusConfirmed, lastScanDay, whatIfOverlayActive });
+  const localTickRef = useRef(0);
   inputsRef.current = { whatIf, thrombusConfirmed, lastScanDay, whatIfOverlayActive };
   const activeSourceIdRef = useRef<string>('bidmc_01');
 
@@ -636,21 +637,24 @@ export function useTelemetry(
   }, [link]);
 
   // 4. Local 20 Hz simulation loop (strictly for offline fallback & separate What-If preview).
+  const needsLocalPreview = link !== 'ENGINE_LIVE' || livePacket === null || whatIfOverlayActive;
   useEffect(() => {
-    let tick = 0;
-    const id = window.setInterval(() => {
-      tick += 1;
+    if (!needsLocalPreview) return;
+    const update = () => {
+      localTickRef.current += 1;
       setLocalPacket(
         buildPacket(
           inputsRef.current.whatIf,
-          tick,
+          localTickRef.current,
           inputsRef.current.thrombusConfirmed,
           inputsRef.current.lastScanDay,
         ),
       );
-    }, 50);
+    };
+    update();
+    const id = window.setInterval(update, 50);
     return () => window.clearInterval(id);
-  }, []);
+  }, [needsLocalPreview]);
 
   const packet = link === 'ENGINE_LIVE' && livePacket !== null ? livePacket : localPacket;
   const transportMode: TransportMode = IS_ARES_DESKTOP_SHELL
@@ -674,6 +678,7 @@ export function useTelemetry(
     packet,
     livePacket,
     localPacket,
+    localSimulationFrameCount: localTickRef.current,
     link,
     transportMode,
     ipcLatencyUs: ipcLatencyUs ?? lastSyncLatencyUs,

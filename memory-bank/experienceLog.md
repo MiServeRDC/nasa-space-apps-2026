@@ -1,5 +1,28 @@
 # Experience Log & Anti-Recurrence Invariants: ARES-Health
 
+## Entry 010 — Persistence acknowledgement and bounded failure recovery
+
+- Never clear a staged Warm bank before the backend confirms its commit. Retain
+  failed batches for retry, release failed reservations, report incomplete shutdown
+  and flush partial banks on the deadline. Roll back in-memory manifest metadata
+  after a failed commit. Runtime writers require an exclusive root lease and resume
+  sequence IDs after reopen. In-memory pending/coalesced rows are not durable raw
+  samples; do not promise zero loss during sustained disk failure or power loss.
+- Tests: `flush_reliability`, `storage_runtime`, and the local browser/process
+  regression script. Recording is explicit; test/evaluation modes do not start it.
+
+## Entry 011 — Rendering and forecast experiments must preserve evidence boundaries
+
+- Pausing unused local simulation, lazy chunks, memoized geometry, adaptive DPR and
+  hidden-view suspension must not throttle alarm processing or change clinical
+  values. Pool materials by layer/region, retaining mesh IDs and source geometry.
+- Synthetic long-stream improvements do not establish clinical forecast quality.
+  The horizon-scaled width candidate is disabled because development coverage
+  worsened. Independent delayed scoring, interval width and coverage must all be
+  checked. Current clipped EWMA does not inherit formal ACI guarantees.
+- Sources/protocol: `docs/architecture/IMPLEMENTATION_STACK.md` optimization
+  addendum and `docs/operations/PROJECT_OPTIMIZATION.md`.
+
 > **Purpose:** Records mathematical, clinical, and systems engineering failure modes discovered during design and peer-review so no human teammate or AI coding agent ever re-introduces them.
 
 ---
