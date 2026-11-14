@@ -8,7 +8,8 @@ Combined-tree verification passed: 212 default Rust tests, 15 desktop tests,
 26 frontend tests, all-target Clippy, lint/build, the browser/process harness and
 the unchanged generated anomaly evaluation tables. Main-entry size with these
 additional team changes is 435.70 kB (132.23 kB gzip). Hosted Actions stay disabled.
-The optimization branch is ready for a draft review PR; main is not merged by this task.
+Published as draft PR #31: https://github.com/MiServeRDC/nasa-space-apps-2026/pull/31.
+Branch `work/MiServeRDC-optimization` is pushed; this task does not merge main.
 
 ## Reliability/performance optimization completed (2026-11-14)
 
