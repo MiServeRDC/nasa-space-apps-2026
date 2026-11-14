@@ -45,8 +45,36 @@
 
 ## 2. Immediate Next Steps for the 5-Person Team
 
-1. **`@fabiomalagutti27-droid`:** Initialize `crates/ares-core-types`, `crates/ares-causal-graph`, and `crates/ares-nqs-stl`.
-2. **`@MiServeRDC`:** Initialize `crates/ares-security-privacy` (role-based crew privacy views, SHA-256 hash-chain audit logger for MedOps overrides, ChaCha20-Poly1305 Store-and-Forward DSN packet encryption).
-3. **`@LelloXV`:** Initialize `crates/ares-telemetry-ingest` (ring buffer, Doppler radar + vocal DSP simulation, `CSA CANS` radiation stream, spectral entropy `SQI` filter).
-4. **`@carolina2910`:** `ares-cockpit/` v0.1 scaffolded on `work/carolina2910` (Vite + React 19 + TS + Tailwind v4 + R3F): Tri-Phase Header with OWLT simulator, MRI gauge + NQS-STL chart with 1.96 sigma band and TTV, 3D wireframe heatmap with causal arcs, What-If console with LBNP auto-vent (Gate 2), Playbook #04/#05 runner with anticoagulation lock (Gate 1), WebSocket client to `127.0.0.1:8080/ws` with offline local-simulation fallback. Next: `npm install` + build verification, align WS frame format with `@fertech02`.
-5. **`@fertech02`:** Initialize `crates/ares-medops-playbooks` and `crates/ares-server-cli` (`axum` $20\text{ Hz}$ WebSocket + `stdio` FastMCP server).
+1. **`@carolina2910` (`Blocco J`, `ares-cockpit/`):** Implement `ares-cockpit/` (React 19 + Tailwind OLED `#000000` layout, `[1. GATHER] -> [2. EVALUATE] -> [3. ACT]` header, 3D Anatomical Heatmap driven by Layer-2 `AnatomicalRegionId` `UBERON:` intensities, `NQS-STL` chart with non-crossing $[q_{0.05}, q_{0.50}, q_{0.95}]$ cone, and What-If Stress-Test Console connected to `127.0.0.1:8080`).
+2. **Full Team:** End-to-end integration test (`ares-server-cli` + `ares-cockpit`) and 180s + 30s pitch video recording.
+
+## Issue #11 backend correction on current main (2026-11-14)
+
+Implemented against `a6ce84f`, without integrating teammates' pending branches. Numeric-only replay no longer invents RMSSD, SDNN, pNN50 or LF/HF; it returns null with `BEAT_INTERVALS_NOT_AVAILABLE`. Nullable HRV-dependent global margin/MRI/TTV propagate through HTTP, WebSocket and MCP. Known non-HRV violations retain warning/emergency routing and existing privacy behavior. Complete synthetic-input unit fixtures still exercise the existing numerical model; no clinical validation is implied.
+
+Verification: `cargo test --workspace --locked --quiet` (45 tests passed), `cargo clippy --workspace --all-targets --locked -- -D warnings` passed, `cargo build --workspace --locked --quiet` passed. Actual local HTTP snapshot, WebSocket initial frame and MCP subprocess checked successfully for null propagation. Repository probe is recorded in the issue plan after its final run.
+
+Remaining: current main has only the cockpit README. Do not close full frontend acceptance or claim schema-wide end-to-end conformance. Repeat regression tests when integrating Lello's cached replay quality, Fertech's alternate wire projection, Carolina's cockpit and the planned forecaster. Track frontend/wire alignment under #8 and cadence under #10. Hosted Actions remain disabled.
+
+Final local repository gate: `bash scripts/agent_probe.sh --all` passed (check, all-target Clippy, 45 tests, production panic scan, dataset checksums and required documentation).
+
+### PR #20 integration with main 4839090
+
+The phases 15-20 update arrived before merge. Ported null HRV guarantees into the new FastMCP router, optional Timestral assessment/RMSSD cones, masked global input, NqsEngine and longitudinal storage. Missing global values are not counted as zero observations, calibrated on zero padding, or converted back to finite TTV. An added regression runs the async forecaster repeatedly and checks its typed snapshot and compact output. Full local verification follows before merge.
+
+Integration verification on main `4839090`: `bash scripts/agent_probe.sh --all` passed, 83 tests passed, 0 failures and strict all-target Clippy passed.
+
+## Issue #12: evidence audit and output semantics (2026-11-14)
+
+PR #20 merged into main at `187b933` after integrating phases 15-20 (83 local tests passed). Current work audits that combined baseline. Added an output-to-source register and parameter/boundary findings in `docs/architecture/MODEL_EVIDENCE_AUDIT.md`. Scenario telemetry/forecasts and compact MCP results carry illustrative/unvalidated status. An accepted heuristic gate no longer emits a calibration claim; legacy TTV/probability API names are documented as compatibility names. Dossier notices and frontend integration guidance supersede unsupported historical claims.
+
+Treatment actions, numerical constants, guard thresholds and scenario equations are unchanged. Clinical/domain review, empirical calibration, actual cockpit acceptance (#8) and future experiments (#15/#17/#19) remain outstanding; no such validation is claimed. Final local verification is recorded after running the gate.
+
+## Issue #12 verification results
+
+- `RUST_TEST_THREADS=1 bash scripts/agent_probe.sh --all`: passed; 86 tests, no failures, check and strict all-target Clippy passed.
+- `cargo build --workspace --locked --quiet`: passed.
+- Actual MCP subprocess: health, quantile and spatial responses carry `ILLUSTRATIVE_UNVALIDATED`, remain valid JSON and are 338/216/477 bytes respectively. The integration test verifies all eight tool outputs retain model status and respect the existing byte limit.
+- The first parallel full-probe run failed the existing 150 us wall-clock timing assertion (200.23 us). The unchanged assertion passes with serial tests. This documents execution sensitivity; no timing threshold was loosened and no under-load performance guarantee is claimed.
+- No browser qualification: executable cockpit is not integrated on this baseline. Historical PDF exports are not regenerated. These integration/document-export limits are recorded in the evidence audit.
+- Numerical model coefficients, playbook policies and clinical guard thresholds are unchanged.

@@ -1,5 +1,7 @@
 # ARES-Health — Registro delle Fonti Scientifiche, Dataset Multi-Agenzia, Standard NASA e Modelli Matematici
 
+> Issue #12 correction: this is a historical bibliography, not proof of parameter-level validation. See [MODEL_EVIDENCE_AUDIT.md](architecture/MODEL_EVIDENCE_AUDIT.md) for checked source scope. In particular, current fixed-rate TTV is not a fitted 7-day EWMA-OLS and its bands are not calibrated 95% intervals; deterministic Timestral weights do not establish forecast accuracy.
+
 Questo documento tiene traccia di tutte le basi teoriche, articoli scientifici peer-reviewed (internazionali e cinesi, verificati tramite il protocollo `deep-scholar`), standard tecnici aerospaziali (`NASA-STD-3001`, `NASA OCHMO MTB-007`), RFC/FIPS crittografiche, dataset clinici e spaziali multi-agenzia (24 fonti ufficiali NASA, CSA, ESA, DLR, TRISH, JAXA, PhysioNet, UCI) e modelli matematici su cui è fondata l'architettura di **ARES-Health** (*Autonomous Resilient Edge-native System for Astronaut Health* — NASA Space Apps Challenge 2026).
 
 ---

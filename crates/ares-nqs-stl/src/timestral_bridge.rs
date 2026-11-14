@@ -10,8 +10,7 @@ use crate::timestral_quantiles::{ConformalAbstentionGate, QuantileHead};
 use crate::ttv_predictor::estimate_greybox_quantile_ttv_cone;
 use ares_core_types::telemetry::{Biometrics, JugularHemodynamics, Musculoskeletal, SansOcular};
 use ares_core_types::{
-    ChannelQuantileCone, ConformalGateStatus, MonotoneQuantileTriplet,
-    NqsQuantileForecastSnapshot,
+    ChannelQuantileCone, ConformalGateStatus, MonotoneQuantileTriplet, NqsQuantileForecastSnapshot,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, RwLock, TryLockError};
@@ -52,7 +51,7 @@ impl AresMultivariateSample {
         musculo: &Musculoskeletal,
         jugular: &JugularHemodynamics,
         sans: &SansOcular,
-        rho_global: f64,
+        rho_global: impl Into<Option<f64>>,
     ) -> Self {
         let opt_channels: [Option<f64>; ARES_TIMESTRAL_CHANNELS] = [
             biometrics.heart_rate_bpm,
@@ -66,7 +65,7 @@ impl AresMultivariateSample {
             Some(musculo.ared_daily_load_kgf),
             Some(musculo.sclerostin_pmol_l),
             Some(sans.sans_risk_index),
-            Some(rho_global),
+            rho_global.into(),
         ];
 
         let mut values = [0.0; ARES_TIMESTRAL_CHANNELS];
@@ -214,27 +213,43 @@ pub fn compute_greybox_forecast_snapshot(
         q95: raw_q95.max(raw_q50),
     };
 
-    let cert = gate.evaluate_with_certificate(
+    let mut cert = gate.evaluate_with_certificate(
         sample.sqi_score,
         observed_ratio,
         raw_rho_cone,
         sample.recording_time_s,
     );
 
-    let ttv_hours_cone = estimate_greybox_quantile_ttv_cone(current_rho, raw_rho_cone, 1.0);
+    let complete = sample.observed_mask & (1 << 11) != 0 && sample.observed_mask & (1 << 4) != 0;
+    if !complete {
+        cert.abstained = true;
+        cert.status = ConformalGateStatus::AbstainedFallbackDeterministic;
+        cert.reason = "global assessment unavailable: required HRV missing".into();
+    }
+    let ttv_hours_cone =
+        complete.then(|| estimate_greybox_quantile_ttv_cone(current_rho, raw_rho_cone, 1.0));
 
     NqsQuantileForecastSnapshot {
+        model_validation_status:
+            ares_core_types::telemetry::ModelValidationStatus::IllustrativeUnvalidated,
         source_recording_time_s: sample.recording_time_s,
         confidence_state: cert.status,
         abstention_certificate: cert,
         short_horizon_s: 900,
         heart_rate_bpm_cone: hr_cone,
         resp_rate_brpm_cone: resp_cone,
-        rmssd_ms_cone: rmssd_cone,
-        rho_global_cone: raw_rho_cone,
+        rmssd_ms_cone: (sample.observed_mask & (1 << 4) != 0).then_some(rmssd_cone),
+        rho_global_cone: complete.then_some(raw_rho_cone),
         ttv_hours_cone,
-        channel_cones,
-        pessimistic_ttv_q05_hours: ttv_hours_cone.q05,
+        channel_cones: channel_cones
+            .into_iter()
+            .filter(|cone| {
+                !["rmssd_ms", "sdnn_ms", "lf_hf_ratio", "rho_global"]
+                    .contains(&cone.channel_name.as_str())
+                    || complete
+            })
+            .collect(),
+        pessimistic_ttv_q05_hours: ttv_hours_cone.map(|cone| cone.q05),
         inference_latency_us,
     }
 }
@@ -265,7 +280,7 @@ impl AresTemporalForecasterEngine {
         let gate = ConformalAbstentionGate::default();
         let buffer = CircularTelemetryBuffer::new(config.num_channels, buffer_cap)?;
         let initial_snapshot =
-            NqsQuantileForecastSnapshot::initial_deterministic(0.0, 0.5, 120.0, 80.0, 180.0);
+            NqsQuantileForecastSnapshot::initial_deterministic(0.0, None, None, None, None);
         let handle = AresTemporalForecasterHandle::new(initial_snapshot);
 
         Ok(Self {
@@ -305,6 +320,7 @@ impl AresTemporalForecasterEngine {
         let t0 = Instant::now();
 
         if let Some(prev_rho) = self.last_rho_cone
+            && sample.observed_mask & (1 << 11) != 0
             && sample.values[11].is_finite()
         {
             self.gate
@@ -332,11 +348,7 @@ impl AresTemporalForecasterEngine {
         let last_patch = &patches[patches.len() - 1];
 
         let mut channel_cones = Vec::with_capacity(self.config.num_channels);
-        for (ch_idx, emb) in embeddings
-            .iter()
-            .enumerate()
-            .take(self.config.num_channels)
-        {
+        for (ch_idx, emb) in embeddings.iter().enumerate().take(self.config.num_channels) {
             let name = GREYBOX_CHANNEL_NAMES
                 .get(ch_idx)
                 .copied()
@@ -376,7 +388,7 @@ impl AresTemporalForecasterEngine {
             &self.gate,
             latency_us,
         );
-        self.last_rho_cone = Some(snapshot.rho_global_cone);
+        self.last_rho_cone = snapshot.rho_global_cone;
         self.handle.publish_snapshot(snapshot);
         Ok(self.handle.read_latest_snapshot())
     }
@@ -403,11 +415,7 @@ mod tests {
         let writer = thread::spawn(move || {
             for i in 1..=200 {
                 let next = NqsQuantileForecastSnapshot::initial_deterministic(
-                    i as f64,
-                    0.45,
-                    110.0,
-                    82.0,
-                    150.0,
+                    i as f64, 0.45, 110.0, 82.0, 150.0,
                 );
                 writer_handle.publish_snapshot(next);
             }
@@ -468,9 +476,12 @@ mod tests {
         );
         snap.assert_monotone()
             .expect("greybox snapshot must be monotone");
-        assert!(snap.ttv_hours_cone.q05 <= snap.ttv_hours_cone.q50);
-        assert!(snap.ttv_hours_cone.q50 <= snap.ttv_hours_cone.q95);
-        assert!((snap.pessimistic_ttv_q05_hours - snap.ttv_hours_cone.q05).abs() < 1e-12);
+        assert!(snap.ttv_hours_cone.unwrap().q05 <= snap.ttv_hours_cone.unwrap().q50);
+        assert!(snap.ttv_hours_cone.unwrap().q50 <= snap.ttv_hours_cone.unwrap().q95);
+        assert!(
+            (snap.pessimistic_ttv_q05_hours.unwrap() - snap.ttv_hours_cone.unwrap().q05).abs()
+                < 1e-12
+        );
     }
 
     #[test]
@@ -553,10 +564,12 @@ mod tests {
         }
 
         let latest = handle.read_latest_snapshot();
-        latest.assert_monotone().expect("latest handle snapshot monotone");
+        latest
+            .assert_monotone()
+            .expect("latest handle snapshot monotone");
         assert_eq!(
             latest.confidence_state,
-            ConformalGateStatus::CalibratedQuantileCone
+            ConformalGateStatus::HeuristicGateAccepted
         );
     }
 }

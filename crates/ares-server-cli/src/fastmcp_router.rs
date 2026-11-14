@@ -77,7 +77,7 @@ fn modality_short_code(m: DeonticModality) -> &'static str {
 #[inline]
 fn gate_status_code(s: ConformalGateStatus) -> &'static str {
     match s {
-        ConformalGateStatus::CalibratedQuantileCone => "CALIBRATED",
+        ConformalGateStatus::HeuristicGateAccepted => "HEURISTIC_ACCEPTED",
         ConformalGateStatus::AbstainedFallbackDeterministic => "ABSTAINED_FALLBACK",
     }
 }
@@ -89,7 +89,14 @@ fn serialize_under_budget(mut payload: Value) -> String {
         return s;
     }
     if let Some(obj) = payload.as_object_mut() {
-        for key in ["neighbors", "slices", "clauses", "steps", "deontic", "adhg_chain"] {
+        for key in [
+            "neighbors",
+            "slices",
+            "clauses",
+            "steps",
+            "deontic",
+            "adhg_chain",
+        ] {
             while s.len() > MAX_MCP_CONTEXT_MODE_BYTES {
                 let popped = obj
                     .get_mut(key)
@@ -106,7 +113,8 @@ fn serialize_under_budget(mut payload: Value) -> String {
     if s.len() <= MAX_MCP_CONTEXT_MODE_BYTES {
         return s;
     }
-    json!({ "truncated": true, "bytes": s.len() }).to_string()
+    json!({ "truncated": true, "bytes": s.len(), "model_status": "ILLUSTRATIVE_UNVALIDATED" })
+        .to_string()
 }
 
 fn extract_str_arg<'a>(params: &'a Value, keys: &[&str]) -> Option<&'a str> {
@@ -146,13 +154,13 @@ pub fn handle_fastmcp_jsonrpc_request<S: McpInputSanitizer>(
             id,
             result: Some(json!({
                 "tools": [
-                    { "name": "get_crew_health_summary", "description": "Compact <150-token NQS-STL & MRI readiness summary" },
+                    { "name": "get_crew_health_summary", "description": "Illustrative scenario assessment; unavailable metrics remain null" },
                     { "name": "explain_causal_anomaly", "description": "4-hop ADHG causal chain for active physiological degradation" },
                     { "name": "simulate_countermeasure_impact", "description": "Deterministic delta-rho & TTV projection for LBNP/ARED countermeasures" },
                     { "name": "get_medops_playbook", "description": "Active Type-1 MedOps Playbook (#01-#05) and 3 Hard Safety Gates status" },
                     { "name": "query_dataset_graph", "description": "Query AresUnifiedDatasetGraph (24 datasets) with SPOKE/BioCypher/PrimeKG/Biolink provenance (<150 tokens)" },
                     { "name": "explain_biomarker_path", "description": "Shortest semantic/causal path across 24 datasets in AresUnifiedDatasetGraph (<150 tokens)" },
-                    { "name": "get_timestral_quantile_cones", "description": "Non-crossing DHF Timestral quantile forecast [q05,q50,q95], TTV_q05, and ConformalAbstentionGate (<150 tokens)" },
+                    { "name": "get_timestral_quantile_cones", "description": "Illustrative non-crossing scenario ranges and heuristic gate; no calibrated coverage claim" },
                     { "name": "get_hypergraph_spatial_status", "description": "3D UBERON body heatmap, HabitatZoneDeonticPolicy, and ARES-BioKG 16-byte descriptor (<150 tokens)" }
                 ]
             })),
@@ -172,16 +180,18 @@ pub fn handle_fastmcp_jsonrpc_request<S: McpInputSanitizer>(
                 }
             };
 
-            let compact_payload = match clean_name.as_str() {
+            let mut compact_payload = match clean_name.as_str() {
                 "get_crew_health_summary" | "get_astronaut_health_summary" => json!({
                     "astronaut": latest_packet.astronaut_id,
                     "fd": latest_packet.flight_day,
                     "src": latest_packet.source_record_id,
                     "t_rec_s": latest_packet.relative_recording_time_s,
                     "severity": latest_packet.alert_severity,
-                    "mri_pct": round1(latest_packet.nqs_stl.mri_pct),
-                    "rho_global": round2(latest_packet.nqs_stl.rho_global),
-                    "ttv_h": round1(latest_packet.nqs_stl.ttv_hours),
+                    "mri_pct": latest_packet.nqs_stl.mri_pct.map(round1),
+                    "ttv_interval_kind": latest_packet.nqs_stl.ttv_interval_kind,
+                    "rho_global": latest_packet.nqs_stl.rho_global.map(round2),
+                    "ttv_h": latest_packet.nqs_stl.ttv_hours.map(round1),
+                    "hrv_unavailable_reason": latest_packet.biometrics.hrv_unavailable_reason,
                     "missing": latest_packet.biometrics.missing_channels
                 }),
                 "explain_causal_anomaly" | "query_organ_robustness" => {
@@ -200,10 +210,10 @@ pub fn handle_fastmcp_jsonrpc_request<S: McpInputSanitizer>(
                     })
                 }
                 "simulate_countermeasure_impact" => json!({
-                    "current_rho": round2(latest_packet.nqs_stl.rho_global),
-                    "lbnp_30mmhg_delta_rho_h": 0.19,
-                    "ared_125kgf_delta_rho_h": 0.11,
-                    "projected_ttv_gain_h": 96.0
+                    "current_rho": latest_packet.nqs_stl.rho_global.map(round2),
+                    "lbnp_30mmhg_delta_rho_h": latest_packet.nqs_stl.rho_global.map(|_| 0.19),
+                    "ared_125kgf_delta_rho_h": latest_packet.nqs_stl.rho_global.map(|_| 0.11),
+                    "projected_ttv_gain_h": latest_packet.nqs_stl.rho_global.map(|_| 96.0)
                 }),
                 "get_medops_playbook" | "trigger_medops_action_playbook" => json!({
                     "playbook_id": latest_packet.active_playbook.playbook_id,
@@ -211,8 +221,9 @@ pub fn handle_fastmcp_jsonrpc_request<S: McpInputSanitizer>(
                     "top_action": latest_packet.active_playbook.actions.first().map(|a| &a.action_id)
                 }),
                 "query_dataset_graph" => {
-                    let raw_query = extract_str_arg(&req.params, &["query", "keyword", "id", "dataset"])
-                        .unwrap_or("OSD-51");
+                    let raw_query =
+                        extract_str_arg(&req.params, &["query", "keyword", "id", "dataset"])
+                            .unwrap_or("OSD-51");
                     let clean_query = match sanitizer.sanitize_mcp_query(raw_query) {
                         Ok(q) => q,
                         Err(e) => {
@@ -291,17 +302,9 @@ pub fn handle_fastmcp_jsonrpc_request<S: McpInputSanitizer>(
                     json!({
                         "gate": gate_status_code(snap.confidence_state),
                         "abstained": snap.abstention_certificate.abstained,
-                        "rho_cone": [
-                            round2(snap.rho_global_cone.q05),
-                            round2(snap.rho_global_cone.q50),
-                            round2(snap.rho_global_cone.q95)
-                        ],
-                        "ttv_cone_h": [
-                            round1(snap.ttv_hours_cone.q05),
-                            round1(snap.ttv_hours_cone.q50),
-                            round1(snap.ttv_hours_cone.q95)
-                        ],
-                        "pessimistic_ttv_q05_h": round1(snap.pessimistic_ttv_q05_hours),
+                        "rho_cone": snap.rho_global_cone.map(|cone| [round2(cone.q05), round2(cone.q50), round2(cone.q95)]),
+                        "ttv_cone_h": snap.ttv_hours_cone.map(|cone| [round1(cone.q05), round1(cone.q50), round1(cone.q95)]),
+                        "pessimistic_ttv_q05_h": snap.pessimistic_ttv_q05_hours.map(round1),
                         "hr_cone": [
                             round1(snap.heart_rate_bpm_cone.q05),
                             round1(snap.heart_rate_bpm_cone.q50),
@@ -343,6 +346,7 @@ pub fn handle_fastmcp_jsonrpc_request<S: McpInputSanitizer>(
                             "clause": ctx.grounding.normative_clause.official_code(),
                             "bytes": core::mem::size_of::<BiomedicalEvidenceDescriptor>(),
                             "crc_ok": desc.verify_crc().is_ok(),
+                            "mapping_status": "UNVERIFIED",
                             "d": round2(desc.cohen_d())
                         }
                     })
@@ -359,6 +363,12 @@ pub fn handle_fastmcp_jsonrpc_request<S: McpInputSanitizer>(
                 }
             };
 
+            if let Some(object) = compact_payload.as_object_mut() {
+                object.insert(
+                    "model_status".into(),
+                    json!(latest_packet.model_validation_status),
+                );
+            }
             let serialized = serialize_under_budget(compact_payload);
             JsonRpcResponse {
                 jsonrpc: "2.0",
@@ -419,7 +429,11 @@ mod tests {
                 params: json!({ "name": tool, "arguments": {} }),
             };
             let resp = handle_fastmcp_jsonrpc_request(&req, &ctx, &sanitizer);
-            assert!(resp.error.is_none(), "Unexpected error on tool {tool}: {:?}", resp.error);
+            assert!(
+                resp.error.is_none(),
+                "Unexpected error on tool {tool}: {:?}",
+                resp.error
+            );
             let result = resp.result.expect("result present");
             let text = result["content"][0]["text"]
                 .as_str()
@@ -429,9 +443,11 @@ mod tests {
                 "Tool {tool} exceeded 600-byte Context-Mode cap: {} bytes ({text})",
                 text.len()
             );
-            let parsed: Value =
-                serde_json::from_str(text).expect("tool output must be valid JSON");
-            assert!(parsed.is_object(), "Tool {tool} output must be a JSON object");
+            let parsed: Value = serde_json::from_str(text).expect("tool output must be valid JSON");
+            assert!(
+                parsed.is_object(),
+                "Tool {tool} output must be a JSON object"
+            );
         }
     }
 
@@ -460,7 +476,12 @@ mod tests {
         let q_json: Value = serde_json::from_str(&q_text).expect("valid json");
         assert_eq!(q_json["datasets"], 24);
         assert!(q_json["schema"].as_str().expect("schema").contains("SPOKE"));
-        assert!(q_json["schema"].as_str().expect("schema").contains("Biolink"));
+        assert!(
+            q_json["schema"]
+                .as_str()
+                .expect("schema")
+                .contains("Biolink")
+        );
 
         // 2. explain_biomarker_path
         let p_req = JsonRpcRequest {
@@ -495,10 +516,10 @@ mod tests {
             .to_string();
         assert!(t_text.len() <= MAX_MCP_CONTEXT_MODE_BYTES);
         let t_json: Value = serde_json::from_str(&t_text).expect("valid json");
-        let rho = t_json["rho_cone"].as_array().expect("rho_cone array");
-        assert_eq!(rho.len(), 3);
-        assert!(rho[0].as_f64().expect("q05") <= rho[1].as_f64().expect("q50"));
-        assert!(rho[1].as_f64().expect("q50") <= rho[2].as_f64().expect("q95"));
+        assert_eq!(t_json.get("rho_cone"), Some(&Value::Null));
+        assert_eq!(t_json.get("ttv_cone_h"), Some(&Value::Null));
+        assert_eq!(t_json.get("pessimistic_ttv_q05_h"), Some(&Value::Null));
+        assert_eq!(t_json["abstained"], true);
 
         // 4. get_hypergraph_spatial_status
         let h_req = JsonRpcRequest {

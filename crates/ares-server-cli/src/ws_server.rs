@@ -8,8 +8,8 @@ use ares_causal_graph::error::CausalGraphError;
 use ares_causal_graph::hemodynamics::compute_jugular_and_sans_state;
 use ares_causal_graph::hypergraph_spatial::{
     AnatomicalRegionSubgraph, AnatomicalRiskInputs, BodyHeatmap, HabitatDeonticAssessment,
-    HabitatEnvironmentState, HabitatZoneDeonticPolicy, HabitatZoneId,
-    MissionLongitudinalCompactor, PhysiologicalTick, ZoneTransitionMarkovModel,
+    HabitatEnvironmentState, HabitatZoneDeonticPolicy, HabitatZoneId, MissionLongitudinalCompactor,
+    PhysiologicalTick, ZoneTransitionMarkovModel,
 };
 use ares_causal_graph::mechanotransduction::compute_musculoskeletal_state;
 use ares_core_types::NqsQuantileForecastSnapshot;
@@ -20,13 +20,13 @@ use ares_core_types::telemetry::{
 };
 use ares_medops_playbooks::playbooks::select_candidate_playbook;
 use ares_medops_playbooks::safety_gates::enforce_hard_clinical_safety_gates;
+use ares_nqs_stl::NqsEngine;
 use ares_nqs_stl::error::NqsStlError;
 use ares_nqs_stl::mri_index::evaluate_nqs_stl_and_mri;
 use ares_nqs_stl::timestral_backbone::{ARES_TIMESTRAL_CHANNELS, TimestralConfig};
 use ares_nqs_stl::timestral_bridge::{
     AresMultivariateSample, AresTemporalForecasterEngine, KnownFutureCovariates,
 };
-use ares_nqs_stl::NqsEngine;
 use ares_security_privacy::audit_chain::Sha256AuditLogger;
 use ares_telemetry_ingest::bidmc_replayer::{BidmcReplayer, IngestError};
 use ares_telemetry_ingest::scenario_overlay::merge_biometrics_with_scenario;
@@ -118,7 +118,7 @@ pub fn compute_mission_telemetry_tick(
         scenario,
     );
 
-    let system_phase = if nqs_stl.rho_global < 0.0 || jugular.pocus_thrombus_confirmed {
+    let system_phase = if nqs_stl.has_known_violation() || jugular.pocus_thrombus_confirmed {
         SystemPhase::Act
     } else {
         SystemPhase::Evaluate
@@ -133,6 +133,8 @@ pub fn compute_mission_telemetry_tick(
         astronaut_id: "ARES-CDR-01".to_string(),
         system_phase,
         alert_severity,
+        model_validation_status:
+            ares_core_types::telemetry::ModelValidationStatus::IllustrativeUnvalidated,
         provenance_manifest: ProvenanceManifest {
             biometrics_source: BiometricsSource::RecordedTerrestrialBidmcCsv,
             biometrics_native_rate_hz: 1.0,
@@ -248,7 +250,9 @@ impl MissionRuntimeInner {
         self.latest_grounding = *ground_adhg_node_o1(adhg_node);
     }
 
-    fn run_1hz_timestral_inference(&mut self) -> Result<Arc<NqsQuantileForecastSnapshot>, NqsStlError> {
+    fn run_1hz_timestral_inference(
+        &mut self,
+    ) -> Result<Arc<NqsQuantileForecastSnapshot>, NqsStlError> {
         let pkt = &self.latest_packet;
         let sample = AresMultivariateSample::from_telemetry_components(
             pkt.relative_recording_time_s,
@@ -376,7 +380,9 @@ impl SharedMissionState {
             &latest_packet.active_playbook.playbook_id,
         ));
 
-        let dataset_graph = Arc::new(AresUnifiedDatasetGraph::build_with_bidmc_dir(Some(data_dir))?);
+        let dataset_graph = Arc::new(AresUnifiedDatasetGraph::build_with_bidmc_dir(Some(
+            data_dir,
+        ))?);
 
         let (tx, _) = broadcast::channel(128);
         let audit_logger = Sha256AuditLogger::default();
@@ -668,7 +674,12 @@ mod tests {
             updated.active_playbook.playbook_id,
             "PLAYBOOK_01_VENOUS_STASIS_LBNP"
         );
-        assert!(updated.active_playbook.safety_gates.anticoagulant_lock_active);
+        assert!(
+            updated
+                .active_playbook
+                .safety_gates
+                .anticoagulant_lock_active
+        );
         assert!(
             state
                 .audit_logger
@@ -695,8 +706,90 @@ mod tests {
             updated.active_playbook.playbook_id,
             "PLAYBOOK_02_CONFIRMED_IJV_THROMBUS"
         );
-        assert!(!updated.active_playbook.safety_gates.anticoagulant_lock_active);
+        assert!(
+            !updated
+                .active_playbook
+                .safety_gates
+                .anticoagulant_lock_active
+        );
 
         let _router = build_axum_router(state);
+    }
+    #[test]
+    fn every_numeric_record_and_wrap_keeps_hrv_and_dependent_outputs_unavailable() {
+        for record in ["bidmc_01", "bidmc_02", "bidmc_03"] {
+            let path = workspace_bidmc_dir().join(format!("{record}_Numerics.csv"));
+            let mut replayer =
+                BidmcReplayer::from_csv_path(record, &path).expect("numeric fixture");
+            let count = replayer.rows().len();
+            let mut quality = SqiFilter::new();
+            let mut graph = AdhgCausalEngine::new();
+            let scenario = default_scenario_input();
+            for i in 0..=count {
+                let packet = compute_mission_telemetry_tick(
+                    &mut replayer,
+                    &mut quality,
+                    &mut graph,
+                    &scenario,
+                    i as f64,
+                );
+                assert_eq!(packet.source_record_id, record);
+                let value = serde_json::to_value(&packet).expect("serialize packet");
+                for channel in ["rmssd_ms", "sdnn_ms", "pnn50_pct", "lf_hf_ratio"] {
+                    assert_eq!(
+                        value["biometrics"].get(channel),
+                        Some(&serde_json::Value::Null)
+                    );
+                    assert!(
+                        packet
+                            .biometrics
+                            .missing_channels
+                            .iter()
+                            .any(|x| x == channel)
+                    );
+                }
+                assert_eq!(
+                    value["biometrics"]["hrv_unavailable_reason"],
+                    "BEAT_INTERVALS_NOT_AVAILABLE"
+                );
+                for field in [
+                    "rho_rmssd",
+                    "rho_global",
+                    "mri_pct",
+                    "ttv_hours",
+                    "ttv_ci95_low_hours",
+                    "ttv_ci95_high_hours",
+                ] {
+                    assert_eq!(value["nqs_stl"].get(field), Some(&serde_json::Value::Null));
+                }
+                assert_ne!(
+                    packet.alert_severity,
+                    ares_core_types::telemetry::AlertSeverity::Nominal
+                );
+                let decoded: TelemetryPacket =
+                    serde_json::from_value(value).expect("roundtrip packet");
+                assert_eq!(decoded, packet);
+            }
+        }
+    }
+    #[test]
+    fn async_forecaster_and_compactor_preserve_missing_hrv() {
+        let state = SharedMissionState::from_data_dir(&workspace_bidmc_dir()).expect("state");
+        for _ in 0..12 {
+            state.advance_tick(0.05).expect("tick");
+            let snapshot = state.run_1hz_timestral_step().expect("forecaster step");
+            assert!(snapshot.rmssd_ms_cone.is_none());
+            assert!(snapshot.rho_global_cone.is_none());
+            assert!(snapshot.ttv_hours_cone.is_none());
+            assert!(snapshot.pessimistic_ttv_q05_hours.is_none());
+            assert!(snapshot.abstention_certificate.abstained);
+            assert!(!snapshot.channel_cones.iter().any(|cone| {
+                ["rmssd_ms", "sdnn_ms", "lf_hf_ratio", "rho_global"]
+                    .contains(&cone.channel_name.as_str())
+            }));
+            let packet = state.latest_snapshot().expect("packet");
+            assert!(packet.nqs_stl.rho_global.is_none());
+            assert!(packet.nqs_stl.ttv_hours.is_none());
+        }
     }
 }

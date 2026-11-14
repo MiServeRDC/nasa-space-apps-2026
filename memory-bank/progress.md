@@ -76,3 +76,46 @@
 ## Blocco J: Frontend Astronaut Cockpit & Pitch Finale (`ares-cockpit/` — `@carolina2910` & Team)
 - [ ] **Fase 21 (`J1`):** Layout React 19 + Tailwind OLED `#000000` (`NASA-STD-3001 Vol. 2`), barra `[1. GATHER] -> [2. EVALUATE] -> [3. ACT]`, 3D Anatomical Heatmap (`Three.js`), grafico `NQS-STL` con cono monotono $[q_{0.05}, q_{0.50}, q_{0.95}]$ e **What-If Stress-Test Console**.
 - [ ] **Fase 22 (`J2`):** Verifica finale end-to-end (`./scripts/agent_probe.sh --all`) e registrazione video demo (180s + 30s).
+
+
+## Issue #11 — HRV validity correction (current main baseline)
+
+- [x] Remove numeric-derived/default HRV and dependent healthy fallback.
+- [x] Preserve unavailable full assessments, explicit degraded state and known hazard handling.
+- [x] Update typed contracts, schema field documentation, historical-plan correction notices and integration checklist.
+- [x] Local workspace tests: 45 passed; strict all-target Clippy and build passed.
+- [x] Actual local HTTP snapshot, WebSocket first frame and MCP process verified.
+- [ ] Integrate/recheck executable cockpit when available; full #11 UI acceptance remains pending (#8).
+- [ ] Repeat compatibility checks after merging pending replay/alternate-server/forecasting work.
+
+The corrected behavior supersedes older phase descriptions implying numeric-only HRV or an always-available full MRI/TTV. No hosted Actions were started.
+
+Final local repository gate: `bash scripts/agent_probe.sh --all` passed (check, all-target Clippy, 45 tests, production panic scan, dataset checksums and required documentation).
+
+
+### PR #20 integration with main 4839090
+
+The phases 15-20 update arrived before merge. Ported null HRV guarantees into the new FastMCP router, optional Timestral assessment/RMSSD cones, masked global input, NqsEngine and longitudinal storage. Missing global values are not counted as zero observations, calibrated on zero padding, or converted back to finite TTV. An added regression runs the async forecaster repeatedly and checks its typed snapshot and compact output. Full local verification follows before merge.
+
+Integration verification on main `4839090`: `bash scripts/agent_probe.sh --all` passed, 83 tests passed, 0 failures and strict all-target Clippy passed.
+
+
+## Issue #12: model evidence and honest output status
+
+- [x] Output/formula/input/unit/source/population/parameter/calibration register and sensitivity/boundary review.
+- [x] Machine-readable illustrative/unvalidated status; honest gate acceptance and legacy TTV range descriptions.
+- [x] Dossier Markdown and frontend contract guidance corrected; exact sources and unresolved clinical review gaps recorded.
+- [ ] Qualified domain review and target-population/outcome validation (not implemented or implied by this task).
+- [ ] Verify evidence-status presentation when executable cockpit is integrated (#8); historical PDFs require refresh before presenting them as current evidence.
+
+No treatment policy or clinical threshold was changed. Local verification results follow after the repository probe.
+
+
+## Issue #12 verification results
+
+- `RUST_TEST_THREADS=1 bash scripts/agent_probe.sh --all`: passed; 86 tests, no failures, check and strict all-target Clippy passed.
+- `cargo build --workspace --locked --quiet`: passed.
+- Actual MCP subprocess: health, quantile and spatial responses carry `ILLUSTRATIVE_UNVALIDATED`, remain valid JSON and are 338/216/477 bytes respectively. The integration test verifies all eight tool outputs retain model status and respect the existing byte limit.
+- The first parallel full-probe run failed the existing 150 us wall-clock timing assertion (200.23 us). The unchanged assertion passes with serial tests. This documents execution sensitivity; no timing threshold was loosened and no under-load performance guarantee is claimed.
+- No browser qualification: executable cockpit is not integrated on this baseline. Historical PDF exports are not regenerated. These integration/document-export limits are recorded in the evidence audit.
+- Numerical model coefficients, playbook policies and clinical guard thresholds are unchanged.

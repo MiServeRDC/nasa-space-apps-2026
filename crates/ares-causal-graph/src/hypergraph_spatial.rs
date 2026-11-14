@@ -163,7 +163,7 @@ pub struct PhysiologicalTick {
     /// SANS translaminar index (dimensionless, 0..1).
     pub sans_index: f64,
     /// Global NQS-STL robustness `rho` in `[-1, +1]`.
-    pub rho_global: f64,
+    pub rho_global: Option<f64>,
 }
 
 /// Compact super-node (168 bytes) for one Sol or one warm bucket.
@@ -201,8 +201,13 @@ impl LongitudinalSuperNode {
         self.sost_stats.update(tick.sost_pmol_l);
         self.mqi_stats.update(tick.mqi);
         self.sans_stats.update(tick.sans_index);
-        self.rho_global_stats.update(tick.rho_global);
-        if tick.rho_global.is_finite() && tick.rho_global < 0.0 {
+        if let Some(rho) = tick.rho_global {
+            self.rho_global_stats.update(rho);
+        }
+        if tick
+            .rho_global
+            .is_some_and(|rho| rho.is_finite() && rho < 0.0)
+        {
             self.pinned_anomaly = true;
         }
     }
@@ -621,7 +626,11 @@ impl AnatomicalRegionSubgraph {
     /// Conduction arcs as `(from, to, edge)` triples for cockpit Bezier rendering.
     pub fn conduction_arcs(
         &self,
-    ) -> Vec<(AnatomicalRegionId, AnatomicalRegionId, AnatomicalConductionEdge)> {
+    ) -> Vec<(
+        AnatomicalRegionId,
+        AnatomicalRegionId,
+        AnatomicalConductionEdge,
+    )> {
         self.graph
             .edge_references()
             .filter_map(|e| {
@@ -896,7 +905,8 @@ impl HabitatZoneDeonticPolicy {
         // Acoustic ceiling in the sleep quarters.
         let noise = s.sleep_quarters_noise_dba;
         if noise.is_finite() && noise > self.sleep_quarters_max_noise_dba {
-            let rho = (self.sleep_quarters_max_noise_dba - noise) / self.sleep_quarters_max_noise_dba;
+            let rho =
+                (self.sleep_quarters_max_noise_dba - noise) / self.sleep_quarters_max_noise_dba;
             apply_zone_verdict(
                 &mut v,
                 HabitatZoneId::SleepQuarters,
@@ -908,7 +918,11 @@ impl HabitatZoneDeonticPolicy {
         }
 
         // LBNP dwell guardrail (Safety Gate 2).
-        let dwell = if s.lbnp_dwell_s.is_finite() { s.lbnp_dwell_s.max(0.0) } else { 0.0 };
+        let dwell = if s.lbnp_dwell_s.is_finite() {
+            s.lbnp_dwell_s.max(0.0)
+        } else {
+            0.0
+        };
         if dwell > self.lbnp_max_dwell_s {
             apply_zone_verdict(
                 &mut v,
@@ -920,7 +934,8 @@ impl HabitatZoneDeonticPolicy {
             );
         } else {
             let slot = &mut v[HabitatZoneId::LbnpChamber as usize];
-            slot.rho_qstl = ((self.lbnp_max_dwell_s - dwell) / self.lbnp_max_dwell_s).clamp(0.0, 1.0);
+            slot.rho_qstl =
+                ((self.lbnp_max_dwell_s - dwell) / self.lbnp_max_dwell_s).clamp(0.0, 1.0);
         }
 
         // Martian gait asymmetry (Safety Gate 3).
@@ -971,13 +986,21 @@ impl HabitatZoneDeonticPolicy {
                 .clamp(-1.0, -0.01);
             for zone in HabitatZoneId::ALL {
                 let (modality, rho, rule) = match zone {
-                    HabitatZoneId::RadiationStormShelter => {
-                        (DeonticModality::Mandatory, 1.0, "SPE_STORM_SHELTER_MANDATORY")
-                    }
-                    HabitatZoneId::EvaAirlock => {
-                        (DeonticModality::Forbidden, rho_rad.min(-0.5), "SPE_EVA_FORBIDDEN")
-                    }
-                    _ => (DeonticModality::Restricted, rho_rad, "SPE_EVACUATE_TO_SHELTER"),
+                    HabitatZoneId::RadiationStormShelter => (
+                        DeonticModality::Mandatory,
+                        1.0,
+                        "SPE_STORM_SHELTER_MANDATORY",
+                    ),
+                    HabitatZoneId::EvaAirlock => (
+                        DeonticModality::Forbidden,
+                        rho_rad.min(-0.5),
+                        "SPE_EVA_FORBIDDEN",
+                    ),
+                    _ => (
+                        DeonticModality::Restricted,
+                        rho_rad,
+                        "SPE_EVACUATE_TO_SHELTER",
+                    ),
                 };
                 v[zone as usize] = ZoneDeonticVerdict {
                     zone,
@@ -1154,7 +1177,9 @@ mod tests {
 
     #[test]
     fn test_welford_accumulator_matches_exact_two_pass_variance() {
-        let xs: Vec<f64> = (0..481).map(|i| 60.0 + ((i as f64) * 0.37).sin() * 12.5 + (i % 7) as f64).collect();
+        let xs: Vec<f64> = (0..481)
+            .map(|i| 60.0 + ((i as f64) * 0.37).sin() * 12.5 + (i % 7) as f64)
+            .collect();
         let mut acc = WelfordAccumulator::new();
         for &x in &xs {
             assert!(acc.update(x));
@@ -1179,7 +1204,11 @@ mod tests {
         let mut all = WelfordAccumulator::new();
         for i in 0..200 {
             let x = (i as f64 * 1.3).cos() * 4.0 + 10.0;
-            if i < 77 { a.update(x); } else { b.update(x); }
+            if i < 77 {
+                a.update(x);
+            } else {
+                b.update(x);
+            }
             all.update(x);
         }
         a.merge(&b);
@@ -1195,7 +1224,10 @@ mod tests {
         assert!(std::mem::size_of::<LongitudinalSuperNode>() <= 168);
         let compactor = MissionLongitudinalCompactor::new(MARS_MISSION_SOLS).unwrap();
         let bytes = compactor.memory_footprint_bytes();
-        assert!(bytes < LONGITUDINAL_MEMORY_BUDGET_BYTES, "footprint {bytes} B");
+        assert!(
+            bytes < LONGITUDINAL_MEMORY_BUDGET_BYTES,
+            "footprint {bytes} B"
+        );
     }
 
     #[test]
@@ -1205,10 +1237,22 @@ mod tests {
         let mut t = 0.0;
         while t < 3.0 * MARS_SOL_SECONDS {
             let sol = (t / MARS_SOL_SECONDS).floor() as u32;
-            let rho = if sol == 1 && (t % MARS_SOL_SECONDS) < 3_000.0 { -0.2 } else { 0.4 };
-            c.observe(t, &PhysiologicalTick {
-                tau_w_dyn_cm2: 2.4, sost_pmol_l: 30.0, mqi: 0.8, sans_index: 0.2, rho_global: rho,
-            }).unwrap();
+            let rho = if sol == 1 && (t % MARS_SOL_SECONDS) < 3_000.0 {
+                -0.2
+            } else {
+                0.4
+            };
+            c.observe(
+                t,
+                &PhysiologicalTick {
+                    tau_w_dyn_cm2: 2.4,
+                    sost_pmol_l: 30.0,
+                    mqi: 0.8,
+                    sans_index: 0.2,
+                    rho_global: Some(rho),
+                },
+            )
+            .unwrap();
             t += step;
         }
         assert_eq!(c.current_sol(), 2);
@@ -1220,10 +1264,32 @@ mod tests {
         assert_eq!(roll.tick_count(), day.tick_count());
         assert!((roll.rho_global_stats.mean - day.rho_global_stats.mean).abs() < 1e-12);
         // Monotonicity and capacity guards.
-        assert!(matches!(c.observe(10.0, &PhysiologicalTick { tau_w_dyn_cm2: 1.0, sost_pmol_l: 1.0, mqi: 1.0, sans_index: 0.0, rho_global: 0.0 }),
-            Err(CausalGraphError::NonMonotonicSol { .. })));
-        assert!(matches!(c.observe(11.0 * MARS_SOL_SECONDS, &PhysiologicalTick { tau_w_dyn_cm2: 1.0, sost_pmol_l: 1.0, mqi: 1.0, sans_index: 0.0, rho_global: 0.0 }),
-            Err(CausalGraphError::MissionCapacityExceeded { .. })));
+        assert!(matches!(
+            c.observe(
+                10.0,
+                &PhysiologicalTick {
+                    tau_w_dyn_cm2: 1.0,
+                    sost_pmol_l: 1.0,
+                    mqi: 1.0,
+                    sans_index: 0.0,
+                    rho_global: Some(0.0)
+                }
+            ),
+            Err(CausalGraphError::NonMonotonicSol { .. })
+        ));
+        assert!(matches!(
+            c.observe(
+                11.0 * MARS_SOL_SECONDS,
+                &PhysiologicalTick {
+                    tau_w_dyn_cm2: 1.0,
+                    sost_pmol_l: 1.0,
+                    mqi: 1.0,
+                    sans_index: 0.0,
+                    rho_global: Some(0.0)
+                }
+            ),
+            Err(CausalGraphError::MissionCapacityExceeded { .. })
+        ));
         assert!(MissionLongitudinalCompactor::new(0).is_err());
     }
 
@@ -1232,14 +1298,36 @@ mod tests {
         let mut g = AnatomicalRegionSubgraph::new();
         assert_eq!(g.node_count(), 5);
         assert_eq!(g.edge_count(), 6);
-        assert_eq!(AnatomicalRegionId::EyeOcularSans.uberon_curie(), "UBERON:0000970");
-        assert_eq!(AnatomicalRegionId::InternalJugularVein.uberon_curie(), "UBERON:0001586");
-        assert_eq!(AnatomicalRegionId::HeartCardioAutonomic.uberon_curie(), "UBERON:0000948");
-        assert_eq!(AnatomicalRegionId::SoleusCalcaneus.uberon_curie(), "UBERON:0001389");
-        assert_eq!(AnatomicalRegionId::BrainVestibularCns.uberon_curie(), "UBERON:0000955");
+        assert_eq!(
+            AnatomicalRegionId::EyeOcularSans.uberon_curie(),
+            "UBERON:0000970"
+        );
+        assert_eq!(
+            AnatomicalRegionId::InternalJugularVein.uberon_curie(),
+            "UBERON:0001586"
+        );
+        assert_eq!(
+            AnatomicalRegionId::HeartCardioAutonomic.uberon_curie(),
+            "UBERON:0000948"
+        );
+        assert_eq!(
+            AnatomicalRegionId::SoleusCalcaneus.uberon_curie(),
+            "UBERON:0001389"
+        );
+        assert_eq!(
+            AnatomicalRegionId::BrainVestibularCns.uberon_curie(),
+            "UBERON:0000955"
+        );
         for r in AnatomicalRegionId::ALL {
-            assert_eq!(AnatomicalRegionId::from_uberon_numeric(r.uberon_numeric()), Some(r));
-            assert!(r.normalized_centroid_3d().iter().all(|c| (-1.0..=1.0).contains(c)));
+            assert_eq!(
+                AnatomicalRegionId::from_uberon_numeric(r.uberon_numeric()),
+                Some(r)
+            );
+            assert!(
+                r.normalized_centroid_3d()
+                    .iter()
+                    .all(|c| (-1.0..=1.0).contains(c))
+            );
         }
 
         // Severe IJV stasis only: IJV is hottest and propagates to eye and brain.
@@ -1248,8 +1336,20 @@ mod tests {
             ..Default::default()
         });
         assert_eq!(hm.hottest_region, AnatomicalRegionId::InternalJugularVein);
-        assert!((hm.cell(AnatomicalRegionId::InternalJugularVein).local_intensity - 1.0).abs() < 1e-12);
-        assert!((hm.cell(AnatomicalRegionId::EyeOcularSans).propagated_intensity - 0.55).abs() < 1e-12);
+        assert!(
+            (hm.cell(AnatomicalRegionId::InternalJugularVein)
+                .local_intensity
+                - 1.0)
+                .abs()
+                < 1e-12
+        );
+        assert!(
+            (hm.cell(AnatomicalRegionId::EyeOcularSans)
+                .propagated_intensity
+                - 0.55)
+                .abs()
+                < 1e-12
+        );
         assert!(!hm.cell(AnatomicalRegionId::EyeOcularSans).observed);
         for c in &hm.cells {
             assert!((0.0..=1.0).contains(&c.local_intensity));
@@ -1265,7 +1365,12 @@ mod tests {
             mqi_deficit_fraction: Some(0.0),
             gai_pct: Some(1.0),
         });
-        assert!(nominal.cells.iter().all(|c| c.propagated_intensity == 0.0 && c.observed));
+        assert!(
+            nominal
+                .cells
+                .iter()
+                .all(|c| c.propagated_intensity == 0.0 && c.observed)
+        );
         assert_eq!(g.conduction_arcs().len(), 6);
     }
 
@@ -1285,13 +1390,24 @@ mod tests {
         let policy = HabitatZoneDeonticPolicy::default();
         let nominal = policy.evaluate(&state(HabitatZoneId::AredExerciseBay));
         assert!(!nominal.violates_policy);
-        assert!(nominal.verdicts.iter().all(|v| v.modality == DeonticModality::Permitted));
+        assert!(
+            nominal
+                .verdicts
+                .iter()
+                .all(|v| v.modality == DeonticModality::Permitted)
+        );
 
         let mut spe = state(HabitatZoneId::AredExerciseBay);
         spe.radiation_dose_rate_msv_d = 2.4;
         let a = policy.evaluate(&spe);
-        assert_eq!(a.verdict(HabitatZoneId::EvaAirlock).modality, DeonticModality::Forbidden);
-        assert_eq!(a.verdict(HabitatZoneId::RadiationStormShelter).modality, DeonticModality::Mandatory);
+        assert_eq!(
+            a.verdict(HabitatZoneId::EvaAirlock).modality,
+            DeonticModality::Forbidden
+        );
+        assert_eq!(
+            a.verdict(HabitatZoneId::RadiationStormShelter).modality,
+            DeonticModality::Mandatory
+        );
         assert_eq!(a.mandatory_zone, Some(HabitatZoneId::RadiationStormShelter));
         assert!(a.violates_policy);
         assert!(a.rho_current_location < 0.0);
@@ -1308,19 +1424,31 @@ mod tests {
         let mut s = state(HabitatZoneId::EvaAirlock);
         s.gai_pct = 15.0;
         let a = policy.evaluate(&s);
-        assert_eq!(a.verdict(HabitatZoneId::EvaAirlock).modality, DeonticModality::Restricted);
+        assert_eq!(
+            a.verdict(HabitatZoneId::EvaAirlock).modality,
+            DeonticModality::Restricted
+        );
         assert!(a.violates_policy);
 
         s.pocus_thrombus_confirmed = true;
         let b = policy.evaluate(&s);
-        assert_eq!(b.verdict(HabitatZoneId::EvaAirlock).modality, DeonticModality::Forbidden);
+        assert_eq!(
+            b.verdict(HabitatZoneId::EvaAirlock).modality,
+            DeonticModality::Forbidden
+        );
         assert_eq!(b.verdict(HabitatZoneId::EvaAirlock).rho_qstl, -1.0);
-        assert_eq!(b.verdict(HabitatZoneId::MedOpsUltrasoundBay).modality, DeonticModality::Mandatory);
+        assert_eq!(
+            b.verdict(HabitatZoneId::MedOpsUltrasoundBay).modality,
+            DeonticModality::Mandatory
+        );
 
         let mut l = state(HabitatZoneId::LbnpChamber);
         l.lbnp_dwell_s = 3_000.0;
         let c = policy.evaluate(&l);
-        assert_eq!(c.verdict(HabitatZoneId::LbnpChamber).modality, DeonticModality::Forbidden);
+        assert_eq!(
+            c.verdict(HabitatZoneId::LbnpChamber).modality,
+            DeonticModality::Forbidden
+        );
         assert!(c.rho_current_location < 0.0);
         l.lbnp_dwell_s = 1_350.0;
         let d = policy.evaluate(&l);
@@ -1343,7 +1471,9 @@ mod tests {
         for r in &base {
             assert!((r.iter().sum::<f64>() - 1.0).abs() < 1e-12);
         }
-        let kl = m.kl_divergence_from_baseline(HabitatZoneId::SleepQuarters, &base[0]).unwrap();
+        let kl = m
+            .kl_divergence_from_baseline(HabitatZoneId::SleepQuarters, &base[0])
+            .unwrap();
         assert!(kl > 0.50, "kl = {kl}");
         let anomaly = m
             .detect_behavioral_anomaly(&base, ZONE_KL_ANOMALY_THRESHOLD_NATS, 10)
@@ -1351,7 +1481,10 @@ mod tests {
             .unwrap();
         assert_eq!(anomaly.from_zone, HabitatZoneId::SleepQuarters);
         assert_eq!(anomaly.observed_transitions, 40);
-        assert!(m.kl_divergence_from_baseline(HabitatZoneId::SleepQuarters, &[0.5; 6]).is_err());
+        assert!(
+            m.kl_divergence_from_baseline(HabitatZoneId::SleepQuarters, &[0.5; 6])
+                .is_err()
+        );
         assert!(ZoneTransitionMarkovModel::with_alpha(0.0).is_err());
     }
 }

@@ -38,3 +38,19 @@
 * **Mandatory Invariant:**
   1. In `crates/ares-nqs-stl/src/sliding_window.rs`, use **Daniel Lemire's monotonic wedge (`VecDeque`)** as formalized for Signal Temporal Logic by **Donze, Ferrere & Maler (CAV 2013, `DOI: 10.1007/978-3-642-39799-8_19`)** to compute $\min_{\tau \in [t-W, t]} \hat{\rho}_k(\tau)$ in amortized **$O(1)$ time ($\le 3$ comparisons/sample)**.
   2. In `crates/ares-medops-playbooks`, compile all 5 MedOps playbooks and the 3 Hard Clinical Safety Gates as **Type-1 Deterministic Crystallized DAGs** (**Arun Malik**, `arXiv:2607.07052v1`, 2026; **Li et al. ProgRouter**, EMNLP 2026, `arXiv:2608.25992v2`) executing in $< 50\,\mu\text{s}$ in pure Rust, reserving `FastMCP stdio` strictly for compact (`< 150 token`) explanations.
+
+
+## Entry 008 — Numeric monitor summaries are not beat-to-beat HRV
+
+- Failure mode: fabricate RMSSD from HR/respiration, derive SDNN/pNN50/LF-HF from it, or replace missing RMSSD with 40/42 ms downstream.
+- Invariant: numeric-only replay emits null HRV with `BEAT_INTERVALS_NOT_AVAILABLE`. The optional HRV margin, full global margin, MRI and dependent forecasts stay null. Known non-HRV hazards retain warning/emergency behavior; missing HRV cannot yield NOMINAL. Snapshots, WebSocket and MCP must preserve this distinction.
+- Sources: https://neuropsychology.github.io/NeuroKit/functions/hrv.html and https://physionet.org/content/bidmc/1.0.0/.
+- Integration: repeat issue #11 tests after merging native-cadence caching, alternate transports, forecasting or cockpit work. No waveform HRV implementation or frontend qualification is implied.
+
+
+## Entry 009 — Model checks are not clinical calibration
+
+- Failure mode: label fixed prior/LR scores as diagnostic probabilities, fixed 14% TTV spread as a 95% CI, or a default gate with no calibration observations as calibrated.
+- Invariant: current scenario models emit `ILLUSTRATIVE_UNVALIDATED`; TTV uses `ILLUSTRATIVE_SCENARIO_RANGE` when available. Gate acceptance emits `HEURISTIC_GATE_ACCEPTED`; legacy calibrated input is deserialize-only compatibility. Known input absence continues to produce nulls.
+- Evidence: [model audit](../docs/architecture/MODEL_EVIDENCE_AUDIT.md), including checked primary sources, formula/parameter register, boundaries and required target-population validation. No new clinical threshold or treatment rule is introduced.
+- Dossier Markdown now points to the audit; historical PDF exports and the absent executable cockpit are not qualified by this task.

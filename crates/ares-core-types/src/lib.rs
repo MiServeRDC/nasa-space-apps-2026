@@ -128,13 +128,14 @@ impl ChannelQuantileCone {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ConformalGateStatus {
-    /// Timestral quantile cone is calibrated within clinical uncertainty bounds.
-    CalibratedQuantileCone,
+    /// Heuristic numerical checks passed; no empirical coverage or clinical validation is implied.
+    #[serde(alias = "CALIBRATED_QUANTILE_CONE")]
+    HeuristicGateAccepted,
     /// Epistemic uncertainty or signal degradation exceeded bounds; deterministic fallback active.
     AbstainedFallbackDeterministic,
 }
 
-/// Auditable certificate emitted by ConformalAbstentionGate when evaluating forecast reliability.
+/// Gate diagnostics. The historical Certificate name does not imply clinical certification.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AbstentionCertificate {
     pub abstained: bool,
@@ -151,18 +152,20 @@ pub struct AbstentionCertificate {
 /// Immutable grey-box forecast snapshot published by the 1 Hz worker and read lock-free at 20 Hz.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct NqsQuantileForecastSnapshot {
+    #[serde(default)]
+    pub model_validation_status: telemetry::ModelValidationStatus,
     pub source_recording_time_s: f64,
     pub confidence_state: ConformalGateStatus,
     pub abstention_certificate: AbstentionCertificate,
     pub short_horizon_s: u32,
     pub heart_rate_bpm_cone: MonotoneQuantileTriplet,
     pub resp_rate_brpm_cone: MonotoneQuantileTriplet,
-    pub rmssd_ms_cone: MonotoneQuantileTriplet,
-    pub rho_global_cone: MonotoneQuantileTriplet,
+    pub rmssd_ms_cone: Option<MonotoneQuantileTriplet>,
+    pub rho_global_cone: Option<MonotoneQuantileTriplet>,
     /// Time-To-Violation (hours): q05 = pessimistic worst-case, q50 = median, q95 = optimistic.
-    pub ttv_hours_cone: MonotoneQuantileTriplet,
+    pub ttv_hours_cone: Option<MonotoneQuantileTriplet>,
     pub channel_cones: Vec<ChannelQuantileCone>,
-    pub pessimistic_ttv_q05_hours: f64,
+    pub pessimistic_ttv_q05_hours: Option<f64>,
     pub inference_latency_us: u64,
 }
 
@@ -170,20 +173,32 @@ impl NqsQuantileForecastSnapshot {
     /// Constructs an initial deterministic fallback snapshot without heap-heavy state.
     pub fn initial_deterministic(
         recording_time_s: f64,
-        rho_global: f64,
-        ttv_mean: f64,
-        ttv_low: f64,
-        ttv_high: f64,
+        rho_global: impl Into<Option<f64>>,
+        ttv_mean: impl Into<Option<f64>>,
+        ttv_low: impl Into<Option<f64>>,
+        ttv_high: impl Into<Option<f64>>,
     ) -> Self {
-        let ttv_q05 = ttv_low.min(ttv_mean).max(0.0);
-        let ttv_q95 = ttv_high.max(ttv_mean);
+        let rho_global = rho_global.into().filter(|x| x.is_finite());
+        let ttv = ttv_mean
+            .into()
+            .zip(ttv_low.into())
+            .zip(ttv_high.into())
+            .filter(|((mean, low), high)| mean.is_finite() && low.is_finite() && high.is_finite())
+            .and_then(|((mean, low), high)| {
+                rho_global.map(|_| MonotoneQuantileTriplet {
+                    q05: low.min(mean).max(0.0),
+                    q50: mean.max(0.0),
+                    q95: high.max(mean).max(0.0),
+                })
+            });
         Self {
+            model_validation_status: telemetry::ModelValidationStatus::IllustrativeUnvalidated,
             source_recording_time_s: recording_time_s,
             confidence_state: ConformalGateStatus::AbstainedFallbackDeterministic,
             abstention_certificate: AbstentionCertificate {
                 abstained: true,
                 status: ConformalGateStatus::AbstainedFallbackDeterministic,
-                reason: "initial deterministic warmup before 1 Hz Timestral patch window".to_string(),
+                reason: "initial warmup; unavailable inputs are not replaced".into(),
                 empirical_coverage_error: 0.0,
                 adaptive_alpha_t: 0.10,
                 interval_width: 0.16,
@@ -194,17 +209,12 @@ impl NqsQuantileForecastSnapshot {
             short_horizon_s: 900,
             heart_rate_bpm_cone: MonotoneQuantileTriplet::from_median_and_spreads(72.0, 4.0, 4.0),
             resp_rate_brpm_cone: MonotoneQuantileTriplet::from_median_and_spreads(14.0, 1.5, 1.5),
-            rmssd_ms_cone: MonotoneQuantileTriplet::from_median_and_spreads(42.0, 5.0, 5.0),
-            rho_global_cone: MonotoneQuantileTriplet::from_median_and_spreads(
-                rho_global, 0.08, 0.08,
-            ),
-            ttv_hours_cone: MonotoneQuantileTriplet {
-                q05: ttv_q05,
-                q50: ttv_mean.max(ttv_q05),
-                q95: ttv_q95.max(ttv_mean),
-            },
+            rmssd_ms_cone: None,
+            rho_global_cone: rho_global
+                .map(|rho| MonotoneQuantileTriplet::from_median_and_spreads(rho, 0.08, 0.08)),
+            ttv_hours_cone: ttv,
             channel_cones: Vec::new(),
-            pessimistic_ttv_q05_hours: ttv_q05,
+            pessimistic_ttv_q05_hours: ttv.map(|cone| cone.q05),
             inference_latency_us: 0,
         }
     }
@@ -213,9 +223,15 @@ impl NqsQuantileForecastSnapshot {
     pub fn assert_monotone(&self) -> Result<(), AresCoreError> {
         self.heart_rate_bpm_cone.assert_monotone()?;
         self.resp_rate_brpm_cone.assert_monotone()?;
-        self.rmssd_ms_cone.assert_monotone()?;
-        self.rho_global_cone.assert_monotone()?;
-        self.ttv_hours_cone.assert_monotone()?;
+        if let Some(cone) = self.rmssd_ms_cone {
+            cone.assert_monotone()?;
+        }
+        if let Some(cone) = self.rho_global_cone {
+            cone.assert_monotone()?;
+        }
+        if let Some(cone) = self.ttv_hours_cone {
+            cone.assert_monotone()?;
+        }
         for cone in &self.channel_cones {
             cone.assert_monotone()?;
         }
@@ -237,6 +253,8 @@ mod tests {
             astronaut_id: "ARES-CDR-01".to_string(),
             system_phase: SystemPhase::Evaluate,
             alert_severity: AlertSeverity::Caution,
+            model_validation_status:
+                crate::telemetry::ModelValidationStatus::IllustrativeUnvalidated,
             provenance_manifest: ProvenanceManifest {
                 biometrics_source: BiometricsSource::RecordedTerrestrialBidmcCsv,
                 biometrics_native_rate_hz: 1.0,
@@ -253,6 +271,7 @@ mod tests {
                 resp_rate_brpm: Some(16.0),
                 spo2_pct: None,
                 rmssd_ms: Some(36.5),
+                hrv_unavailable_reason: None,
                 sdnn_ms: Some(48.2),
                 pnn50_pct: Some(15.9),
                 lf_hf_ratio: Some(3.01),
@@ -289,13 +308,16 @@ mod tests {
                 rho_tau_w: 0.32,
                 rho_ared: 1.0,
                 rho_sost: 0.92,
-                rho_rmssd: 0.59,
+                rho_rmssd: Some(0.59),
                 rho_sans: 0.71,
-                rho_global: 0.32,
-                ttv_hours: 160.0,
-                ttv_ci95_low_hours: 125.0,
-                ttv_ci95_high_hours: 221.0,
-                mri_pct: 82.5,
+                rho_global: Some(0.32),
+                ttv_hours: Some(160.0),
+                ttv_ci95_low_hours: Some(125.0),
+                ttv_ci95_high_hours: Some(221.0),
+                mri_pct: Some(82.5),
+                ttv_interval_kind: Some(
+                    crate::telemetry::TtvIntervalKind::IllustrativeScenarioRange,
+                ),
             },
             active_playbook: ActivePlaybook {
                 playbook_id: "PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED".to_string(),
@@ -425,7 +447,9 @@ mod tests {
     fn test_block_h_monotone_quantile_contracts_and_serialization() {
         let valid = MonotoneQuantileTriplet::from_median_and_spreads(0.45, 0.12, 0.18);
         assert!(valid.is_monotone());
-        valid.assert_monotone().expect("valid triplet should be monotone");
+        valid
+            .assert_monotone()
+            .expect("valid triplet should be monotone");
 
         let crossing = MonotoneQuantileTriplet {
             q05: 0.60,
@@ -455,9 +479,11 @@ mod tests {
             horizon_6h: MonotoneQuantileTriplet::from_median_and_spreads(74.0, 8.0, 9.0),
             horizon_24h: MonotoneQuantileTriplet::from_median_and_spreads(75.0, 10.0, 12.0),
         };
-        cone.assert_monotone().expect("channel cone should be monotone");
+        cone.assert_monotone()
+            .expect("channel cone should be monotone");
 
-        let mut snap = NqsQuantileForecastSnapshot::initial_deterministic(12.0, 0.52, 96.0, 70.0, 140.0);
+        let mut snap =
+            NqsQuantileForecastSnapshot::initial_deterministic(12.0, 0.52, 96.0, 70.0, 140.0);
         snap.channel_cones.push(cone);
         snap.assert_monotone().expect("snapshot should be monotone");
 
@@ -465,5 +491,22 @@ mod tests {
         let roundtrip: NqsQuantileForecastSnapshot =
             serde_json::from_str(&json).expect("deserialize snapshot");
         assert_eq!(roundtrip, snap);
+    }
+    #[test]
+    fn gate_wire_status_is_honest_and_accepts_legacy_input_only() {
+        let old: ConformalGateStatus =
+            serde_json::from_str("\"CALIBRATED_QUANTILE_CONE\"").expect("legacy input");
+        assert_eq!(old, ConformalGateStatus::HeuristicGateAccepted);
+        assert_eq!(
+            serde_json::to_value(old).expect("new status"),
+            "HEURISTIC_GATE_ACCEPTED"
+        );
+        let packet = sample_telemetry_packet_with_nulls();
+        let value = serde_json::to_value(packet).expect("packet");
+        assert_eq!(value["model_validation_status"], "ILLUSTRATIVE_UNVALIDATED");
+        assert_eq!(
+            value["nqs_stl"]["ttv_interval_kind"],
+            "ILLUSTRATIVE_SCENARIO_RANGE"
+        );
     }
 }

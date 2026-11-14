@@ -43,9 +43,9 @@ use std::sync::Arc;
 pub struct NqsEngineEvaluation {
     pub margins: NqsStlMargins,
     pub severity: AlertSeverity,
-    pub sliding_min_rho_global: f64,
+    pub sliding_min_rho_global: Option<f64>,
     pub quantile_snapshot: Arc<NqsQuantileForecastSnapshot>,
-    pub pessimistic_ttv_q05_hours: f64,
+    pub pessimistic_ttv_q05_hours: Option<f64>,
 }
 
 /// Unified NQS-STL + Timestral Grey-Box Engine combining:
@@ -68,7 +68,7 @@ impl NqsEngine {
     /// Creates an `NqsEngine` with a standalone deterministic initial forecaster handle.
     pub fn new(sliding_window_s: f64) -> Self {
         let initial =
-            NqsQuantileForecastSnapshot::initial_deterministic(0.0, 0.5, 120.0, 80.0, 180.0);
+            NqsQuantileForecastSnapshot::initial_deterministic(0.0, None, None, None, None);
         Self {
             lemire_wedge: LemireMinWedge::new(sliding_window_s),
             forecaster_handle: AresTemporalForecasterHandle::new(initial),
@@ -103,23 +103,24 @@ impl NqsEngine {
         jugular: &JugularHemodynamics,
         sans: &SansOcular,
     ) -> NqsEngineEvaluation {
-        let (mut margins, severity) =
-            evaluate_nqs_stl_and_mri(biometrics, musculo, jugular, sans);
-        let sliding_min_rho_global = self
-            .lemire_wedge
-            .push_and_evaluate(recording_time_s, margins.rho_global);
-
-        let quantile_snapshot = self.forecaster_handle.read_latest_snapshot();
-        let pessimistic_ttv_q05_hours = if quantile_snapshot.confidence_state
-            == ConformalGateStatus::CalibratedQuantileCone
-        {
-            margins.ttv_ci95_low_hours = margins
-                .ttv_ci95_low_hours
-                .min(quantile_snapshot.ttv_hours_cone.q05);
-            quantile_snapshot.ttv_hours_cone.q05
+        let (mut margins, severity) = evaluate_nqs_stl_and_mri(biometrics, musculo, jugular, sans);
+        let sliding_min_rho_global = if let Some(rho) = margins.rho_global {
+            Some(self.lemire_wedge.push_and_evaluate(recording_time_s, rho))
         } else {
-            margins.ttv_ci95_low_hours
+            self.lemire_wedge.clear();
+            None
         };
+        let quantile_snapshot = self.forecaster_handle.read_latest_snapshot();
+        let pessimistic_ttv_q05_hours = margins.ttv_ci95_low_hours.map(|low| {
+            if quantile_snapshot.confidence_state == ConformalGateStatus::HeuristicGateAccepted {
+                quantile_snapshot
+                    .ttv_hours_cone
+                    .map_or(low, |cone| low.min(cone.q05))
+            } else {
+                low
+            }
+        });
+        margins.ttv_ci95_low_hours = pessimistic_ttv_q05_hours;
 
         NqsEngineEvaluation {
             margins,
@@ -156,6 +157,7 @@ mod tests {
             resp_rate_brpm: Some(15.0),
             spo2_pct: None,
             rmssd_ms: Some(44.0),
+            hrv_unavailable_reason: None,
             sdnn_ms: Some(50.0),
             pnn50_pct: Some(20.0),
             lf_hf_ratio: Some(1.3),
@@ -203,7 +205,7 @@ mod tests {
         eval.quantile_snapshot
             .assert_monotone()
             .expect("snapshot monotone");
-        assert!(eval.pessimistic_ttv_q05_hours >= 0.0);
-        assert!(eval.sliding_min_rho_global <= eval.margins.rho_global + 1e-12);
+        assert!(eval.pessimistic_ttv_q05_hours.is_some_and(|v| v >= 0.0));
+        assert!(eval.sliding_min_rho_global.unwrap() <= eval.margins.rho_global.unwrap() + 1e-12);
     }
 }

@@ -1,5 +1,7 @@
 # Piano Implementativo Definitivo — Fase 09 (D2): 7-Day EWMA-OLS Time-To-Violation (`TTV` $\pm 1.96\sigma$) Predictor & Mission Readiness Index (`MRI`)
 
+> Superseded for HRV availability by [issue #11](ISSUE_11_HRV_VALIDITY_PLAN.md): numeric-only CSVs produce no HRV. Any proxy/default RMSSD, non-null complete MRI/global/TTV on missing HRV, or test expecting such values below is historical design, not current behavior. Known non-HRV hazards remain evaluated.
+
 - **Blocco Architetturale**: Blocco D (*Motore Rust Core: Logica Temporale Normalizzata `NQS-STL`, Predittore `TTV` & Sintesi `MRI` — `2. EVALUATE` Parte 2*, Fasi 08–09)
 - **Fase**: Fase 09 (`D2`)
 - **Stato**: PIANO DEFINITIVO APPROVATO PER IMPLEMENTAZIONE (`READY FOR IMPLEMENTATION`)

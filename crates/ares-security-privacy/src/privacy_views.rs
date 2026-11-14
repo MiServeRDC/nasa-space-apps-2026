@@ -132,7 +132,7 @@ impl CrewPrivacyFilter for AresSecurityGuard {
         role: CrewRole,
     ) -> Result<TelemetryPacket, AresCoreError> {
         let mut out = packet.clone();
-        let life_safety_breach = out.nqs_stl.rho_global < 0.0
+        let life_safety_breach = out.nqs_stl.has_known_violation()
             || out.alert_severity == AlertSeverity::CriticalEmergency
             || out.jugular_hemodynamics.pocus_thrombus_confirmed;
 

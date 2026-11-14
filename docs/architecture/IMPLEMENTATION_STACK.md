@@ -124,3 +124,15 @@ In conformità all'invariante obbligatorio della skill `.agents/skills/deep-scho
 15. **Charlotte A. Nelson, Sergio E. Baranzini, Sylvain V. Costes et al. (NASA OSDR-SPOKE, 2021–2026), Payal Chandak, Marinka Zitnik (Harvard PrimeKG, Nature Sci. Data 2023), Sebastian Lobentanzer et al. (BioCypher, Nature Biotech. 2023) & Meng Xiao et al. (BioHarness, 2026):**
     * *Titoli:* *"SPOKE: A Scalable Precision Medicine Open Knowledge Engine bridging NASA OSDR multi-omics"*, *"Building a knowledge graph to enable precision medicine"* (**DOI:** `10.1038/s41597-023-01960-3`), *"Democratizing knowledge representation with BioCypher"* (**DOI:** `10.1038/s41587-023-01848-y`) & *"BioHarness: Substrate-Aware Evidence Assembly"* (`arXiv:2606.19396v1`).
     * *Contributo nel Motore Rust:* Giustifica il descrittore `16-byte #[repr(C)] BiomedicalEvidenceDescriptor`, la fusione `Noisy-OR` e il `ClinicalAnswerabilityGate` in `biokg_ontology.rs`, nonché il grafo unificato dei 24 dataset `AresUnifiedDatasetGraph` (`14,623` nodi, `112,400` archi, `~8.4 MB` RAM + esportazione `graphify` JSON) in `unified_dataset_graph.rs`.
+
+
+## Issue #11: HRV validity correction
+
+Numeric BIDMC monitor summaries do not supply beat intervals. The 1 Hz source cannot support the previous HR/respiration-derived RMSSD, SDNN, pNN50 or LF/HF. These values and the full HRV-dependent assessment now remain unavailable. Existing numeric SQI remains a heuristic; this change neither validates it nor adds clinical calibration.
+
+Sources: [NeuroKit HRV input documentation](https://neuropsychology.github.io/NeuroKit/functions/hrv.html), [PhysioNet BIDMC v1.0.0](https://physionet.org/content/bidmc/1.0.0/). No new threshold, dependency or physiological constant is introduced. See [implementation and verification plan](../plans/ISSUE_11_HRV_VALIDITY_PLAN.md).
+
+
+## Issue #12: model evidence scope
+
+[MODEL_EVIDENCE_AUDIT.md](MODEL_EVIDENCE_AUDIT.md) is the authoritative current source-to-output and parameter register. Checked sources support research context and source-data interpretation, not calibration of the implemented coefficients, risk scores or forecast bands. Current scenario outputs are `ILLUSTRATIVE_UNVALIDATED`; accepted gates are heuristic, and historical `ci95` names do not establish 95% coverage. Unit tests, monotonicity and CRCs establish software properties only. No threshold/policy change or new model is introduced.

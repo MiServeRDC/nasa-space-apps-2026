@@ -173,4 +173,38 @@ mod tests {
             assert!(s.ends_with("</untrusted_telemetry_observation>"));
         }
     }
+    #[test]
+    fn mcp_summary_and_projection_preserve_unavailable_assessment() {
+        let packet = sample_state().latest_snapshot().expect("snapshot");
+        for tool in ["get_crew_health_summary", "simulate_countermeasure_impact"] {
+            let request = JsonRpcRequest {
+                jsonrpc: "2.0".into(),
+                id: Some(json!(1)),
+                method: "tools/call".into(),
+                params: json!({"name": tool}),
+            };
+            let response = handle_mcp_jsonrpc_request(&request, &packet, &StrictMcpSanitizer);
+            let result = response.result.expect("tool result");
+            let text = result["content"][0]["text"].as_str().expect("text payload");
+            let payload: Value = serde_json::from_str(text).expect("valid payload");
+            if tool == "get_crew_health_summary" {
+                assert_eq!(payload.get("mri_pct"), Some(&Value::Null));
+                assert_eq!(payload.get("rho_global"), Some(&Value::Null));
+                assert_eq!(payload.get("ttv_h"), Some(&Value::Null));
+                assert_eq!(
+                    payload["hrv_unavailable_reason"],
+                    "BEAT_INTERVALS_NOT_AVAILABLE"
+                );
+            } else {
+                for field in [
+                    "current_rho",
+                    "projected_ttv_gain_h",
+                    "lbnp_30mmhg_delta_rho_h",
+                    "ared_125kgf_delta_rho_h",
+                ] {
+                    assert_eq!(payload.get(field), Some(&Value::Null));
+                }
+            }
+        }
+    }
 }

@@ -7,9 +7,10 @@ use serde::{Deserialize, Serialize};
 /// Risultato della stima Bayesiana a 2 stadi per la trombosi della vena giugulare interna.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct PocusPosteriorEstimate {
-    /// Probabilita di stasi venosa severa (Stadio 1, in [0.0, 1.0]).
+    /// Legacy name: illustrative stasis score in [0,1], not a calibrated probability.
     pub stasis_probability: f64,
-    /// Probabilita a posteriori di trombo endoluminale (limitata a <= 0.45 senza POCUS, >= 0.92 con POCUS+).
+    pub model_validation_status: ares_core_types::telemetry::ModelValidationStatus,
+    /// Legacy name: illustrative score using fixed priors/LR/clamps; not clinical probability.
     pub thrombus_posterior: f64,
     /// Indica se e richiesta un'ispezione ecografica POCUS immediata.
     pub pocus_inspection_required: bool,
@@ -43,6 +44,8 @@ pub fn evaluate_two_stage_bayesian_pocus(
 
     PocusPosteriorEstimate {
         stasis_probability,
+        model_validation_status:
+            ares_core_types::telemetry::ModelValidationStatus::IllustrativeUnvalidated,
         thrombus_posterior,
         pocus_inspection_required: stasis_probability >= 0.50 && !jugular.pocus_thrombus_confirmed,
     }

@@ -254,7 +254,8 @@ impl ConformalAbstentionGate {
         let err_t = indicator - self.conformal_miscoverage_alpha;
 
         self.last_coverage_error = err_t;
-        self.cumulative_coverage_error = (self.cumulative_coverage_error + err_t).clamp(-50.0, 50.0);
+        self.cumulative_coverage_error =
+            (self.cumulative_coverage_error + err_t).clamp(-50.0, 50.0);
         self.ema_coverage_error = 0.85 * self.ema_coverage_error + 0.15 * err_t;
         self.update_count += 1;
 
@@ -267,7 +268,7 @@ impl ConformalAbstentionGate {
         err_t
     }
 
-    /// Evaluates clinical gate criteria and emits a complete `AbstentionCertificate`.
+    /// Evaluates heuristic gate criteria and emits a complete `AbstentionCertificate`.
     pub fn evaluate_with_certificate(
         &self,
         sqi_score: f64,
@@ -291,13 +292,13 @@ impl ConformalAbstentionGate {
         let reason = if !rho_cone.is_monotone() {
             Some("quantile cone failed monotonicity or finiteness check")
         } else if clean_sqi < self.min_sqi_threshold {
-            Some("signal quality index below clinical threshold (SQI < 0.70)")
+            Some("numeric SQI below configured scenario threshold")
         } else if missing_ratio > self.max_missing_ratio {
             Some("missing telemetry ratio exceeded 40% limit")
         } else if width > self.max_rho_cone_width {
-            Some("conformal quantile interval width exceeded clinical safety bound")
+            Some("scenario interval width exceeded configured bound")
         } else if self.ema_coverage_error.abs() > self.max_coverage_drift {
-            Some("empirical conformal coverage drift exceeded safety bound")
+            Some("online residual diagnostic exceeded configured bound")
         } else {
             None
         };
@@ -310,8 +311,9 @@ impl ConformalAbstentionGate {
             ),
             None => (
                 false,
-                ConformalGateStatus::CalibratedQuantileCone,
-                "nominal conformal calibration within clinical safety bounds".to_string(),
+                ConformalGateStatus::HeuristicGateAccepted,
+                "heuristic gate accepted; empirical coverage and clinical utility unvalidated"
+                    .to_string(),
             ),
         };
 
@@ -332,7 +334,7 @@ impl ConformalAbstentionGate {
         }
     }
 
-    /// Evaluates whether the quantile cone satisfies clinical confidence criteria.
+    /// Evaluates whether the quantile cone satisfies configured numerical criteria, not validated clinical confidence.
     #[inline]
     pub fn evaluate_gate(
         &self,
@@ -363,7 +365,15 @@ mod tests {
             let s = step as f64;
             let raw_logits: [f64; 7] = match step % 5 {
                 0 => [1e9, -1e9, 500.0, -300.0, -500.0, 1e9, -1e9],
-                1 => [f64::NAN, f64::INFINITY, -f64::INFINITY, 0.0, f64::NAN, 100.0, -100.0],
+                1 => [
+                    f64::NAN,
+                    f64::INFINITY,
+                    -f64::INFINITY,
+                    0.0,
+                    f64::NAN,
+                    100.0,
+                    -100.0,
+                ],
                 2 => [
                     (s * 1.7).sin() * 100.0,
                     (s * 2.3).cos() * 100.0,
@@ -373,7 +383,15 @@ mod tests {
                     (s * 0.9).tan().clamp(-1e6, 1e6),
                     -1e5,
                 ],
-                3 => [-50.0 * s, -40.0 * s, -30.0 * s, 0.0, -20.0 * s, -10.0 * s, -5.0 * s],
+                3 => [
+                    -50.0 * s,
+                    -40.0 * s,
+                    -30.0 * s,
+                    0.0,
+                    -20.0 * s,
+                    -10.0 * s,
+                    -5.0 * s,
+                ],
                 _ => [50.0, 25.0, 10.0, -12.0, -80.0, -150.0, -300.0],
             };
 
@@ -418,10 +436,10 @@ mod tests {
         let mut gate = ConformalAbstentionGate::default();
         let tight_cone = MonotoneQuantileTriplet::from_median_and_spreads(0.50, 0.10, 0.10);
 
-        // Nominal operation -> CalibratedQuantileCone
+        // Numerical criteria pass; this is not a calibration claim.
         let nom_cert = gate.evaluate_with_certificate(0.92, 0.95, tight_cone, 10.0);
         assert!(!nom_cert.abstained);
-        assert_eq!(nom_cert.status, ConformalGateStatus::CalibratedQuantileCone);
+        assert_eq!(nom_cert.status, ConformalGateStatus::HeuristicGateAccepted);
 
         // 1. Sensor failure: SQI drops below 0.70
         let low_sqi_cert = gate.evaluate_with_certificate(0.55, 1.0, tight_cone, 11.0);
@@ -452,6 +470,16 @@ mod tests {
         }
         let drift_cert = gate.evaluate_with_certificate(0.95, 1.0, tight_cone, 30.0);
         assert!(drift_cert.abstained);
-        assert!(drift_cert.reason.contains("coverage drift"));
+        assert!(drift_cert.reason.contains("residual diagnostic"));
+    }
+    #[test]
+    fn gate_acceptance_before_updates_does_not_claim_calibration() {
+        let gate = ConformalAbstentionGate::default();
+        assert_eq!(gate.update_count, 0);
+        let cone = MonotoneQuantileTriplet::from_median_and_spreads(0.5, 0.1, 0.1);
+        let cert = gate.evaluate_with_certificate(0.95, 1.0, cone, 0.0);
+        assert!(!cert.abstained);
+        assert_eq!(cert.status, ConformalGateStatus::HeuristicGateAccepted);
+        assert!(cert.reason.contains("unvalidated"));
     }
 }
