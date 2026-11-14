@@ -82,6 +82,8 @@ pub struct LsahStorageStatusDto {
     pub warm_coalesced_frames: u64,
     pub cold_highest_chunk_seq: u64,
     pub dsn_outbox_pending: usize,
+    pub warm_pending_rows: usize,
+    pub warm_flush_failures: u64,
 }
 
 /// Compact FastMCP Context-Mode status payload (`<= 600` bytes).
@@ -181,12 +183,19 @@ impl LsahStorageEngine {
         }
     }
 
+    pub fn max_sequence_id(&self) -> u64 {
+        self.warm.max_sequence_id()
+    }
+
     /// Stops the background Tokio Warm batch flusher and drains remaining staged slots.
-    pub async fn stop_background_flusher(&self) {
+    pub async fn stop_background_flusher(&self) -> Result<(), LsahStorageError> {
         let handle = self.flusher.lock().take();
         if let Some(h) = handle {
-            h.shutdown(&self.staging).await;
+            return h.shutdown(&self.staging).await;
         }
+        let warm = Arc::clone(&self.warm);
+        tokio::task::spawn_blocking(move || warm.flush_and_sync()).await
+            .map_err(|e| LsahStorageError::Backend(e.to_string()))?
     }
 
     /// Zero-allocation 20 Hz ingestion entry point: inserts into `HotRingBuffer` and stages
@@ -325,6 +334,8 @@ impl LsahStorageEngine {
             warm_coalesced_frames: self.staging.warm_coalesced_frames(),
             cold_highest_chunk_seq,
             dsn_outbox_pending: self.outbox.pending_count(),
+            warm_pending_rows: self.staging.pending_rows(),
+            warm_flush_failures: self.flusher.lock().as_ref().map_or(0, |f| f.failures()),
         }
     }
 

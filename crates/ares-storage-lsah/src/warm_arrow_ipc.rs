@@ -238,6 +238,9 @@ impl ArrowIpcZstdHnswBackend {
 }
 
 impl WarmColumnarVectorBackend for ArrowIpcZstdHnswBackend {
+    fn max_sequence_id(&self) -> u64 {
+        self.state.lock().segments.iter().map(|s| s.max_sequence_id).max().unwrap_or(0)
+    }
     fn backend_name(&self) -> &'static str {
         "arrow-ipc-zstd-hnsw"
     }
@@ -276,7 +279,6 @@ impl WarmColumnarVectorBackend for ArrowIpcZstdHnswBackend {
 
         let mut guard = self.state.lock();
         let seg_id = guard.next_segment_id;
-        guard.next_segment_id += 1;
 
         let rel_name = format!("sol_{mission_sol:04}_seg_{seg_id:08}.arrow.zst");
         let seg_path = self.warm_dir.join(&rel_name);
@@ -293,7 +295,12 @@ impl WarmColumnarVectorBackend for ArrowIpcZstdHnswBackend {
             max_sequence_id: max_seq,
         };
         guard.segments.push(meta.clone());
-        self.persist_manifest_locked(&guard)?;
+        guard.next_segment_id = seg_id.saturating_add(1);
+        if let Err(error) = self.persist_manifest_locked(&guard) {
+            guard.segments.pop();
+            guard.next_segment_id = seg_id;
+            return Err(error);
+        }
         Ok(meta)
     }
 

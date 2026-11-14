@@ -1,5 +1,19 @@
 # Active Context: ARES-Health (NASA Space Apps Challenge 2026)
 
+## Optimization implementation in progress (2026-11-14)
+
+User authorized resolving all reviewed reliability/performance weaknesses, one at
+a time, on `work/MiServeRDC-optimization` (isolated worktree `/tmp/ares-optimization`,
+base `2b0a9bc`). Plan: `docs/plans/PROJECT_OPTIMIZATION_IMPLEMENTATION.md`.
+Backend work is verified: retained/acknowledged Warm batches, retries and explicit
+shutdown errors, partial deadlines, manifest rollback, explicit runtime storage
+(`--storage-dir`), exclusive writer lease, sequence recovery and null-HRV readback.
+Coherent wire snapshots are encoded outside the mission lock with ordered
+publication. The default workspace has 212 passing tests and all-target Clippy is
+clean; the desktop tauri-runtime configuration has 15 passing tests. Frontend and
+forecast validation changes are implemented and being recorded in subsequent
+commits. Hosted Actions remain disabled; no main merge is requested for this task.
+
 ## User-approved medical-blue cockpit integration (2026-11-14)
 
 The user requested the local medical-blue redesign on main. Integration starts

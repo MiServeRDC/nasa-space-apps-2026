@@ -1,5 +1,15 @@
 # Progress Tracking: ARES-Health (Autonomous Resilient Edge-native System for Astronaut Health)
 
+## Reliability/performance optimization (2026-11-14)
+
+- [x] Warm batch acknowledgement/retry, error observability, partial deadlines and
+  manifest rollback; five fault/recovery regression tests pass.
+- [x] Explicit CLI/desktop recording, single-writer lease, restart sequences,
+  status and final drain; runtime/reopen/null-HRV and real-process shutdown pass.
+- [x] JSON construction/encoding moved outside the mission lock with publication order retained.
+- Backend checks: 212 default Rust tests, 15 desktop tauri-runtime tests, clean
+  workspace/all-target Clippy. Remaining commits record frontend and evaluation.
+
 ## Approved medical-blue cockpit refresh (2026-11-14)
 
 - [x] Ported the user's local redesign onto main `e8c2927` using an isolated integration worktree.
@@ -151,7 +161,7 @@
   - Aggiornamento del reasoner bio-ontologico ARES-BioKG in `biokg_reasoner.rs` (tabella di grounding a 13 nodi, mapping $O(1)$ normativo NASA-STD-3001).
   - Estensione del monitor NQS STL in `normalizer.rs` e `mri_index.rs` (`evaluate_nqs_stl_and_mri_ext`) con tutti e 4 i margini clinici del Blocco N.
 - [x] **Fase 41 (`N4` — Verificato):** POCUS Multi-Organo, Playbook #10–#15 & Hard Clinical Gate 4 (`crates/ares-medops-playbooks/src/` & `ares-cockpit/`):
-  - Modulo POCUS multi-organo in `pocus_multiorgan.rs` con target anatomici UBERON (`UBERON:0001496` IJV, `UBERON:0001793` Oculare, `UBERON:0002113` Renale, `UBERON:0002048` eFAST trauma).
+  - Modulo POCUS multi-organo in `pocus_multiorgan.rs` con target anatomici UBERON (`UBERON:0001496` IJV, `UBERON:0001793` Oculare, `UBERON:0002123` Renale, `UBERON:0002048` eFAST trauma).
   - Valutazione POCUS renale/vescicale (idronefrosi grado 0-4, calcolo, twinkling artifact, simmetria getto ureterale, ritenzione vescicale) e scansione traumatica eFAST a 5 finestre.
   - Hard Clinical Gate 4A (`gate4_invasive_decompression_locked`, blocco toracostomia con ago salvo conferma eFAST o collasso vitale `ShockIndex >= 1.20` + `SpO2 < 85%`) e Gate 4B (`gate4_eva_fitness_no_go` su GAI > 12%, fatica cognitiva $\ge 0.75$, o Shock Index $\ge 0.90$).
   - 6 nuovi Type-1 Playbook cristallizzati: `#10` (Renal Lithiasis), `#11` (Mars Entry Fluid Loading), `#12` (Circadian Light Hygiene), `#13` (Viral Immune Containment), `#14` (CO2 Scrubber SANS Mitigation), `#15` (eFAST Trauma Triage).

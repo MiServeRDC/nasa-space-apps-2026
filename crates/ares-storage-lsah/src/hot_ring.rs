@@ -571,11 +571,15 @@ impl WarmStagingSwapBuffer {
         }
     }
 
-    /// Swaps out any ready bank (full bank, or partial bank if `force_partial` is true) into `out_buf`
-    /// while holding the staging lock for O(1) copy duration only.
+    /// Reserves a ready bank, copying it to the consumer buffer. The bank remains
+    /// owned by the consumer until `finish_batch`; failed writes can be retried.
+    /// Only one consumer may reserve a batch at a time.
     pub fn take_ready_batch(&self, force_partial: bool, out_buf: &mut Vec<HotLsahSlot>) -> usize {
         out_buf.clear();
         let mut guard = self.state.lock();
+        if guard.draining_bank.is_some() {
+            return 0;
+        }
         let active = guard.active_bank;
         let inactive = active ^ 1;
 
@@ -604,8 +608,22 @@ impl WarmStagingSwapBuffer {
             return 0;
         }
         out_buf.extend_from_slice(&guard.banks[bank_idx][..count]);
-        guard.lens[bank_idx] = 0;
+        guard.draining_bank = Some(bank_idx);
         count
+    }
+
+    /// Acknowledge persistence, or release the reservation without losing rows.
+    pub fn finish_batch(&self, committed: bool) {
+        let mut guard = self.state.lock();
+        if let Some(bank) = guard.draining_bank.take()
+            && committed
+        {
+            guard.lens[bank] = 0;
+        }
+    }
+
+    pub fn pending_rows(&self) -> usize {
+        self.state.lock().lens.iter().sum()
     }
 
     /// Returns total frames coalesced into the emergency Welford summary during extreme SSD stalls.
