@@ -1,0 +1,45 @@
+[package]
+name = "ares-server-cli"
+version = "0.1.0"
+edition = "2024"
+description = "ARES-Health Block G: dual-transport orchestrator (axum 20 Hz WebSocket on 127.0.0.1:8080 + stdio FastMCP JSON-RPC 2.0)"
+license = "MIT"
+publish = false
+
+[[bin]]
+name = "ares-engine"
+path = "src/main.rs"
+
+[dependencies]
+ares-medops-playbooks = { path = "../ares-medops-playbooks" }
+anyhow = "1"
+axum = { version = "0.8", features = ["ws"] }
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = [
+    "io-std",
+    "io-util",
+    "macros",
+    "net",
+    "rt-multi-thread",
+    "signal",
+    "sync",
+    "time",
+] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+http-body-util = "0.1"
+tokio-tungstenite = "0.30"
+tower = { version = "0.5", features = ["util"] }
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"

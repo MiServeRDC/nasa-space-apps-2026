@@ -233,7 +233,7 @@ flowchart TD
 * **Dipendenze:** `ares-core-types`, `ares-causal-graph`, `ares-nqs-stl`, `serde`, `thiserror`
 
 #### Fase 10 (`E1`): Esecutore DAG *Type 1 Crystallized* dei Playbook `#01–#05`
-* **Stato:** `[ ] PIANIFICATA`
+* **Stato:** `[x] IMPLEMENTATA`
 * **File Target:**
   * `crates/ares-medops-playbooks/src/lib.rs`
   * `crates/ares-medops-playbooks/src/playbooks.rs`
@@ -243,7 +243,7 @@ flowchart TD
   * Valuta in $< 20\,\mu\text{s}$ i 5 Playbook pre-compilati (`PLAYBOOK_01_VENOUS_STASIS_LBNP`, `PLAYBOOK_02_CONFIRMED_IJV_THROMBUS`, `PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED`, `PLAYBOOK_04_SANS_TRANSLAMINAR_MITIGATION`, `PLAYBOOK_05_SPE_RADIATION_SHELTER_CANS`) calcolando per ogni azione l'impatto atteso $\Delta\hat{\rho}/\text{ora}$.
 
 #### Fase 11 (`E2`): Macchina a Stati dei 3 Hard Clinical Safety Gates
-* **Stato:** `[ ] PIANIFICATA`
+* **Stato:** `[x] IMPLEMENTATA`
 * **File Target:**
   * `crates/ares-medops-playbooks/src/safety_gates.rs`
 * **Specifica Tecnica:**
@@ -278,7 +278,7 @@ flowchart TD
 * **Dipendenze:** Tutti i 6 crate di libreria + `tokio`, `axum`, `clap`, `anyhow`, `tracing`
 
 #### Fase 13 (`G1`): Server `axum` WebSocket a `20 Hz` (`127.0.0.1:8080`) & Endpoint `POST /api/stress-test` (`< 1 ms`)
-* **Stato:** `[ ] PIANIFICATA`
+* **Stato:** `[x] IMPLEMENTATA` (misurato `338 us` per recompute + broadcast)
 * **File Target:**
   * `crates/ares-server-cli/src/main.rs`
   * `crates/ares-server-cli/src/ws_server.rs`
@@ -288,7 +288,7 @@ flowchart TD
   * Espone `POST /api/stress-test` per ricevere le modifiche dagli slider della **What-If Stress-Test Console** di `ares-cockpit/`, ricalcolando in `< 1 ms` l'intero grafo `ADHG`, i margini `NQS-STL`, il `TTV` e i Playbook.
 
 #### Fase 14 (`G2`): Server Nativo `FastMCP` JSON-RPC 2.0 su `stdio` (`< 150 Token Context-Mode`)
-* **Stato:** `[ ] PIANIFICATA`
+* **Stato:** `[x] IMPLEMENTATA` (peggior caso misurato `376 B`, circa `94 token`, latenza media `111 us` in debug; 3 macro-tool, vedi nota sui nomi nel README del crate)
 * **File Target:**
   * `crates/ares-server-cli/src/mcp_stdio.rs`
 * **Specifica Tecnica:**
@@ -310,8 +310,8 @@ flowchart TD
 | **Blocco C (Core)** | **Fase 7 (`C3`)** | `crates/ares-causal-graph` | `@fabiomalagutti27-droid` | `< 25 µs` (ADHG) | `[ ] PIANIFICATA` |
 | **Blocco D (Core)** | **Fase 8 (`D1`)** | `crates/ares-nqs-stl` | `@fabiomalagutti27-droid` | `< 10 µs` ($O(1)$) | `[ ] PIANIFICATA` |
 | **Blocco D (Core)** | **Fase 9 (`D2`)** | `crates/ares-nqs-stl` | `@fabiomalagutti27-droid` | `< 15 µs` | `[ ] PIANIFICATA` |
-| **Blocco E** | **Fase 10 (`E1`)** | `crates/ares-medops-playbooks` | `@fertech02` | `< 20 µs` (DAG) | `[ ] PIANIFICATA` |
-| **Blocco E** | **Fase 11 (`E2`)** | `crates/ares-medops-playbooks` | `@fertech02` | `< 5 µs` (Gates) | `[ ] PIANIFICATA` |
+| **Blocco E** | **Fase 10 (`E1`)** | `crates/ares-medops-playbooks` | `@fertech02` | `< 20 µs` (DAG) | `[x] IMPLEMENTATA` |
+| **Blocco E** | **Fase 11 (`E2`)** | `crates/ares-medops-playbooks` | `@fertech02` | `< 5 µs` (Gates) | `[x] IMPLEMENTATA` |
 | **Blocco F** | **Fase 12 (`F1`)** | `crates/ares-security-privacy` | `@MiServeRDC` | `< 30 µs` (SHA/AEAD)| `[ ] PIANIFICATA` |
-| **Blocco G** | **Fase 13 (`G1`)** | `crates/ares-server-cli` | `@fertech02` | `< 1 ms` (WS 20Hz) | `[ ] PIANIFICATA` |
-| **Blocco G** | **Fase 14 (`G2`)** | `crates/ares-server-cli` | `@fertech02` | `< 500 µs` (MCP) | `[ ] PIANIFICATA` |
+| **Blocco G** | **Fase 13 (`G1`)** | `crates/ares-server-cli` | `@fertech02` | `< 1 ms` (WS 20Hz) | `[x] IMPLEMENTATA` |
+| **Blocco G** | **Fase 14 (`G2`)** | `crates/ares-server-cli` | `@fertech02` | `< 500 µs` (MCP) | `[x] IMPLEMENTATA` |
