@@ -293,6 +293,38 @@ fn whatif_overlay_adds_simulated_blocks_without_relabelling_the_recording() {
     assert!(packet["biometrics"]["spo2_percent"].is_null());
 }
 
+/// Every property the schema names for a block must be present in the frame,
+/// `null` when the engine cannot compute it, so a cockpit typed against the
+/// schema never reads `undefined` where the contract promises a field.
+#[test]
+fn every_schema_property_of_an_emitted_block_is_present() {
+    let packet = whatif_packet();
+    let schema = schema();
+
+    for block in [
+        "biometrics",
+        "hemodynamics",
+        "musculoskeletal",
+        "environment",
+    ] {
+        let expected = schema["properties"][block]["properties"]
+            .as_object()
+            .unwrap_or_else(|| panic!("the schema describes {block}"));
+        let emitted = packet[block]
+            .as_object()
+            .unwrap_or_else(|| panic!("{block} must be an object in What-If mode"));
+
+        let missing: Vec<&String> = expected
+            .keys()
+            .filter(|name| !emitted.contains_key(*name))
+            .collect();
+        assert!(
+            missing.is_empty(),
+            "{block} omits schema properties the cockpit types expect: {missing:?}"
+        );
+    }
+}
+
 /// A console patch must not be able to rewrite recorded history.
 #[test]
 fn a_console_patch_cannot_overwrite_a_recorded_channel() {

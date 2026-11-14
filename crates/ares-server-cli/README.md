@@ -142,11 +142,23 @@ source tag instead of being invented:
   bone/muscle dose-response is the Frost-Hargens ODE of `ares-causal-graph` (phase 5).
 * `alarm_level` is a documented provisional mapping over the MedOps report
   (`src/telemetry.rs`), to be replaced by the NQS-STL synthesis of phase 9.
+* Every property the schema names for `biometrics`, `hemodynamics`, `musculoskeletal`,
+  `environment` and `safety_margins` is emitted, `null` where the engine cannot compute it,
+  so a cockpit typed against the contract never reads `undefined` where the schema promises
+  a field. `every_schema_property_of_an_emitted_block_is_present` in
+  `tests/contract_fixtures.rs` enforces it.
+* The four schema `musculoskeletal` fields (`soleus_thickness_mm`, `pennation_angle_deg`,
+  `bone_resorption_rate_pct`, `mechanotransductive_index`) and `environment.cabin_o2_kpa`
+  are all `null` today. None can be honestly derived from what the engine holds: the state
+  tracks soleus volume loss against a pre-flight baseline, and turning that into a
+  thickness in mm needs the regularized Frost-Hargens ODE of `ares-causal-graph`. The
+  engine's own values are carried beside them as EXTENSION fields.
 * Fields marked EXTENSION in `src/telemetry.rs` are not in the contract yet: `medops`,
-  `safety_margins.pending_sources`, `environment.cabin_ppco2_mmhg`, the three
-  `musculoskeletal` fields and `active_playbook.*`. The schema does not forbid extra
-  properties, so a cockpit validating against it passes either way, but they must be
-  agreed on the issue and folded into the contract before anyone depends on them.
+  `safety_margins.pending_sources`, `environment.cabin_ppco2_mmhg`, the four engine
+  `musculoskeletal` values (`soleus_volume_loss_pct`, `bmd_loss_pct_per_month`,
+  `gait_asymmetry_index_pct`, `post_landing`) and `active_playbook.*`. The schema does not
+  forbid extra properties, so a cockpit validating against it passes either way, but they
+  must be agreed on the issue and folded into the contract before anyone depends on them.
 
 The MCP tool names follow this README and the `mcp-builder` skill.
 `docs/plans/RUST_ENGINE_PHASED_MASTER_PLAN.md` phase 14 lists four differently named tools
@@ -161,10 +173,11 @@ cargo clippy --all-targets -- -D warnings
 cargo test
 ```
 
-44 tests: MCP token budget, latency and JSON-RPC conformance across three clinical regimes
+45 tests: MCP token budget, latency and JSON-RPC conformance across three clinical regimes
 (`tests/mcp_budget.rs`), HTTP contract, validation, sub-millisecond recompute and the
-step state machine (`tests/http_api.rs`), schema validation of both fixtures plus the
-provenance and missing-channel rules (`tests/contract_fixtures.rs`), real loopback socket
+step state machine (`tests/http_api.rs`), schema validation of both fixtures, full schema
+property coverage, plus the provenance and missing-channel rules
+(`tests/contract_fixtures.rs`), real loopback socket
 at 20 Hz, the 1 Hz-under-20 Hz replay cadence, What-If restore on reconnect and the
 non-loopback refusal (`tests/ws_stream.rs`), CSV parsing, digest verification and the
 13 degraded seconds (`src/replay.rs`), budget and parsing helpers (`src/mcp_stdio.rs`).

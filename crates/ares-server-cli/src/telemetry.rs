@@ -141,9 +141,27 @@ pub struct Hemodynamics {
     pub thrombosis_risk_score: Option<f64>,
 }
 
+/// The contract's four musculoskeletal fields come first and are emitted even
+/// when the engine cannot compute them, so a cockpit typed against the schema
+/// finds them present and `null` (unavailable) instead of `undefined`.
+///
+/// None of the four can be honestly derived from what the engine holds today:
+/// `ClinicalState` tracks soleus volume loss against a pre-flight baseline, and
+/// turning that into a thickness in mm, a pennation angle or a
+/// mechanotransductive index needs the regularized Frost-Hargens ODE of
+/// `ares-causal-graph`. They are filled there, not guessed here.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Musculoskeletal {
     pub provenance: &'static str,
+    /// `null` until `ares-causal-graph` models the muscle geometry.
+    pub soleus_thickness_mm: Option<f64>,
+    /// `null` until `ares-causal-graph` models the muscle geometry.
+    pub pennation_angle_deg: Option<f64>,
+    /// `null` until the Frost-Hargens bone remodelling ODE lands. Distinct from
+    /// the extension `bmd_loss_pct_per_month`: resorption rate is not BMD loss.
+    pub bone_resorption_rate_pct: Option<f64>,
+    /// `null` until `ares-nqs-stl` synthesizes it.
+    pub mechanotransductive_index: Option<f64>,
     /// EXTENSION: soleus volume loss from pre-flight baseline (percent).
     pub soleus_volume_loss_pct: Option<f64>,
     /// EXTENSION: calcaneus BMD loss rate (percent per month).
@@ -159,10 +177,13 @@ pub struct EnvironmentBlock {
     pub provenance: &'static str,
     /// Derived from `cabin_ppco2_mmhg` at 1 atm total pressure.
     pub cabin_co2_ppm: Option<f64>,
-    /// EXTENSION: cabin ppCO2 in mmHg, the unit the SANS trigger uses.
-    pub cabin_ppco2_mmhg: Option<f64>,
+    /// `null`: the habitat avionics model has no cabin ppO2 input yet, and the
+    /// console does not expose one. Emitted so the field exists for the cockpit.
+    pub cabin_o2_kpa: Option<f64>,
     pub ambient_radiation_rate_ugy_h: Option<f64>,
     pub cumulative_radiation_mgy: Option<f64>,
+    /// EXTENSION: cabin ppCO2 in mmHg, the unit the SANS trigger uses.
+    pub cabin_ppco2_mmhg: Option<f64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -414,6 +435,10 @@ impl TelemetryPacket {
             }),
             musculoskeletal: mode.carries_simulated_blocks().then(|| Musculoskeletal {
                 provenance: "SIMULATED_SCENARIO_INPUT",
+                soleus_thickness_mm: None,
+                pennation_angle_deg: None,
+                bone_resorption_rate_pct: None,
+                mechanotransductive_index: None,
                 soleus_volume_loss_pct: finite(m.soleus_volume_loss_pct),
                 bmd_loss_pct_per_month: finite(m.bmd_loss_pct_per_month),
                 gait_asymmetry_index_pct: finite(m.gait_asymmetry_index_pct),
@@ -423,9 +448,10 @@ impl TelemetryPacket {
                 provenance: "SIMULATED_SCENARIO_INPUT",
                 cabin_co2_ppm: finite(e.cabin_ppco2_mmhg)
                     .map(|mmhg| mmhg / CABIN_TOTAL_PRESSURE_MMHG * 1.0e6),
-                cabin_ppco2_mmhg: finite(e.cabin_ppco2_mmhg),
+                cabin_o2_kpa: None,
                 ambient_radiation_rate_ugy_h: finite(e.ambient_radiation_rate_ugy_h),
                 cumulative_radiation_mgy: finite(e.cumulative_radiation_mgy),
+                cabin_ppco2_mmhg: finite(e.cabin_ppco2_mmhg),
             }),
             safety_margins: SafetyMargins {
                 provenance: mode.margins_provenance(),

@@ -17,6 +17,7 @@
   "environment": {
     "ambient_radiation_rate_ugy_h": 22.0,
     "cabin_co2_ppm": 7105.263157894737,
+    "cabin_o2_kpa": null,
     "cabin_ppco2_mmhg": 5.4,
     "cumulative_radiation_mgy": 31.0,
     "provenance": "SIMULATED_SCENARIO_INPUT"
@@ -42,9 +43,13 @@
   "mission_elapsed_days": 184.0,
   "musculoskeletal": {
     "bmd_loss_pct_per_month": 0.4,
+    "bone_resorption_rate_pct": null,
     "gait_asymmetry_index_pct": null,
+    "mechanotransductive_index": null,
+    "pennation_angle_deg": null,
     "post_landing": false,
     "provenance": "SIMULATED_SCENARIO_INPUT",
+    "soleus_thickness_mm": null,
     "soleus_volume_loss_pct": 1.2
   },
   "provenance_manifest": {
