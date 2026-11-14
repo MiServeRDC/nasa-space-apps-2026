@@ -1,0 +1,13 @@
+[package]
+name = "ares-medops-playbooks"
+version = "0.1.0"
+edition = "2024"
+description = "Phase 3 (ACT): Type-1 Crystallized NASA MedOps Playbooks DAG (#01-#05) and 3 Hard Clinical Safety Gates"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+ares-core-types = { path = "../ares-core-types" }
+ares-causal-graph = { path = "../ares-causal-graph" }
+ares-nqs-stl = { path = "../ares-nqs-stl" }
+serde = { version = "1.0", features = ["derive"] }
+thiserror = "2.0"

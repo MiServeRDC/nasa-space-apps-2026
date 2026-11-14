@@ -1,0 +1,12 @@
+[package]
+name = "ares-nqs-stl"
+version = "0.1.0"
+edition = "2024"
+description = "Normalized Quantitative Semantics STL (NQS-STL), O(1) Lemire Monotonic Wedge, EWMA-OLS TTV Predictor & Mission Readiness Index (MRI)"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+ares-core-types = { path = "../ares-core-types" }
+ares-causal-graph = { path = "../ares-causal-graph" }
+serde = { version = "1.0", features = ["derive"] }
+thiserror = "2.0"
