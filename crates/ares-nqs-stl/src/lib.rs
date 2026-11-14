@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! `ares-nqs-stl` -- Normalized Quantitative Semantics STL (`NQS-STL`),
 //! O(1) Lemire-Donze monotonic wedge, EWMA-OLS & Grey-Box Timestral TTV predictor,
 //! Mission Readiness Index (`MRI %`), and Pure-Rust Timestral Probabilistic Forecaster.

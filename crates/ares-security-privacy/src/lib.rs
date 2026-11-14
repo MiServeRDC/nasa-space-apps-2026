@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! `ares-security-privacy` — Blocco F (Fase 12 F1).
 //!
 //! Implementa la governance della privacy medica per ruolo (`NASA-STD-3001 Vol. 1 Ch. 7`),

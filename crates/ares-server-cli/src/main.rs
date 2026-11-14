@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! Entrypoint CLI per `ares-server-cli` (Dual-Transport: Axum 20 Hz WebSocket + FastMCP stdio + Timestral 1 Hz + ARES-DatasetGraph).
 
 use anyhow::{Context, Result, ensure};

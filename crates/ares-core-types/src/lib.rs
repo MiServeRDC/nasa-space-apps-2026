@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! `ares-core-types`: Contratti telemetrici condivisi, manifesto di provenienza,
 //! costanti normative NASA-STD-3001, errori fortemente tipizzati e trait di sicurezza.
 
