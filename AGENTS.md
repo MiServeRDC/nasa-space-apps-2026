@@ -37,24 +37,54 @@ This file is the single source of truth for all autonomous AI coding agents (Goo
 
 ---
 
-## 3. Technology Stack & Directory Topology
+## 3. Technology Stack, 7-Crate Modular Topology & Memory Bank Protocol
 
+### 3.1 Memory Bank Protocol (Mandatory for All AI Agents)
+Before writing or modifying any code:
+1. **Read `memory-bank/projectbrief.md`, `memory-bank/systemPatterns.md`, and `memory-bank/activeContext.md`.**
+2. **Consult `memory-bank/experienceLog.md`** to prevent re-introducing past failure modes.
+3. **Respect `.github/CODEOWNERS` and `docs/team/TEAM_COORDINATION_AND_OWNERSHIP.md`:** Work strictly inside your assigned crate/module directory on your working branch (`work/<username>`).
+4. **Before every commit or merge to `main`, run `./scripts/agent_probe.sh --fast`** and update `memory-bank/activeContext.md` and `memory-bank/progress.md`.
+
+### 3.2 Directory Topology
 ```
 NASA_Space_Apps_2026/
-├── AGENTS.md                  # Universal cross-agent specification (this file)
-├── CLAUDE.md                  # Claude Code CLI entry point (imports AGENTS.md)
-├── .cursorrules               # Cursor IDE root rules
-├── .cursor/rules/             # Path-scoped rules (backend-rust.mdc, frontend-react.mdc)
-├── .agents/skills/            # Agent skills (deep-scholar, rust-pro, frontend-design, git-standard)
-├── .claude/skills/            # Claude Code skills mirror
-├── .gemini/skills/            # Antigravity / Gemini skills mirror
-├── .github/                   # GitHub Copilot instructions
-├── CONTRIBUTING.md            # Multi-agent collaboration, branching, and commit guidelines
+├── AGENTS.md                        # Universal cross-agent specification (this file)
+├── CLAUDE.md                        # Claude Code CLI entry point (imports AGENTS.md)
+├── .cursorrules                     # Cursor IDE root rules
+├── .cursor/rules/                   # Path-scoped rules (backend-rust.mdc, frontend-react.mdc)
+├── .agents/                         # Rules, Skills, Workflows (/probe, /reflect), & Tool Guidance
+├── .claude/skills/                  # Claude Code skills mirror
+├── .gemini/skills/                  # Antigravity / Gemini skills mirror
+├── .github/                         # CODEOWNERS, PR/Issue templates & Copilot instructions
+├── memory-bank/                     # Persistent Two-Tier Agent Memory (Harness² Architecture)
+│   ├── projectbrief.md              # Charter, T-Shaped 6-Domain Strategy & Team Roster
+│   ├── systemPatterns.md            # Mathematical & Clinical Safety Gate Invariants
+│   ├── techContext.md               # Tech stack & strict coding constraints
+│   ├── activeContext.md             # Current focus & immediate next steps
+│   ├── progress.md                  # Milestone tracker
+│   ├── issuesBacklog.md             # Per-member task assignment
+│   └── experienceLog.md             # Anti-recurrence failure mode log
+├── crates/                          # 7 Decoupled Safe Rust Crates (Zero-Conflict Team Partition)
+│   ├── ares-core-types/             # Shared JSON contract types, NASA-STD-3001 constants, Privacy traits
+│   ├── ares-telemetry-ingest/       # Ring buffer, Doppler Radar/Vocal DSP, CANS neutron, SQI >= 0.70
+│   ├── ares-causal-graph/           # ADHG petgraph, Frost-Hargens ODEs, Shear tau_w, Bayesian POCUS
+│   ├── ares-nqs-stl/                # O(1) Lemire Wedge NQS-STL solver, EWMA-OLS TTV, MRI (0-100)
+│   ├── ares-medops-playbooks/       # Playbooks #01-#05 DAG state machines & 3 Hard Safety Gates
+│   ├── ares-security-privacy/       # Role-Based Crew Privacy Tiers, SHA-256 Audit Chain, AEAD DSN Sync
+│   └── ares-server-cli/             # Dual-Transport Tokio binary (axum 20Hz WS + stdio FastMCP)
+├── ares-cockpit/                    # React 19 + TypeScript + Tailwind #000000 OLED + Three.js 3D UI
 ├── contracts/
-│   └── telemetry_schema.json  # 20 Hz Telemetry JSON Schema contract between Rust & React
-├── PANORAMICA_GENERALE_PROGETTO.md # All-in-one comprehensive project blueprint (Italian)
-├── README.md                  # Master documentation index
-└── (dossier specifications 00-10 and ARES_Health_Master_Architecture.md)
+│   └── telemetry_schema.json        # Single Source of Truth 20 Hz Telemetry JSON Schema
+├── scripts/
+│   └── agent_probe.sh               # Deterministic Pre-Commit Verification Probe
+├── docs/
+│   ├── REFERENCES.md                # Team Literature & Dataset Attribution List
+│   ├── architecture/                # CRATES_AND_MODULES_BLUEPRINT.md (Sub-Tracks & T-Shaped Strategy)
+│   └── team/                        # TEAM_COORDINATION_AND_OWNERSHIP.md
+├── PANORAMICA_GENERALE_PROGETTO.md  # All-in-one comprehensive project blueprint (Italian)
+├── README.md                        # Master documentation index
+└── (dossier specifications 00-11 and ARES_Health_Master_Architecture.md)
 ```
 
 ### Component Architecture

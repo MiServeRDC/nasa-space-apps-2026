@@ -1,0 +1,25 @@
+# CODEOWNERS for ARES-Health (NASA Space Apps Challenge 2026)
+# Enforces clear module ownership across the 5-person human + AI-agent team
+
+# Global Architecture, Contracts, Causal Graph & NQS-STL Engine
+/contracts/ @fabiomalagutti27-droid
+/crates/ares-core-types/ @fabiomalagutti27-droid @MiServeRDC
+/crates/ares-causal-graph/ @fabiomalagutti27-droid
+/crates/ares-nqs-stl/ @fabiomalagutti27-droid
+/memory-bank/ @fabiomalagutti27-droid @MiServeRDC
+
+# Cybersecurity, Crew Privacy Governance (NASA-STD-3001 Vol. 1 Ch. 7), Audit Chain & References
+/crates/ares-security-privacy/ @MiServeRDC
+/docs/REFERENCES.md @MiServeRDC
+/.github/ @MiServeRDC @fabiomalagutti27-droid
+
+# Multi-Modal Telemetry Bus, Contactless Radar/Vocal DSP & SQI Filtering
+/crates/ares-telemetry-ingest/ @LelloXV @fabiomalagutti27-droid
+
+# Astronaut Cockpit UX (React 19 + Three.js 3D Heatmap + What-If Console)
+/ares-cockpit/ @carolina2910 @fabiomalagutti27-droid
+/diagrams/ @carolina2910 @fabiomalagutti27-droid
+
+# NASA MedOps Playbook DAG Engine & Dual-Transport Server (axum + FastMCP)
+/crates/ares-medops-playbooks/ @fertech02 @fabiomalagutti27-droid
+/crates/ares-server-cli/ @fertech02 @fabiomalagutti27-droid

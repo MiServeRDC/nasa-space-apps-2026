@@ -1,0 +1,10 @@
+# Task & Issue Backlog: ARES-Health (`MiServeRDC/nasa-space-apps-2026`)
+
+| Issue ID | Crate / Module | Assigned Owner & Branch | Priority | Status | Description |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **ARES-01** | `contracts/` & `crates/ares-core-types` | `@fabiomalagutti27-droid` (`work/fabiomalagutti27-droid`) | P0 (Blocker) | READY | Rust data structures matching `contracts/telemetry_schema.json`, `NASA-STD-3001` constants, and privacy/audit traits. |
+| **ARES-02** | `crates/ares-causal-graph` & `crates/ares-nqs-stl` | `@fabiomalagutti27-droid` (`work/fabiomalagutti27-droid`) | P0 | READY | ADHG `petgraph`, Frost-Hargens ODEs, dimensional $\tau_w(t)$, Two-Stage Bayesian POCUS observer, and $O(1)$ NQS-STL + `TTV` + `MRI`. |
+| **ARES-03** | `crates/ares-security-privacy` | `@MiServeRDC` (`work/MiServeRDC`) | P0 | READY | Crew Role-Based Privacy Views (`PrivateAstronautView`, `CmoMedicalView`, `FlightSurgeonSyncPacket`), SHA-256 hash-chain audit logger for MedOps overrides, and ChaCha20-Poly1305 Store-and-Forward encryption. |
+| **ARES-04** | `crates/ares-telemetry-ingest` | `@LelloXV` (`work/LelloXV`) | P0 | READY | Multi-modal telemetry replayer (`OSD-51`, `CEBS`, `CANS` neutron dosimetry, `HERA` vocal features) and Spectral Entropy `SQI >= 0.70` motion-artifact filter. |
+| **ARES-05** | `ares-cockpit/` | `@carolina2910` (`work/carolina2910`) | P0 | READY | Pure black `#000000` OLED UI, `[1. GATHER] -> [2. EVALUATE] -> [3. ACT]` header, 3D Anatomical Heatmap (`Three.js`), NQS-STL chart with $\pm 1.96\sigma$ band, and What-If Stress-Test Console sliders. |
+| **ARES-06** | `crates/ares-medops-playbooks` & `crates/ares-server-cli` | `@fertech02` (`work/fertech02`) | P0 | READY | Playbooks #01–#05 DAG runner with 3 Hard Clinical Safety Gates, `axum` $20\text{ Hz}$ WebSocket (`127.0.0.1:8080`), and `stdio` FastMCP server (`< 150 tokens`). |

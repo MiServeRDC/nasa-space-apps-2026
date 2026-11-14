@@ -65,6 +65,10 @@ This folder contains the complete, rigorous architectural, clinical, and softwar
   *Complete NASA Space Apps Project Submission Guide compliance manual, full traceability matrix of mandatory NASA, CSA, and ESA datasets (HRP Risks, ARCHeR, Venous Haemostasis, Zero T2, CIPHER, OSDR federated `cgene,alsda,esa` [OSD-51/195/570/571/818], NLSP Experiments [`BRSMFSR`, `BRSMPT`, `NASA-0000100`], LSAH longitudinal epidemiology, NASA-STD-3001 Vol. 1 Rev C & Vol. 2 Rev F, CSA CANS 2026, Bio-Monitor, Vascular Aging, MARROW, ESA Myotones 2026, BRACE), ready-to-paste English submission form fields, and dual 30s/180s demo scripts.*
 * [CONTRIBUTING.md](file:///Users/fabiomalagutti/Desktop/NASA_Space_Apps_2026/CONTRIBUTING.md)  
   *Team and multi-agent development workflow: git branching, Conventional Commits standard, offline execution rules, and cross-agent verification.*
+* [docs/architecture/CRATES_AND_MODULES_BLUEPRINT.md](file:///Users/fabiomalagutti/Desktop/NASA_Space_Apps_2026/docs/architecture/CRATES_AND_MODULES_BLUEPRINT.md)  
+  *Modular 7-Crate Rust Workspace & React Cockpit blueprint, analysis of the 6 NASA Challenge sub-tracks ("mini-tracce"), 24-dataset coverage matrix, and the T-Shaped Hub-and-Spoke winning strategy.*
+* [docs/team/TEAM_COORDINATION_AND_OWNERSHIP.md](file:///Users/fabiomalagutti/Desktop/NASA_Space_Apps_2026/docs/team/TEAM_COORDINATION_AND_OWNERSHIP.md)  
+  *Gold-Standard 5-Person + Multi-Agent LLM Collaboration Guide (`memory-bank/`, `.github/CODEOWNERS`, `scripts/agent_probe.sh`, and zero-conflict crate ownership).*
 * [docs/REFERENCES.md](file:///Users/fabiomalagutti/Desktop/NASA_Space_Apps_2026/docs/REFERENCES.md)  
   *Team research reading list, evidence boundaries, candidate open-source libraries, and attribution guidelines.*
 * [contracts/telemetry_schema.json](file:///Users/fabiomalagutti/Desktop/NASA_Space_Apps_2026/contracts/telemetry_schema.json)  

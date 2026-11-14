@@ -1,0 +1,10 @@
+{
+  "hooks": {
+    "PreCommit": [
+      {
+        "description": "Run deterministic ARES-Health verification probe before committing",
+        "command": "./scripts/agent_probe.sh --fast"
+      }
+    ]
+  }
+}

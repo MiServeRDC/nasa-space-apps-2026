@@ -1,0 +1,15 @@
+# ARES-Health Modular Rust Workspace (`crates/`)
+
+This directory houses the **7 decoupled Safe Rust crates** of `ares-engine`. Partitioning the backend into 7 focused crates allows the 5 engineering teammates and their AI coding agents to implement, test, and verify subsystems in parallel with **zero merge conflicts**.
+
+## Crate Roster & Responsibilities
+
+| Crate Directory | Type | Owner Branch | Core Responsibility |
+| :--- | :--- | :--- | :--- |
+| `crates/ares-core-types` | Library | `work/fabiomalagutti27-droid` | Shared data structures matching `contracts/telemetry_schema.json`, physical unit newtypes, `NASA-STD-3001` boundary constants (`[V1 3001]–[V1 4001]`, `[V2 6001]–[V2 10001]`), and abstract `CrewPrivacyFilter` / `MedOpsAuditLogger` traits. |
+| `crates/ares-telemetry-ingest` | Library | `work/LelloXV` | **Phase 1 (GATHER):** Lock-free telemetry ring buffer, contactless nocturnal Doppler radar DSP ($\Delta\phi(t)$ + $60/120\text{ Hz}$ ECLSS notch), `HERA`/`CHAPEA` vocal biomarker DSP, `CSA CANS` real-time neutron dosimetry stream, and Spectral Entropy Signal Quality Index (`SQI >= 0.70`). |
+| `crates/ares-causal-graph` | Library | `work/fabiomalagutti27-droid` | **Phase 2A (EVALUATE):** Astronaut Dynamic Health Graph (`ADHG` via `petgraph`), regularized Frost-Hargens Sclerostin/Irisin ODEs ($\varepsilon_{\text{Frost}} = 1000\ \mu\varepsilon$), Prof. Pegreffi's Ultrasound Muscle Quality Index ($\text{MQI}$), dimensional jugular wall shear stress $\tau_w(t)$, Two-Stage Bayesian POCUS State Observer, and Hot/Warm/Cold (`LSAH`) storage tiers. |
+| `crates/ares-nqs-stl` | Library | `work/fabiomalagutti27-droid` | **Phase 2B (EVALUATE):** $O(1)$ Lemire Monotonic Wedge evaluator for Normalized Quantitative Semantics Signal Temporal Logic ($\hat{\rho}_k(t) \in (-\infty, +1.0]$), 7-day EWMA-OLS Time-To-Violation (`TTV`) countdown, and composite Mission Readiness Index ($\text{MRI} \in [0, 100]$). |
+| `crates/ares-medops-playbooks` | Library | `work/fertech02` | **Phase 3 (ACT):** Deterministic state machines for NASA MedOps Playbooks #01–#05 enforcing the **3 Hard Clinical Safety Gates** (no empirical anticoagulants without POCUS-confirmed thrombus; LBNP $-30\text{ mmHg}$ anti-syncope auto-vent guardrail; $0.38g$ Martian Landing Gait Asymmetry Index $\text{GAI}$ suit damping tuning). |
+| `crates/ares-security-privacy` | Library | `work/MiServeRDC` | **Cybersecurity & Crew Privacy Governance:** Concrete implementations of Role-Based Crew Privacy Tiers (`PrivateAstronautView`, `CmoMedicalView`, `FlightSurgeonStoreAndForwardPacket` per `NASA-STD-3001 Vol. 1 Ch. 7`), non-repudiable SHA-256 hash-chain audit logging of clinical overrides, and ChaCha20-Poly1305 encrypted Store-and-Forward DSN sync packets. |
+| `crates/ares-server-cli` | Binary | `work/fertech02` | **Dual-Transport Tokio Orchestrator:** Runs the concurrent `axum` REST + $20\text{ Hz}$ WebSocket server on `127.0.0.1:8080` (serving `ares-cockpit` and the `< 1 ms` What-If Stress-Test Console) alongside the dedicated `stdio` JSON-RPC 2.0 FastMCP server (`< 150 tokens` per response) for the local quantized AI copilot. |
