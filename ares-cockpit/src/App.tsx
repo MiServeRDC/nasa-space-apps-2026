@@ -57,6 +57,71 @@ const RISK_LABEL: Record<PredicateKey, string> = {
   spo2: 'Low blood oxygen',
 };
 
+function TwinHudViewport({
+  sex,
+  mri,
+  rhoMin,
+  children,
+}: {
+  sex: 'MALE' | 'FEMALE';
+  mri: number | null;
+  rhoMin: number;
+  children: ReactNode;
+}) {
+  const statusTone =
+    rhoMin < 0
+      ? 'border-rose-500/60 text-rose-400'
+      : rhoMin < 0.4
+        ? 'border-amber-500/60 text-amber-400'
+        : 'border-emerald-500/60 text-emerald-400';
+
+  return (
+    <div className="hud-stage-3d relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-cyan-500/25">
+      {/* Outer Reticle Target Brackets */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-2.5 z-10">
+        <span className="absolute top-0 left-0 h-4 w-4 border-t-2 border-l-2 border-cyan-400/80" />
+        <span className="absolute top-0 right-0 h-4 w-4 border-t-2 border-r-2 border-cyan-400/80" />
+        <span className="absolute bottom-0 left-0 h-4 w-4 border-b-2 border-l-2 border-cyan-400/80" />
+        <span className="absolute bottom-0 right-0 h-4 w-4 border-b-2 border-r-2 border-cyan-400/80" />
+
+        {/* Subtle Center Optical Crosshair */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-25">
+          <div className="h-12 w-12 rounded-full border border-dashed border-cyan-400" />
+          <div className="absolute top-1/2 -left-3 h-px w-3 bg-cyan-400" />
+          <div className="absolute top-1/2 -right-3 h-px w-3 bg-cyan-400" />
+          <div className="absolute -top-3 left-1/2 h-3 w-px bg-cyan-400" />
+          <div className="absolute -bottom-3 left-1/2 h-3 w-px bg-cyan-400" />
+        </div>
+
+        {/* Left Elevation Coordinate Ticks */}
+        <div className="absolute top-1/2 left-1 hidden -translate-y-1/2 flex-col gap-2.5 sm:flex">
+          {['+60', '+30', '000', '-30', '-60'].map((tick) => (
+            <div key={tick} className="flex items-center gap-1 font-mono text-[9px] text-cyan-400/55">
+              <span className="h-px w-2 bg-cyan-400/60" />
+              <span>{tick}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Top Telemetry Readout Strip */}
+        <div className="flex flex-wrap items-center justify-between gap-2 px-3 pt-1 font-mono text-[10px] tracking-widest uppercase">
+          <div className="flex items-center gap-2 rounded border border-cyan-500/30 bg-black/70 px-2 py-0.5 text-cyan-300 backdrop-blur-md">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#10b981]" />
+            <span>BIO-MESH // {sex}</span>
+            <span className="text-slate-600">|</span>
+            <span className="text-slate-300">AZM 360 DEG</span>
+          </div>
+          <div className={`rounded border bg-black/75 px-2 py-0.5 backdrop-blur-md ${statusTone}`}>
+            MRI {mri !== null ? mri.toFixed(0) : 'N/A'} // RHO {rhoMin.toFixed(2)}
+          </div>
+        </div>
+      </div>
+
+      <div className="relative z-0 flex min-h-0 flex-1 flex-col">{children}</div>
+    </div>
+  );
+}
+
 function Card({
   title,
   tag,
@@ -73,14 +138,36 @@ function Card({
   className?: string;
 }) {
   return (
-    <div className={`hud-glass hud-glass-interactive flex flex-col rounded-xl p-4.5 ${className}`}>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.06] pb-2.5">
+    <div className={`hud-glass hud-glass-interactive relative flex flex-col overflow-hidden rounded-xl p-4.5 ${className}`}>
+      {/* Precision Avionics Corner Brackets */}
+      <span aria-hidden="true" className="pointer-events-none absolute top-0 left-0 h-3 w-3 rounded-tl-xl border-t-2 border-l-2 border-cyan-400/70" />
+      <span aria-hidden="true" className="pointer-events-none absolute top-0 right-0 h-3 w-3 rounded-tr-xl border-t-2 border-r-2 border-cyan-400/70" />
+      <span aria-hidden="true" className="pointer-events-none absolute bottom-0 left-0 h-3 w-3 rounded-bl-xl border-b-2 border-l-2 border-cyan-400/50" />
+      <span aria-hidden="true" className="pointer-events-none absolute bottom-0 right-0 h-3 w-3 rounded-br-xl border-b-2 border-r-2 border-cyan-400/50" />
+
+      {/* Top Specular Telemetry Hairline */}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-cyan-400/60 to-transparent"
+      />
+
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-cyan-500/15 pb-2.5">
         <div className="flex items-center gap-2.5">
-          <h3 className="text-sm font-semibold tracking-wide text-gray-100 uppercase">{title}</h3>
+          <span
+            aria-hidden="true"
+            className="h-2 w-2 rounded-xs bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.85)]"
+          />
+          <h3 className="font-mono text-xs font-bold tracking-[0.14em] text-slate-100 uppercase">
+            {title}
+          </h3>
           {origin && <OriginBadge origin={origin} />}
           {freshness && <FreshnessBadge freshness={freshness} />}
         </div>
-        {tag && <span className="font-mono text-[11px] text-zinc-400 tracking-wider uppercase bg-white/[0.04] px-2 py-0.5 rounded border border-white/[0.06]">{tag}</span>}
+        {tag && (
+          <span className="rounded border border-cyan-400/30 bg-cyan-950/40 px-2.5 py-0.5 font-mono text-[11px] font-semibold tracking-wider text-cyan-300 uppercase shadow-[inset_0_0_10px_rgba(6,182,212,0.12)]">
+            {tag}
+          </span>
+        )}
       </div>
       <div className="min-h-0 flex-1">{children}</div>
     </div>
@@ -647,7 +734,7 @@ export default function App() {
         });
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-black">
+    <div className="ares-atmosphere flex h-screen flex-col overflow-hidden text-gray-200">
       <OsSystemStatusBar
         packet={packet}
         whatIf={whatIf}
@@ -853,57 +940,65 @@ export default function App() {
                 {evalTab === 'BODY_3D' && (
                   <Card
                     title="Your 3D Body Scan & Atlas"
-                    tag={`Mesh: ${whatIf.sex} • OrbitControls 360°`}
+                    tag={`MESH: ${whatIf.sex} // ORBIT 360 DEG`}
                     origin={hasHemodynamics || hasMusculoskeletal ? (packet.is_local_simulation ? 'SIMULATED_SCENARIO_INPUT' : 'DERIVED_FROM_HYBRID_SCENARIO') : 'UNAVAILABLE'}
                     className="min-h-0 flex-1"
                   >
-                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.04] pb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-[11px] text-zinc-400">BIODIGITAL MESH:</span>
-                        <div className="flex rounded border border-zinc-700 bg-black/60 p-0.5 font-mono text-xs">
-                          <button
-                            type="button"
-                            onClick={() => handleWhatIfChange({ ...whatIf, sex: 'MALE' })}
-                            className={`cursor-pointer px-2.5 py-0.5 rounded transition-all ${whatIf.sex === 'MALE' ? 'bg-cyan-500 text-black font-bold shadow-[0_0_10px_rgba(6,182,212,0.5)]' : 'text-zinc-400 hover:text-white'}`}
-                          >
-                            MALE
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleWhatIfChange({ ...whatIf, sex: 'FEMALE' })}
-                            className={`cursor-pointer px-2.5 py-0.5 rounded transition-all ${whatIf.sex === 'FEMALE' ? 'bg-cyan-500 text-black font-bold shadow-[0_0_10px_rgba(6,182,212,0.5)]' : 'text-zinc-400 hover:text-white'}`}
-                          >
-                            FEMALE
-                          </button>
+                    <div className="flex h-full min-h-0 flex-col gap-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-cyan-500/15 pb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-[11px] text-zinc-400">BIODIGITAL MESH:</span>
+                          <div className="flex rounded border border-zinc-700 bg-black/60 p-0.5 font-mono text-xs">
+                            <button
+                              type="button"
+                              onClick={() => handleWhatIfChange({ ...whatIf, sex: 'MALE' })}
+                              className={`cursor-pointer px-2.5 py-0.5 rounded transition-all ${whatIf.sex === 'MALE' ? 'bg-cyan-500 text-black font-bold shadow-[0_0_10px_rgba(6,182,212,0.5)]' : 'text-zinc-400 hover:text-white'}`}
+                            >
+                              MALE
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleWhatIfChange({ ...whatIf, sex: 'FEMALE' })}
+                              className={`cursor-pointer px-2.5 py-0.5 rounded transition-all ${whatIf.sex === 'FEMALE' ? 'bg-cyan-500 text-black font-bold shadow-[0_0_10px_rgba(6,182,212,0.5)]' : 'text-zinc-400 hover:text-white'}`}
+                            >
+                              FEMALE
+                            </button>
+                          </div>
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => setActiveView('VIEW_TWIN')}
+                          className="cursor-pointer rounded border border-cyan-500/40 bg-cyan-950/20 px-2.5 py-1 font-mono text-xs text-cyan-300 hover:border-cyan-400 hover:bg-cyan-400 hover:text-black transition-all"
+                        >
+                          FULLSCREEN HUD -&gt;
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setActiveView('VIEW_TWIN')}
-                        className="cursor-pointer rounded border border-cyan-500/40 bg-cyan-950/20 px-2.5 py-1 font-mono text-xs text-cyan-300 hover:border-cyan-400 hover:bg-cyan-400 hover:text-black transition-all"
+                      <TwinHudViewport
+                        sex={whatIf.sex}
+                        mri={sm.mission_readiness_index ?? s.mri}
+                        rhoMin={sm.med_stl_rho_robustness ?? s.rhoMin}
                       >
-                        FULLSCREEN HUD &rarr;
-                      </button>
+                        <BodyHeatmap
+                          s={hasHemodynamics || hasMusculoskeletal ? s : null}
+                          sex={whatIf.sex}
+                          hypergraphSpatial={packet.hypergraph_spatial}
+                          isLocalSimulation={Boolean(packet.is_local_simulation)}
+                          modelValidationStatus={packet.model_validation_status}
+                          injuries={injuries}
+                          onAddInjury={addInjury}
+                          onResolveInjury={resolveInjury}
+                          onChangeSex={(sex) => handleWhatIfChange({ ...whatIf, sex })}
+                          onOpenTab={setEvalTab}
+                          onOpenPlaybook={(playbookId) => {
+                            setActivePhase('ACT');
+                            setRequestedPlaybook((prev) => ({
+                              id: playbookId ?? 'PLAYBOOK_01_VENOUS_STASIS_LBNP',
+                              seq: (prev?.seq ?? 0) + 1,
+                            }));
+                          }}
+                        />
+                      </TwinHudViewport>
                     </div>
-                    <BodyHeatmap
-                      s={hasHemodynamics || hasMusculoskeletal ? s : null}
-                      sex={whatIf.sex}
-                      hypergraphSpatial={packet.hypergraph_spatial}
-                      isLocalSimulation={Boolean(packet.is_local_simulation)}
-                      modelValidationStatus={packet.model_validation_status}
-                      injuries={injuries}
-                      onAddInjury={addInjury}
-                      onResolveInjury={resolveInjury}
-                      onChangeSex={(sex) => handleWhatIfChange({ ...whatIf, sex })}
-                      onOpenTab={setEvalTab}
-                      onOpenPlaybook={(playbookId) => {
-                        setActivePhase('ACT');
-                        setRequestedPlaybook((prev) => ({
-                          id: playbookId ?? 'PLAYBOOK_01_VENOUS_STASIS_LBNP',
-                          seq: (prev?.seq ?? 0) + 1,
-                        }));
-                      }}
-                    />
                   </Card>
                 )}
 
@@ -1281,30 +1376,36 @@ export default function App() {
               </div>
             </div>
             <div className="flex-1 min-h-0 p-2">
-              <BodyHeatmap
-                s={hasHemodynamics || hasMusculoskeletal ? s : null}
+              <TwinHudViewport
                 sex={whatIf.sex}
-                hypergraphSpatial={packet.hypergraph_spatial}
-                isLocalSimulation={Boolean(packet.is_local_simulation)}
-                modelValidationStatus={packet.model_validation_status}
-                injuries={injuries}
-                onAddInjury={addInjury}
-                onResolveInjury={resolveInjury}
-                onChangeSex={(sex) => handleWhatIfChange({ ...whatIf, sex })}
-                onOpenTab={(tab) => {
-                  setEvalTab(tab);
-                  setActivePhase('EVALUATE');
-                  setActiveView('VIEW_COCKPIT');
-                }}
-                onOpenPlaybook={(playbookId) => {
-                  setActivePhase('ACT');
-                  setActiveView('VIEW_COCKPIT');
-                  setRequestedPlaybook((prev) => ({
-                    id: playbookId ?? 'PLAYBOOK_01_VENOUS_STASIS_LBNP',
-                    seq: (prev?.seq ?? 0) + 1,
-                  }));
-                }}
-              />
+                mri={sm.mission_readiness_index ?? s.mri}
+                rhoMin={sm.med_stl_rho_robustness ?? s.rhoMin}
+              >
+                <BodyHeatmap
+                  s={hasHemodynamics || hasMusculoskeletal ? s : null}
+                  sex={whatIf.sex}
+                  hypergraphSpatial={packet.hypergraph_spatial}
+                  isLocalSimulation={Boolean(packet.is_local_simulation)}
+                  modelValidationStatus={packet.model_validation_status}
+                  injuries={injuries}
+                  onAddInjury={addInjury}
+                  onResolveInjury={resolveInjury}
+                  onChangeSex={(sex) => handleWhatIfChange({ ...whatIf, sex })}
+                  onOpenTab={(tab) => {
+                    setEvalTab(tab);
+                    setActivePhase('EVALUATE');
+                    setActiveView('VIEW_COCKPIT');
+                  }}
+                  onOpenPlaybook={(playbookId) => {
+                    setActivePhase('ACT');
+                    setActiveView('VIEW_COCKPIT');
+                    setRequestedPlaybook((prev) => ({
+                      id: playbookId ?? 'PLAYBOOK_01_VENOUS_STASIS_LBNP',
+                      seq: (prev?.seq ?? 0) + 1,
+                    }));
+                  }}
+                />
+              </TwinHudViewport>
             </div>
           </div>
         </div>
