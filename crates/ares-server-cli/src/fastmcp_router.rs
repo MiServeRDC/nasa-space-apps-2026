@@ -179,9 +179,10 @@ pub fn handle_fastmcp_jsonrpc_request<S: McpInputSanitizer>(
                     "src": latest_packet.source_record_id,
                     "t_rec_s": latest_packet.relative_recording_time_s,
                     "severity": latest_packet.alert_severity,
-                    "mri_pct": round1(latest_packet.nqs_stl.mri_pct),
-                    "rho_global": round2(latest_packet.nqs_stl.rho_global),
-                    "ttv_h": round1(latest_packet.nqs_stl.ttv_hours),
+                    "mri_pct": latest_packet.nqs_stl.mri_pct.map(round1),
+                    "rho_global": latest_packet.nqs_stl.rho_global.map(round2),
+                    "ttv_h": latest_packet.nqs_stl.ttv_hours.map(round1),
+                    "hrv_unavailable_reason": latest_packet.biometrics.hrv_unavailable_reason,
                     "missing": latest_packet.biometrics.missing_channels
                 }),
                 "explain_causal_anomaly" | "query_organ_robustness" => {
@@ -200,10 +201,10 @@ pub fn handle_fastmcp_jsonrpc_request<S: McpInputSanitizer>(
                     })
                 }
                 "simulate_countermeasure_impact" => json!({
-                    "current_rho": round2(latest_packet.nqs_stl.rho_global),
-                    "lbnp_30mmhg_delta_rho_h": 0.19,
-                    "ared_125kgf_delta_rho_h": 0.11,
-                    "projected_ttv_gain_h": 96.0
+                    "current_rho": latest_packet.nqs_stl.rho_global.map(round2),
+                    "lbnp_30mmhg_delta_rho_h": latest_packet.nqs_stl.rho_global.map(|_| 0.19),
+                    "ared_125kgf_delta_rho_h": latest_packet.nqs_stl.rho_global.map(|_| 0.11),
+                    "projected_ttv_gain_h": latest_packet.nqs_stl.rho_global.map(|_| 96.0)
                 }),
                 "get_medops_playbook" | "trigger_medops_action_playbook" => json!({
                     "playbook_id": latest_packet.active_playbook.playbook_id,

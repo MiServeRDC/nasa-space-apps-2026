@@ -1013,6 +1013,7 @@ mod tests {
             resp_rate_brpm: Some(15.0),
             spo2_pct: spo2,
             rmssd_ms: Some(38.0),
+            hrv_unavailable_reason: None,
             sdnn_ms: Some(49.0),
             pnn50_pct: Some(17.0),
             lf_hf_ratio: Some(1.6),
@@ -1021,6 +1022,7 @@ mod tests {
             radiation_dose_rate_msv_d: 0.45,
             sqi_score: 0.90,
             missing_channels: Vec::new(),
+            quality_flags: Vec::new(),
         }
     }
 

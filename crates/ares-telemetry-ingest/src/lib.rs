@@ -9,5 +9,7 @@ pub mod scenario_overlay;
 pub mod sqi_filter;
 
 pub use bidmc_replayer::{BidmcNumericRow, BidmcReplayer, IngestError};
-pub use scenario_overlay::merge_biometrics_with_scenario;
-pub use sqi_filter::SqiFilter;
+pub use scenario_overlay::{
+    biometrics_with_signal_quality, merge_biometrics_with_rmssd, merge_biometrics_with_scenario,
+};
+pub use sqi_filter::{SqiEvaluation, SqiFilter};

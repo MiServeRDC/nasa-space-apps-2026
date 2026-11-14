@@ -1,0 +1,10 @@
+{
+  "source_record_id": "bidmc_01",
+  "flight_day": 184,
+  "ared_daily_load_kgf": 65.0,
+  "radiation_dose_rate_msv_d": 0.45,
+  "lbnp_active": false,
+  "lbnp_pressure_mmhg": 0.0,
+  "pocus_thrombus_confirmed": false,
+  "systolic_bp_drop_mmhg": 4.0
+}

@@ -73,6 +73,6 @@
 
 ---
 
-## Blocco J: Frontend Astronaut Cockpit & Pitch Finale (`ares-cockpit/` — `@carolina2910` & Team)
-- [ ] **Fase 21 (`J1`):** Layout React 19 + Tailwind OLED `#000000` (`NASA-STD-3001 Vol. 2`), barra `[1. GATHER] -> [2. EVALUATE] -> [3. ACT]`, 3D Anatomical Heatmap (`Three.js`), grafico `NQS-STL` con cono monotono $[q_{0.05}, q_{0.50}, q_{0.95}]$ e **What-If Stress-Test Console**.
-- [ ] **Fase 22 (`J2`):** Verifica finale end-to-end (`./scripts/agent_probe.sh --all`) e registrazione video demo (180s + 30s).
+## Blocco J: Frontend Astronaut Cockpit & Multi-Branch Unification (`ares-cockpit/`, `contracts/fixtures/`, `crates/` — Full Team) [COMPLETATO]
+- [x] **Fase 21 (`J1`):** Unified `ares-cockpit/` React 19 UI (`@carolina2910` `2da0989` + Fixes #8/#13/#22) wired to `ws://127.0.0.1:8080/ws/telemetry`, `GET /api/snapshot`, `POST /api/stress-test` with strict runtime schema validation, pure replay vs What-If separation, provenance/freshness inspector, null-safe TTV/RMSSD/SpO2 rendering, 3D Anatomical Heatmap, `NQS-STL` quantile cone, and `contracts/fixtures/` (`telemetry_bidmc_replay.json`, `telemetry_whatif_overlay.json`, `nominal_frame.json`, `missing_channel_frame.json`, `sans_alert_frame.json`, `what_if_request.json`).
+- [x] **Fase 22 (`J2`):** Integrated `@MiServeRDC` (`BEAT_INTERVALS_NOT_AVAILABLE` / `rmssd_ms: None` propagation without synthetic proxies), `@LelloXV` (`1 Hz` BIDMC CSV replay cadence decoupled from `20 Hz` WebSocket broadcast + cursor-invariant `POST /api/stress-test`), and `@fertech02` (`WireTelemetryPacket` + `StressTestPatchRequest` schema validation and fixture integration tests) onto `main`, verified with `./scripts/agent_probe.sh --all`, `cargo run -p ares-server-cli -- --mode smoke-test`, and cockpit `npm run lint` + `npm run build`.

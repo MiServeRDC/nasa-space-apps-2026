@@ -52,7 +52,7 @@ impl AresMultivariateSample {
         musculo: &Musculoskeletal,
         jugular: &JugularHemodynamics,
         sans: &SansOcular,
-        rho_global: f64,
+        rho_global: Option<f64>,
     ) -> Self {
         let opt_channels: [Option<f64>; ARES_TIMESTRAL_CHANNELS] = [
             biometrics.heart_rate_bpm,
@@ -66,7 +66,7 @@ impl AresMultivariateSample {
             Some(musculo.ared_daily_load_kgf),
             Some(musculo.sclerostin_pmol_l),
             Some(sans.sans_risk_index),
-            Some(rho_global),
+            rho_global,
         ];
 
         let mut values = [0.0; ARES_TIMESTRAL_CHANNELS];
@@ -185,11 +185,12 @@ pub fn compute_greybox_forecast_snapshot(
     gate: &ConformalAbstentionGate,
     inference_latency_us: u64,
 ) -> NqsQuantileForecastSnapshot {
-    let current_rho = if sample.values[11].is_finite() {
-        sample.values[11]
-    } else {
-        0.0
-    };
+    let current_rho =
+        if (sample.observed_mask & (1u16 << 11)) != 0 && sample.values[11].is_finite() {
+            sample.values[11]
+        } else {
+            0.0
+        };
     let observed_bits = (sample.observed_mask & 0x0FFF).count_ones() as f64;
     let observed_ratio = (observed_bits / (ARES_TIMESTRAL_CHANNELS as f64)).clamp(0.0, 1.0);
 
@@ -305,6 +306,7 @@ impl AresTemporalForecasterEngine {
         let t0 = Instant::now();
 
         if let Some(prev_rho) = self.last_rho_cone
+            && (sample.observed_mask & (1u16 << 11)) != 0
             && sample.values[11].is_finite()
         {
             self.gate

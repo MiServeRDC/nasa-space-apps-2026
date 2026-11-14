@@ -24,6 +24,7 @@ pub enum SystemPhase {
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum AlertSeverity {
     Nominal,
+    DataDegradedMissingChannels,
     Caution,
     Warning,
     CriticalEmergency,
@@ -41,7 +42,16 @@ pub enum BiometricsSource {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ScenarioOverlayMode {
+    NonePureReplay,
+    SimulatedWhatifScenario,
     DerivedAndSimulated,
+}
+
+/// Ragione esplicita per cui l'HRV beat-to-beat non e disponibile su sorgenti numeriche 1 Hz.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum HrvUnavailableReason {
+    BeatIntervalsNotAvailable,
 }
 
 /// Manifesto di provenienza dei dati allegato a ogni pacchetto telemetrico.
@@ -75,6 +85,8 @@ pub struct Biometrics {
     pub resp_rate_brpm: Option<f64>,
     pub spo2_pct: Option<f64>,
     pub rmssd_ms: Option<f64>,
+    #[serde(default)]
+    pub hrv_unavailable_reason: Option<HrvUnavailableReason>,
     pub sdnn_ms: Option<f64>,
     pub pnn50_pct: Option<f64>,
     pub lf_hf_ratio: Option<f64>,
@@ -83,6 +95,8 @@ pub struct Biometrics {
     pub radiation_dose_rate_msv_d: f64,
     pub sqi_score: f64,
     pub missing_channels: Vec<String>,
+    #[serde(default)]
+    pub quality_flags: Vec<String>,
 }
 
 /// Metriche di meccanotrasduzione muscoloscheletrica (`DERIVED_COMPUTED` + `SIMULATED_SCENARIO_INPUT`).
@@ -123,13 +137,36 @@ pub struct NqsStlMargins {
     pub rho_tau_w: f64,
     pub rho_ared: f64,
     pub rho_sost: f64,
-    pub rho_rmssd: f64,
+    pub rho_rmssd: Option<f64>,
     pub rho_sans: f64,
-    pub rho_global: f64,
-    pub ttv_hours: f64,
-    pub ttv_ci95_low_hours: f64,
-    pub ttv_ci95_high_hours: f64,
-    pub mri_pct: f64,
+    pub rho_global: Option<f64>,
+    pub ttv_hours: Option<f64>,
+    pub ttv_ci95_low_hours: Option<f64>,
+    pub ttv_ci95_high_hours: Option<f64>,
+    pub mri_pct: Option<f64>,
+}
+
+impl NqsStlMargins {
+    /// Known non-HRV or available violations remain actionable when HRV is unavailable.
+    #[inline]
+    pub fn has_known_violation(&self) -> bool {
+        [self.rho_tau_w, self.rho_ared, self.rho_sost, self.rho_sans]
+            .into_iter()
+            .any(|rho| rho < 0.0)
+            || self.rho_rmssd.is_some_and(|rho| rho < 0.0)
+            || self.rho_global.is_some_and(|rho| rho < 0.0)
+    }
+
+    /// Minimum margin over all available predicates (never fabricates missing HRV).
+    #[inline]
+    pub fn min_known_margin(&self) -> f64 {
+        let base = self
+            .rho_tau_w
+            .min(self.rho_ared)
+            .min(self.rho_sost)
+            .min(self.rho_sans);
+        self.rho_rmssd.map_or(base, |rho| base.min(rho))
+    }
 }
 
 /// Stato dei 3 Hard Clinical Safety Gates salvavita (`3. ACT`).

@@ -1,5 +1,9 @@
 //! Fase 04 (B2): Filtro di qualita del segnale Spectral/Energy Entropy SQI (>= 0.70)
 //! con mantenimento Zero-Order Hold dell'ultimo campione valido quando `SQI < 0.70`.
+//!
+//! Invariante Issue #11 (@MiServeRDC): per sorgenti numeriche 1 Hz (`BIDMC v1.0.0`) prive di
+//! intervalli R-R beat-to-beat, non viene mai sintetizzato un RMSSD proxy da HR/RESP:
+//! `rmssd_ms` resta esplicitamente `None` con flag `BEAT_INTERVALS_NOT_AVAILABLE`.
 
 use crate::bidmc_replayer::BidmcNumericRow;
 use ares_core_types::constants::SQI_MIN_VALID_THRESHOLD;
@@ -7,13 +11,21 @@ use ares_core_types::constants::SQI_MIN_VALID_THRESHOLD;
 const WINDOW_LEN: usize = 16;
 const EPSILON: f64 = 1e-12;
 
-/// Valutatore O(1) di qualita del segnale (SQI) con memoria Zero-Order Hold.
+/// Risultato dettagliato della valutazione SQI e disponibilita HRV.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SqiEvaluation {
+    pub sqi_score: f64,
+    pub rmssd_ms: Option<f64>,
+    pub quality_flags: Vec<String>,
+}
+
+/// Valutatore O(1) di qualita del segnale (SQI) con memoria Zero-Order Hold per HRV reali.
 #[derive(Debug, Clone)]
 pub struct SqiFilter {
     diff_energy_ring: [f64; WINDOW_LEN],
     write_idx: usize,
     last_hr_bpm: Option<f64>,
-    last_valid_rmssd_ms: f64,
+    last_valid_rmssd_ms: Option<f64>,
 }
 
 impl Default for SqiFilter {
@@ -22,7 +34,7 @@ impl Default for SqiFilter {
             diff_energy_ring: [1.0; WINDOW_LEN],
             write_idx: 0,
             last_hr_bpm: None,
-            last_valid_rmssd_ms: 42.0,
+            last_valid_rmssd_ms: None,
         }
     }
 }
@@ -33,9 +45,14 @@ impl SqiFilter {
         Self::default()
     }
 
-    /// Aggiorna la finestra con la riga BIDMC corrente e restituisce `(sqi_score, rmssd_ms)`.
+    /// Valuta il campione numerico con eventuale `rmssd_ms` misurato da stream beat-to-beat R-R.
+    /// Se `raw_rmssd_ms` e `None`, `rmssd_ms` rimane `None` e viene emesso `BEAT_INTERVALS_NOT_AVAILABLE`.
     #[inline]
-    pub fn evaluate_row(&mut self, row: &BidmcNumericRow) -> (f64, Option<f64>) {
+    pub fn evaluate_row_with_rmssd(
+        &mut self,
+        row: &BidmcNumericRow,
+        raw_rmssd_ms: Option<f64>,
+    ) -> SqiEvaluation {
         let diff_sq = match (row.hr_bpm, self.last_hr_bpm) {
             (Some(curr), Some(prev)) => {
                 let d = curr - prev;
@@ -58,25 +75,47 @@ impl SqiFilter {
         }
         let h_norm = (entropy / (WINDOW_LEN as f64).ln()).clamp(0.0, 1.0);
         let f_miss = (row.missing_channels.len() as f64 / 4.0).clamp(0.0, 1.0);
-        let sqi = (0.96 - 0.14 * h_norm - 0.18 * f_miss).clamp(0.0, 1.0);
+        let sqi_score = (0.96 - 0.14 * h_norm - 0.18 * f_miss).clamp(0.0, 1.0);
 
-        // Stima autonomica RMSSD modulata dalla frequenza cardiaca e respiratoria reale BIDMC
-        let rmssd = if sqi >= SQI_MIN_VALID_THRESHOLD {
-            if let Some(hr) = row.hr_bpm {
-                let resp = row.resp_brpm.unwrap_or(15.0);
-                let computed =
-                    (58.0 - 0.32 * (hr - 60.0).max(0.0) + 0.45 * (18.0 - resp)).clamp(12.0, 75.0);
-                self.last_valid_rmssd_ms = computed;
-                Some(computed)
+        let mut quality_flags = Vec::new();
+        let valid_input = raw_rmssd_ms.filter(|v| v.is_finite() && *v > 0.0);
+
+        let rmssd_ms = if sqi_score >= SQI_MIN_VALID_THRESHOLD {
+            if let Some(rmssd) = valid_input {
+                self.last_valid_rmssd_ms = Some(rmssd);
+                Some(rmssd)
             } else {
-                Some(self.last_valid_rmssd_ms)
+                quality_flags.push("BEAT_INTERVALS_NOT_AVAILABLE".to_string());
+                None
             }
         } else {
-            // Zero-Order Hold quando SQI < 0.70
-            Some(self.last_valid_rmssd_ms)
+            quality_flags.push("HOLD_LAST_VALID".to_string());
+            if let Some(held) = self.last_valid_rmssd_ms {
+                Some(held)
+            } else {
+                quality_flags.push("BEAT_INTERVALS_NOT_AVAILABLE".to_string());
+                None
+            }
         };
 
-        (sqi, rmssd)
+        SqiEvaluation {
+            sqi_score,
+            rmssd_ms,
+            quality_flags,
+        }
+    }
+
+    /// Valuta una riga BIDMC numerica 1 Hz restituendo SQI, `rmssd_ms: None` e `quality_flags`.
+    #[inline]
+    pub fn evaluate_row_detailed(&mut self, row: &BidmcNumericRow) -> SqiEvaluation {
+        self.evaluate_row_with_rmssd(row, None)
+    }
+
+    /// Aggiorna la finestra con la riga BIDMC corrente e restituisce `(sqi_score, rmssd_ms)`.
+    #[inline]
+    pub fn evaluate_row(&mut self, row: &BidmcNumericRow) -> (f64, Option<f64>) {
+        let eval = self.evaluate_row_detailed(row);
+        (eval.sqi_score, eval.rmssd_ms)
     }
 }
 
@@ -87,7 +126,7 @@ mod tests {
     use std::path::PathBuf;
 
     #[test]
-    fn test_sqi_filter_remains_above_070_on_nominal_bidmc_rows() {
+    fn test_sqi_filter_remains_above_070_on_nominal_bidmc_rows_without_proxy_rmssd() {
         let csv_path =
             PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../data/bidmc/bidmc_02_Numerics.csv");
         let Ok(replayer) = BidmcReplayer::from_csv_path("bidmc_02", &csv_path) else {
@@ -95,9 +134,18 @@ mod tests {
         };
         let mut filter = SqiFilter::new();
         for row in replayer.rows() {
-            let (sqi, rmssd) = filter.evaluate_row(row);
-            assert!(sqi >= 0.75, "Expected SQI >= 0.75 on clean row, got {sqi}");
-            assert!(rmssd.is_some());
+            let eval = filter.evaluate_row_detailed(row);
+            assert!(
+                eval.sqi_score >= 0.75,
+                "Expected SQI >= 0.75 on clean row, got {}",
+                eval.sqi_score
+            );
+            assert_eq!(eval.rmssd_ms, None);
+            assert!(
+                eval.quality_flags
+                    .iter()
+                    .any(|f| f == "BEAT_INTERVALS_NOT_AVAILABLE")
+            );
         }
     }
 
@@ -113,8 +161,36 @@ mod tests {
             spo2_pct: None,
             missing_channels: vec!["pulse_rate_bpm".to_string(), "spo2_pct".to_string()],
         };
-        let (sqi, rmssd) = filter.evaluate_row(&degraded_row);
-        assert!(sqi.is_finite() && (0.0..=1.0).contains(&sqi));
-        assert!(rmssd.is_some());
+        let eval = filter.evaluate_row_detailed(&degraded_row);
+        assert!(eval.sqi_score.is_finite() && (0.0..=1.0).contains(&eval.sqi_score));
+        assert_eq!(eval.rmssd_ms, None);
+        assert!(
+            eval.quality_flags
+                .iter()
+                .any(|f| f == "BEAT_INTERVALS_NOT_AVAILABLE")
+        );
+    }
+
+    #[test]
+    fn test_sqi_preserves_explicit_beat_interval_rmssd() {
+        let mut filter = SqiFilter::new();
+        let clean_row = BidmcNumericRow {
+            record_id: "rr_stream".to_string(),
+            relative_time_s: 1.0,
+            hr_bpm: Some(68.0),
+            pulse_bpm: Some(68.0),
+            resp_brpm: Some(14.0),
+            spo2_pct: Some(98.0),
+            missing_channels: Vec::new(),
+        };
+        let eval = filter.evaluate_row_with_rmssd(&clean_row, Some(44.5));
+        assert!(eval.sqi_score >= 0.75);
+        assert_eq!(eval.rmssd_ms, Some(44.5));
+        assert!(
+            !eval
+                .quality_flags
+                .iter()
+                .any(|f| f == "BEAT_INTERVALS_NOT_AVAILABLE")
+        );
     }
 }

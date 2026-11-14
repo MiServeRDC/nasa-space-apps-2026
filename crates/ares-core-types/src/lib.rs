@@ -14,9 +14,9 @@ pub use security::{
 };
 pub use telemetry::{
     ActivePlaybook, AlertSeverity, Biometrics, BiometricsSource, CountermeasureAction,
-    JugularFlowGrade, JugularHemodynamics, Musculoskeletal, NqsStlMargins, ProvenanceManifest,
-    SafetyGates, SansOcular, ScenarioOverlayMode, StressTestScenarioInput, SystemPhase,
-    TelemetryPacket,
+    HrvUnavailableReason, JugularFlowGrade, JugularHemodynamics, Musculoskeletal, NqsStlMargins,
+    ProvenanceManifest, SafetyGates, SansOcular, ScenarioOverlayMode, StressTestScenarioInput,
+    SystemPhase, TelemetryPacket,
 };
 
 use serde::{Deserialize, Serialize};
@@ -253,6 +253,7 @@ mod tests {
                 resp_rate_brpm: Some(16.0),
                 spo2_pct: None,
                 rmssd_ms: Some(36.5),
+                hrv_unavailable_reason: None,
                 sdnn_ms: Some(48.2),
                 pnn50_pct: Some(15.9),
                 lf_hf_ratio: Some(3.01),
@@ -261,6 +262,7 @@ mod tests {
                 radiation_dose_rate_msv_d: 0.45,
                 sqi_score: 0.85,
                 missing_channels: vec!["pulse_rate_bpm".to_string(), "spo2_pct".to_string()],
+                quality_flags: Vec::new(),
             },
             musculoskeletal: Musculoskeletal {
                 ared_daily_load_kgf: 125.0,
@@ -289,13 +291,13 @@ mod tests {
                 rho_tau_w: 0.32,
                 rho_ared: 1.0,
                 rho_sost: 0.92,
-                rho_rmssd: 0.59,
+                rho_rmssd: Some(0.59),
                 rho_sans: 0.71,
-                rho_global: 0.32,
-                ttv_hours: 160.0,
-                ttv_ci95_low_hours: 125.0,
-                ttv_ci95_high_hours: 221.0,
-                mri_pct: 82.5,
+                rho_global: Some(0.32),
+                ttv_hours: Some(160.0),
+                ttv_ci95_low_hours: Some(125.0),
+                ttv_ci95_high_hours: Some(221.0),
+                mri_pct: Some(82.5),
             },
             active_playbook: ActivePlaybook {
                 playbook_id: "PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED".to_string(),

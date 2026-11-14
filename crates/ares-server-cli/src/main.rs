@@ -134,7 +134,7 @@ async fn main() -> Result<()> {
             for _ in 0..20 {
                 last_pkt = Some(
                     state
-                        .advance_tick(0.05)
+                        .advance_tick(Duration::from_millis(50))
                         .context("errore durante il tick 20 Hz di smoke-test")?,
                 );
             }
@@ -151,7 +151,7 @@ async fn main() -> Result<()> {
             tracing::info!(
                 astronaut_id = %pkt.astronaut_id,
                 source_record_id = %pkt.source_record_id,
-                mri_pct = pkt.nqs_stl.mri_pct,
+                mri_pct = ?pkt.nqs_stl.mri_pct,
                 playbook_id = %pkt.active_playbook.playbook_id,
                 timestral_gate = ?q_snap.confidence_state,
                 pessimistic_ttv_q05_h = q_snap.pessimistic_ttv_q05_hours,
@@ -170,10 +170,14 @@ async fn main() -> Result<()> {
         ServerMode::WsOnly | ServerMode::WsAndMcp => {
             let ticker_state = state.clone();
             tokio::spawn(async move {
-                let mut interval = tokio::time::interval(Duration::from_millis(50));
+                let frame_period = Duration::from_millis(50);
+                let mut interval = tokio::time::interval_at(
+                    tokio::time::Instant::now() + frame_period,
+                    frame_period,
+                );
                 loop {
                     interval.tick().await;
-                    let _ = ticker_state.advance_tick(0.05);
+                    let _ = ticker_state.advance_tick(frame_period);
                 }
             });
 

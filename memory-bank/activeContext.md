@@ -1,7 +1,7 @@
 # Active Context: ARES-Health (NASA Space Apps Challenge 2026)
 
 **Last Updated:** 2026-11-14  
-**Current Phase:** Phase 3.0 — Complete 7-Crate Rust Core Engine (`Blocchi A–I`, **All 20 Phases `01–20` `COMPLETED (TESTED)`** — **77/77 Workspace Tests Passing**, 0 Clippy Warnings, Physical 24-Dataset Knowledge Graph Exported & Verified on Disk: `110` nodes, `326` edges, `24` datasets, `27` BIDMC Welford slices, `12` communities, `158,675` bytes JSON). Next: Blocco J (`ares-cockpit/` React 19 UI + final demo).  
+**Current Phase:** Phase 3.1 — Multi-Branch Unification (`@carolina2910` `ares-cockpit/`, `@LelloXV` 1 Hz BIDMC cadence, `@MiServeRDC` RMSSD nullability, `@fertech02` wire contract & fixtures) integrated on `main` alongside the 7-crate, 20-Phase engine (`Timestral`, `ARES-HyperGraph`, `ARES-DatasetGraph`, 8 `FastMCP` tools).  
 **Active Repository:** `https://github.com/MiServeRDC/nasa-space-apps-2026` (`main` synchronized).
 
 ---
@@ -38,10 +38,14 @@
      - `data/knowledge_graph/ares_dataset_graph.json` (`158,675` bytes) & `data/knowledge_graph/GRAPH_REPORT.md` (`2,739` bytes)
      - `graphify-out/graph.json` (`158,675` bytes) & `graphify-out/GRAPH_REPORT.md` (`2,739` bytes)
      - Metrics: `110` nodes (`24` Cataloged Datasets, `27` BIDMC Welford `TimeWindowSlice`s), `326` typed Biolink edges, `12` communities, `10` god nodes (`ds_08_bidmc_v1`, `bm_hr`, `bm_resp`, `bm_spo2`, `bm_pulse`, etc.).
-   * **Verification Gate (`./scripts/agent_probe.sh --all`):** 100% PASSED (`0` `.unwrap()`/`.expect()` in production code, `0` Clippy warnings across all targets, `77/77` tests passing).
+7. **Multi-Branch Unification on `main` (`@MiServeRDC` Issue #11/PR #20, `@LelloXV` Issue #10, `@fertech02` PR #21, `@carolina2910` Cockpit):**
+   * **RMSSD Nullability (`@MiServeRDC`):** `SqiFilter` no longer fabricates proxy RMSSD from 1 Hz HR/PULSE on numeric-only BIDMC CSVs (`rmssd_ms: None`, `"rmssd_ms"` listed in `missing_channels`, `HrvUnavailableReason::BeatIntervalsNotAvailable`, `"BEAT_INTERVALS_NOT_AVAILABLE"` quality flag). `NqsStlMargins` propagates `Option<f64>` (`rho_rmssd`, `rho_global`, `ttv_*`, `mri_pct`) and emits `AlertSeverity::DataDegradedMissingChannels` unless a known hazard is active, while explicit R-R streams and `Timestral` missing-channel masking continue working.
+   * **1 Hz Native BIDMC Cadence & Cursor Invariance (`@LelloXV`):** `SharedMissionState` separates 1 Hz (`Duration`) BIDMC row advancement and SQI evaluation from the 20 Hz WebSocket loop; `POST /api/stress-test` re-evaluates the cached 1 Hz row without advancing `replayer` or `replay_elapsed`.
+   * **Wire Contract & Contract Fixtures (`@fertech02`):** Added `crates/ares-server-cli/src/wire_contract.rs` (`WireTelemetryPacket` + `StressTestPatchRequest`) emitting all `contracts/telemetry_schema.json` blocks (`provenance_manifest`, `biometrics`, `biometrics_1hz`, nullable `hemodynamics`/`musculoskeletal`/`environment`, `safety_margins`, `active_playbook`, `causal_graph_state`, `nqs_stl_status`, `what_if_overlay`) plus 20-Phase extensions (`timestral_quantiles`, `hypergraph_spatial`), verified against all fixtures in `contracts/fixtures/`.
+   * **React 19 Cockpit (`@carolina2910`):** Unified `ares-cockpit/` (`src/lib/useTelemetry.ts`, `telemetryValidation.ts`, `ProvenanceInspector.tsx`, `MriAndStl.tsx`, `Imaging.tsx`, `WhatIfConsole.tsx`) wired to `127.0.0.1:8080`.
 
 ---
 
 ## 2. Immediate Next Steps for the 5-Person Team
-1. **`@carolina2910` (`Blocco J`, `ares-cockpit/`):** Implement `ares-cockpit/` (React 19 + Tailwind OLED `#000000` layout, `[1. GATHER] -> [2. EVALUATE] -> [3. ACT]` header, 3D Anatomical Heatmap driven by Layer-2 `AnatomicalRegionId` `UBERON:` intensities, `NQS-STL` chart with non-crossing $[q_{0.05}, q_{0.50}, q_{0.95}]$ cone, and What-If Stress-Test Console connected to `127.0.0.1:8080`).
-2. **Full Team:** End-to-end integration test (`ares-server-cli` + `ares-cockpit`) and 180s + 30s pitch video recording.
+1. **End-to-End Live Demo Run:** Launch `cargo run -p ares-server-cli -- --mode ws-only` alongside `npm run dev` in `ares-cockpit/` to verify WebSocket `20 Hz` stream, `1 Hz` recorded BIDMC cadence, and What-If Console responses.
+2. **Final Pitch Delivery:** Complete 180s + 30s demonstration video recording for NASA Space Apps 2026 submission.

@@ -143,6 +143,7 @@ mod tests {
             resp_rate_brpm: Some(14.0),
             spo2_pct: Some(98.0),
             rmssd_ms: Some(44.0),
+            hrv_unavailable_reason: None,
             sdnn_ms: Some(58.0),
             pnn50_pct: Some(22.0),
             lf_hf_ratio: Some(1.8),
@@ -151,6 +152,7 @@ mod tests {
             radiation_dose_rate_msv_d: rad_msv_d,
             sqi_score: 0.92,
             missing_channels: vec![],
+            quality_flags: vec![],
         }
     }
 
@@ -187,13 +189,13 @@ mod tests {
             rho_tau_w,
             rho_ared: 0.85,
             rho_sost: 0.80,
-            rho_rmssd: 0.75,
+            rho_rmssd: Some(0.75),
             rho_sans,
-            rho_global: rho_tau_w.min(rho_sans),
-            ttv_hours: 120.0,
-            ttv_ci95_low_hours: 90.0,
-            ttv_ci95_high_hours: 150.0,
-            mri_pct: 72.0,
+            rho_global: Some(rho_tau_w.min(rho_sans)),
+            ttv_hours: Some(120.0),
+            ttv_ci95_low_hours: Some(90.0),
+            ttv_ci95_high_hours: Some(150.0),
+            mri_pct: Some(72.0),
         }
     }
 

@@ -105,20 +105,25 @@ impl NqsEngine {
     ) -> NqsEngineEvaluation {
         let (mut margins, severity) =
             evaluate_nqs_stl_and_mri(biometrics, musculo, jugular, sans);
+        let effective_rho = margins
+            .rho_global
+            .unwrap_or_else(|| margins.min_known_margin());
         let sliding_min_rho_global = self
             .lemire_wedge
-            .push_and_evaluate(recording_time_s, margins.rho_global);
+            .push_and_evaluate(recording_time_s, effective_rho);
 
         let quantile_snapshot = self.forecaster_handle.read_latest_snapshot();
-        let pessimistic_ttv_q05_hours = if quantile_snapshot.confidence_state
-            == ConformalGateStatus::CalibratedQuantileCone
-        {
-            margins.ttv_ci95_low_hours = margins
-                .ttv_ci95_low_hours
-                .min(quantile_snapshot.ttv_hours_cone.q05);
-            quantile_snapshot.ttv_hours_cone.q05
-        } else {
-            margins.ttv_ci95_low_hours
+        let pessimistic_ttv_q05_hours = match (
+            margins.ttv_ci95_low_hours,
+            quantile_snapshot.confidence_state,
+        ) {
+            (Some(low), ConformalGateStatus::CalibratedQuantileCone) => {
+                let merged = low.min(quantile_snapshot.ttv_hours_cone.q05);
+                margins.ttv_ci95_low_hours = Some(merged);
+                merged
+            }
+            (Some(low), ConformalGateStatus::AbstainedFallbackDeterministic) => low,
+            (None, _) => quantile_snapshot.ttv_hours_cone.q05,
         };
 
         NqsEngineEvaluation {
@@ -156,6 +161,7 @@ mod tests {
             resp_rate_brpm: Some(15.0),
             spo2_pct: None,
             rmssd_ms: Some(44.0),
+            hrv_unavailable_reason: None,
             sdnn_ms: Some(50.0),
             pnn50_pct: Some(20.0),
             lf_hf_ratio: Some(1.3),
@@ -164,6 +170,7 @@ mod tests {
             radiation_dose_rate_msv_d: 0.4,
             sqi_score: 0.92,
             missing_channels: vec!["pulse_rate_bpm".to_string(), "spo2_pct".to_string()],
+            quality_flags: Vec::new(),
         };
         let musculo = Musculoskeletal {
             ared_daily_load_kgf: 128.0,
@@ -192,7 +199,7 @@ mod tests {
         let cov = KnownFutureCovariates::default();
         for t in 0..8 {
             let sample = AresMultivariateSample::from_telemetry_components(
-                t as f64, &bio, &musculo, &jugular, &sans, 0.45,
+                t as f64, &bio, &musculo, &jugular, &sans, Some(0.45),
             );
             forecaster
                 .ingest_sample_1hz(&sample, &cov, -0.005)
@@ -204,6 +211,9 @@ mod tests {
             .assert_monotone()
             .expect("snapshot monotone");
         assert!(eval.pessimistic_ttv_q05_hours >= 0.0);
-        assert!(eval.sliding_min_rho_global <= eval.margins.rho_global + 1e-12);
+        assert!(
+            eval.sliding_min_rho_global
+                <= eval.margins.rho_global.unwrap_or(f64::INFINITY) + 1e-12
+        );
     }
 }
