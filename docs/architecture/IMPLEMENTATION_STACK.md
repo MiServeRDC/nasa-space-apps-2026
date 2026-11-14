@@ -131,3 +131,8 @@ In conformità all'invariante obbligatorio della skill `.agents/skills/deep-scho
 Numeric BIDMC monitor summaries do not supply beat intervals. The 1 Hz source cannot support the previous HR/respiration-derived RMSSD, SDNN, pNN50 or LF/HF. These values and the full HRV-dependent assessment now remain unavailable. Existing numeric SQI remains a heuristic; this change neither validates it nor adds clinical calibration.
 
 Sources: [NeuroKit HRV input documentation](https://neuropsychology.github.io/NeuroKit/functions/hrv.html), [PhysioNet BIDMC v1.0.0](https://physionet.org/content/bidmc/1.0.0/). No new threshold, dependency or physiological constant is introduced. See [implementation and verification plan](../plans/ISSUE_11_HRV_VALIDITY_PLAN.md).
+
+
+## Issue #12: model evidence scope
+
+[MODEL_EVIDENCE_AUDIT.md](MODEL_EVIDENCE_AUDIT.md) is the authoritative current source-to-output and parameter register. Checked sources support research context and source-data interpretation, not calibration of the implemented coefficients, risk scores or forecast bands. Current scenario outputs are `ILLUSTRATIVE_UNVALIDATED`; accepted gates are heuristic, and historical `ci95` names do not establish 95% coverage. Unit tests, monotonicity and CRCs establish software properties only. No threshold/policy change or new model is introduced.

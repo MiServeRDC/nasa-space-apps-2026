@@ -63,6 +63,8 @@ pub fn evaluate_nqs_stl_and_mri(
             ttv_ci95_low_hours,
             ttv_ci95_high_hours,
             mri_pct,
+            ttv_interval_kind: forecast
+                .map(|_| ares_core_types::telemetry::TtvIntervalKind::IllustrativeScenarioRange),
         },
         severity,
     )

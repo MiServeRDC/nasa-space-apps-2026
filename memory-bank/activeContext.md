@@ -62,3 +62,20 @@ Final local repository gate: `bash scripts/agent_probe.sh --all` passed (check, 
 The phases 15-20 update arrived before merge. Ported null HRV guarantees into the new FastMCP router, optional Timestral assessment/RMSSD cones, masked global input, NqsEngine and longitudinal storage. Missing global values are not counted as zero observations, calibrated on zero padding, or converted back to finite TTV. An added regression runs the async forecaster repeatedly and checks its typed snapshot and compact output. Full local verification follows before merge.
 
 Integration verification on main `4839090`: `bash scripts/agent_probe.sh --all` passed, 83 tests passed, 0 failures and strict all-target Clippy passed.
+
+
+## Issue #12: evidence audit and output semantics (2026-11-14)
+
+PR #20 merged into main at `187b933` after integrating phases 15-20 (83 local tests passed). Current work audits that combined baseline. Added an output-to-source register and parameter/boundary findings in `docs/architecture/MODEL_EVIDENCE_AUDIT.md`. Scenario telemetry/forecasts and compact MCP results carry illustrative/unvalidated status. An accepted heuristic gate no longer emits a calibration claim; legacy TTV/probability API names are documented as compatibility names. Dossier notices and frontend integration guidance supersede unsupported historical claims.
+
+Treatment actions, numerical constants, guard thresholds and scenario equations are unchanged. Clinical/domain review, empirical calibration, actual cockpit acceptance (#8) and future experiments (#15/#17/#19) remain outstanding; no such validation is claimed. Final local verification is recorded after running the gate.
+
+
+## Issue #12 verification results
+
+- `RUST_TEST_THREADS=1 bash scripts/agent_probe.sh --all`: passed; 86 tests, no failures, check and strict all-target Clippy passed.
+- `cargo build --workspace --locked --quiet`: passed.
+- Actual MCP subprocess: health, quantile and spatial responses carry `ILLUSTRATIVE_UNVALIDATED`, remain valid JSON and are 338/216/477 bytes respectively. The integration test verifies all eight tool outputs retain model status and respect the existing byte limit.
+- The first parallel full-probe run failed the existing 150 us wall-clock timing assertion (200.23 us). The unchanged assertion passes with serial tests. This documents execution sensitivity; no timing threshold was loosened and no under-load performance guarantee is claimed.
+- No browser qualification: executable cockpit is not integrated on this baseline. Historical PDF exports are not regenerated. These integration/document-export limits are recorded in the evidence audit.
+- Numerical model coefficients, playbook policies and clinical guard thresholds are unchanged.

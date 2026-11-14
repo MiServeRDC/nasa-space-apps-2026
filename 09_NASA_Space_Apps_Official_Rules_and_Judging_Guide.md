@@ -1,5 +1,7 @@
 # 09. NASA Space Apps Challenge 2026: Official Rules, Submission Deliverables & Judging Guide
 
+> Evidence status (issue #12): scenario-derived physiology, risk/readiness scores and forecast ranges are illustrative and clinically unvalidated. Historical calibration, certification, universal-threshold and outcome claims below are not established. Use [the current evidence audit](docs/architecture/MODEL_EVIDENCE_AUDIT.md) for source applicability, parameters and permitted wording. Recorded terrestrial measurements remain distinct from simulation.
+
 **Challenge Portal:** https://www.spaceappschallenge.org/2026/challenges/health-monitoring-software/  
 **Main Hackathon Portal:** https://www.spaceappschallenge.org/2026/  
 **Track Title:** "Create Health Monitoring Software for Astronauts on Space Missions"  

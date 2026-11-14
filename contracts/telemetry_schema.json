@@ -286,47 +286,48 @@
       "type": "object",
       "description": "Current Rust baseline assessment block. Complete composite and dependent forecasts remain null when HRV is absent or invalid. Full transport reconciliation with safety_margins remains #8.",
       "properties": {
+        "ttv_interval_kind": {"type": ["string", "null"], "enum": ["ILLUSTRATIVE_SCENARIO_RANGE", null]},
         "rho_rmssd": {
           "type": [
             "number",
             "null"
           ],
-          "description": "Null when required valid HRV is unavailable. No healthy default or renormalized composite."
+          "description": "Null when required valid HRV is unavailable. Available values are illustrative scenario estimates; legacy ci95 field names do not assert calibrated 95% coverage."
         },
         "rho_global": {
           "type": [
             "number",
             "null"
           ],
-          "description": "Null when required valid HRV is unavailable. No healthy default or renormalized composite."
+          "description": "Null when required valid HRV is unavailable. Available values are illustrative scenario estimates; legacy ci95 field names do not assert calibrated 95% coverage."
         },
         "ttv_hours": {
           "type": [
             "number",
             "null"
           ],
-          "description": "Null when required valid HRV is unavailable. No healthy default or renormalized composite."
+          "description": "Null when required valid HRV is unavailable. Available values are illustrative scenario estimates; legacy ci95 field names do not assert calibrated 95% coverage."
         },
         "ttv_ci95_low_hours": {
           "type": [
             "number",
             "null"
           ],
-          "description": "Null when required valid HRV is unavailable. No healthy default or renormalized composite."
+          "description": "Null when required valid HRV is unavailable. Available values are illustrative scenario estimates; legacy ci95 field names do not assert calibrated 95% coverage."
         },
         "ttv_ci95_high_hours": {
           "type": [
             "number",
             "null"
           ],
-          "description": "Null when required valid HRV is unavailable. No healthy default or renormalized composite."
+          "description": "Null when required valid HRV is unavailable. Available values are illustrative scenario estimates; legacy ci95 field names do not assert calibrated 95% coverage."
         },
         "mri_pct": {
           "type": [
             "number",
             "null"
           ],
-          "description": "Null when required valid HRV is unavailable. No healthy default or renormalized composite."
+          "description": "Null when required valid HRV is unavailable. Available values are illustrative scenario estimates; legacy ci95 field names do not assert calibrated 95% coverage."
         }
       }
     },
@@ -340,6 +341,13 @@
         "CRITICAL_EMERGENCY"
       ],
       "description": "Current Rust baseline severity: missing HRV produces degraded assessment unless a known hazard requires warning/emergency. Other baseline wire differences remain #8."
+    },
+    "model_validation_status": {
+      "type": "string",
+      "enum": [
+        "ILLUSTRATIVE_UNVALIDATED"
+      ],
+      "description": "Current model outputs are illustrative and lack clinical/outcome calibration. Separate from recorded-data provenance. Accepted numerical gates do not imply calibrated coverage."
     },
     "active_playbook": {
       "type": ["object", "null"],

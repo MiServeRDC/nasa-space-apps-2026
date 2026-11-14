@@ -1,5 +1,7 @@
 # `ares-nqs-stl` — Phase 2B (EVALUATE): Normalized Quantitative Semantics STL & EWMA-OLS `TTV`
 
+> Evidence status (#12): model outputs are illustrative/unvalidated. Historical calibrated-confidence, clinical-probability, certification and readiness claims are superseded by [the evidence audit](../../docs/architecture/MODEL_EVIDENCE_AUDIT.md). Numerical gate acceptance is heuristic.
+
 **Assigned Owner:** `@fabiomalagutti27-droid` (`work/fabiomalagutti27-droid`)  
 
 ## Scope

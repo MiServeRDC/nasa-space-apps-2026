@@ -1,5 +1,7 @@
 # System Patterns & Architectural Invariants: ARES-Health
 
+> Current evidence status (#12): implemented scenario models and configured policies are illustrative/unvalidated. Earlier claims of calibrated risk, clinically verified equations, certification or guaranteed forecast coverage are not established. See [MODEL_EVIDENCE_AUDIT.md](../docs/architecture/MODEL_EVIDENCE_AUDIT.md). Numerical behavior and treatment policies are unchanged by this audit.
+
 ## 1. Core Architectural Topology (Dual-Transport Safe Rust + React 3D Cockpit)
 ARES-Health decouples deterministic physiological computation from visual rendering and natural-language explanation:
 
