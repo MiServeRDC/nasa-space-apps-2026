@@ -58,3 +58,8 @@
 ## Blocco H: Frontend Astronaut Cockpit & Pitch Finale (`ares-cockpit/` — `@carolina2910` & Team)
 - [ ] **Fase 15 (`H1`):** Layout React 19 + Tailwind OLED `#000000` (`NASA-STD-3001 Vol. 2`), barra `[1. GATHER] -> [2. EVALUATE] -> [3. ACT]`, 3D Anatomical Heatmap (`Three.js`), grafico `NQS-STL` con cono $\pm 1.96\sigma$ e **What-If Stress-Test Console**.
 - [ ] **Fase 16 (`H2`):** Verifica finale end-to-end (`./scripts/agent_probe.sh --all`) e registrazione video demo (180s + 30s).
+
+### BIDMC ingest progress (ARES-04 / Issue #4)
+- B1 standalone replay: verified all three 481-sample records, missing
+  PULSE/SpO2 values in record 01, and the UI frame wrap boundary.
+- Pending: shared packet integration, B2 signal quality and scenario overlays.

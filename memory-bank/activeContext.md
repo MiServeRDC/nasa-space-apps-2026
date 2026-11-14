@@ -31,3 +31,8 @@
 3. **`@LelloXV`:** Initialize `crates/ares-telemetry-ingest` (ring buffer, Doppler radar + vocal DSP simulation, `CSA CANS` radiation stream, spectral entropy `SQI` filter).
 4. **`@carolina2910`:** Initialize `ares-cockpit/` (React + Tailwind OLED `#000000` layout, Tri-Phase Header, 3D Anatomical Heatmap, What-If Stress-Test Console sliders).
 5. **`@fertech02`:** Initialize `crates/ares-medops-playbooks` and `crates/ares-server-cli` (`axum` $20\text{ Hz}$ WebSocket + `stdio` FastMCP server).
+
+### LelloXV: BIDMC replay (B1)
+The standalone ingest crate loads all three BIDMC numeric recordings and
+exposes native samples and sample-and-hold UI frames. The shared packet
+adapter remains pending until `ares-core-types` is available.
