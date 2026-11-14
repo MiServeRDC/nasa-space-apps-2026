@@ -105,8 +105,13 @@ This workspace is natively pre-configured for autonomous AI coding agents across
 * [CLAUDE.md](file:///Users/fabiomalagutti/Desktop/NASA_Space_Apps_2026/CLAUDE.md): Dedicated entry point and command cheat-sheet for Anthropic Claude Code CLI.
 * [.cursorrules](file:///Users/fabiomalagutti/Desktop/NASA_Space_Apps_2026/.cursorrules) & `.cursor/rules/`: Path-scoped rules for Cursor IDE (`backend-rust.mdc` and `frontend-react.mdc`).
 * `.github/copilot-instructions.md`: Instructions for GitHub Copilot.
-* **Agent Skills (`.agents/skills/`):** Autonomous skill modules pre-installed and mirrored across `.claude/skills/` and `.gemini/skills/`:
+* **Agent Skills (`.agents/skills/`, mirrored across `.claude/skills/`, `.gemini/skills/`, and `skills/`):**
+  - `rust-pro`: Advanced Safe Rust systems engineering, zero-copy concurrency, and zero-panic error handling.
+  - `mcp-builder`: FastMCP JSON-RPC 2.0 `stdio` architecture, transport isolation, and `< 150 token` Context-Mode compression.
+  - `context7`: Real-time API documentation lookup (`npx ctx7`) for `axum`, `tokio`, `petgraph`, `three.js`, and `@react-three/fiber`.
+  - `security-auditor`: Role-Based Crew Medical Privacy (`NASA-STD-3001 Vol. 1 Ch. 7`), Prompt Injection Shield, ChaCha20-Poly1305 AEAD, and SHA-256 Audit Chain (`crates/ares-security-privacy`).
+  - `telemetry-replay-verifier`: Enforces reproducible PhysioNet `BIDMC v1.0.0` CSV replay (`data/bidmc/`), leading-whitespace header parsing, explicit `null`/`UNAVAILABLE` missing-value handling, and provenance separation (`Issue #4`).
+  - `ui-ux-pro-max`: Searchable UI/UX design intelligence (`scripts/search.py`) with 79 styles, 192 palettes, 119 accessibility guidelines, and `react`/`html-tailwind`/`threejs` stack rules.
+  - `frontend-design`: High-contrast OLED dark UI (`#000000`), React 19, Tailwind, Three.js WebGL.
   - `deep-scholar`: Scientific literature search engine over arXiv and Crossref (`scripts/search_academic.py`).
-  - `rust-pro`: Advanced Safe Rust systems engineering, zero-copy, and Tokio concurrency.
-  - `frontend-design`: High-contrast OLED dark UI, React, Tailwind, Three.js WebGL.
   - `git-standard`: Conventional Commits standard and clean team branching.

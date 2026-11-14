@@ -1,209 +1,262 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ARESHealthTelemetryPacket",
-  "description": "Standardized biometric and environmental telemetry packet transmitted at 20 Hz from ares-engine (Safe Rust) to ares-cockpit (React / Three.js) and local MCP agents.",
+  "description": "Standardized biometric, environmental, and provenance-tagged telemetry packet transmitted from ares-engine (Safe Rust) to ares-cockpit (React / Three.js) and local MCP agents. Compliant with Issue #4 reproducible BIDMC replay and provenance separation rules.",
   "type": "object",
   "required": [
     "timestamp_ms",
-    "mission_elapsed_days",
+    "relative_recording_time_s",
+    "source_record_id",
     "astronaut_id",
+    "provenance_manifest",
     "biometrics",
-    "hemodynamics",
-    "musculoskeletal",
-    "environment",
     "safety_margins"
   ],
   "properties": {
     "timestamp_ms": {
       "type": "integer",
-      "description": "Unix timestamp in milliseconds of sample acquisition."
+      "description": "Replay engine wall-clock tick in milliseconds (distinct from original recording acquisition time; never fabricated as an original clinical timestamp)."
+    },
+    "relative_recording_time_s": {
+      "type": "number",
+      "minimum": 0.0,
+      "description": "Original relative time in seconds from the start of the recording (e.g. 0 to 480 s for BIDMC numeric CSVs)."
+    },
+    "source_record_id": {
+      "type": "string",
+      "description": "Explicit source recording identifier (e.g. 'bidmc_01', 'bidmc_02', 'bidmc_03', or 'SIM-SCENARIO-MARS-184'). Unrelated records are never merged into a fictitious longitudinal patient."
     },
     "mission_elapsed_days": {
-      "type": "number",
-      "description": "Elapsed days since deep-space transit departure (Earth-Mars transit day 1 to 1000)."
+      "type": ["number", "null"],
+      "description": "Simulated mission elapsed day when running What-If deep-space scenario overlays (null when running pure terrestrial BIDMC replay)."
     },
     "astronaut_id": {
       "type": "string",
-      "enum": ["ASTRO-01", "ASTRO-02", "ASTRO-03", "ASTRO-04"],
-      "description": "Identifier of the crew member monitored."
+      "enum": ["ASTRO-01", "ASTRO-02", "ASTRO-03", "ASTRO-04", "BIDMC-SUBJECT-01", "BIDMC-SUBJECT-02", "BIDMC-SUBJECT-03"],
+      "description": "Identifier of the monitored crew member or terrestrial replay subject."
+    },
+    "provenance_manifest": {
+      "type": "object",
+      "required": ["biometrics_source", "biometrics_native_rate_hz", "ui_refresh_rate_hz", "scenario_overlay_mode"],
+      "properties": {
+        "biometrics_source": {
+          "type": "string",
+          "enum": ["RECORDED_TERRESTRIAL_BIDMC_CSV", "RECORDED_TERRESTRIAL_WAVEFORM", "SIMULATED_SCENARIO_INPUT"],
+          "description": "Explicit provenance of the primary biometric vitals."
+        },
+        "biometrics_native_rate_hz": {
+          "type": "number",
+          "description": "True native sample rate of the underlying biometric source in Hz (e.g. 1.0 Hz for BIDMC Numerics CSV, 125.0 Hz for BIDMC Waveforms)."
+        },
+        "ui_refresh_rate_hz": {
+          "type": "number",
+          "description": "Cockpit UI stream tick rate in Hz (e.g. 1.0 Hz or 20.0 Hz; never misrepresents a 1 Hz source as 20 Hz sensor acquisition)."
+        },
+        "scenario_overlay_mode": {
+          "type": "string",
+          "enum": ["NONE_PURE_REPLAY", "SIMULATED_WHATIF_SCENARIO"],
+          "description": "Indicates whether simulated deep-space scenario inputs (hemodynamics, musculoskeletal, habitat avionics) are active alongside recorded vitals."
+        }
+      }
     },
     "biometrics": {
       "type": "object",
-      "required": ["heart_rate_bpm", "hrv_rmssd_ms", "spo2_percent", "core_temp_celsius", "respiration_rate_brpm"],
+      "required": ["heart_rate_bpm", "pulse_rate_bpm", "respiration_rate_brpm", "spo2_percent"],
       "properties": {
         "heart_rate_bpm": {
-          "type": "number",
-          "minimum": 30.0,
-          "maximum": 220.0,
-          "description": "Instantaneous heart rate in beats per minute."
+          "type": ["number", "null"],
+          "minimum": 20.0,
+          "maximum": 240.0,
+          "description": "Recorded ECG-derived heart rate in bpm (BIDMC ' HR' column). Null if sensor value is missing/invalid."
         },
-        "rr_interval_ms": {
-          "type": "number",
-          "minimum": 250.0,
-          "maximum": 2000.0,
-          "description": "R-to-R wave interval in milliseconds."
-        },
-        "hrv_rmssd_ms": {
-          "type": "number",
-          "minimum": 5.0,
-          "maximum": 150.0,
-          "description": "Root mean square of successive differences for autonomic tone."
-        },
-        "spo2_percent": {
-          "type": "number",
-          "minimum": 70.0,
-          "maximum": 100.0,
-          "description": "Blood oxygen saturation percentage."
-        },
-        "core_temp_celsius": {
-          "type": "number",
-          "minimum": 34.0,
-          "maximum": 42.0,
-          "description": "Core body temperature (elevated in spaceflight-associated fever)."
+        "pulse_rate_bpm": {
+          "type": ["number", "null"],
+          "minimum": 20.0,
+          "maximum": 240.0,
+          "description": "Recorded PPG-derived pulse rate in bpm (BIDMC ' PULSE' column; e.g. 13 missing rows in bidmc_01 remain explicitly null/UNAVAILABLE)."
         },
         "respiration_rate_brpm": {
-          "type": "number",
-          "minimum": 6.0,
-          "maximum": 45.0,
-          "description": "Respiration rate in breaths per minute."
+          "type": ["number", "null"],
+          "minimum": 2.0,
+          "maximum": 60.0,
+          "description": "Recorded impedance respiration rate in breaths per minute (BIDMC ' RESP' column). Null if unavailable."
+        },
+        "spo2_percent": {
+          "type": ["number", "null"],
+          "minimum": 50.0,
+          "maximum": 100.0,
+          "description": "Recorded peripheral oxygen saturation percentage (BIDMC ' SpO2' column; e.g. 13 missing rows in bidmc_01 remain explicitly null/UNAVAILABLE)."
+        },
+        "rr_interval_ms": {
+          "type": ["number", "null"],
+          "minimum": 250.0,
+          "maximum": 2000.0,
+          "description": "Beat-to-beat R-R interval in milliseconds. Must be null unless derived from 125 Hz+ ECG waveform R-peaks."
+        },
+        "hrv_rmssd_ms": {
+          "type": ["number", "null"],
+          "minimum": 2.0,
+          "maximum": 200.0,
+          "description": "Root mean square of successive RR differences in ms. Null when replaying 1 Hz numeric-only CSVs."
+        },
+        "core_temp_celsius": {
+          "type": ["number", "null"],
+          "minimum": 34.0,
+          "maximum": 42.0,
+          "description": "Core body temperature in Celsius (null if not present in the recorded source)."
+        },
+        "missing_channels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of channel names that are unavailable/NaN at the current sample tick (e.g. ['pulse_rate_bpm', 'spo2_percent'] in bidmc_01)."
         }
       }
     },
     "hemodynamics": {
-      "type": "object",
-      "required": ["ijv_csa_cm2", "ijv_velocity_max_cm_s", "wall_shear_stress_dyn_cm2", "thrombosis_risk_score"],
+      "type": ["object", "null"],
+      "description": "Simulated or POCUS-entered jugular hemodynamic state (explicitly tagged with provenance; null in pure BIDMC replay mode).",
       "properties": {
+        "provenance": {
+          "type": "string",
+          "enum": ["SIMULATED_SCENARIO_INPUT", "DERIVED_COMPUTED", "UNAVAILABLE"]
+        },
         "ijv_csa_cm2": {
-          "type": "number",
+          "type": ["number", "null"],
           "minimum": 0.2,
           "maximum": 6.0,
-          "description": "Internal Jugular Vein Cross-Sectional Area in cm^2 (normal 0.8-1.5, deconditioned >2.5)."
+          "description": "Internal Jugular Vein Cross-Sectional Area in cm^2 (scenario input)."
         },
         "ijv_velocity_max_cm_s": {
-          "type": "number",
+          "type": ["number", "null"],
           "minimum": 0.0,
           "maximum": 100.0,
-          "description": "Peak systolic/mean blood flow velocity in cm/s (stasis <5.0)."
+          "description": "Peak jugular blood flow velocity in cm/s (scenario input)."
         },
         "wall_shear_stress_dyn_cm2": {
-          "type": "number",
+          "type": ["number", "null"],
           "minimum": 0.0,
           "maximum": 50.0,
-          "description": "Endothelial wall shear stress in dyn/cm^2 (normal 8-15, critical prothrombotic collapse <4.0)."
+          "description": "Derived endothelial wall shear stress tau_w = 2 * mu * v_max * sqrt(pi / IJV_CSA) in dyn/cm^2."
+        },
+        "pocus_thrombus_confirmed": {
+          "type": ["boolean", "null"],
+          "description": "Hard Safety Gate 1 input: whether POCUS confirms a non-compressible intraluminal thrombus."
         },
         "thrombosis_risk_score": {
-          "type": "number",
+          "type": ["number", "null"],
           "minimum": 0.0,
           "maximum": 1.0,
-          "description": "Virchow's Triad probability score computed by ADHG causal graph."
+          "description": "Derived Virchow's Triad stasis indicator in [0, 1]."
         }
       }
     },
     "musculoskeletal": {
-      "type": "object",
-      "required": ["soleus_thickness_mm", "pennation_angle_deg", "bone_resorption_rate_pct", "mechanotransductive_index"],
+      "type": ["object", "null"],
+      "description": "Simulated What-If musculoskeletal scenario state (null in pure BIDMC replay mode).",
       "properties": {
+        "provenance": {
+          "type": "string",
+          "enum": ["SIMULATED_SCENARIO_INPUT", "DERIVED_COMPUTED", "UNAVAILABLE"]
+        },
         "soleus_thickness_mm": {
-          "type": "number",
+          "type": ["number", "null"],
           "minimum": 5.0,
-          "maximum": 25.0,
-          "description": "Ultrasound soleus muscle thickness in mm (atrophy <11.0)."
+          "maximum": 25.0
         },
         "pennation_angle_deg": {
-          "type": "number",
+          "type": ["number", "null"],
           "minimum": 8.0,
-          "maximum": 35.0,
-          "description": "Fascicle pennation angle in degrees (loss of architectural force transmission <13.0)."
+          "maximum": 35.0
         },
         "bone_resorption_rate_pct": {
-          "type": "number",
+          "type": ["number", "null"],
           "minimum": 0.0,
-          "maximum": 5.0,
-          "description": "Monthly rate of trabecular bone mineral density loss."
+          "maximum": 5.0
         },
         "mechanotransductive_index": {
-          "type": "number",
+          "type": ["number", "null"],
           "minimum": 0.0,
-          "maximum": 1.0,
-          "description": "Daily normalized strain stimulus from ARED exercise loading."
+          "maximum": 1.0
         }
       }
     },
     "environment": {
-      "type": "object",
-      "required": ["cabin_co2_ppm", "ambient_radiation_rate_ugy_h", "cumulative_radiation_mgy"],
+      "type": ["object", "null"],
+      "description": "Simulated habitat environmental avionics state (null in pure BIDMC replay mode).",
       "properties": {
+        "provenance": {
+          "type": "string",
+          "enum": ["SIMULATED_SCENARIO_INPUT", "UNAVAILABLE"]
+        },
         "cabin_co2_ppm": {
-          "type": "number",
+          "type": ["number", "null"],
           "minimum": 300.0,
-          "maximum": 10000.0,
-          "description": "Cabin carbon dioxide partial pressure in ppm."
+          "maximum": 10000.0
         },
         "cabin_o2_kpa": {
-          "type": "number",
+          "type": ["number", "null"],
           "minimum": 15.0,
-          "maximum": 25.0,
-          "description": "Cabin oxygen partial pressure in kPa."
+          "maximum": 25.0
         },
         "ambient_radiation_rate_ugy_h": {
-          "type": "number",
-          "minimum": 5.0,
-          "maximum": 50000.0,
-          "description": "Instantaneous dosimeter reading in microGray per hour."
+          "type": ["number", "null"],
+          "minimum": 0.0,
+          "maximum": 50000.0
         },
         "cumulative_radiation_mgy": {
-          "type": "number",
+          "type": ["number", "null"],
           "minimum": 0.0,
-          "maximum": 2000.0,
-          "description": "Total mission accumulated ionizing radiation dose in milliGray."
+          "maximum": 2000.0
         }
       }
     },
     "safety_margins": {
       "type": "object",
-      "required": ["med_stl_rho_robustness", "time_to_violation_days", "mission_readiness_index", "alarm_level"],
+      "required": ["provenance", "med_stl_rho_robustness", "mission_readiness_index", "alarm_level"],
       "properties": {
+        "provenance": {
+          "type": "string",
+          "enum": ["DERIVED_FROM_RECORDED_BIDMC", "DERIVED_FROM_HYBRID_SCENARIO"]
+        },
         "med_stl_rho_robustness": {
-          "type": "number",
-          "description": "Normalized Quantitative Satisfaction (NQS-STL) degree in (-inf, +1.0]. Positive is safe, negative is violated."
+          "type": ["number", "null"],
+          "description": "Normalized Quantitative Satisfaction (NQS-STL) degree in (-inf, +1.0] computed over available channels."
         },
         "time_to_violation_days": {
-          "type": "number",
+          "type": ["number", "null"],
           "minimum": 0.0,
           "maximum": 100.0,
-          "description": "Estimated remaining days before critical safety envelope violation."
+          "description": "Estimated remaining days before critical boundary violation (null when evaluating 8-minute terrestrial BIDMC recordings)."
         },
         "mission_readiness_index": {
-          "type": "number",
+          "type": ["number", "null"],
           "minimum": 0.0,
           "maximum": 100.0,
-          "description": "Composite score of EVA/landing physical readiness (0 to 100)."
+          "description": "Composite readiness index (0 to 100)."
         },
         "alarm_level": {
           "type": "string",
-          "enum": ["NOMINAL", "ADVISORY", "WARNING", "CRITICAL"],
-          "description": "Automated alarm tier according to NASA flight medical rules."
+          "enum": ["NOMINAL", "ADVISORY", "WARNING", "CRITICAL", "DATA_DEGRADED_MISSING_CHANNELS"],
+          "description": "Deterministic alert tier including explicit DATA_DEGRADED_MISSING_CHANNELS when required inputs are null."
         }
       }
     },
     "active_playbook": {
-      "type": "object",
+      "type": ["object", "null"],
       "properties": {
         "playbook_id": {
-          "type": "string",
-          "description": "Identifier of active clinical guideline, e.g. MEDOPS-PB-04-JUGULAR-STASIS."
+          "type": "string"
         },
         "current_step": {
-          "type": "integer",
-          "description": "Index of current instruction step."
+          "type": "integer"
         },
         "total_steps": {
-          "type": "integer",
-          "description": "Total number of steps in active protocol."
+          "type": "integer"
         },
         "step_instruction": {
-          "type": "string",
-          "description": "Actionable medical instruction presented to crew."
+          "type": "string"
         }
       }
     }

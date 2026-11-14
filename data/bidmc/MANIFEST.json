@@ -1,0 +1,49 @@
+{
+  "dataset_name": "BIDMC PPG and Respiration Dataset",
+  "version": "1.0.0",
+  "source_portal": "PhysioNet",
+  "dataset_url": "https://physionet.org/content/bidmc/1.0.0/",
+  "doi": "https://doi.org/10.13026/C2XW26",
+  "license": "Open Data Commons Attribution License v1.0 (ODC-By-1.0)",
+  "license_url": "https://physionet.org/content/bidmc/view-license/1.0.0/",
+  "citations": [
+    "Pimentel, M. A. F., Johnson, A. E. W., Charlton, P. H., Birrenkott, D., Watkinson, P. J., Tarassenko, L., & Clifton, D. A. (2016). Toward a Robust Estimation of Respiratory Rate From Pulse Oximeters. IEEE Transactions on Biomedical Engineering, 64(8), 1914-1923.",
+    "Goldberger, A., Amaral, L., Glass, L., Hausdorff, J., Ivanov, P. C., Mark, R., ... & Stanley, H. E. (2000). PhysioBank, PhysioToolkit, and PhysioNet: Components of a new research resource for complex physiologic signals. Circulation, 101(23), e215-e220."
+  ],
+  "evidence_boundary": "Recordings from critically ill terrestrial hospital patients (Beth Israel Deaconess Medical Center). Used strictly for reproducible technical evaluation of telemetry ingestion, missing-value handling, playback determinism, and UI visualization. Does not establish astronaut physiological baselines or validate spaceflight clinical predictions.",
+  "native_sample_rate_hz": 1.0,
+  "raw_csv_headers": ["Time [s]", " HR", " PULSE", " RESP", " SpO2"],
+  "header_parsing_note": "Columns 2-5 contain a leading space (' HR', ' PULSE', ' RESP', ' SpO2') that must be trimmed by the parser.",
+  "records": [
+    {
+      "record_id": "bidmc_01",
+      "role": "development_and_missing_data_validation",
+      "file": "bidmc_01_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_01_Numerics.csv",
+      "sha256": "27d43794cf2e7150db10e8bfe61d2bfdb26873a8f1629ffc5fbee5c9a4eb6ef5",
+      "rows": 481,
+      "relative_time_range_s": [0, 480],
+      "missing_values_summary": "13 missing PULSE values and 13 missing SpO2 values (must remain null/UNAVAILABLE; never replace with 0 or fabricated healthy values)."
+    },
+    {
+      "record_id": "bidmc_02",
+      "role": "development_clean_baseline",
+      "file": "bidmc_02_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_02_Numerics.csv",
+      "sha256": "99aef20b2846815d45ecde184da753de58c8a85b7dd7af74a2f4c5282013704d",
+      "rows": 481,
+      "relative_time_range_s": [0, 480],
+      "missing_values_summary": "0 missing numeric values in HR, PULSE, RESP, SpO2."
+    },
+    {
+      "record_id": "bidmc_03",
+      "role": "held_out_evaluation",
+      "file": "bidmc_03_Numerics.csv",
+      "source_url": "https://physionet.org/files/bidmc/1.0.0/bidmc_csv/bidmc_03_Numerics.csv",
+      "sha256": "6666475c072fe079f35f1fffe0890a97b56d1086985f8a5d76a23b88eb6c6036",
+      "rows": 481,
+      "relative_time_range_s": [0, 480],
+      "missing_values_summary": "0 missing numeric values in HR, PULSE, RESP, SpO2."
+    }
+  ]
+}

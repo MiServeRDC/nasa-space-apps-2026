@@ -6,6 +6,8 @@
 - [x] Deep web scraping and traceability integration of 24 official NASA, CSA, ESA, DLR, TRISH, JAXA, and PhysioNet datasets and `NASA-STD-3001 Vol. 1 & Vol. 2` standards.
 - [x] Official NASA Space Apps Submission Guide compliance & ready-to-paste English submission form (`11_Official_Submission_Guide_and_Ready_To_Paste_Form.md`).
 - [x] Gold-Standard Multi-Agent Harness (`memory-bank/`, `.agents/`, `scripts/agent_probe.sh`, `.github/CODEOWNERS`, `docs/team/TEAM_COORDINATION_AND_OWNERSHIP.md`, `docs/architecture/CRATES_AND_MODULES_BLUEPRINT.md`).
+- [x] Issue #4 (`@MiServeRDC`) reproducible `data/bidmc/` CSV bundle (`bidmc_01..03_Numerics.csv` + `MANIFEST.json` SHA-256) and updated `contracts/telemetry_schema.json` (provenance separation + nullable fields).
+- [x] 9 Multi-Agent Skills (`rust-pro`, `mcp-builder`, `context7`, `security-auditor`, `telemetry-replay-verifier`, `frontend-design`, `ui-ux-pro-max`, `deep-scholar`, `git-standard`) mirrored across `.agents/skills/`, `.claude/skills/`, `.gemini/skills/`, and `skills/`.
 - [x] Synchronized and merged onto `main` in `MiServeRDC/nasa-space-apps-2026`.
 
 ---

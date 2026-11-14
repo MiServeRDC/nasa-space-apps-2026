@@ -16,6 +16,12 @@
    * Integrated and documented official resources from **NASA HRP** (`Risks`, `ARCHeR`, `Venous Haemostasis`, `Zero T2`, `CIPHER`, `Thigh Cuff`, `B-Complex`), **NASA OSDR Federated Search** (`cgene,alsda,esa`: `OSD-51`, `OSD-195`, `OSD-570/571`, `OSD-818`), **NASA NLSP** (`NASA-0000100`, `FAP`, `SMCCP`, `BRSMFSR`, `BRSMPT`, *Neuroendocrine Tilt*), **NASA LSAH** longitudinal epidemiology, **NASA-STD-3001 Vol. 1 Rev C** (`[V1 3001]–[V1 4001]`) & **Vol. 2 Rev F (Jul 2026)** (`[V2 6001]–[V2 10001]`), **CSA** (`CANS 2026` neutron spectrometer, `Bio-Monitor`, `Vascular Aging`, `MARROW`), **ESA** (`Myotones 2026`, `BRACE`, `EEA`), **DLR `:envihab`** (`AGBRESA`, `SANS-CM`), **NASA Analogs** (`CHAPEA` 378d Mars, `HERA`), **NASA TRISH** (`EXPAND` & `HERMES`), **NASA-JAXA** (`Bisphosphonates`), and **PhysioNet / UCI** (`CEBS`, `Fantasia`, `PPG-DaLiA`).
 3. **Gold-Standard Multi-Agent Harness & 7-Crate Team Organization:**
    * Established `memory-bank/`, `.agents/`, `docs/team/TEAM_COORDINATION_AND_OWNERSHIP.md`, `docs/architecture/CRATES_AND_MODULES_BLUEPRINT.md`, `.github/CODEOWNERS`, and `scripts/agent_probe.sh`.
+4. **Integration of Issue #4 (`@MiServeRDC`) & Reproducible BIDMC Replay Layer:**
+   * Added PhysioNet `BIDMC PPG and Respiration Dataset v1.0.0` numeric CSVs (`bidmc_01..03_Numerics.csv` at `1 Hz`, `0..480 s`, `ODC-By-1.0`) in `data/bidmc/` with `MANIFEST.json` SHA-256 verification and `README.md`.
+   * Updated `contracts/telemetry_schema.json` with `relative_recording_time_s`, `source_record_id`, `provenance_manifest` (`RECORDED_TERRESTRIAL_BIDMC_CSV`, `DERIVED_COMPUTED`, `SIMULATED_SCENARIO_INPUT`), `pulse_rate_bpm`, `missing_channels`, and nullable `["number", "null"]` support.
+   * Clarified exact OSDR study titles (`OSD-51` transcriptome, `OSD-195` DNA microarray, `OSD-818` *ex vivo* translaminar SANS model) and NASA GO Team Discussion `#1994`.
+5. **9 Agent Skills Mirrored Across All 4 CLI Discovery Paths:**
+   * Installed and synchronized `rust-pro`, `mcp-builder`, `context7`, `security-auditor`, `telemetry-replay-verifier`, `frontend-design`, `ui-ux-pro-max`, `deep-scholar`, and `git-standard` across `.agents/skills/`, `.claude/skills/`, `.gemini/skills/`, and `skills/`.
 
 ---
 

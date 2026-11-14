@@ -76,13 +76,22 @@ for v in violations:
 fi
 
 # ------------------------------------------------------------------------------
-# 2. Single Source of Truth Telemetry Contract Validation
+# 2. Single Source of Truth Telemetry Contract & BIDMC Dataset Checksum Validation
 # ------------------------------------------------------------------------------
-echo "[Probe 2/4] Validating contracts/telemetry_schema.json..."
-if python3 -c "import json; json.load(open('contracts/telemetry_schema.json'))" 2>/dev/null; then
-    echo "[PASSED] contracts/telemetry_schema.json is valid JSON."
+echo "[Probe 2/4] Validating contracts/telemetry_schema.json and data/bidmc/MANIFEST.json..."
+if python3 -c "
+import json, hashlib, os
+schema = json.load(open('contracts/telemetry_schema.json'))
+assert 'provenance_manifest' in schema['properties'], 'Missing provenance_manifest in telemetry_schema.json'
+manifest = json.load(open('data/bidmc/MANIFEST.json'))
+for rec in manifest['records']:
+    path = os.path.join('data/bidmc', rec['file'])
+    h = hashlib.sha256(open(path, 'rb').read()).hexdigest()
+    assert h == rec['sha256'], f'SHA256 mismatch for {path}'
+" 2>/dev/null; then
+    echo "[PASSED] contracts/telemetry_schema.json and data/bidmc/ (3 CSVs + SHA-256 checksums) verified."
 else
-    echo "[FAILED] contracts/telemetry_schema.json is missing or invalid JSON."
+    echo "[FAILED] contracts/telemetry_schema.json or data/bidmc/ SHA-256 verification failed."
     ERRORS=$((ERRORS + 1))
 fi
 

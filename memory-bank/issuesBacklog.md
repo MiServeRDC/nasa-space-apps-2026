@@ -2,6 +2,7 @@
 
 | Issue ID | Crate / Module | Assigned Owner & Branch | Priority | Status | Description |
 | :--- | :--- | :--- | :--- | :--- | :--- |
+| **ARES-00 (Issue #4)** | `data/bidmc/` & `contracts/telemetry_schema.json` | `@MiServeRDC` & `@fabiomalagutti27-droid` (`main`) | P0 | COMPLETED | Integrate `BIDMC v1.0.0` numeric CSV bundle (`bidmc_01..03`), SHA-256 `MANIFEST.json`, provenance separation (`RECORDED` vs `DERIVED` vs `SIMULATED`), nullable missing-value schema, and exact OSDR metadata titles. |
 | **ARES-01** | `contracts/` & `crates/ares-core-types` | `@fabiomalagutti27-droid` (`work/fabiomalagutti27-droid`) | P0 (Blocker) | READY | Rust data structures matching `contracts/telemetry_schema.json`, `NASA-STD-3001` constants, and privacy/audit traits. |
 | **ARES-02** | `crates/ares-causal-graph` & `crates/ares-nqs-stl` | `@fabiomalagutti27-droid` (`work/fabiomalagutti27-droid`) | P0 | READY | ADHG `petgraph`, Frost-Hargens ODEs, dimensional $\tau_w(t)$, Two-Stage Bayesian POCUS observer, and $O(1)$ NQS-STL + `TTV` + `MRI`. |
 | **ARES-03** | `crates/ares-security-privacy` | `@MiServeRDC` (`work/MiServeRDC`) | P0 | READY | Crew Role-Based Privacy Views (`PrivateAstronautView`, `CmoMedicalView`, `FlightSurgeonSyncPacket`), SHA-256 hash-chain audit logger for MedOps overrides, and ChaCha20-Poly1305 Store-and-Forward encryption. |
