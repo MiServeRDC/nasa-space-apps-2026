@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   alarmFor,
   clamp,
@@ -19,7 +19,7 @@ import {
 import { ENGINE_HTTP_URL, useTelemetry, type RecordedHistoryPoint } from './lib/useTelemetry';
 import { AlarmBadge, TriPhaseHeader, type Phase } from './modules/header-triphase/TriPhaseHeader';
 import { MriGauge, PredicateBars, StlChart } from './modules/mri-and-stl/MriAndStl';
-import { BodyHeatmap } from './modules/body-3d-heatmap/BodyHeatmap';
+import type { BodyHeatmapProps } from './modules/body-3d-heatmap/BodyHeatmap';
 import { WhatIfConsole } from './modules/whatif-console/WhatIfConsole';
 import { PlaybookRunner } from './modules/playbook-runner/PlaybookRunner';
 import { EcgStrip, OcularOnsd, PocusIjv } from './modules/analysis-imaging/Imaging';
@@ -36,13 +36,17 @@ import {
   MissionSuiteNavbar,
   type MissionViewMode,
 } from './modules/navigation/MissionSuiteNavbar';
-import { MissionPortal } from './modules/portal/MissionPortal';
-import { OpenScreenStudio } from './modules/studio/OpenScreenStudio';
-import { KeyboardShortcutsModal } from './modules/ui-primitives/KeyboardShortcutsModal';
-import { AuditChainModal } from './modules/audit-chain/AuditChainModal';
 import type { VoiceIntentClassification } from './lib/voiceIntentRouter';
 import type { InjuryMarker } from './types/injury';
 import type { DataOrigin, FreshnessStatus, TelemetryPacket } from './types/telemetry';
+
+import { DeferredPanel } from './modules/ui-primitives/DeferredPanel';
+
+const BodyHeatmap = lazy(() => import('./modules/body-3d-heatmap/BodyHeatmap').then(m => ({default:m.BodyHeatmap})));
+const MissionPortal = lazy(() => import('./modules/portal/MissionPortal').then(m => ({default:m.MissionPortal})));
+const OpenScreenStudio = lazy(() => import('./modules/studio/OpenScreenStudio').then(m => ({default:m.OpenScreenStudio})));
+const KeyboardShortcutsModal = lazy(() => import('./modules/ui-primitives/KeyboardShortcutsModal').then(m => ({default:m.KeyboardShortcutsModal})));
+const AuditChainModal = lazy(() => import('./modules/audit-chain/AuditChainModal').then(m => ({default:m.AuditChainModal})));
 
 type EvalTab = 'BODY_3D' | 'POCUS' | 'MUSCLE_BONE' | 'FORECAST';
 
@@ -618,6 +622,18 @@ export default function App() {
     }
   };
 
+  const handleBodySex = useCallback<NonNullable<BodyHeatmapProps['onChangeSex']>>((sex) => {
+    setWhatIf(previous => ({ ...previous, sex }));
+    if (link === 'ENGINE_LIVE') setWhatIfOverlayActive(true);
+  }, [link]);
+  const handleBodyTab = useCallback((tab: EvalTab) => {
+    setEvalTab(tab); setActivePhase('EVALUATE'); setActiveView('VIEW_COCKPIT');
+  }, []);
+  const handleBodyPlaybook = useCallback<NonNullable<BodyHeatmapProps['onOpenPlaybook']>>((id) => {
+    setActivePhase('ACT'); setActiveView('VIEW_COCKPIT');
+    setRequestedPlaybook(previous => ({ id: id ?? 'PLAYBOOK_01_VENOUS_STASIS_LBNP', seq: (previous?.seq ?? 0) + 1 }));
+  }, []);
+
   const handleThrombusChange = (v: boolean | null) => {
     setThrombus(v);
     if (link === 'ENGINE_LIVE') {
@@ -946,7 +962,8 @@ export default function App() {
                         mri={sm.mission_readiness_index ?? s.mri}
                         rhoMin={sm.med_stl_rho_robustness ?? s.rhoMin}
                       >
-                        <BodyHeatmap
+                        <DeferredPanel name="anatomical explorer"><BodyHeatmap
+                          renderingActive={activeView==='VIEW_COCKPIT'}
                           s={hasHemodynamics || hasMusculoskeletal ? s : null}
                           sex={whatIf.sex}
                           hypergraphSpatial={packet.hypergraph_spatial}
@@ -955,16 +972,10 @@ export default function App() {
                           injuries={injuries}
                           onAddInjury={addInjury}
                           onResolveInjury={resolveInjury}
-                          onChangeSex={(sex) => handleWhatIfChange({ ...whatIf, sex })}
-                          onOpenTab={setEvalTab}
-                          onOpenPlaybook={(playbookId) => {
-                            setActivePhase('ACT');
-                            setRequestedPlaybook((prev) => ({
-                              id: playbookId ?? 'PLAYBOOK_01_VENOUS_STASIS_LBNP',
-                              seq: (prev?.seq ?? 0) + 1,
-                            }));
-                          }}
-                        />
+                          onChangeSex={handleBodySex}
+                          onOpenTab={handleBodyTab}
+                          onOpenPlaybook={handleBodyPlaybook}
+                        /></DeferredPanel>
                       </TwinHudViewport>
                     </div>
                   </Card>
@@ -1281,14 +1292,14 @@ export default function App() {
               </button>
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto p-4">
-              <MissionPortal
+              <DeferredPanel name="ground portal"><MissionPortal
                 packet={packet}
                 s={hasHemodynamics || hasMusculoskeletal ? s : null}
                 whatIf={whatIf}
                 thrombus={thrombus}
                 onSetThrombus={handleThrombusChange}
                 sex={whatIf.sex}
-              />
+              /></DeferredPanel>
             </div>
           </div>
         </div>
@@ -1313,12 +1324,12 @@ export default function App() {
               </button>
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto p-4">
-              <OpenScreenStudio
+              <DeferredPanel name="studio"><OpenScreenStudio
                 packet={packet}
                 s={hasHemodynamics || hasMusculoskeletal ? s : null}
                 whatIf={whatIf}
                 sex={whatIf.sex}
-              />
+              /></DeferredPanel>
             </div>
           </div>
         </div>
@@ -1366,7 +1377,7 @@ export default function App() {
                 mri={sm.mission_readiness_index ?? s.mri}
                 rhoMin={sm.med_stl_rho_robustness ?? s.rhoMin}
               >
-                <BodyHeatmap
+                <DeferredPanel name="anatomical explorer"><BodyHeatmap
                   s={hasHemodynamics || hasMusculoskeletal ? s : null}
                   sex={whatIf.sex}
                   hypergraphSpatial={packet.hypergraph_spatial}
@@ -1375,36 +1386,25 @@ export default function App() {
                   injuries={injuries}
                   onAddInjury={addInjury}
                   onResolveInjury={resolveInjury}
-                  onChangeSex={(sex) => handleWhatIfChange({ ...whatIf, sex })}
-                  onOpenTab={(tab) => {
-                    setEvalTab(tab);
-                    setActivePhase('EVALUATE');
-                    setActiveView('VIEW_COCKPIT');
-                  }}
-                  onOpenPlaybook={(playbookId) => {
-                    setActivePhase('ACT');
-                    setActiveView('VIEW_COCKPIT');
-                    setRequestedPlaybook((prev) => ({
-                      id: playbookId ?? 'PLAYBOOK_01_VENOUS_STASIS_LBNP',
-                      seq: (prev?.seq ?? 0) + 1,
-                    }));
-                  }}
-                />
+                  onChangeSex={handleBodySex}
+                  onOpenTab={handleBodyTab}
+                  onOpenPlaybook={handleBodyPlaybook}
+                /></DeferredPanel>
               </TwinHudViewport>
             </div>
           </div>
         </div>
       )}
 
-      <KeyboardShortcutsModal
+      {shortcutsModalOpen && <DeferredPanel name="keyboard shortcuts"><KeyboardShortcutsModal
         open={shortcutsModalOpen}
         onClose={() => setShortcutsModalOpen(false)}
-      />
+      /></DeferredPanel>}
 
-      <AuditChainModal
+      {auditModalOpen && <DeferredPanel name="audit chain"><AuditChainModal
         isOpen={auditModalOpen}
         onClose={() => setAuditModalOpen(false)}
-      />
+      /></DeferredPanel>}
 
       <OsCommandPalette
         open={paletteOpen}

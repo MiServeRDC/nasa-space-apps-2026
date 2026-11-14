@@ -1,3 +1,4 @@
+import {clinicalStructure,cloneAtlasLayer,disposeAtlasMaterials} from './atlasMaterials';
 import { useEffect, useMemo } from 'react';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
@@ -32,14 +33,6 @@ export interface AtlasAnchors {
   injuries: Record<InjuryRegionId, V3>;
 }
 
-function clinicalStructure(name: string): AnatomicalRegionWireId | null {
-  if (/Optic[_ ]nerve|Eyeball/i.test(name)) return 'EyeOcularSans';
-  if (/Internal[_ ]jugular[_ ]vein/i.test(name)) return 'InternalJugularVein';
-  if (/Heart|Myocardium|Ventricle|Atrium/i.test(name)) return 'HeartCardioAutonomic';
-  if (/^Femur|^Soleus[_ ]muscle|^Calcaneus/i.test(name)) return 'SoleusCalcaneus';
-  if (/^Brain|^Cerebrum/i.test(name)) return 'BrainVestibularCns';
-  return null;
-}
 
 export function AtlasBody({
   s,
@@ -67,23 +60,8 @@ export function AtlasBody({
   // Air-gapped: useDraco=false avoids gstatic.com CDN; useMeshopt=true uses local MeshoptDecoder.
   const loaded = useGLTF(URLS, false, true);
 
-  const models = useMemo(
-    () =>
-      loaded.map((gltf, index) => {
-        const scene = gltf.scene.clone(true);
-        scene.traverse((object) => {
-          if (object instanceof THREE.Mesh) {
-            object.material = new THREE.MeshStandardMaterial({
-              color: COLORS[index],
-              roughness: 0.65,
-              side: THREE.DoubleSide,
-            });
-          }
-        });
-        return scene;
-      }),
-    [loaded],
-  );
+  const models = useMemo(() => loaded.map((gltf,index) =>
+    cloneAtlasLayer(gltf.scene,COLORS[index],clinicalStructure)),[loaded]);
 
   const alignment = useMemo(() => {
     models.forEach((model) => model.updateMatrixWorld(true));
@@ -226,17 +204,7 @@ export function AtlasBody({
     });
   }, [models, muscleOpacity]);
 
-  useEffect(() => {
-    return () => {
-      models.forEach((model) =>
-        model.traverse((object) => {
-          if (object instanceof THREE.Mesh && object.material instanceof THREE.Material) {
-            object.material.dispose();
-          }
-        }),
-      );
-    };
-  }, [models]);
+  useEffect(() => () => disposeAtlasMaterials(models), [models]);
 
   return (
     <group position={alignment.offset} scale={alignment.scale}>

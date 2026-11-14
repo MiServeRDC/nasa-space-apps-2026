@@ -8,7 +8,11 @@
   status and final drain; runtime/reopen/null-HRV and real-process shutdown pass.
 - [x] JSON construction/encoding moved outside the mission lock with publication order retained.
 - Backend checks: 212 default Rust tests, 15 desktop tauri-runtime tests, clean
-  workspace/all-target Clippy. Remaining commits record frontend and evaluation.
+  workspace/all-target Clippy.
+- [x] Paused unused fallback simulation and stabilized expensive anatomical rendering;
+  split optional local UI; added adaptive quality, viewport suspension and regional
+  material pooling. All 24 frontend tests, lint/build and browser/process checks pass.
+- Remaining commit records forecasting comparisons, measured limits and final docs.
 
 ## Approved medical-blue cockpit refresh (2026-11-14)
 

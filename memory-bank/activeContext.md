@@ -10,9 +10,14 @@ shutdown errors, partial deadlines, manifest rollback, explicit runtime storage
 (`--storage-dir`), exclusive writer lease, sequence recovery and null-HRV readback.
 Coherent wire snapshots are encoded outside the mission lock with ordered
 publication. The default workspace has 212 passing tests and all-target Clippy is
-clean; the desktop tauri-runtime configuration has 15 passing tests. Frontend and
-forecast validation changes are implemented and being recorded in subsequent
-commits. Hosted Actions remain disabled; no main merge is requested for this task.
+clean; the desktop tauri-runtime configuration has 15 passing tests. Frontend is
+also verified: unused simulation pauses, geometry memoization, local lazy panels,
+adaptive/saved quality, hidden/covered viewport suspension and pooled atlas
+materials. Main entry is 432.32 kB (131.41 kB gzip); actual atlas material objects
+drop from 3,746 to 11. All 24 Node tests, lint/build and browser/process checks pass,
+including reconnect, alarm delivery, lazy-load failure isolation and shutdown with
+a real WebSocket still connected. Forecast validation/results are recorded in the
+next commit. Hosted Actions remain disabled; no main merge is requested here.
 
 ## User-approved medical-blue cockpit integration (2026-11-14)
 
