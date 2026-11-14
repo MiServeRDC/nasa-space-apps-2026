@@ -566,6 +566,43 @@ flowchart TD
 
 ---
 
+### BLOCCO N: Advanced Astronaut Wearable Suite, Multisystem Exploration Medicine & Multi-Organ POCUS (`Fasi 38–41`)
+* **Architettura di Riferimento:** [`docs/plans/BLOCK_N_CLINICAL_MEDICINE_ARCHITECTURE.md`](BLOCK_N_CLINICAL_MEDICINE_ARCHITECTURE.md) | **Revisione Formale Carbon High:** [`docs/plans/BLOCK_N_CARBON_FORMAL_REVIEW.md`](BLOCK_N_CARBON_FORMAL_REVIEW.md)
+* **Obiettivo:** Colmare integralmente i 6 gap clinici NASA HRP (RIDGE) e completare la copertura dei 4 domini patologici nominati nella consegna (*immune changes, bone loss, cardiovascular events, behavioral health problems*). Include le 4 Patch Chirurgiche immediate `N0-A..N0-D`, il pacchetto indossabile `ExplorationWearablePacketV2` (`64 B`), il pannello di diagnostica di laboratorio episodica `SpotPoctPanel`, la sovrassaturazione litiasica `RSR`, la contrazione volemica $\Delta PV\%$, il modello circadiano a 2 processi sul Sol marziano (`24.66h`), la riattivazione virale `VZV/EBV`, l'ecografia multi-organo POCUS a 4 distretti ontologici `UBERON:`, i Playbook `#10–#15` e l'interlock deterministico `Hard Safety Gate 4`.
+
+#### Fase 38 (`N1`): Exploration Wearable Suite V2 (`64 B`), Continuous BP/PTT, `ARCHeR` Sleep/Circadian, `CPAD` Dosimetry & Episodic `POCT` Ingest
+* **Stato:** `[ ] PLANNED` (Piano: [`docs/plans/phase_38_N1_wearable_suite_v2_poct_ingest.md`](phase_38_N1_wearable_suite_v2_poct_ingest.md))
+* **Specifica Tecnica:**
+  * Pacchetto `ExplorationWearablePacketV2` (`64 B`, `sync 0xAA56`, CRC-16-CCITT) con SBP/DBP/PTT da `CSA Bio-Monitor`, termometria dual-flux, stadi del sonno, fotometria melanopica (`EDI lux 480 nm`), dosimetro personale attivo `CPAD` ($\mu\text{Gy/h}$ con fattore di qualità $Q(\text{LET})$) e dispendio metabolico tuta EVA.
+  * Struttura diagnostica episodica `SpotPoctPanel` disaccoppiata con timestamp e decadimento temporale (`staleness_hours`).
+  * `Patch N0-D`: accumulatore zero-heap `WearableRrWindowAccumulator` (`[u16; 64]`) con filtro ectopici di Malik $\pm 20\%$ ed emissione `Some(rmssd_ms)` da wearable reale.
+
+#### Fase 39 (`N2`): Renal Stone Relative Supersaturation (`RSR`), Plasma Volume Contraction & Hypercapnic `SANS` Coupling
+* **Stato:** `[ ] PLANNED` (Piano: [`docs/plans/phase_39_N2_renal_stone_rsr_plasma_volume_hemodynamics.md`](phase_39_N2_renal_stone_rsr_plasma_volume_hemodynamics.md))
+* **Specifica Tecnica:**
+  * Modello di sovrassaturazione litiasica `RSR` basato su indice Tiselius AP(CaOx), accoppiando riassorbimento osseo, escrezione urinaria di calcio, inibizione del citrato da $ppCO_2$ di cabina e diuresi stimata.
+  * Contrazione volemica plasmatica $\Delta PV\%$ Gauer-Henry, emolisi spaziale `MARROW` ($+54\%$), viscosità ematica variabile $\mu(\text{Hct})$ e calcolo Shock Index (HR/SBP) per rischio ortostatico a `0.38g`.
+  * `Patch N0-B`: accoppiamento diretto di $ppCO_2$ cabina a vasodilatazione cerebrale/coroideale e indice di rischio `SANS`.
+  * `Patch N0-A`: restrizione selettiva di `Gate 1` a `PHARMACOLOGICAL_ANTICOAGULANT` (preservando K-citrato, analgesici, antibiotici, antivirali) ed estensione di `Gate 2` a caduta reale SBP $> 15\text{ mmHg}$.
+
+#### Fase 40 (`N3`): Mars-Sol (`24.66h`) Two-Process Circadian-Cognitive Model & Neuro-Immune Viral Risk
+* **Stato:** `[ ] PLANNED` (Piano: [`docs/plans/phase_40_N3_mars_sol_circadian_cognitive_immune_viral.md`](phase_40_N3_mars_sol_circadian_cognitive_immune_viral.md))
+* **Specifica Tecnica:**
+  * Modello a 2 processi (S+C) di Borbely sincronizzato sul Sol marziano (`24.6597h`, `24h 39m 35s`) con terapia luminosa melanopica (`480 nm`, `EDI lux`) e stima del debito di sonno.
+  * Punteggio di vigilanza psicomotoria `PVT-B` (lapses RT > 355 ms) incrociato con acustica vocale e confinamento spaziale.
+  * Modello neuro-immunitario di riattivazione di virus latenti (`VZV`, `EBV`, `CMV`) ed espansione del grafo causale `ADHG` a `13` nodi con predicati Lemire $O(1)$ in `NQS-STL`.
+  * `Patch N0-C`: orizzonte `AdaptiveUnbounded` RK4 per rimodellamento osseo su `1..1000 Sol`.
+
+#### Fase 41 (`N4`): Multi-Organ Guided POCUS (`eFAST`/Renal/Ocular), Playbooks `#10–#15`, Hard Safety Gate 4 & Cockpit Upgrade
+* **Stato:** `[ ] PLANNED` (Piano: [`docs/plans/phase_41_N4_multiorgan_pocus_playbooks10_15_gate4.md`](phase_41_N4_multiorgan_pocus_playbooks10_15_gate4.md))
+* **Specifica Tecnica:**
+  * POCUS multi-organo guidato su 4 distretti ontologici `UBERON:` (Vascolare IJV, Oculare SANS, Renale/Vescicale, eFAST toraco-addominale a 5 finestre per pneumotorace e versamenti).
+  * 6 Nuovi Playbook Type-1 (`#10` Litiasi Renale & Vescica, `#11` Fluid Loading Mars Entry 0.38g, `#12` Sol Circadiano & Luce, `#13` Contenimento Virale, `#14` Scrubber $ppCO_2$, `#15` eFAST Triage Trauma).
+  * `Hard Safety Gate 4`: Gate 4A blocca decompressione toracica invasiva senza conferma barcode M-mode (con salvaguardia vitale per pneumotorace iperteso); Gate 4B emette no-go per EVA in caso di fatica neurocognitiva o Shock Index $\ge 0.90$.
+  * Integrazione storage vettoriale LSAH HNSW e interfaccia clinica OLED su `ares-cockpit/`.
+
+---
+
 ## 3. Matrice Riassuntiva di Tracciamento dei 12 Blocchi / 34 Fasi e Link ai Piani Implementativi (`docs/plans/phase_*.md`)
 
 | Blocco | Fase | Piano Implementativo Dedicato (`docs/plans/`) | Crate Target | Owner | Latenza / Footprint Target | Stato |
@@ -607,6 +644,10 @@ flowchart TD
 | **Blocco M (LSAH & Unification)** | **Fase 35 (`M1`)** | [`phase_35_M1_lsah_3tier_persistence_issue26.md`](phase_35_M1_lsah_3tier_persistence_issue26.md) | `crates/ares-storage-lsah`, `ares-server-cli`, `ares-cockpit` | `@MiServeRDC` & `@fabiomalagutti27-droid` | `< 330 ns` Hot (`0` alloc) / `< 260 µs` HNSW | `[x] COMPLETED (TESTED)` |
 | **Blocco M (LSAH & Unification)** | **Fase 36 (`M2`)** | [`phase_36_M2_branch_unification_merge.md`](phase_36_M2_branch_unification_merge.md) | `ares-telemetry-ingest`, `ares-nqs-stl`, `ares-cockpit/`, `data/bidmc_eval/` | `@fabiomalagutti27-droid`, `@fertech02`, `@MiServeRDC`, `@carolina2910`, `@LelloXV` | `53` BIDMC CSVs / `5` `.glb` (`26.75 MB`) | `[x] COMPLETED (TESTED)` |
 | **Blocco M (LSAH & Unification)** | **Fase 37 (`M3`)** | [`phase_37_M3_end_to_end_db_cockpit_verification.md`](phase_37_M3_end_to_end_db_cockpit_verification.md) | Workspace (`9` crates), `ares-cockpit/`, `scripts/agent_probe.sh`, `Typst` | `@fabiomalagutti27-droid` & `@MiServeRDC` (Full Team) | `p99.9 < 150 µs` (`--release` + I/O) / `8` Gates | `[x] COMPLETED (TESTED)` |
+| **Blocco N (Clinical Medicine)** | **Fase 38 (`N1`)** | [`phase_38_N1_wearable_suite_v2_poct_ingest.md`](phase_38_N1_wearable_suite_v2_poct_ingest.md) | `ares-core-types`, `ares-telemetry-ingest` | `@fabiomalagutti27-droid` & `@LelloXV` | `< 350 ns` (`64 B` V2 + `R-R` accumulator) | `[ ] PLANNED` |
+| **Blocco N (Clinical Medicine)** | **Fase 39 (`N2`)** | [`phase_39_N2_renal_stone_rsr_plasma_volume_hemodynamics.md`](phase_39_N2_renal_stone_rsr_plasma_volume_hemodynamics.md) | `ares-causal-graph` | `@fabiomalagutti27-droid` | `< 25 µs` (RSR + Gauer-Henry + $\mu(\text{Hct})$) | `[ ] PLANNED` |
+| **Blocco N (Clinical Medicine)** | **Fase 40 (`N3`)** | [`phase_40_N3_mars_sol_circadian_cognitive_immune_viral.md`](phase_40_N3_mars_sol_circadian_cognitive_immune_viral.md) | `ares-causal-graph`, `ares-nqs-stl` | `@fabiomalagutti27-droid` & `@fertech02` | `< 35 µs` (13 nodi ADHG + Lemire $O(1)$) | `[ ] PLANNED` |
+| **Blocco N (Clinical Medicine)** | **Fase 41 (`N4`)** | [`phase_41_N4_multiorgan_pocus_playbooks10_15_gate4.md`](phase_41_N4_multiorgan_pocus_playbooks10_15_gate4.md) | `ares-medops-playbooks`, `ares-storage-lsah`, `ares-cockpit` | `@fabiomalagutti27-droid`, `@carolina2910`, `@MiServeRDC` | `< 25 µs` DAG 15 Playbook / Gate 4 | `[ ] PLANNED` |
 
 ---
 
