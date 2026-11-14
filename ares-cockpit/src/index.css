@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+/* OLED #000000 high-contrast palette (NASA-STD-3001 Vol. 2 [V2 10001]).
+   System fonts only: the cockpit is air-gapped and loads no remote assets. */
+@theme {
+  --color-oled: #000000;
+  --color-panel: #0a0a0a;
+  --color-line: #1f2937;
+  --color-nominal: #22d3ee;
+  --color-advisory: #facc15;
+  --color-warning: #fb923c;
+  --color-critical: #f43f5e;
+  --color-ok: #4ade80;
+  --font-mono: "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  background: #000000;
+  color: #e5e7eb;
+  font-family: Inter, "Segoe UI", system-ui, sans-serif;
+}
+
+input[type="range"] {
+  accent-color: #22d3ee;
+  width: 100%;
+}
