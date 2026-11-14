@@ -30,3 +30,11 @@
   2. Coercing the 13 missing `PULSE` and `SpO2` samples in `bidmc_01_Numerics.csv` to `0.0` triggers false critical hypoxemia (`SpO2 = 0%`) and cardiac arrest (`PULSE = 0 bpm`) alarms.
   3. Conflating biological/mechanistic OSDR studies (`OSD-51`, `OSD-195`, `OSD-818`) with continuous real-time clinical waveform feeds undermines scientific credibility during NASA judging.
 * **Mandatory Invariant:** Always trim CSV headers and cell values on ingestion, preserve missing samples as `Option<f64>::None` (`null` in JSON) with channel names recorded in `missing_channels`, keep native `1 Hz` relative recording time (`0..480 s`) explicit alongside `20 Hz` UI frame interpolation, and explicitly tag `RECORDED_TERRESTRIAL_BIDMC_CSV`, `DERIVED_COMPUTED`, and `SIMULATED_SCENARIO_INPUT` in `provenance_manifest`.
+
+## Entry 007 — O(1) Lemire-Donze Sliding Window STL & Type-1 Crystallized Playbooks (`deep-scholar` Grounding)
+* **Failure Mode Prevented:**
+  1. Re-scanning the entire sliding temporal window $[t-W, t]$ at every tick to evaluate $\Box_{[t-W,t]} \hat{\rho}_k(t)$ scales as $O(W)$ and causes latency spikes when users drag the What-If Stress-Test Console sliders at $20\text{ Hz}$.
+  2. Delegating emergency medical playbook selection (`Playbooks #01-#05` and the 3 Hard Safety Gates) to multi-turn LLM reasoning (Type-3 Agent-Orchestrated) introduces stochastic delay ($3\text{–}15\text{ s}$) and potential safety gate bypass.
+* **Mandatory Invariant:**
+  1. In `crates/ares-nqs-stl/src/sliding_window.rs`, use **Daniel Lemire's monotonic wedge (`VecDeque`)** as formalized for Signal Temporal Logic by **Donze, Ferrere & Maler (CAV 2013, `DOI: 10.1007/978-3-642-39799-8_19`)** to compute $\min_{\tau \in [t-W, t]} \hat{\rho}_k(\tau)$ in amortized **$O(1)$ time ($\le 3$ comparisons/sample)**.
+  2. In `crates/ares-medops-playbooks`, compile all 5 MedOps playbooks and the 3 Hard Clinical Safety Gates as **Type-1 Deterministic Crystallized DAGs** (**Arun Malik**, `arXiv:2607.07052v1`, 2026; **Li et al. ProgRouter**, EMNLP 2026, `arXiv:2608.25992v2`) executing in $< 50\,\mu\text{s}$ in pure Rust, reserving `FastMCP stdio` strictly for compact (`< 150 token`) explanations.
