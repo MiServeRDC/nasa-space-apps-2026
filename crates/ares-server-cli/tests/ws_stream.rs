@@ -2,7 +2,7 @@
 //! frames at 20 Hz, a stress-test patch must reach clients immediately, and the
 //! zero-trust bind rule must hold.
 //!
-//! It also holds the two live halves of the issue #11 verification: a 1 Hz
+//! It also holds the two live halves of the contract verification: a 1 Hz
 //! recording streamed at 20 Hz must still show one sample per second, and a
 //! reconnecting cockpit must get the current What-If overlay back at once.
 
@@ -210,7 +210,7 @@ async fn post_stress_test(addr: SocketAddr, body: &str) {
     );
 }
 
-/// Issue #11 verification: the stream runs at 20 Hz but a 1 Hz recording must
+/// Contract verification: the stream runs at 20 Hz but a 1 Hz recording must
 /// still advance one recorded sample per second, and never be resampled or
 /// interpolated into a fake 20 Hz acquisition.
 #[tokio::test]
@@ -264,7 +264,7 @@ async fn replay_keeps_one_sample_per_second_under_a_twenty_hertz_stream() {
     harness.stop().await;
 }
 
-/// Issue #11 verification: a cockpit that reconnects must get the current
+/// Contract verification: a cockpit that reconnects must get the current
 /// What-If overlay in its cold-start frame, without having to re-POST it.
 #[tokio::test]
 async fn reconnect_restores_the_current_whatif_overlay() {

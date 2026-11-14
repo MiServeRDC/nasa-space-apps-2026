@@ -2,7 +2,8 @@
 //! wire format, and `contracts/fixtures/` holds two real engine outputs that
 //! both sides validate against.
 //!
-//! This is the server half of the joint verification agreed in issue #11:
+//! This is the server half of the joint verification agreed with the cockpit
+//! on the server-cockpit contract thread:
 //!
 //! 1. Both fixtures validate against the JSON Schema.
 //! 2. `bidmc_01` reports PULSE and SpO2 as unavailable for 111-123 s, with the
