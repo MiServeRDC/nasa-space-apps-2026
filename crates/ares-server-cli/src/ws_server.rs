@@ -133,6 +133,8 @@ pub fn compute_mission_telemetry_tick(
         astronaut_id: "ARES-CDR-01".to_string(),
         system_phase,
         alert_severity,
+        model_validation_status:
+            ares_core_types::telemetry::ModelValidationStatus::IllustrativeUnvalidated,
         provenance_manifest: ProvenanceManifest {
             biometrics_source: BiometricsSource::RecordedTerrestrialBidmcCsv,
             biometrics_native_rate_hz: 1.0,

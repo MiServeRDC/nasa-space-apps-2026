@@ -230,6 +230,8 @@ pub fn compute_greybox_forecast_snapshot(
         complete.then(|| estimate_greybox_quantile_ttv_cone(current_rho, raw_rho_cone, 1.0));
 
     NqsQuantileForecastSnapshot {
+        model_validation_status:
+            ares_core_types::telemetry::ModelValidationStatus::IllustrativeUnvalidated,
         source_recording_time_s: sample.recording_time_s,
         confidence_state: cert.status,
         abstention_certificate: cert,
@@ -567,7 +569,7 @@ mod tests {
             .expect("latest handle snapshot monotone");
         assert_eq!(
             latest.confidence_state,
-            ConformalGateStatus::CalibratedQuantileCone
+            ConformalGateStatus::HeuristicGateAccepted
         );
     }
 }

@@ -46,3 +46,11 @@
 - Invariant: numeric-only replay emits null HRV with `BEAT_INTERVALS_NOT_AVAILABLE`. The optional HRV margin, full global margin, MRI and dependent forecasts stay null. Known non-HRV hazards retain warning/emergency behavior; missing HRV cannot yield NOMINAL. Snapshots, WebSocket and MCP must preserve this distinction.
 - Sources: https://neuropsychology.github.io/NeuroKit/functions/hrv.html and https://physionet.org/content/bidmc/1.0.0/.
 - Integration: repeat issue #11 tests after merging native-cadence caching, alternate transports, forecasting or cockpit work. No waveform HRV implementation or frontend qualification is implied.
+
+
+## Entry 009 — Model checks are not clinical calibration
+
+- Failure mode: label fixed prior/LR scores as diagnostic probabilities, fixed 14% TTV spread as a 95% CI, or a default gate with no calibration observations as calibrated.
+- Invariant: current scenario models emit `ILLUSTRATIVE_UNVALIDATED`; TTV uses `ILLUSTRATIVE_SCENARIO_RANGE` when available. Gate acceptance emits `HEURISTIC_GATE_ACCEPTED`; legacy calibrated input is deserialize-only compatibility. Known input absence continues to produce nulls.
+- Evidence: [model audit](../docs/architecture/MODEL_EVIDENCE_AUDIT.md), including checked primary sources, formula/parameter register, boundaries and required target-population validation. No new clinical threshold or treatment rule is introduced.
+- Dossier Markdown now points to the audit; historical PDF exports and the absent executable cockpit are not qualified by this task.

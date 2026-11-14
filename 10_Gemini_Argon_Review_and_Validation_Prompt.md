@@ -1,4 +1,6 @@
 # 10 - Master Prompt per Validazione e Peer Review con Gemini Argon
+
+> Evidence status (issue #12): scenario-derived physiology, risk/readiness scores and forecast ranges are illustrative and clinically unvalidated. Historical calibration, certification, universal-threshold and outcome claims below are not established. Use [the current evidence audit](docs/architecture/MODEL_EVIDENCE_AUDIT.md) for source applicability, parameters and permitted wording. Recorded terrestrial measurements remain distinct from simulation.
 ## Richiesta di Validazione Architetturale, Clinica e Sistemistica Avanzata
 
 **Destinatario:** Modello di Frontiera (Gemini Argon / Gemini 1.5 Ultra / Deep Reasoning Instance)  

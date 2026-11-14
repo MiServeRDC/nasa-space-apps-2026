@@ -1,4 +1,6 @@
 # ARES-Health: Autonomous Resilient Edge-native System for Astronaut Health
+
+> Evidence status (issue #12): scenario-derived physiology, risk/readiness scores and forecast ranges are illustrative and clinically unvalidated. Historical calibration, certification, universal-threshold and outcome claims below are not established. Use [the current evidence audit](docs/architecture/MODEL_EVIDENCE_AUDIT.md) for source applicability, parameters and permitted wording. Recorded terrestrial measurements remain distinct from simulation.
 ## NASA Space Apps Challenge 2026 Master Dossier
 
 **Candidate & Lead Architect:** Fabio Malagutti (Computer Engineer • M.Sc. Student @ University of Bologna)  
@@ -13,23 +15,11 @@
 
 ## 1. Project Overview & Architectural Vision
 
-ARES-Health is an aerospace-grade, edge-native clinical decision and health monitoring platform engineered to enable astronauts to autonomously **gather, evaluate, and act** upon their physiological status during long-duration deep space missions.
+ARES-Health is an offline hackathon prototype for physiological replay, illustrative scenario modeling and guided decision-support workflows. It is not clinically validated, certified, or a substitute for a medical officer.
 
-Due to the fundamental speed-of-light boundary, round-trip radio communication between Mars and Earth requires between **8 and 48 minutes**. Standard telemedicine and cloud computing are physically impossible. ARES-Health resolves this challenge by operating as an autonomous, air-gapped clinical engine directly on spacecraft compute hardware.
+The current backend combines recorded terrestrial BIDMC numerics with separately identified scenario models, graph summaries and experimental deterministic forecasting. Unsupported HRV and dependent complete assessments remain unavailable. NASA research and standards provide context; they do not validate our coefficients, probabilities, readiness scores or forecast coverage.
 
-### Key Differentiators & Scientific Grounding
-1. **Flight Surgeon Evidence-Based Foundation:** Grounded in landmark publications by NASA Flight Surgeons:
-   * **Dr. Serena Auñón-Chancellor (JAMA 2019 / NEJM 2020):** Internal Jugular Vein (IJV) stasis and occlusive thrombosis.
-   * **Dr. Michael Barratt (Springer 2020):** SANS ophthalmic remodeling, optic disc edema, and intracranial pressure dynamics.
-   * **Dr. Emmanuel Urquieta (TRISH / Baylor):** Earth-Independent Medical Operations (EIMO) and autonomous AI clinical decision support.
-   * **Dr. James Polk (NASA Chief Health & Medical Officer):** Exploration Medical Capability (ExMC) and NASA-STD-3001 standards.
-   * **Prof. Christopher Mason et al. (Nature SOMA 2024):** Cell-free RNA (cfRNA) tissue stress maps, telomere dynamics, and clonal hematopoiesis.
-2. **Physiatric Sarcopenia-Osteopenia-Thrombosis Axis:** Models how disuse muscle atrophy (*sarcopenia*) drives bone resorption (*osteopenia*) via disrupted mechanotransduction and myokine depletion (Irisin), and how the loss of the *calf muscle pump* precipitates cephalic venous stasis and jugular thrombosis.
-3. **Contactless Nocturnal Radar Sensing:** Utilizes micro-radar / Wi-Fi CSI Doppler filtering in crew sleep quarters to measure resting heart rate, respiratory rate, and sleep architecture passively, completely eliminating wearable skin fatigue.
-4. **Dynamic Multi-Organ Bio-Causal Graph (ADHG):** Eliminates disconnected data silos by linking environmental stressors (radiation mGy, cabin CO2 ppm, microgravity duration) to cascading multi-organ degradation.
-5. **Medical Signal Temporal Logic (Med-STL):** Replaces static threshold alarms with temporal logic formulas, calculating a continuous quantitative robustness margin ($\rho \in \mathbb{R}$) that predicts clinical decompensation weeks before failure.
-6. **Model Context Protocol (MCP) Edge Server:** Serves an on-board, offline quantized AI copilot via compact macro-tools (< 150 tokens), avoiding context window bloat and medical hallucinations.
-7. **NASA MedOps Action Playbooks:** Fulfills the "Act" mandate through deterministic execution DAGs that guide astronauts through ultrasound verifications, exercise recalibration, and pharmacological interventions.
+Current evidence status, formulas, limitations and validation requirements are in [MODEL_EVIDENCE_AUDIT.md](docs/architecture/MODEL_EVIDENCE_AUDIT.md). The dossier below includes historical design proposals and should not be read as a list of measured or validated capabilities.
 
 ---
 

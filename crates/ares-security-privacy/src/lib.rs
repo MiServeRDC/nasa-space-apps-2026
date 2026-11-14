@@ -34,6 +34,8 @@ mod tests {
             astronaut_id: "ARES-CDR-01".to_string(),
             system_phase: SystemPhase::Evaluate,
             alert_severity: severity,
+            model_validation_status:
+                ares_core_types::telemetry::ModelValidationStatus::IllustrativeUnvalidated,
             provenance_manifest: ProvenanceManifest {
                 biometrics_source: BiometricsSource::RecordedTerrestrialBidmcCsv,
                 biometrics_native_rate_hz: 1.0,
@@ -91,6 +93,9 @@ mod tests {
                 ttv_ci95_low_hours: Some(142.0),
                 ttv_ci95_high_hours: Some(194.0),
                 mri_pct: Some(88.5),
+                ttv_interval_kind: Some(
+                    ares_core_types::telemetry::TtvIntervalKind::IllustrativeScenarioRange,
+                ),
             },
             active_playbook: ActivePlaybook {
                 playbook_id: "PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED".to_string(),

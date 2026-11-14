@@ -9,3 +9,8 @@
 3. `body-3d-heatmap/`: Interactive `Three.js` / `@react-three/fiber` 3D anatomical mesh highlighting Soleus $\text{MQI}$, Calcaneus/Femoral `SOST` osteopenia, Jugular $\tau_w$ stasis, and Optic $\text{ONSD}$ SANS with causal bezier arcs.
 4. `playbook-runner/`: Deterministic NASA MedOps Playbook #04 & #05 interactive DAG runner with visible Hard Clinical Safety Gate lock badges.
 5. `whatif-console/`: Live `< 1 ms` What-If Stress-Test sliders (`ppCO2`, `ARED Load`, `LBNP Pressure`, `Mission Day`) + bottom voice/text Local FastMCP AI Copilot bar.
+
+
+## Required evidence-status presentation (issue #12)
+
+Consume backend `model_validation_status` and interval kind. Show scenario risk/readiness/organ indicators and forecast bands as illustrative/unvalidated; preserve nulls. Use "scenario range" rather than "95% CI", "calibrated", or "worst case". Gate acceptance is a heuristic status, not clinical approval. Distinguish recorded terrestrial measurements, model values and scenario inputs. Backend `ttv_ci95_*` names are legacy compatibility only. See [evidence register](../docs/architecture/MODEL_EVIDENCE_AUDIT.md). This baseline has no executable cockpit, so these are integration acceptance requirements for #8.

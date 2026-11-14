@@ -205,6 +205,9 @@ mod tests {
             ttv_ci95_low_hours: Some(90.0),
             ttv_ci95_high_hours: Some(150.0),
             mri_pct: Some(72.0),
+            ttv_interval_kind: Some(
+                ares_core_types::telemetry::TtvIntervalKind::IllustrativeScenarioRange,
+            ),
         }
     }
 

@@ -128,13 +128,14 @@ impl ChannelQuantileCone {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ConformalGateStatus {
-    /// Timestral quantile cone is calibrated within clinical uncertainty bounds.
-    CalibratedQuantileCone,
+    /// Heuristic numerical checks passed; no empirical coverage or clinical validation is implied.
+    #[serde(alias = "CALIBRATED_QUANTILE_CONE")]
+    HeuristicGateAccepted,
     /// Epistemic uncertainty or signal degradation exceeded bounds; deterministic fallback active.
     AbstainedFallbackDeterministic,
 }
 
-/// Auditable certificate emitted by ConformalAbstentionGate when evaluating forecast reliability.
+/// Gate diagnostics. The historical Certificate name does not imply clinical certification.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AbstentionCertificate {
     pub abstained: bool,
@@ -151,6 +152,8 @@ pub struct AbstentionCertificate {
 /// Immutable grey-box forecast snapshot published by the 1 Hz worker and read lock-free at 20 Hz.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct NqsQuantileForecastSnapshot {
+    #[serde(default)]
+    pub model_validation_status: telemetry::ModelValidationStatus,
     pub source_recording_time_s: f64,
     pub confidence_state: ConformalGateStatus,
     pub abstention_certificate: AbstentionCertificate,
@@ -189,6 +192,7 @@ impl NqsQuantileForecastSnapshot {
                 })
             });
         Self {
+            model_validation_status: telemetry::ModelValidationStatus::IllustrativeUnvalidated,
             source_recording_time_s: recording_time_s,
             confidence_state: ConformalGateStatus::AbstainedFallbackDeterministic,
             abstention_certificate: AbstentionCertificate {
@@ -249,6 +253,8 @@ mod tests {
             astronaut_id: "ARES-CDR-01".to_string(),
             system_phase: SystemPhase::Evaluate,
             alert_severity: AlertSeverity::Caution,
+            model_validation_status:
+                crate::telemetry::ModelValidationStatus::IllustrativeUnvalidated,
             provenance_manifest: ProvenanceManifest {
                 biometrics_source: BiometricsSource::RecordedTerrestrialBidmcCsv,
                 biometrics_native_rate_hz: 1.0,
@@ -309,6 +315,9 @@ mod tests {
                 ttv_ci95_low_hours: Some(125.0),
                 ttv_ci95_high_hours: Some(221.0),
                 mri_pct: Some(82.5),
+                ttv_interval_kind: Some(
+                    crate::telemetry::TtvIntervalKind::IllustrativeScenarioRange,
+                ),
             },
             active_playbook: ActivePlaybook {
                 playbook_id: "PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED".to_string(),
@@ -482,5 +491,22 @@ mod tests {
         let roundtrip: NqsQuantileForecastSnapshot =
             serde_json::from_str(&json).expect("deserialize snapshot");
         assert_eq!(roundtrip, snap);
+    }
+    #[test]
+    fn gate_wire_status_is_honest_and_accepts_legacy_input_only() {
+        let old: ConformalGateStatus =
+            serde_json::from_str("\"CALIBRATED_QUANTILE_CONE\"").expect("legacy input");
+        assert_eq!(old, ConformalGateStatus::HeuristicGateAccepted);
+        assert_eq!(
+            serde_json::to_value(old).expect("new status"),
+            "HEURISTIC_GATE_ACCEPTED"
+        );
+        let packet = sample_telemetry_packet_with_nulls();
+        let value = serde_json::to_value(packet).expect("packet");
+        assert_eq!(value["model_validation_status"], "ILLUSTRATIVE_UNVALIDATED");
+        assert_eq!(
+            value["nqs_stl"]["ttv_interval_kind"],
+            "ILLUSTRATIVE_SCENARIO_RANGE"
+        );
     }
 }

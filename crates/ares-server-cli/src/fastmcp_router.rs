@@ -77,7 +77,7 @@ fn modality_short_code(m: DeonticModality) -> &'static str {
 #[inline]
 fn gate_status_code(s: ConformalGateStatus) -> &'static str {
     match s {
-        ConformalGateStatus::CalibratedQuantileCone => "CALIBRATED",
+        ConformalGateStatus::HeuristicGateAccepted => "HEURISTIC_ACCEPTED",
         ConformalGateStatus::AbstainedFallbackDeterministic => "ABSTAINED_FALLBACK",
     }
 }
@@ -113,7 +113,8 @@ fn serialize_under_budget(mut payload: Value) -> String {
     if s.len() <= MAX_MCP_CONTEXT_MODE_BYTES {
         return s;
     }
-    json!({ "truncated": true, "bytes": s.len() }).to_string()
+    json!({ "truncated": true, "bytes": s.len(), "model_status": "ILLUSTRATIVE_UNVALIDATED" })
+        .to_string()
 }
 
 fn extract_str_arg<'a>(params: &'a Value, keys: &[&str]) -> Option<&'a str> {
@@ -153,13 +154,13 @@ pub fn handle_fastmcp_jsonrpc_request<S: McpInputSanitizer>(
             id,
             result: Some(json!({
                 "tools": [
-                    { "name": "get_crew_health_summary", "description": "Compact <150-token NQS-STL & MRI readiness summary" },
+                    { "name": "get_crew_health_summary", "description": "Illustrative scenario assessment; unavailable metrics remain null" },
                     { "name": "explain_causal_anomaly", "description": "4-hop ADHG causal chain for active physiological degradation" },
                     { "name": "simulate_countermeasure_impact", "description": "Deterministic delta-rho & TTV projection for LBNP/ARED countermeasures" },
                     { "name": "get_medops_playbook", "description": "Active Type-1 MedOps Playbook (#01-#05) and 3 Hard Safety Gates status" },
                     { "name": "query_dataset_graph", "description": "Query AresUnifiedDatasetGraph (24 datasets) with SPOKE/BioCypher/PrimeKG/Biolink provenance (<150 tokens)" },
                     { "name": "explain_biomarker_path", "description": "Shortest semantic/causal path across 24 datasets in AresUnifiedDatasetGraph (<150 tokens)" },
-                    { "name": "get_timestral_quantile_cones", "description": "Non-crossing DHF Timestral quantile forecast [q05,q50,q95], TTV_q05, and ConformalAbstentionGate (<150 tokens)" },
+                    { "name": "get_timestral_quantile_cones", "description": "Illustrative non-crossing scenario ranges and heuristic gate; no calibrated coverage claim" },
                     { "name": "get_hypergraph_spatial_status", "description": "3D UBERON body heatmap, HabitatZoneDeonticPolicy, and ARES-BioKG 16-byte descriptor (<150 tokens)" }
                 ]
             })),
@@ -179,7 +180,7 @@ pub fn handle_fastmcp_jsonrpc_request<S: McpInputSanitizer>(
                 }
             };
 
-            let compact_payload = match clean_name.as_str() {
+            let mut compact_payload = match clean_name.as_str() {
                 "get_crew_health_summary" | "get_astronaut_health_summary" => json!({
                     "astronaut": latest_packet.astronaut_id,
                     "fd": latest_packet.flight_day,
@@ -187,6 +188,7 @@ pub fn handle_fastmcp_jsonrpc_request<S: McpInputSanitizer>(
                     "t_rec_s": latest_packet.relative_recording_time_s,
                     "severity": latest_packet.alert_severity,
                     "mri_pct": latest_packet.nqs_stl.mri_pct.map(round1),
+                    "ttv_interval_kind": latest_packet.nqs_stl.ttv_interval_kind,
                     "rho_global": latest_packet.nqs_stl.rho_global.map(round2),
                     "ttv_h": latest_packet.nqs_stl.ttv_hours.map(round1),
                     "hrv_unavailable_reason": latest_packet.biometrics.hrv_unavailable_reason,
@@ -344,6 +346,7 @@ pub fn handle_fastmcp_jsonrpc_request<S: McpInputSanitizer>(
                             "clause": ctx.grounding.normative_clause.official_code(),
                             "bytes": core::mem::size_of::<BiomedicalEvidenceDescriptor>(),
                             "crc_ok": desc.verify_crc().is_ok(),
+                            "mapping_status": "UNVERIFIED",
                             "d": round2(desc.cohen_d())
                         }
                     })
@@ -360,6 +363,12 @@ pub fn handle_fastmcp_jsonrpc_request<S: McpInputSanitizer>(
                 }
             };
 
+            if let Some(object) = compact_payload.as_object_mut() {
+                object.insert(
+                    "model_status".into(),
+                    json!(latest_packet.model_validation_status),
+                );
+            }
             let serialized = serialize_under_budget(compact_payload);
             JsonRpcResponse {
                 jsonrpc: "2.0",

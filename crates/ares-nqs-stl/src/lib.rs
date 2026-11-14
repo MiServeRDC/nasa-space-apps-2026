@@ -112,7 +112,7 @@ impl NqsEngine {
         };
         let quantile_snapshot = self.forecaster_handle.read_latest_snapshot();
         let pessimistic_ttv_q05_hours = margins.ttv_ci95_low_hours.map(|low| {
-            if quantile_snapshot.confidence_state == ConformalGateStatus::CalibratedQuantileCone {
+            if quantile_snapshot.confidence_state == ConformalGateStatus::HeuristicGateAccepted {
                 quantile_snapshot
                     .ttv_hours_cone
                     .map_or(low, |cone| low.min(cone.q05))

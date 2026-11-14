@@ -66,6 +66,21 @@ pub enum JugularFlowGrade {
     OccludedThrombus,
 }
 
+/// Validation status of the current demonstration models, not of recorded vitals.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum ModelValidationStatus {
+    #[default]
+    IllustrativeUnvalidated,
+}
+
+/// The current TTV bounds are scenario sensitivity ranges, not calibrated confidence limits.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum TtvIntervalKind {
+    IllustrativeScenarioRange,
+}
+
 /// Why numeric replay cannot provide beat-to-beat HRV measurements.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -137,9 +152,13 @@ pub struct NqsStlMargins {
     pub rho_sans: f64,
     pub rho_global: Option<f64>,
     pub ttv_hours: Option<f64>,
+    /// Legacy field name: illustrative lower bound, no calibrated 95% guarantee.
     pub ttv_ci95_low_hours: Option<f64>,
+    /// Legacy field name: illustrative upper bound, no calibrated 95% guarantee.
     pub ttv_ci95_high_hours: Option<f64>,
     pub mri_pct: Option<f64>,
+    #[serde(default)]
+    pub ttv_interval_kind: Option<TtvIntervalKind>,
 }
 
 impl NqsStlMargins {
@@ -194,6 +213,8 @@ pub struct TelemetryPacket {
     pub system_phase: SystemPhase,
     pub alert_severity: AlertSeverity,
     pub provenance_manifest: ProvenanceManifest,
+    #[serde(default)]
+    pub model_validation_status: ModelValidationStatus,
     pub biometrics: Biometrics,
     pub musculoskeletal: Musculoskeletal,
     pub jugular_hemodynamics: JugularHemodynamics,
