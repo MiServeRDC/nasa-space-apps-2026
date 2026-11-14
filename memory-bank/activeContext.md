@@ -65,6 +65,16 @@
       - [`phase_33_L5_clinical_calibration_24dataset_parquet.md`](../docs/plans/phase_33_L5_clinical_calibration_24dataset_parquet.md): Implemented `--features parquet-ingest` adapters (`parquet_adapters.rs`, `ExternalDatasetNotBundled`, `0` synthetic nodes, `6/6` in `phase_33_l5_parquet_adapters` default & `--features parquet-ingest`), `SubjectDisjointSplit` anti-leakage `CQR` + Clopper-Pearson + Brier/ECE (`calibration_harness.rs`, `4/4` in `phase_33_l5_calibration_and_anti_leakage`), `ModelValidationStatus` state machine (`ares-core-types`), and `ares-calibrate --verify-only` (exit `0`, `bidmc_sha256_ok=3 evaluated_short_cells=2 unbundled_external=3 validation_status=IllustrativeUnvalidated`).
       - [`phase_34_L6_nasa_submission_pitch_slides_pdf.md`](../docs/plans/phase_34_L6_nasa_submission_pitch_slides_pdf.md): Generated deterministic `typst 0.15.1` (`SOURCE_DATE_EPOCH`) `NASA_2026_7_SLIDE_DECK.pdf` (`7` pages exact) and `PANORAMICA_GENERALE_PROGETTO.pdf` (`3` pages), `30s`/`180s` storyboards & `.srt` captions (`29800 ms <= 30000 ms`, `179400 ms <= 180000 ms`), `NASA_SUBMISSION_PORTAL_READY.md` (`0` `file://` URIs), and `scripts/build_submission_docs.sh` (`6/6` L6 gates `[PASSED]`).
 
+11. **Connected Mission Portal, OpenScreen Studio & Rotatable Dual-Gender 3D Twin (`Fasi 30–31 / M1–M2` — `COMPLETED (TESTED)`):**
+    * Seamlessly unified on `main` without conflict with Fabio's Blocks J, K, L, M, N:
+      - `ares-cockpit/src/lib/motionSmoothing.ts`: OpenScreen spring-physics camera smoothing equation ($m \ddot{x} + c \dot{x} + k(x - x_t) = 0$, $k=340, c=38, m=0.85$).
+      - `ares-cockpit/src/modules/navigation/MissionSuiteNavbar.tsx`: Mission mode switcher (`COCKPIT`, `GROUND PORTAL`, `3D TWIN`, `STUDIO`), crew sex switch, alarm level badge, connection indicator.
+      - `ares-cockpit/src/modules/portal/MissionPortal.tsx`: Ground Control Telemedicine View with simulated Earth-Mars latency (8.2-48.1 min), 24-Dataset Evidence Atlas (OSDR, PhysioNet, CSA, ESA, DLR), DSN Store-and-Forward monitor, and tele-echography POCUS review station.
+      - `ares-cockpit/src/modules/studio/OpenScreenStudio.tsx`: Telemetry walkthrough player with multi-track layout switching (Split, PIP, Focus), keyframe scrubber, and spring-physics camera focus.
+      - `ares-cockpit/src/modules/ui-primitives/KeyboardShortcutsModal.tsx`: Accessible OLED dialog with declarative hotkeys (`1-4`, `M/F`, `Space`, `R`, `?`, `ESC`).
+      - `ares-cockpit/src/modules/body-3d-heatmap/AnatomicalLayers.tsx` & `BodyHeatmap.tsx`: Fully sculpted procedural dual-gender 3D twin (neurocranium, 20-segment S-spine, ribs, pelvis, femurs with Frost mechanostat collar, volumetric brain with ventricles, beating 4-chamber heart with curved aortic arch, asymmetric IJVs with Poiseuille/Womersley $\tau_w$ shear coloration, traveling harmonic cephalad fluid shift, soleus atrophy and dynamic pennation chevrons, C-infinity lofts, and corrected vertex winding normals), paired with OrbitControls smooth damping (`dampingFactor: 0.05`), while seamlessly preserving Fabio's UBERON spatial hypergraph node overlay and Z-Anatomy GLB loader.
+
+
 ---
 
 ## 2. Immediate Next Steps for the 5-Person Team

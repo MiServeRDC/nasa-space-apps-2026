@@ -16,6 +16,7 @@ import type {
 } from '../../types/telemetry';
 import { AiInjuryModal } from './AiInjuryModal';
 import {
+  CephaladFluidShift,
   MusclesLayer,
   SkeletonLayer,
   SkinLayer,
@@ -759,7 +760,8 @@ export function BodyHeatmap({
           ) : (
             <>
               {cfg.skeleton && <SkeletonLayer s={s} sex={sex} />}
-              {cfg.vascular && <VascularNeuroLayer s={s} nodesByRegion={scene.nodesByRegion} />}
+              {cfg.vascular && <VascularNeuroLayer s={s} sex={sex} nodesByRegion={scene.nodesByRegion} />}
+              {cfg.vascular && <CephaladFluidShift s={s} sex={sex} visible={cfg.vascular} />}
               {cfg.muscles && (
                 <MusclesLayer
                   s={s}
@@ -835,7 +837,14 @@ export function BodyHeatmap({
             );
           })}
 
-          <OrbitControls target={[0, 0.45, 0]} enablePan={false} minDistance={1.8} maxDistance={6.5} />
+          <OrbitControls
+            target={[0, 0.45, 0]}
+            enablePan={false}
+            enableDamping
+            dampingFactor={0.05}
+            minDistance={1.2}
+            maxDistance={6.5}
+          />
         </Canvas>
 
         {/* Selected UBERON node details */}

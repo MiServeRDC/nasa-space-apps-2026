@@ -151,6 +151,19 @@
 
 ---
 
+## Blocco O: Connected Mission Portal, OpenScreen Studio & Rotatable Dual-Gender 3D Twin (Fasi 42–43 / M1–M2) [COMPLETED (TESTED)]
+> **Piani Architetturali:** [`docs/plans/phase_30_M1_connected_web_portal_and_cockpit_enhancement_plan.md`](../docs/plans/phase_30_M1_connected_web_portal_and_cockpit_enhancement_plan.md) | [`docs/plans/phase_31_M2_rotatable_dual_gender_3d_anatomical_twin_plan.md`](../docs/plans/phase_31_M2_rotatable_dual_gender_3d_anatomical_twin_plan.md)
+- [x] **Fase 42 (`O1` — Verificato):** Web Portal Connesso, OpenScreen Studio & Vercel UI Hotkeys:
+  - `MissionSuiteNavbar.tsx`: barra di navigazione multi-vista ad alto contrasto OLED (#000000) per commutazione istantanea senza ricaricamento tra Cockpit Bordo (20 Hz), Ground Portal, 3D Twin Fullscreen e OpenScreen Studio.
+  - `MissionPortal.tsx`: portale web per telemedicina Ground Control e clinici terrestri; simulazione latenza radio Terra-Marte OWLT (8-48 min), visualizzatore telemetrico asincrono e atlante scientifico 24-dataset completo.
+  - `OpenScreenStudio.tsx`: studio multi-traccia basato sui paradigmi open-source OpenScreen; layout switching dinamico, scrubber temporale, ECG waveform strip e spring camera zoom.
+  - `motionSmoothing.ts` & `KeyboardShortcutsModal.tsx`: fisica a molla inerziale per la telecamera 3D e modale scorciatoie accessibili (tasti 1-4, M/F, ?, ESC).
+- [x] **Fase 43 (`O2` — Verificato):** Rotatable Dual-Gender 3D Biodigital Twin:
+  - `AnatomicalLayers.tsx`: anatomia procedurale avanzata per gemello digitale maschile e femminile (`MALE` / `FEMALE`) con differenziazione morfometrica (dimorfismo pelvico, gabbia toracica, massa muscolare scheletrica differenziale), simulazione pulsatile del cephalad fluid shift microgravitario, e null-safety su sessioni di replay BIDMC terrestre.
+  - `BodyHeatmap.tsx`: integrazione OrbitControls con smorzamento inerziale (`dampingFactor: 0.05`), vincoli di zoom (1.2m–6.5m), rotazione a 360 gradi, fusione nodi UBERON spaziali e asset GLB Z-Anatomy.
+
+---
+
 ## Issue #11 & Issue #12: HRV Validity and Model Evidence Status (`origin/main` integrated)
 - [x] **Issue #11 / PR #20 (`187b933`):** Remove numeric-derived/default HRV; preserve unavailable full assessments (`BEAT_INTERVALS_NOT_AVAILABLE`), degraded alarm state, and known hazard routing.
 - [x] **Issue #12 (`b4ca916`):** Output/formula/calibration evidence register (`docs/architecture/MODEL_EVIDENCE_AUDIT.md`), machine-readable `IllustrativeUnvalidated` / `IllustrativeScenarioRange` status, and dossier corrections.

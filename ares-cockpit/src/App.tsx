@@ -32,6 +32,13 @@ import { FreshnessBadge, OriginBadge, ProvenanceBanner } from './modules/provena
 import { OsSystemStatusBar } from './modules/os-shell/OsSystemStatusBar';
 import { OsCommandPalette } from './modules/os-shell/OsCommandPalette';
 import { OsVoiceCopilot } from './modules/os-shell/OsVoiceCopilot';
+import {
+  MissionSuiteNavbar,
+  type MissionViewMode,
+} from './modules/navigation/MissionSuiteNavbar';
+import { MissionPortal } from './modules/portal/MissionPortal';
+import { OpenScreenStudio } from './modules/studio/OpenScreenStudio';
+import { KeyboardShortcutsModal } from './modules/ui-primitives/KeyboardShortcutsModal';
 import type { VoiceIntentClassification } from './lib/voiceIntentRouter';
 import type { InjuryMarker } from './types/injury';
 import type { DataOrigin, FreshnessStatus, TelemetryPacket } from './types/telemetry';
@@ -352,6 +359,8 @@ function VitalsTrend({ history }: { history: RecordedHistoryPoint[] }) {
 }
 
 export default function App() {
+  const [activeView, setActiveView] = useState<MissionViewMode>('VIEW_COCKPIT');
+  const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false);
   const [whatIf, setWhatIf] = useState<WhatIf>(DEFAULT_WHATIF);
   const [thrombus, setThrombus] = useState<boolean | null>(null);
   const [lastScanDay, setLastScanDay] = useState<number>(DEFAULT_WHATIF.mission_day - 5);
@@ -556,6 +565,38 @@ export default function App() {
     [link],
   );
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      if (
+        activeEl &&
+        (activeEl.tagName === 'INPUT' ||
+          activeEl.tagName === 'TEXTAREA' ||
+          activeEl.tagName === 'SELECT')
+      ) {
+        return;
+      }
+      if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
+        e.preventDefault();
+        setShortcutsModalOpen((prev) => !prev);
+      } else if (e.key === '1' && !e.ctrlKey && !e.metaKey) {
+        setActiveView('VIEW_COCKPIT');
+      } else if (e.key === '2' && !e.ctrlKey && !e.metaKey) {
+        setActiveView('VIEW_PORTAL');
+      } else if (e.key === '3' && !e.ctrlKey && !e.metaKey) {
+        setActiveView('VIEW_TWIN');
+      } else if (e.key === '4' && !e.ctrlKey && !e.metaKey) {
+        setActiveView('VIEW_STUDIO');
+      } else if (e.key.toLowerCase() === 'm' && !e.ctrlKey && !e.metaKey) {
+        handleWhatIfChange({ ...whatIf, sex: 'MALE' });
+      } else if (e.key.toLowerCase() === 'f' && !e.ctrlKey && !e.metaKey) {
+        handleWhatIfChange({ ...whatIf, sex: 'FEMALE' });
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [whatIf]);
+
   const hasHemodynamics = packet.hemodynamics !== null && packet.hemodynamics !== undefined;
   const hasMusculoskeletal = packet.musculoskeletal !== null && packet.musculoskeletal !== undefined;
 
@@ -583,6 +624,74 @@ export default function App() {
         paletteOpen={paletteOpen}
         onTogglePalette={() => setPaletteOpen((v) => !v)}
       />
+      <MissionSuiteNavbar
+        activeView={activeView}
+        onSelectView={setActiveView}
+        astronautId={packet.astronaut_id}
+        sex={whatIf.sex}
+        onChangeSex={(sex) => handleWhatIfChange({ ...whatIf, sex })}
+        alarmLevel={sm.alarm_level}
+        link={link}
+        wsConnected={status.wsConnected}
+        onOpenShortcuts={() => setShortcutsModalOpen(true)}
+      />
+
+      {activeView === 'VIEW_PORTAL' ? (
+        <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col gap-3 overflow-hidden p-4">
+          <MissionPortal
+            packet={packet}
+            s={hasHemodynamics || hasMusculoskeletal ? s : null}
+            whatIf={whatIf}
+            thrombus={thrombus}
+            onSetThrombus={handleThrombusChange}
+            sex={whatIf.sex}
+          />
+        </div>
+      ) : activeView === 'VIEW_STUDIO' ? (
+        <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col gap-3 overflow-hidden p-4">
+          <OpenScreenStudio
+            packet={packet}
+            s={hasHemodynamics || hasMusculoskeletal ? s : null}
+            whatIf={whatIf}
+            sex={whatIf.sex}
+          />
+        </div>
+      ) : activeView === 'VIEW_TWIN' ? (
+        <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col gap-3 overflow-hidden p-4">
+          <Card
+            title="ARES Biodigital Twin 3D Viewport (Full Screen)"
+            tag="OrbitControls 360-degree interactive anatomical twin"
+            origin={hasHemodynamics || hasMusculoskeletal ? (packet.is_local_simulation ? 'SIMULATED_SCENARIO_INPUT' : 'DERIVED_FROM_HYBRID_SCENARIO') : 'UNAVAILABLE'}
+            className="min-h-0 flex-1"
+          >
+            <BodyHeatmap
+              s={hasHemodynamics || hasMusculoskeletal ? s : null}
+              sex={whatIf.sex}
+              hypergraphSpatial={packet.hypergraph_spatial}
+              isLocalSimulation={Boolean(packet.is_local_simulation)}
+              modelValidationStatus={packet.model_validation_status}
+              injuries={injuries}
+              onAddInjury={addInjury}
+              onResolveInjury={resolveInjury}
+              onChangeSex={(sex) => handleWhatIfChange({ ...whatIf, sex })}
+              onOpenTab={(tab) => {
+                setEvalTab(tab);
+                setActivePhase('EVALUATE');
+                setActiveView('VIEW_COCKPIT');
+              }}
+              onOpenPlaybook={(playbookId) => {
+                setActivePhase('ACT');
+                setActiveView('VIEW_COCKPIT');
+                setRequestedPlaybook((prev) => ({
+                  id: playbookId ?? 'PLAYBOOK_01_VENOUS_STASIS_LBNP',
+                  seq: (prev?.seq ?? 0) + 1,
+                }));
+              }}
+            />
+          </Card>
+        </div>
+      ) : (
+        <>
       <TriPhaseHeader
         astronautId={packet.astronaut_id}
         alarm={sm.alarm_level}
@@ -1065,6 +1174,13 @@ export default function App() {
           </aside>
         </div>
       </div>
+        </>
+      )}
+
+      <KeyboardShortcutsModal
+        open={shortcutsModalOpen}
+        onClose={() => setShortcutsModalOpen(false)}
+      />
 
       <OsCommandPalette
         open={paletteOpen}
