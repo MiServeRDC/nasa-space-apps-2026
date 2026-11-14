@@ -9,11 +9,8 @@ Reviewed November 13, 2026. This list supports preparation; it does not prescrib
 - [Official Project Submission Guide](https://www.spaceappschallenge.org/resources/project-submission-guide/)
 - [NASA: five hazards of human spaceflight](https://www.nasa.gov/hrp/hazards/)
 - [NASA: human spaceflight risks](https://www.nasa.gov/hrp/risks/)
-<<<<<<< HEAD
-- [NASA: ongoing HRP research](https://www.nasa.gov/hrp/ongoing-hrp-research/)
 - [Monitoring Radiation for Astronaut Health](https://www.asc-csa.gc.ca/eng/news/articles/2026/2026-02-26-monitoring-radiation-astronaut-health.asp)
 - [Why do we conduct science experiments in space?](https://www.asc-csa.gc.ca/eng/iss/science/why-do-we-conduct-science-experiments-in-space.asp)
-=======
 - [NASA: ongoing HRP research (`ARCHeR`, `Venous Haemostasis`, `Zero T2`, `CIPHER`, `Thigh Cuff`, `B-Complex`)](https://www.nasa.gov/hrp/ongoing-hrp-research/)
 - [NASA OSDR Federated Multi-Agency Search (`cgene`, `alsda`, `esa`: `OSD-51`, `OSD-195`, `OSD-570/571`, `OSD-818`)](https://osdr.nasa.gov/bio/repo/search?q=&data_source=cgene,alsda,esa&data_type=study)
 - [NASA Life Sciences Portal (NLSP) — Experiments Explorer (`FAP`, `SMCCP`, `BRSMFSR`, `BRSMPT`)](https://nlsp.nasa.gov/explore?dataType=EXPERIMENTS&sortBy=dateAdded_desc&page=1&limit=25&view=table)
@@ -29,7 +26,6 @@ Reviewed November 13, 2026. This list supports preparation; it does not prescrib
 - [NASA TRISH `EXPAND` Commercial Spaceflight Database & `HERMES` Platform (Opened March 2026)](https://www.nasa.gov/hrp/the-translational-research-institute-for-space-health-trish/)
 - [Joint NASA-JAXA `Bisphosphonates` Bone Loss Countermeasure Study](https://humans-in-space.jaxa.jp/en/biz-lab/experiment/theme/detail/000626.html)
 - [PhysioNet `CEBS` (ECG, Breathing & Seismocardiograms) & `Fantasia`](https://physionet.org/content/cebsdb/1.0.0/)
->>>>>>> 1c39c9ec77a73002c463c9af162953f9fca33626
 
 ## Papers
 
