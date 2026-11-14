@@ -299,6 +299,116 @@ pub struct Biometrics {
     pub radiation_dose_rate_msv_d: f64,
     pub sqi_score: f64,
     pub missing_channels: Vec<String>,
+    #[serde(default)]
+    pub sbp_mmhg: Option<f64>,
+    #[serde(default)]
+    pub dbp_mmhg: Option<f64>,
+    #[serde(default)]
+    pub ptt_ms: Option<f64>,
+    #[serde(default)]
+    pub core_temp_celsius: Option<f64>,
+    #[serde(default)]
+    pub skin_temp_celsius: Option<f64>,
+    #[serde(default)]
+    pub sleep_stage_code: Option<u8>,
+    #[serde(default)]
+    pub melanopic_edi_lux: Option<f64>,
+    #[serde(default)]
+    pub personal_dose_rate_ugy_h: Option<f64>,
+    #[serde(default)]
+    pub let_quality_factor: Option<f64>,
+    #[serde(default)]
+    pub suit_metabolic_watts: Option<f64>,
+    #[serde(default)]
+    pub helmet_ppco2_mmhg: Option<f64>,
+}
+
+/// Risultati di diagnostica episodica Point-of-Care (POCT) e laboratorio di bordo (`ExMC`).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct SpotPoctPanel {
+    #[serde(default)]
+    pub hematocrit_pct: Option<f64>,
+    #[serde(default)]
+    pub hemoglobin_g_dl: Option<f64>,
+    #[serde(default)]
+    pub wbc_k_ul: Option<f64>,
+    #[serde(default)]
+    pub neutrophil_lymphocyte_ratio: Option<f64>,
+    #[serde(default)]
+    pub ionized_calcium_mmol_l: Option<f64>,
+    #[serde(default)]
+    pub creatinine_mg_dl: Option<f64>,
+    #[serde(default)]
+    pub lactate_mmol_l: Option<f64>,
+    #[serde(default)]
+    pub urine_output_l_d: Option<f64>,
+    #[serde(default)]
+    pub urine_ph: Option<f64>,
+    #[serde(default)]
+    pub urine_specific_gravity: Option<f64>,
+    #[serde(default)]
+    pub urinary_citrate_mg_d: Option<f64>,
+    #[serde(default)]
+    pub bia_plasma_vol_delta_pct: Option<f64>,
+    #[serde(default)]
+    pub bia_thorax_leg_ecw_ratio: Option<f64>,
+    #[serde(default)]
+    pub salivary_cortisol_nmol_l: Option<f64>,
+    #[serde(default)]
+    pub viral_reactivation_copies_ml: Option<f64>,
+    #[serde(default)]
+    pub pvt_lapses_count: Option<u32>,
+    #[serde(default)]
+    pub vo2max_ml_kg_min: Option<f64>,
+    #[serde(default)]
+    pub measured_at_mission_s: Option<f64>,
+    #[serde(default)]
+    pub staleness_hours: Option<f64>,
+}
+
+/// Stato del rischio litiasico renale e volume vescicale (`Gap 1`).
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct RenalNephrolithiasis {
+    pub estimated_urine_output_l_d: f64,
+    pub urinary_citrate_mg_d: f64,
+    pub urinary_ph: f64,
+    pub rsr_calcium_oxalate: f64,
+    pub renal_colic_risk_index: f64,
+    pub pocus_hydronephrosis_confirmed: bool,
+    pub post_void_bladder_volume_ml: f64,
+}
+
+/// Dinamica del volume plasmatico, viscosita e rischio di collasso ortostatico (`Gap 2`).
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct OrthostaticFluid {
+    pub plasma_volume_delta_pct: f64,
+    pub apparent_blood_viscosity_poise: f64,
+    pub hematocrit_pct: f64,
+    pub shock_index: f64,
+    pub orthostatic_collapse_risk_pct: f64,
+    pub pre_landing_fluid_load_completed: bool,
+}
+
+/// Modello circadiano a due processi (S+C) su Sol marziano e prontezza neurocognitiva (`Gap 3`).
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct MarsCircadianSleep {
+    pub mars_sol_fraction: f64,
+    pub homeostatic_sleep_pressure_s: f64,
+    pub circadian_phase_c: f64,
+    pub sleep_debt_hours: f64,
+    pub pvt_lapse_probability: f64,
+    pub cognitive_readiness_score: f64,
+    pub melanopic_light_therapy_active: bool,
+}
+
+/// Disregolazione immunitaria spaziale e rischio riattivazione virale (`Gap 4`).
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct NeuroImmuneViral {
+    pub neuroendocrine_stress_score: f64,
+    pub th1_th2_cytokine_ratio: f64,
+    pub viral_reactivation_risk_pct: f64,
+    pub vzv_ebv_active_shedding_suspected: bool,
+    pub infection_containment_active: bool,
 }
 
 /// Metriche di meccanotrasduzione muscoloscheletrica (`DERIVED_COMPUTED` + `SIMULATED_SCENARIO_INPUT`).
@@ -350,6 +460,14 @@ pub struct NqsStlMargins {
     pub mri_pct: Option<f64>,
     #[serde(default)]
     pub ttv_interval_kind: Option<TtvIntervalKind>,
+    #[serde(default)]
+    pub rho_renal: Option<f64>,
+    #[serde(default)]
+    pub rho_orthostatic: Option<f64>,
+    #[serde(default)]
+    pub rho_circadian: Option<f64>,
+    #[serde(default)]
+    pub rho_immune: Option<f64>,
 }
 
 impl NqsStlMargins {
@@ -360,15 +478,59 @@ impl NqsStlMargins {
             .any(|rho| rho < 0.0)
             || self.rho_rmssd.is_some_and(|rho| rho < 0.0)
             || self.rho_global.is_some_and(|rho| rho < 0.0)
+            || self.rho_renal.is_some_and(|rho| rho < 0.0)
+            || self.rho_orthostatic.is_some_and(|rho| rho < 0.0)
+            || self.rho_circadian.is_some_and(|rho| rho < 0.0)
+            || self.rho_immune.is_some_and(|rho| rho < 0.0)
     }
 }
 
-/// Stato dei 3 Hard Clinical Safety Gates salvavita (`3. ACT`).
+const fn default_true() -> bool {
+    true
+}
+
+/// Stato dei 4 Hard Clinical Safety Gates salvavita (`3. ACT`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SafetyGates {
     pub anticoagulant_lock_active: bool,
     pub lbnp_auto_vent_armed: bool,
     pub eva_suit_damping_active: bool,
+    #[serde(default = "default_true")]
+    pub gate4_invasive_decompression_locked: bool,
+    #[serde(default)]
+    pub gate4_eva_fitness_no_go: bool,
+}
+
+impl Default for SafetyGates {
+    fn default() -> Self {
+        Self {
+            anticoagulant_lock_active: true,
+            lbnp_auto_vent_armed: true,
+            eva_suit_damping_active: false,
+            gate4_invasive_decompression_locked: true,
+            gate4_eva_fitness_no_go: false,
+        }
+    }
+}
+
+impl SafetyGates {
+    pub fn nominal() -> Self {
+        Self::default()
+    }
+
+    pub fn new(
+        anticoagulant_lock_active: bool,
+        lbnp_auto_vent_armed: bool,
+        eva_suit_damping_active: bool,
+    ) -> Self {
+        Self {
+            anticoagulant_lock_active,
+            lbnp_auto_vent_armed,
+            eva_suit_damping_active,
+            gate4_invasive_decompression_locked: true,
+            gate4_eva_fitness_no_go: false,
+        }
+    }
 }
 
 /// Singola azione di contromisura ordinata per impatto sul margine NQS-STL.
@@ -412,6 +574,16 @@ pub struct TelemetryPacket {
     pub sans_ocular: SansOcular,
     pub nqs_stl: NqsStlMargins,
     pub active_playbook: ActivePlaybook,
+    #[serde(default)]
+    pub spot_poct: Option<SpotPoctPanel>,
+    #[serde(default)]
+    pub renal_nephrolithiasis: Option<RenalNephrolithiasis>,
+    #[serde(default)]
+    pub orthostatic_fluid: Option<OrthostaticFluid>,
+    #[serde(default)]
+    pub mars_circadian_sleep: Option<MarsCircadianSleep>,
+    #[serde(default)]
+    pub neuro_immune_viral: Option<NeuroImmuneViral>,
 }
 
 /// Input inviato dalla What-If Stress-Test Console (`POST /api/stress-test`).

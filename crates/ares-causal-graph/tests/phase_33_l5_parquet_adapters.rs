@@ -299,20 +299,20 @@ fn l5_parquet_extension_gates_honestly_without_fabricating_rows() {
 
 #[test]
 fn l5_adaptive_rk4_900_sol_schedule_and_pocus_structural_audit() {
-    let legacy = compute_musculoskeletal_state(900, 0.0);
-    let bounded = compute_musculoskeletal_state_with_policy(
-        900,
-        0.0,
-        Rk4HorizonPolicy::Bounded60DaysLegacy,
-    );
-    assert_eq!(legacy, bounded);
-
+    let default_adaptive = compute_musculoskeletal_state(900, 0.0);
     let adaptive = compute_musculoskeletal_state_with_policy(
         900,
         0.0,
         Rk4HorizonPolicy::AdaptiveUnbounded { max_dt_days: 0.5 },
     );
-    assert!((legacy.sclerostin_pmol_l - adaptive.sclerostin_pmol_l).abs() < 1e-3);
+    assert_eq!(default_adaptive, adaptive);
+
+    let bounded = compute_musculoskeletal_state_with_policy(
+        900,
+        0.0,
+        Rk4HorizonPolicy::Bounded60DaysLegacy,
+    );
+    assert!((bounded.sclerostin_pmol_l - adaptive.sclerostin_pmol_l).abs() < 1e-3);
 
     // 900-Sol Mars conjunction schedule with ARED failure at Sol 180 -> recovery at Sol 240.
     let mut schedule = vec![125.0; 180];

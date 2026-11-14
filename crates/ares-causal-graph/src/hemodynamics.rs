@@ -7,21 +7,35 @@ use ares_core_types::telemetry::{
 };
 use std::f64::consts::PI;
 
-/// Calcola lo shear stress di parete della vena giugulare interna (in dyn/cm^2):
+/// Calcola lo shear stress di parete della vena giugulare interna (in dyn/cm^2) con viscosita ematica variabile:
 /// tau_w = 2 * mu * v_max * sqrt(pi / CSA_cm2).
 #[inline]
-pub fn compute_tau_w_dyn_cm2(vmax_cm_s: f64, ijv_csa_mm2: f64) -> f64 {
+pub fn compute_tau_w_dyn_cm2_with_viscosity(vmax_cm_s: f64, ijv_csa_mm2: f64, viscosity_poise: f64) -> f64 {
     let vmax = sanitize_f64(vmax_cm_s, 0.0).max(0.0);
     let csa_mm2 = sanitize_f64(ijv_csa_mm2, 50.0).max(5.0);
     let csa_cm2 = csa_mm2 / 100.0;
-    2.0 * BLOOD_VISCOSITY_POISE * vmax * (PI / csa_cm2).sqrt()
+    let mu = if viscosity_poise.is_finite() && viscosity_poise > 0.0 {
+        viscosity_poise
+    } else {
+        BLOOD_VISCOSITY_POISE
+    };
+    2.0 * mu * vmax * (PI / csa_cm2).sqrt()
 }
 
-/// Calcola lo stato emodinamico giugulare (`JugularHemodynamics`) e oculare (`SansOcular`).
+/// Calcola lo shear stress di parete della vena giugulare interna con viscosita standard di 0.035 Poise.
 #[inline]
-pub fn compute_jugular_and_sans_state(
+pub fn compute_tau_w_dyn_cm2(vmax_cm_s: f64, ijv_csa_mm2: f64) -> f64 {
+    compute_tau_w_dyn_cm2_with_viscosity(vmax_cm_s, ijv_csa_mm2, BLOOD_VISCOSITY_POISE)
+}
+
+/// Calcola lo stato emodinamico giugulare e oculare SANS, considerando la viscosita ematica variabile mu(Hct)
+/// e l'iperemia da vasodilatazione cerebrale indotta da ppCO2 in cabina (Patch N0-B & Condition 5).
+#[inline]
+pub fn compute_jugular_and_sans_state_ext(
     musculo: &Musculoskeletal,
     scenario: &StressTestScenarioInput,
+    apparent_viscosity_poise: Option<f64>,
+    cabin_ppco2_mmhg: Option<f64>,
 ) -> (JugularHemodynamics, SansOcular) {
     let lbnp_mag = if scenario.lbnp_active {
         sanitize_f64(scenario.lbnp_pressure_mmhg.abs(), 30.0).clamp(0.0, 45.0)
@@ -40,7 +54,9 @@ pub fn compute_jugular_and_sans_state(
     let ijv_vmax_cm_s = (3.2 + 9.8 * musculo.mqi_index + 7.4 * lbnp_norm - 1.8 * rad_stress)
         .clamp(1.5, 24.0);
 
-    let tau_w_dyn_cm2 = compute_tau_w_dyn_cm2(ijv_vmax_cm_s, ijv_csa_mm2);
+    // Condition 5: Calcolo della viscosita prima di tau_w
+    let mu = apparent_viscosity_poise.unwrap_or(BLOOD_VISCOSITY_POISE);
+    let tau_w_dyn_cm2 = compute_tau_w_dyn_cm2_with_viscosity(ijv_vmax_cm_s, ijv_csa_mm2, mu);
 
     let flow_grade = if scenario.pocus_thrombus_confirmed {
         JugularFlowGrade::OccludedThrombus
@@ -64,13 +80,19 @@ pub fn compute_jugular_and_sans_state(
         lbnp_pressure_mmhg: if scenario.lbnp_active { -lbnp_mag } else { 0.0 },
     };
 
-    // Calcolo biomarcatori SANS (congestione venosa cefalica -> aumento ONSD e spessore coroideale)
+    // Patch N0-B: Ipercapnia in cabina -> vasodilatazione arteriolare cerebrale e coroideale Delta_CBF
+    let ppco2 = cabin_ppco2_mmhg.unwrap_or(1.8).max(0.0);
+    let delta_cbf = (0.075 * (ppco2 - 1.8).max(0.0)).clamp(0.0, 0.35);
+
+    // Congestione venosa cefalica efficace: somma della componente meccanica e iperemica arteriolare
     let venous_congestion = ((ijv_csa_mm2 - 38.0) / 62.0).clamp(0.0, 1.0);
-    let onsd_mm = (5.05 + 1.35 * venous_congestion).clamp(4.8, 6.8);
-    let choroidal_delta_um = (12.0 + 58.0 * venous_congestion).clamp(5.0, 85.0);
+    let effective_congestion = (venous_congestion + delta_cbf).clamp(0.0, 1.0);
+
+    let onsd_mm = (5.05 + 1.35 * effective_congestion).clamp(4.8, 6.8);
+    let choroidal_delta_um = (12.0 + 58.0 * effective_congestion).clamp(5.0, 85.0);
     let sans_risk_index = (0.45 * ((onsd_mm - 5.0) / 1.4)
         + 0.35 * (choroidal_delta_um / 70.0)
-        + 0.20 * venous_congestion)
+        + 0.20 * effective_congestion)
         .clamp(0.05, 0.98);
 
     let sans = SansOcular {
@@ -80,6 +102,15 @@ pub fn compute_jugular_and_sans_state(
     };
 
     (jugular, sans)
+}
+
+/// Calcola lo stato emodinamico giugulare e oculare SANS con parametri nominali di default.
+#[inline]
+pub fn compute_jugular_and_sans_state(
+    musculo: &Musculoskeletal,
+    scenario: &StressTestScenarioInput,
+) -> (JugularHemodynamics, SansOcular) {
+    compute_jugular_and_sans_state_ext(musculo, scenario, None, None)
 }
 
 #[cfg(test)]

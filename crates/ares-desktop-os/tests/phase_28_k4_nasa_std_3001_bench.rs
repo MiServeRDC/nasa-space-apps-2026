@@ -96,6 +96,17 @@ fn sample_packet_for_privacy(critical: bool) -> TelemetryPacket {
             radiation_dose_rate_msv_d: 0.45,
             sqi_score: 0.95,
             missing_channels: vec![],
+            sbp_mmhg: None,
+            dbp_mmhg: None,
+            ptt_ms: None,
+            core_temp_celsius: None,
+            skin_temp_celsius: None,
+            sleep_stage_code: None,
+            melanopic_edi_lux: None,
+            personal_dose_rate_ugy_h: None,
+            let_quality_factor: None,
+            suit_metabolic_watts: None,
+            helmet_ppco2_mmhg: None,
         },
         musculoskeletal: Musculoskeletal {
             ared_daily_load_kgf: 128.0,
@@ -132,6 +143,10 @@ fn sample_packet_for_privacy(critical: bool) -> TelemetryPacket {
             ttv_ci95_high_hours: Some(300.0),
             mri_pct: Some(88.0),
             ttv_interval_kind: Some(TtvIntervalKind::IllustrativeScenarioRange),
+            rho_renal: Some(0.44),
+            rho_orthostatic: Some(0.65),
+            rho_circadian: Some(0.81),
+            rho_immune: Some(0.70),
         },
         active_playbook: ActivePlaybook {
             playbook_id: "PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED".to_string(),
@@ -141,9 +156,16 @@ fn sample_packet_for_privacy(critical: bool) -> TelemetryPacket {
                 anticoagulant_lock_active: true,
                 lbnp_auto_vent_armed: true,
                 eva_suit_damping_active: false,
+                gate4_invasive_decompression_locked: true,
+                gate4_eva_fitness_no_go: false,
             },
             actions: vec![],
         },
+        spot_poct: None,
+        renal_nephrolithiasis: None,
+        orthostatic_fluid: None,
+        mars_circadian_sleep: None,
+        neuro_immune_viral: None,
     }
 }
 
@@ -383,6 +405,8 @@ fn cert_phase_28_k4_nasa_std_3001_automated_traceability_matrix() {
             anticoagulant_lock_active: true,
             lbnp_auto_vent_armed: true,
             eva_suit_damping_active: false,
+            gate4_invasive_decompression_locked: true,
+            gate4_eva_fitness_no_go: false,
         },
         actions: vec![CountermeasureAction {
             action_id: "ACT_ANTICOAG_ENOXAPARIN".to_string(),
@@ -657,6 +681,11 @@ fn cert_phase_28_k4_realtime_latency_percentiles_and_900_sol_memory_footprint() 
             sans_ocular: sans,
             nqs_stl: nqs_eval.margins,
             active_playbook: playbook,
+            spot_poct: None,
+            renal_nephrolithiasis: None,
+            orthostatic_fluid: None,
+            mars_circadian_sleep: None,
+            neuro_immune_viral: None,
         };
         let frame = BinaryTelemetryFrame::from_telemetry_packet(
             &pkt,

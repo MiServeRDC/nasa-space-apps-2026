@@ -121,6 +121,36 @@
 
 ---
 
+## Blocco N: Multisystem Exploration Medicine & Advanced Astronaut Wearable Suite (Fasi 38–41) [COMPLETED (TESTED)]
+> **Audit Biomedico NASA:** Revisione approfondita con standard NASA-STD-3001 Vol 1/2, NASA HRP Hazards/Risks, e chiusura dei 6 gap clinici (N0-A..N0-D).
+- [x] **Fase 38 (`N1` — Verificato):** Exploration Wearable Suite V2 (`crates/ares-telemetry-ingest/src/wearable_packet.rs`):
+  - Pacchetto compatto `ExplorationWearablePacketV2` (`#[repr(C, align(8))]`, 64 byte esatti, zero padding, allineamento hardware 64-bit, CRC-16 CCITT).
+  - Canali biometrici continui: R-R interval 125 Hz / 500 Hz, ECG HR, PPG HR + SpO2 + Pulse Rate, temperatura corporea interna continua ($T_c$), pressione arteriosa continua non invasiva (cNIBP sistolica/diastolica), frequenza respiratoria continua e impedenza toracica, e saturazione muscolare/cerebrale di ossigeno (SmO2/rSO2 NIRS a 2 lunghezze d'onda).
+  - Finestra mobile `WearableRrWindowAccumulator` (128 slot) con filtraggio ectopico Malik $\pm 20\%$, soglia minima $\ge 16$ battiti validi per il calcolo di RMSSD e persistenza dello stato across empty ticks.
+  - Test suite: 14/14 test passati in `ares-telemetry-ingest` e Clippy con 0 warning.
+- [x] **Fase 39 (`N2` — Verificato):** Rischio Litiasi Renale RSR & Emodinamica Ortostatica Fluid-Shift (`crates/ares-causal-graph/src/`):
+  - Modello Tiselius AP(CaOx) RSR in `renal_nephrolithiasis.rs` con coefficiente calibrato $\kappa = 0.255$, output urinario, soppressione citrato da ipercapnia ($ppCO_2$), fattore pH urinario $\phi_{\text{pH}}$, e calcolo probabilità di colica renale marziana.
+  - Modello Gauer-Henry $\Delta PV\%$ in `orthostatic_fluid.rs` con override misurato Dill & Costill, emolisi da microgravità MARROW ($-0.025\%$/Sol), viscosità ematica variabile $\mu(\text{Hct})$, e Shock Index dinamico.
+  - Aggiornamento di `hemodynamics.rs` con viscosità dipendente da ematocrito su shear stress giugulare $\tau_w$ e vasodilatazione cerebrale indotta da $ppCO_2$ su stato giugulare e rischio SANS.
+  - Patch N0-A: isolamento del filtro Gate 1 all'azione `PHARMACOLOGICAL_ANTICOAGULANT`.
+- [x] **Fase 40 (`N3` — Verificato):** Dinamica Circadiana-Cognitiva & Immunità Spaziale (`crates/ares-causal-graph/src/` & `crates/ares-nqs-stl/src/`):
+  - Modello Borbély a due processi S+C in `circadian_cognitive.rs` adattato al Sol marziano di 24.66 ore, curva di risposta di fase (PRC) per luce melanopica a 480 nm, e probabilità di lapse cognitivo PVT-B.
+  - Modello immuno-neuroendocrino in `space_immunology.rs` con punteggio di stress neuroendocrino (cortisolo/DHEA), bilancio Th1/Th2, rischio riattivazione virale latente (VZV, EBV, CMV), e override da pannello POCT / qPCR salivare.
+  - Patch N0-C: solutore numerico `AdaptiveUnbounded { max_dt_days: 0.5 }` in `mechanotransduction.rs`.
+  - Espansione del grafo causale ADHG da 8 a 13 nodi (`AdhgNodeKind::ALL`) e 16 archi diretti in `adhg_graph.rs`.
+  - Aggiornamento del reasoner bio-ontologico ARES-BioKG in `biokg_reasoner.rs` (tabella di grounding a 13 nodi, mapping $O(1)$ normativo NASA-STD-3001).
+  - Estensione del monitor NQS STL in `normalizer.rs` e `mri_index.rs` (`evaluate_nqs_stl_and_mri_ext`) con tutti e 4 i margini clinici del Blocco N.
+- [x] **Fase 41 (`N4` — Verificato):** POCUS Multi-Organo, Playbook #10–#15 & Hard Clinical Gate 4 (`crates/ares-medops-playbooks/src/` & `ares-cockpit/`):
+  - Modulo POCUS multi-organo in `pocus_multiorgan.rs` con target anatomici UBERON (`UBERON:0001496` IJV, `UBERON:0001793` Oculare, `UBERON:0002113` Renale, `UBERON:0002048` eFAST trauma).
+  - Valutazione POCUS renale/vescicale (idronefrosi grado 0-4, calcolo, twinkling artifact, simmetria getto ureterale, ritenzione vescicale) e scansione traumatica eFAST a 5 finestre.
+  - Hard Clinical Gate 4A (`gate4_invasive_decompression_locked`, blocco toracostomia con ago salvo conferma eFAST o collasso vitale `ShockIndex >= 1.20` + `SpO2 < 85%`) e Gate 4B (`gate4_eva_fitness_no_go` su GAI > 12%, fatica cognitiva $\ge 0.75$, o Shock Index $\ge 0.90$).
+  - 6 nuovi Type-1 Playbook cristallizzati: `#10` (Renal Lithiasis), `#11` (Mars Entry Fluid Loading), `#12` (Circadian Light Hygiene), `#13` (Viral Immune Containment), `#14` (CO2 Scrubber SANS Mitigation), `#15` (eFAST Trauma Triage).
+  - Sequenza deterministica di precedenza clinica: Trauma/Shock (#15) > Vitals Acuti (#06, #07, #09) > Urgenze d'Organo (#02, #10, #14) > Subacuti/Cronici (#05, #01, #04, #11, #12, #13, #08, #03).
+  - Allineamento Cockpit: `telemetry.ts` e `playbookCatalog.ts` sincronizzati con i 15 playbook e Gate 4; tutti i 21 test Cockpit superati.
+  - Registro evidenze `MODEL_EVIDENCE_AUDIT.md` aggiornato con le fonti S7–S12 sotto `ILLUSTRATIVE_UNVALIDATED`.
+
+---
+
 ## Issue #11 & Issue #12: HRV Validity and Model Evidence Status (`origin/main` integrated)
 - [x] **Issue #11 / PR #20 (`187b933`):** Remove numeric-derived/default HRV; preserve unavailable full assessments (`BEAT_INTERVALS_NOT_AVAILABLE`), degraded alarm state, and known hazard routing.
 - [x] **Issue #12 (`b4ca916`):** Output/formula/calibration evidence register (`docs/architecture/MODEL_EVIDENCE_AUDIT.md`), machine-readable `IllustrativeUnvalidated` / `IllustrativeScenarioRange` status, and dossier corrections.

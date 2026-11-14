@@ -92,6 +92,17 @@ fn base_packet() -> TelemetryPacket {
             radiation_dose_rate_msv_d: 0.45,
             sqi_score: 0.91,
             missing_channels: Vec::new(),
+            sbp_mmhg: Some(118.0),
+            dbp_mmhg: Some(78.0),
+            ptt_ms: Some(210.0),
+            core_temp_celsius: Some(36.8),
+            skin_temp_celsius: Some(33.5),
+            sleep_stage_code: Some(2),
+            melanopic_edi_lux: Some(450.0),
+            personal_dose_rate_ugy_h: Some(18.5),
+            let_quality_factor: Some(2.8),
+            suit_metabolic_watts: Some(220.0),
+            helmet_ppco2_mmhg: Some(2.1),
         },
         musculoskeletal: Musculoskeletal {
             ared_daily_load_kgf: 125.0,
@@ -128,6 +139,10 @@ fn base_packet() -> TelemetryPacket {
             ttv_ci95_high_hours: Some(221.0),
             mri_pct: Some(82.5),
             ttv_interval_kind: Some(TtvIntervalKind::IllustrativeScenarioRange),
+            rho_renal: Some(0.44),
+            rho_orthostatic: Some(0.65),
+            rho_circadian: Some(0.81),
+            rho_immune: Some(0.70),
         },
         active_playbook: ActivePlaybook {
             playbook_id: "PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED".to_string(),
@@ -137,6 +152,8 @@ fn base_packet() -> TelemetryPacket {
                 anticoagulant_lock_active: true,
                 lbnp_auto_vent_armed: true,
                 eva_suit_damping_active: false,
+                gate4_invasive_decompression_locked: true,
+                gate4_eva_fitness_no_go: false,
             },
             actions: vec![CountermeasureAction {
                 action_id: "ACT_ARED".to_string(),
@@ -145,6 +162,11 @@ fn base_packet() -> TelemetryPacket {
                 delta_rho_per_hour: 0.11,
             }],
         },
+        spot_poct: None,
+        renal_nephrolithiasis: None,
+        orthostatic_fluid: None,
+        mars_circadian_sleep: None,
+        neuro_immune_viral: None,
     }
 }
 
@@ -488,6 +510,8 @@ fn k1_property_quality_flags_mask_roundtrips_and_safety_gate_boundaries() {
             anticoagulant_lock_active: g1,
             lbnp_auto_vent_armed: g2,
             eva_suit_damping_active: g3,
+            gate4_invasive_decompression_locked: true,
+            gate4_eva_fitness_no_go: false,
         };
         if hrv_none {
             pkt.biometrics.rmssd_ms = None;
@@ -552,6 +576,8 @@ fn k1_property_quality_flags_mask_roundtrips_and_safety_gate_boundaries() {
             anticoagulant_lock_active: g1,
             lbnp_auto_vent_armed: g2,
             eva_suit_damping_active: g3,
+            gate4_invasive_decompression_locked: true,
+            gate4_eva_fitness_no_go: false,
         };
         let frame = BinaryTelemetryFrame::from_telemetry_packet(
             &pkt,

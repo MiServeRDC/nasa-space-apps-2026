@@ -18,7 +18,13 @@ export type PlaybookShortCode =
   | '#06'
   | '#07'
   | '#08'
-  | '#09';
+  | '#09'
+  | '#10'
+  | '#11'
+  | '#12'
+  | '#13'
+  | '#14'
+  | '#15';
 
 export interface PlaybookCatalogEntry {
   playbook_id: CrystallizedPlaybookId;
@@ -265,6 +271,180 @@ export const CRYSTALLIZED_PLAYBOOK_CATALOG: Record<CrystallizedPlaybookId, Playb
       },
     ],
   },
+  PLAYBOOK_10_RENAL_LITHIASIS: {
+    playbook_id: 'PLAYBOOK_10_RENAL_LITHIASIS',
+    short_code: '#10',
+    short_label: 'RENAL',
+    title: 'Playbook #10: Renal Lithiasis Hydration, Citrate Buffering & Bladder Protocol',
+    normative_clause: 'NASA-STD-3001 [V2 6026]',
+    default_causal_chain: [
+      'BONE_RESORPTION_HYPERCALCIURIA',
+      'HYPERCAPNIC_CITRATE_SUPPRESSION',
+      'CALCIUM_OXALATE_SUPER_SATURATION',
+      'POCUS_TWINKLING_OR_OBSTRUCTION',
+    ],
+    default_actions: [
+      {
+        action_id: 'ACT_POCUS_RENAL_BLADDER_SCAN',
+        label: 'Execute guided renal and bladder ultrasound (assess hydronephrosis and bladder volume)',
+        category: 'DIAGNOSTIC_VERIFICATION',
+        delta_rho_per_hour: 0.12,
+      },
+      {
+        action_id: 'ACT_ORAL_HYDRATION_BOLUS_1000ML',
+        label: 'Administer 1.0 L balanced oral electrolyte solution over 60 minutes',
+        category: 'METABOLIC_COUNTERMEASURE',
+        delta_rho_per_hour: 0.25,
+      },
+      {
+        action_id: 'ACT_PHARMACOLOGICAL_POTASSIUM_CITRATE_30MEQ',
+        label: 'Initiate Potassium Citrate 30 mEq PO daily to alkalinize urine and chelate calcium',
+        category: 'PHARMACOLOGICAL_UNLOCKED',
+        delta_rho_per_hour: 0.18,
+      },
+    ],
+  },
+  PLAYBOOK_11_MARS_ENTRY_FLUID_LOADING: {
+    playbook_id: 'PLAYBOOK_11_MARS_ENTRY_FLUID_LOADING',
+    short_code: '#11',
+    short_label: 'FLUIDLOAD',
+    title: 'Playbook #11: Mars Entry 0.38g Pre-Landing Fluid Loading & Orthostatic Protocol',
+    normative_clause: 'NASA-STD-3001 [V1 3003]',
+    default_causal_chain: [
+      'GAUER_HENRY_PLASMA_VOLUME_CONTRACTION',
+      'SPACEFLIGHT_HEMOLYSIS_MARROW',
+      'RE_ENTRY_DECELERATION_BLOOD_POOLING',
+      'ORTHOSTATIC_PRESUSPECTED_COLLAPSE',
+    ],
+    default_actions: [
+      {
+        action_id: 'ACT_ISOTONIC_SALT_WATER_LOADING_15ML_KG',
+        label: 'Ingest 15 mL/kg body mass of isotonic electrolyte solution within 2 hours of entry burn',
+        category: 'METABOLIC_COUNTERMEASURE',
+        delta_rho_per_hour: 0.28,
+      },
+      {
+        action_id: 'ACT_DON_ANTI_G_COMPRESSION_GARMENT',
+        label: 'Don inflatable abdominal-thigh compression garment set to 35-45 mmHg gradient',
+        category: 'PHYSICAL_HEMODYNAMIC',
+        delta_rho_per_hour: 0.22,
+      },
+    ],
+  },
+  PLAYBOOK_12_CIRCADIAN_LIGHT_HYGIENE: {
+    playbook_id: 'PLAYBOOK_12_CIRCADIAN_LIGHT_HYGIENE',
+    short_code: '#12',
+    short_label: 'CIRCADIAN',
+    title: 'Playbook #12: Mars Sol Circadian Phototherapy, Blue Enrichment & Sleep Hygiene',
+    normative_clause: 'NASA-STD-3001 [V1 3001] / [V2 6001]',
+    default_causal_chain: [
+      'MARS_SOL_24_66H_PHASE_DESYNCHRONY',
+      'SLOW_WAVE_SLEEP_DEBT_ACCUMULATION',
+      'PVT_B_COGNITIVE_LAPSE_ACCELERATION',
+      'MELANOPIC_BLUE_LIGHT_ENTRAINMENT',
+    ],
+    default_actions: [
+      {
+        action_id: 'ACT_MELANOPIC_LIGHT_480NM_450LUX',
+        label: 'Deliver 45 minutes of 480 nm blue-enriched light (> 450 EDI lux) immediately upon waking',
+        category: 'ENVIRONMENTAL_CHECK',
+        delta_rho_per_hour: 0.20,
+      },
+      {
+        action_id: 'ACT_BLUE_DEPLETION_EVENING_FILTER',
+        label: 'Enforce optical blue-blocking eyewear (< 10 lux melanopic) starting 2 hours prior to scheduled sleep',
+        category: 'ENVIRONMENTAL_CHECK',
+        delta_rho_per_hour: 0.15,
+      },
+    ],
+  },
+  PLAYBOOK_13_VIRAL_IMMUNE_VALACYCLOVIR: {
+    playbook_id: 'PLAYBOOK_13_VIRAL_IMMUNE_VALACYCLOVIR',
+    short_code: '#13',
+    short_label: 'IMMUNE',
+    title: 'Playbook #13: Spaceflight Immune Dysregulation & Latent Herpesvirus Reactivation Protocol',
+    normative_clause: 'NASA-STD-3001 [V1 3001]',
+    default_causal_chain: [
+      'CHRONIC_GLUCOCORTICOID_ELEVATION',
+      'TH1_TH2_CYTOKINE_BALANCE_DEVIATION',
+      'LATENT_VZV_EBV_VIRAL_SHEDDING',
+      'ORAL_VALACYCLOVIR_INTERVENTION',
+    ],
+    default_actions: [
+      {
+        action_id: 'ACT_CLINICAL_DERMATOMIC_INSPECTION',
+        label: 'Perform targeted examination of cranial nerves (V1 ophthalmic branch) and thoracic dermatomes',
+        category: 'CLINICAL_ASSESSMENT',
+        delta_rho_per_hour: 0.10,
+      },
+      {
+        action_id: 'ACT_VALACYCLOVIR_ANTIVIRAL_THERAPY',
+        label: 'Initiate Oral Valacyclovir 1000 mg TID for 7 days (cleared by Gate 1 non-anticoagulant filter)',
+        category: 'PHARMACOLOGICAL_UNLOCKED',
+        delta_rho_per_hour: 0.25,
+      },
+    ],
+  },
+  PLAYBOOK_14_CO2_SCRUBBER_SANS: {
+    playbook_id: 'PLAYBOOK_14_CO2_SCRUBBER_SANS',
+    short_code: '#14',
+    short_label: 'ECLSS/CO2',
+    title: 'Playbook #14: Cabin ppCO2 Hypercapnia Scrubbing & Ocular Vasodilation Mitigation',
+    normative_clause: 'NASA-STD-3001 [V2 6001]',
+    default_causal_chain: [
+      'CABIN_PPCO2_EXCEEDS_3_0_MMHG',
+      'CEREBRAL_ARTERIOLAR_VASODILATION',
+      'RETROBULBAR_VENOUS_PRESSURE_INCREASE',
+      'TRANSLAMINAR_GRADIENT_AMPLIFICATION',
+    ],
+    default_actions: [
+      {
+        action_id: 'ACT_INSPECT_CDRA_DESICCANT_BEDS',
+        label: 'Verify Carbon Dioxide Removal Assembly cycle timing and inspect backup LiOH canisters',
+        category: 'ENVIRONMENTAL_CHECK',
+        delta_rho_per_hour: 0.30,
+      },
+      {
+        action_id: 'ACT_DEPLOY_PORTABLE_CABIN_FANS',
+        label: 'Install supplementary duct fans in crew sleeping quarters to eliminate microgravity CO2 pockets',
+        category: 'ENVIRONMENTAL_CHECK',
+        delta_rho_per_hour: 0.15,
+      },
+    ],
+  },
+  PLAYBOOK_15_EFAST_TRAUMA_TRIAGE: {
+    playbook_id: 'PLAYBOOK_15_EFAST_TRAUMA_TRIAGE',
+    short_code: '#15',
+    short_label: 'TRAUMA',
+    title: 'Playbook #15: eFAST Thoraco-Abdominal Trauma Triage & Needle Thoracostomy Protocol',
+    normative_clause: 'NASA-STD-3001 [V2 7043] / [V1 3006]',
+    default_causal_chain: [
+      'KINETIC_TRAUMA_OR_BAROTRAUMA_EVENT',
+      'POCUS_EFAST_FLUID_OR_LUNG_POINT',
+      'TENSION_PNEUMOTHORAX_SUSPICION',
+      'GATE4_DECOMPRESSION_OR_NEEDLE_RELEASE',
+    ],
+    default_actions: [
+      {
+        action_id: 'ACT_RAPID_5_WINDOW_EFAST_SCAN',
+        label: 'Execute systematic eFAST ultrasound protocol (RUQ, LUQ, pelvic, subxiphoid, bilateral thoracic)',
+        category: 'DIAGNOSTIC_VERIFICATION',
+        delta_rho_per_hour: 0.0,
+      },
+      {
+        action_id: 'ACT_PLEURAL_M_MODE_BARCODE_VERIFY',
+        label: 'Obtain thoracic M-mode clips over 2nd intercostal mid-clavicular line to assess seashore vs barcode sign',
+        category: 'DIAGNOSTIC_VERIFICATION',
+        delta_rho_per_hour: 0.0,
+      },
+      {
+        action_id: 'ACT_NEEDLE_DECOMPRESSION_2ND_ICL',
+        label: 'Perform emergency needle decompression 2nd intercostal mid-clavicular line (requires Gate 4 confirmation)',
+        category: 'INVASIVE_PROCEDURE',
+        delta_rho_per_hour: 0.35,
+      },
+    ],
+  },
 };
 
 export const CRYSTALLIZED_PLAYBOOK_LIST: PlaybookCatalogEntry[] = [
@@ -282,9 +462,19 @@ export const ACUTE_VITALS_PLAYBOOK_LIST: PlaybookCatalogEntry[] = [
   CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_09_MULTIPARAMETER_DETERIORATION,
 ];
 
+export const EXPLORATION_MEDICINE_PLAYBOOK_LIST: PlaybookCatalogEntry[] = [
+  CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_10_RENAL_LITHIASIS,
+  CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_11_MARS_ENTRY_FLUID_LOADING,
+  CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_12_CIRCADIAN_LIGHT_HYGIENE,
+  CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_13_VIRAL_IMMUNE_VALACYCLOVIR,
+  CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_14_CO2_SCRUBBER_SANS,
+  CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_15_EFAST_TRAUMA_TRIAGE,
+];
+
 export const ALL_CRYSTALLIZED_PLAYBOOK_LIST: PlaybookCatalogEntry[] = [
   ...CRYSTALLIZED_PLAYBOOK_LIST,
   ...ACUTE_VITALS_PLAYBOOK_LIST,
+  ...EXPLORATION_MEDICINE_PLAYBOOK_LIST,
 ];
 
 export const PLAYBOOK_BY_SHORT_CODE: Record<PlaybookShortCode, PlaybookCatalogEntry> = {
@@ -297,6 +487,12 @@ export const PLAYBOOK_BY_SHORT_CODE: Record<PlaybookShortCode, PlaybookCatalogEn
   '#07': CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_07_TACHYCARDIA_AUTONOMIC_STRESS,
   '#08': CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_08_SIGNAL_QUALITY_SENSOR_CHECK,
   '#09': CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_09_MULTIPARAMETER_DETERIORATION,
+  '#10': CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_10_RENAL_LITHIASIS,
+  '#11': CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_11_MARS_ENTRY_FLUID_LOADING,
+  '#12': CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_12_CIRCADIAN_LIGHT_HYGIENE,
+  '#13': CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_13_VIRAL_IMMUNE_VALACYCLOVIR,
+  '#14': CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_14_CO2_SCRUBBER_SANS,
+  '#15': CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_15_EFAST_TRAUMA_TRIAGE,
 };
 
 export function isCrystallizedPlaybookId(id: string | null | undefined): id is CrystallizedPlaybookId {

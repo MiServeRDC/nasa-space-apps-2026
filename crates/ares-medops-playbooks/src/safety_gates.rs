@@ -1,56 +1,80 @@
-//! Fase 11 (E2): Macchina a stati deterministica dei 3 Hard Clinical Safety Gates.
+//! Fase 11 (E2) & Fase 41 (N4): Macchina a stati deterministica dei 4 Hard Clinical Safety Gates.
 
+use crate::pocus_multiorgan::PocusEfastScan;
 use ares_core_types::constants::{
     GAI_MAX_SAFE_PCT, LBNP_MAX_SAFE_HR_BPM, LBNP_MAX_SYS_BP_DROP_MMHG,
+    SHOCK_INDEX_ATTENTION, SHOCK_INDEX_CRITICAL,
 };
 use ares_core_types::telemetry::{
     ActivePlaybook, Biometrics, CountermeasureAction, JugularHemodynamics, Musculoskeletal,
     SafetyGates, StressTestScenarioInput,
 };
 
-/// Applica in modo inflessibile i 3 Hard Clinical Safety Gates al Playbook candidato.
+/// Applica in modo inflessibile i 4 Hard Clinical Safety Gates al Playbook candidato.
 #[inline]
-pub fn enforce_hard_clinical_safety_gates(
+#[allow(clippy::too_many_arguments)]
+pub fn enforce_hard_clinical_safety_gates_ext(
     mut playbook: ActivePlaybook,
     biometrics: &Biometrics,
     musculo: &Musculoskeletal,
     jugular: &JugularHemodynamics,
     scenario: &StressTestScenarioInput,
+    efast: Option<&PocusEfastScan>,
+    fatigue_index: Option<f64>,
+    shock_index: Option<f64>,
 ) -> ActivePlaybook {
     let anticoagulant_lock_active = !jugular.pocus_thrombus_confirmed;
     let hr = biometrics.heart_rate_bpm.unwrap_or(72.0);
+    let sbp_drop = biometrics.sbp_mmhg.map_or(scenario.systolic_bp_drop_mmhg, |sbp| {
+        (120.0 - sbp).max(scenario.systolic_bp_drop_mmhg)
+    });
     let pre_syncope_detected = jugular.lbnp_active
-        && (scenario.systolic_bp_drop_mmhg > LBNP_MAX_SYS_BP_DROP_MMHG
+        && (sbp_drop > LBNP_MAX_SYS_BP_DROP_MMHG
             || hr > LBNP_MAX_SAFE_HR_BPM);
     let eva_suit_damping_active = musculo.gai_pct > GAI_MAX_SAFE_PCT;
+
+    // Calcolo del Shock Index per Gate 4
+    let computed_si = shock_index.or_else(|| {
+        if let (Some(hr_val), Some(sbp_val)) = (biometrics.heart_rate_bpm, biometrics.sbp_mmhg) {
+            if sbp_val > 0.0 {
+                Some(hr_val / sbp_val)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    });
+
+    // Gate 4A: Interlock Decompressione Toracica Invasiva (Needle Thoracostomy)
+    // Sbloccata solo se:
+    // 1) POCUS eFAST conferma assenza lung sliding + barcode M-mode / lung point, OPPURE
+    // 2) Override vitale d'emergenza: Shock Index >= 1.20 e SpO2 < 85% (collasso tensivo immediato)
+    let pneumothorax_verified = efast.is_some_and(|e| e.is_pneumothorax_verified());
+    let spo2 = biometrics.spo2_pct.unwrap_or(98.0);
+    let vital_collapse_override =
+        computed_si.is_some_and(|si| si >= SHOCK_INDEX_CRITICAL) && spo2 < 85.0;
+    let gate4_invasive_decompression_locked = !pneumothorax_verified && !vital_collapse_override;
+
+    // Gate 4B: Interlock Idoneita Operativa EVA (Fitness-for-Duty)
+    let cognitive_fatigued = fatigue_index.unwrap_or(0.0) >= 0.75;
+    let si_elevated = computed_si.is_some_and(|si| si >= SHOCK_INDEX_ATTENTION);
+    let gate4_eva_fitness_no_go = eva_suit_damping_active || cognitive_fatigued || si_elevated;
 
     playbook.safety_gates = SafetyGates {
         anticoagulant_lock_active,
         lbnp_auto_vent_armed: true,
         eva_suit_damping_active,
+        gate4_invasive_decompression_locked,
+        gate4_eva_fitness_no_go,
     };
 
     // Gate 1: Rimuove categoricamente qualsiasi farmaco anticoagulante se POCUS non conferma trombo
+    // (Filtro mirato a PHARMACOLOGICAL_ANTICOAGULANT per preservare farmaci non anticoagulanti - Patch N0-A)
     if anticoagulant_lock_active {
         playbook.actions.retain(|a| {
-            !a.action_id.contains("ANTICOAG") && !a.category.contains("PHARMACOLOGICAL")
+            !a.action_id.contains("ANTICOAG") && !a.category.contains("PHARMACOLOGICAL_ANTICOAGULANT")
         });
-    }
-
-    // Gate 2: Se viene rilevato rischio pre-sincopale durante LBNP, sfiata immediatamente a 0 mmHg
-    if pre_syncope_detected {
-        playbook.actions.insert(
-            0,
-            CountermeasureAction {
-                action_id: "ACT_EMERGENCY_LBNP_AUTO_VENT_0_MMHG".to_string(),
-                label: format!(
-                    "SAFETY GATE 2 TRIGGERED: Auto-vent LBNP chamber to 0 mmHg immediately (SBP drop {:.1} mmHg / HR {:.0} bpm)",
-                    scenario.systolic_bp_drop_mmhg, hr
-                ),
-                category: "HARD_SAFETY_GATE_OVERRIDE".to_string(),
-                delta_rho_per_hour: 0.35,
-            },
-        );
     }
 
     // Gate 3: Se GAI > 12%, aggiunge vincolo di smorzamento caviglia tuta EVA a 0.38g
@@ -66,7 +90,67 @@ pub fn enforce_hard_clinical_safety_gates(
         });
     }
 
+    // Gate 4A: Se bloccato, rimuove procedure toraciche invasive (toracostomia ad ago / drenaggio)
+    if gate4_invasive_decompression_locked {
+        playbook.actions.retain(|a| {
+            !a.action_id.contains("THORACOSTOMY") && !a.action_id.contains("NEEDLE_DECOMPRESSION")
+        });
+    }
+
+    // Gate 4B: Se non idoneo EVA, inietta blocco critico EVA
+    if gate4_eva_fitness_no_go
+        && !playbook
+            .actions
+            .iter()
+            .any(|a| a.action_id == "ACT_EVA_NO_GO_COGNITIVE_OR_HEMODYNAMIC_LOCK")
+    {
+        playbook.actions.insert(
+            0,
+            CountermeasureAction {
+                action_id: "ACT_EVA_NO_GO_COGNITIVE_OR_HEMODYNAMIC_LOCK".to_string(),
+                label: format!(
+                    "SAFETY GATE 4 TRIGGERED: EVA NO-GO LOCK ACTIVE (GAI={:.1}%, Fatigue={:.2}, SI={})",
+                    musculo.gai_pct,
+                    fatigue_index.unwrap_or(0.0),
+                    computed_si.map_or("N/A".to_string(), |s| format!("{:.2}", s))
+                ),
+                category: "CRITICAL_SAFETY_LOCK".to_string(),
+                delta_rho_per_hour: 0.0,
+            },
+        );
+    }
+
+    // Gate 2: Se viene rilevato rischio pre-sincopale durante LBNP, sfiata immediatamente a 0 mmHg (priorita assoluta al vertice)
+    if pre_syncope_detected {
+        playbook.actions.insert(
+            0,
+            CountermeasureAction {
+                action_id: "ACT_EMERGENCY_LBNP_AUTO_VENT_0_MMHG".to_string(),
+                label: format!(
+                    "SAFETY GATE 2 TRIGGERED: Auto-vent LBNP chamber to 0 mmHg immediately (SBP drop {:.1} mmHg / HR {:.0} bpm)",
+                    scenario.systolic_bp_drop_mmhg, hr
+                ),
+                category: "HARD_SAFETY_GATE_OVERRIDE".to_string(),
+                delta_rho_per_hour: 0.35,
+            },
+        );
+    }
+
     playbook
+}
+
+/// Applica in modo inflessibile i 4 Hard Clinical Safety Gates al Playbook candidato (firma standard).
+#[inline]
+pub fn enforce_hard_clinical_safety_gates(
+    playbook: ActivePlaybook,
+    biometrics: &Biometrics,
+    musculo: &Musculoskeletal,
+    jugular: &JugularHemodynamics,
+    scenario: &StressTestScenarioInput,
+) -> ActivePlaybook {
+    enforce_hard_clinical_safety_gates_ext(
+        playbook, biometrics, musculo, jugular, scenario, None, None, None,
+    )
 }
 
 #[cfg(test)]
@@ -83,6 +167,8 @@ mod tests {
                 anticoagulant_lock_active: true,
                 lbnp_auto_vent_armed: true,
                 eva_suit_damping_active: false,
+                gate4_invasive_decompression_locked: true,
+                gate4_eva_fitness_no_go: false,
             },
             actions: vec![
                 CountermeasureAction {
@@ -117,6 +203,17 @@ mod tests {
             radiation_dose_rate_msv_d: 0.5,
             sqi_score: 0.90,
             missing_channels: vec![],
+            sbp_mmhg: None,
+            dbp_mmhg: None,
+            ptt_ms: None,
+            core_temp_celsius: None,
+            skin_temp_celsius: None,
+            sleep_stage_code: None,
+            melanopic_edi_lux: None,
+            personal_dose_rate_ugy_h: None,
+            let_quality_factor: None,
+            suit_metabolic_watts: None,
+            helmet_ppco2_mmhg: None,
         }
     }
 
@@ -212,6 +309,79 @@ mod tests {
                 .actions
                 .iter()
                 .any(|a| a.action_id == "ACT_EVA_SUIT_ANKLE_DAMPING_038G")
+        );
+    }
+
+    #[test]
+    fn test_gate4a_strips_needle_decompression_without_pocus_or_vital_collapse() {
+        let mut pb = dummy_playbook_with_anticoag();
+        pb.actions.push(CountermeasureAction {
+            action_id: "ACT_NEEDLE_DECOMPRESSION_2ND_ICL".to_string(),
+            label: "Emergent needle decompression".to_string(),
+            category: "INVASIVE_PROCEDURE".to_string(),
+            delta_rho_per_hour: 0.0,
+        });
+
+        let bio = dummy_bio(80.0);
+        let musc = dummy_musculo(5.0);
+        let jug = dummy_jugular(false, false);
+        let scen = dummy_scenario(false, false, 0.0);
+
+        // Sin POCUS -> bloccato
+        let enforced = enforce_hard_clinical_safety_gates(pb.clone(), &bio, &musc, &jug, &scen);
+        assert!(enforced.safety_gates.gate4_invasive_decompression_locked);
+        assert!(enforced.actions.iter().all(|a| !a.action_id.contains("NEEDLE_DECOMPRESSION")));
+
+        // Con POCUS pneumotorace verificato -> sbloccato
+        let efast = PocusEfastScan {
+            lung_sliding_absent: true,
+            m_mode_barcode_sign_confirmed: true,
+            ..Default::default()
+        };
+        let unlocked_pocus = enforce_hard_clinical_safety_gates_ext(
+            pb.clone(), &bio, &musc, &jug, &scen, Some(&efast), None, None,
+        );
+        assert!(!unlocked_pocus.safety_gates.gate4_invasive_decompression_locked);
+        assert!(unlocked_pocus.actions.iter().any(|a| a.action_id.contains("NEEDLE_DECOMPRESSION")));
+
+        // Con collasso vitale immediato (Shock Index >= 1.20 e SpO2 < 85%) -> sbloccato
+        let bio_collapse = Biometrics {
+            sbp_mmhg: Some(90.0), // SI = 130 / 90 = 1.44 >= 1.20
+            spo2_pct: Some(82.0), // SpO2 < 85%
+            ..dummy_bio(130.0)
+        };
+        let unlocked_vital = enforce_hard_clinical_safety_gates_ext(
+            pb, &bio_collapse, &musc, &jug, &scen, None, None, None,
+        );
+        assert!(!unlocked_vital.safety_gates.gate4_invasive_decompression_locked);
+    }
+
+    #[test]
+    fn test_gate4b_injects_eva_no_go_on_cognitive_fatigue_or_elevated_shock_index() {
+        let pb = dummy_playbook_with_anticoag();
+        let bio = dummy_bio(72.0);
+        let musc = dummy_musculo(5.0);
+        let jug = dummy_jugular(false, false);
+        let scen = dummy_scenario(false, false, 0.0);
+
+        // Fatica elevata (>= 0.75)
+        let enforced_fatigue = enforce_hard_clinical_safety_gates_ext(
+            pb.clone(), &bio, &musc, &jug, &scen, None, Some(0.82), None,
+        );
+        assert!(enforced_fatigue.safety_gates.gate4_eva_fitness_no_go);
+        assert_eq!(
+            enforced_fatigue.actions[0].action_id,
+            "ACT_EVA_NO_GO_COGNITIVE_OR_HEMODYNAMIC_LOCK"
+        );
+
+        // Shock Index elevato (>= 0.90)
+        let enforced_si = enforce_hard_clinical_safety_gates_ext(
+            pb, &bio, &musc, &jug, &scen, None, None, Some(0.95),
+        );
+        assert!(enforced_si.safety_gates.gate4_eva_fitness_no_go);
+        assert_eq!(
+            enforced_si.actions[0].action_id,
+            "ACT_EVA_NO_GO_COGNITIVE_OR_HEMODYNAMIC_LOCK"
         );
     }
 }

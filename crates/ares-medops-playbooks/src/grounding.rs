@@ -73,6 +73,21 @@ pub fn ground_playbook_normative(
             AdhgNodeKind::EndothelialProtectiveSecretome,
             Some(("PLAYBOOK_09_MULTIPARAMETER_DETERIORATION", 9)),
         ),
+        "PLAYBOOK_10_RENAL_LITHIASIS" => (AdhgNodeKind::RenalSupersaturationRsr, None),
+        "PLAYBOOK_11_MARS_ENTRY_FLUID_LOADING" => {
+            (AdhgNodeKind::PlasmaVolumeOrthostatic, None)
+        }
+        "PLAYBOOK_12_CIRCADIAN_LIGHT_HYGIENE" => {
+            (AdhgNodeKind::MarsCircadianCognitiveFatigue, None)
+        }
+        "PLAYBOOK_13_VIRAL_IMMUNE_VALACYCLOVIR" => {
+            (AdhgNodeKind::NeuroImmuneViralReactivation, None)
+        }
+        "PLAYBOOK_14_CO2_SCRUBBER_SANS" => (AdhgNodeKind::CabinHypercapniaEnv, None),
+        "PLAYBOOK_15_EFAST_TRAUMA_TRIAGE" => (
+            AdhgNodeKind::PlasmaVolumeOrthostatic,
+            Some(("PLAYBOOK_15_EFAST_TRAUMA_TRIAGE", 15)),
+        ),
         other => return Err(PlaybookError::UnknownPlaybookId(other.to_string())),
     };
     let g = ground_adhg_node_o1(node);
@@ -156,6 +171,12 @@ mod tests {
             ("PLAYBOOK_07_HEART_RATE_ANOMALY", 7),
             ("PLAYBOOK_08_SENSOR_SIGNAL_LOSS", 8),
             ("PLAYBOOK_09_MULTIPARAMETER_DETERIORATION", 9),
+            ("PLAYBOOK_10_RENAL_LITHIASIS", 10),
+            ("PLAYBOOK_11_MARS_ENTRY_FLUID_LOADING", 11),
+            ("PLAYBOOK_12_CIRCADIAN_LIGHT_HYGIENE", 12),
+            ("PLAYBOOK_13_VIRAL_IMMUNE_VALACYCLOVIR", 13),
+            ("PLAYBOOK_14_CO2_SCRUBBER_SANS", 14),
+            ("PLAYBOOK_15_EFAST_TRAUMA_TRIAGE", 15),
         ] {
             let g = ground_playbook_normative(pb_id).unwrap();
             assert_eq!(g.playbook_id.as_ref(), pb_id);
@@ -178,6 +199,8 @@ mod tests {
                 anticoagulant_lock_active: true,
                 lbnp_auto_vent_armed: true,
                 eva_suit_damping_active: false,
+                gate4_invasive_decompression_locked: true,
+                gate4_eva_fitness_no_go: false,
             },
             actions: vec![CountermeasureAction {
                 action_id: "ACT_ANTICOAG_ENOXAPARIN".to_string(),

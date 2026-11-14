@@ -24,10 +24,11 @@ pub use security::{
 };
 pub use telemetry::{
     ActivePlaybook, AlertSeverity, Biometrics, BiometricsSource, CountermeasureAction,
-    JugularFlowGrade, JugularHemodynamics, ModelValidationStatus, Musculoskeletal, NqsStlMargins,
-    ProvenanceManifest, SafetyGates, SansOcular, ScenarioOverlayMode, Sha256DigestHex,
-    StressTestScenarioInput, SystemPhase, TelemetryPacket, TerrestrialBenchmarkScope,
-    ValidationManifest,
+    JugularFlowGrade, JugularHemodynamics, MarsCircadianSleep, ModelValidationStatus,
+    Musculoskeletal, NeuroImmuneViral, NqsStlMargins, OrthostaticFluid, ProvenanceManifest,
+    RenalNephrolithiasis, SafetyGates, SansOcular, ScenarioOverlayMode, Sha256DigestHex,
+    SpotPoctPanel, StressTestScenarioInput, SystemPhase, TelemetryPacket,
+    TerrestrialBenchmarkScope, ValidationManifest,
 };
 
 use serde::{Deserialize, Serialize};
@@ -310,6 +311,17 @@ mod tests {
                 radiation_dose_rate_msv_d: 0.45,
                 sqi_score: 0.85,
                 missing_channels: vec!["pulse_rate_bpm".to_string(), "spo2_pct".to_string()],
+                sbp_mmhg: None,
+                dbp_mmhg: None,
+                ptt_ms: None,
+                core_temp_celsius: None,
+                skin_temp_celsius: None,
+                sleep_stage_code: None,
+                melanopic_edi_lux: None,
+                personal_dose_rate_ugy_h: None,
+                let_quality_factor: None,
+                suit_metabolic_watts: None,
+                helmet_ppco2_mmhg: None,
             },
             musculoskeletal: Musculoskeletal {
                 ared_daily_load_kgf: 125.0,
@@ -348,6 +360,10 @@ mod tests {
                 ttv_interval_kind: Some(
                     crate::telemetry::TtvIntervalKind::IllustrativeScenarioRange,
                 ),
+                rho_renal: Some(0.44),
+                rho_orthostatic: Some(0.65),
+                rho_circadian: Some(0.81),
+                rho_immune: Some(0.70),
             },
             active_playbook: ActivePlaybook {
                 playbook_id: "PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED".to_string(),
@@ -360,6 +376,8 @@ mod tests {
                     anticoagulant_lock_active: true,
                     lbnp_auto_vent_armed: true,
                     eva_suit_damping_active: false,
+                    gate4_invasive_decompression_locked: true,
+                    gate4_eva_fitness_no_go: false,
                 },
                 actions: vec![CountermeasureAction {
                     action_id: "ACT_ARED_FROST_LOAD".to_string(),
@@ -368,6 +386,11 @@ mod tests {
                     delta_rho_per_hour: 0.11,
                 }],
             },
+            spot_poct: None,
+            renal_nephrolithiasis: None,
+            orthostatic_fluid: None,
+            mars_circadian_sleep: None,
+            neuro_immune_viral: None,
         }
     }
 

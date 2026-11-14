@@ -329,6 +329,11 @@ fn compute_mission_telemetry_tick_from_row(
         sans_ocular: sans,
         nqs_stl,
         active_playbook,
+        spot_poct: None,
+        renal_nephrolithiasis: None,
+        orthostatic_fluid: None,
+        mars_circadian_sleep: None,
+        neuro_immune_viral: None,
     };
     (packet, pocus_est.thrombus_posterior, causal_chain)
 }

@@ -168,12 +168,12 @@ test('binaryTelemetryDecoder supports active_playbook_id 6..9 acute vitals playb
   }
 });
 
-test('playbookCatalog preserves 5 Type-1 playbooks and adds 4 acute vitals playbooks (#06..#09)', () => {
+test('playbookCatalog preserves 5 Type-1 playbooks, 4 acute vitals playbooks (#06..#09), and 6 exploration playbooks (#10..#15)', () => {
   assert.equal(CRYSTALLIZED_PLAYBOOK_LIST.length, 5);
   assert.equal(ACUTE_VITALS_PLAYBOOK_LIST.length, 4);
-  assert.equal(ALL_CRYSTALLIZED_PLAYBOOK_LIST.length, 9);
+  assert.equal(ALL_CRYSTALLIZED_PLAYBOOK_LIST.length, 15);
 
-  for (const code of ['#06', '#07', '#08', '#09'] as const) {
+  for (const code of ['#06', '#07', '#08', '#09', '#10', '#11', '#12', '#13', '#14', '#15'] as const) {
     const entry = getCatalogEntry(code);
     assert.ok(entry, `missing catalog entry for ${code}`);
     assert.equal(entry.short_code, code);
@@ -181,6 +181,10 @@ test('playbookCatalog preserves 5 Type-1 playbooks and adds 4 acute vitals playb
   assert.equal(
     getCatalogEntry('PLAYBOOK_09_MULTIPARAMETER_DETERIORATION')?.short_code,
     '#09',
+  );
+  assert.equal(
+    getCatalogEntry('PLAYBOOK_15_EFAST_TRAUMA_TRIAGE')?.short_code,
+    '#15',
   );
 });
 

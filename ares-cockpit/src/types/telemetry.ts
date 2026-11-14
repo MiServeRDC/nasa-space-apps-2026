@@ -59,7 +59,13 @@ export type CrystallizedPlaybookId =
   | 'PLAYBOOK_06_HYPOXEMIA_DESATURATION'
   | 'PLAYBOOK_07_TACHYCARDIA_AUTONOMIC_STRESS'
   | 'PLAYBOOK_08_SIGNAL_QUALITY_SENSOR_CHECK'
-  | 'PLAYBOOK_09_MULTIPARAMETER_DETERIORATION';
+  | 'PLAYBOOK_09_MULTIPARAMETER_DETERIORATION'
+  | 'PLAYBOOK_10_RENAL_LITHIASIS'
+  | 'PLAYBOOK_11_MARS_ENTRY_FLUID_LOADING'
+  | 'PLAYBOOK_12_CIRCADIAN_LIGHT_HYGIENE'
+  | 'PLAYBOOK_13_VIRAL_IMMUNE_VALACYCLOVIR'
+  | 'PLAYBOOK_14_CO2_SCRUBBER_SANS'
+  | 'PLAYBOOK_15_EFAST_TRAUMA_TRIAGE';
 
 export type AnomalyStatus = 'NORMAL' | 'ATTENTION' | 'ALARM';
 
@@ -123,6 +129,8 @@ export interface SafetyGatesState {
   anticoagulant_lock_active: boolean;
   lbnp_auto_vent_armed: boolean;
   eva_suit_damping_active: boolean;
+  gate4_invasive_decompression_locked?: boolean;
+  gate4_eva_fitness_no_go?: boolean;
 }
 
 export interface CountermeasureAction {

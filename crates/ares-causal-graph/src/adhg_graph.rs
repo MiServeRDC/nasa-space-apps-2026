@@ -3,7 +3,10 @@
 pub use crate::bayesian_pocus::{
     BayesianPocusObserver, PocusPosteriorEstimate, evaluate_two_stage_bayesian_pocus,
 };
-use ares_core_types::telemetry::{JugularHemodynamics, Musculoskeletal, SansOcular};
+use ares_core_types::telemetry::{
+    JugularHemodynamics, MarsCircadianSleep, Musculoskeletal, NeuroImmuneViral, OrthostaticFluid,
+    RenalNephrolithiasis, SansOcular,
+};
 use petgraph::stable_graph::{NodeIndex, StableDiGraph};
 use serde::{Deserialize, Serialize};
 
@@ -18,6 +21,29 @@ pub enum AdhgNodeKind {
     IjvVenousStasisShearStress,
     PocusThrombusPosterior,
     SansTranslaminarGradient,
+    CabinHypercapniaEnv,
+    RenalSupersaturationRsr,
+    PlasmaVolumeOrthostatic,
+    MarsCircadianCognitiveFatigue,
+    NeuroImmuneViralReactivation,
+}
+
+impl AdhgNodeKind {
+    pub const ALL: [Self; 13] = [
+        Self::AredMechanicalLoad,
+        Self::SoleusMuscleQualityMqi,
+        Self::OsteocyteSclerostinSost,
+        Self::EndothelialProtectiveSecretome,
+        Self::CansRadiationOxidativeStress,
+        Self::IjvVenousStasisShearStress,
+        Self::PocusThrombusPosterior,
+        Self::SansTranslaminarGradient,
+        Self::CabinHypercapniaEnv,
+        Self::RenalSupersaturationRsr,
+        Self::PlasmaVolumeOrthostatic,
+        Self::MarsCircadianCognitiveFatigue,
+        Self::NeuroImmuneViralReactivation,
+    ];
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -44,6 +70,11 @@ pub struct AdhgCausalEngine {
     n_ijv: NodeIndex,
     n_pocus: NodeIndex,
     n_sans: NodeIndex,
+    n_co2: NodeIndex,
+    n_renal: NodeIndex,
+    n_pv: NodeIndex,
+    n_fatigue: NodeIndex,
+    n_immune: NodeIndex,
 }
 
 /// Alias di compatibilita per `AdhgCausalEngine`.
@@ -57,7 +88,7 @@ impl Default for AdhgCausalEngine {
 
 impl AdhgCausalEngine {
     pub fn new() -> Self {
-        let mut graph = StableDiGraph::with_capacity(8, 10);
+        let mut graph = StableDiGraph::with_capacity(13, 16);
         let n_ared = graph.add_node(AdhgNodeState {
             kind: AdhgNodeKind::AredMechanicalLoad,
             label: "ARED Resistive Load Deficit",
@@ -96,6 +127,31 @@ impl AdhgCausalEngine {
         let n_sans = graph.add_node(AdhgNodeState {
             kind: AdhgNodeKind::SansTranslaminarGradient,
             label: "SANS Optic Nerve Sheath & Choroidal Engorgement",
+            anomaly_severity: 0.0,
+        });
+        let n_co2 = graph.add_node(AdhgNodeState {
+            kind: AdhgNodeKind::CabinHypercapniaEnv,
+            label: "Cabin Hypercapnia ppCO2 Environmental Burden",
+            anomaly_severity: 0.0,
+        });
+        let n_renal = graph.add_node(AdhgNodeState {
+            kind: AdhgNodeKind::RenalSupersaturationRsr,
+            label: "Renal Lithiasis Calcium Oxalate RSR & Hypocitraturia",
+            anomaly_severity: 0.0,
+        });
+        let n_pv = graph.add_node(AdhgNodeState {
+            kind: AdhgNodeKind::PlasmaVolumeOrthostatic,
+            label: "Plasma Volume Contraction & MARROW Spaceflight Hemolysis",
+            anomaly_severity: 0.0,
+        });
+        let n_fatigue = graph.add_node(AdhgNodeState {
+            kind: AdhgNodeKind::MarsCircadianCognitiveFatigue,
+            label: "Mars Sol Borbely Circadian Phase & PVT-B Cognitive Fatigue",
+            anomaly_severity: 0.0,
+        });
+        let n_immune = graph.add_node(AdhgNodeState {
+            kind: AdhgNodeKind::NeuroImmuneViralReactivation,
+            label: "Neuro-Endocrine Stress & Latent Herpesvirus Reactivation",
             anomaly_severity: 0.0,
         });
 
@@ -163,6 +219,70 @@ impl AdhgCausalEngine {
                 causal_weight: 0.82,
             },
         );
+        graph.add_edge(
+            n_sost,
+            n_renal,
+            AdhgCausalEdge {
+                mechanism: "Hypercalciuria Ca > 300 mg/d",
+                causal_weight: 0.85,
+            },
+        );
+        graph.add_edge(
+            n_co2,
+            n_sans,
+            AdhgCausalEdge {
+                mechanism: "Cerebral vasodilation +6%/mmHg",
+                causal_weight: 0.75,
+            },
+        );
+        graph.add_edge(
+            n_co2,
+            n_renal,
+            AdhgCausalEdge {
+                mechanism: "Tubular citrate reabsorption in acidosis",
+                causal_weight: 0.70,
+            },
+        );
+        graph.add_edge(
+            n_pv,
+            n_ijv,
+            AdhgCausalEdge {
+                mechanism: "Gauer-Henry contraction & hypovolemia",
+                causal_weight: 0.65,
+            },
+        );
+        graph.add_edge(
+            n_fatigue,
+            n_immune,
+            AdhgCausalEdge {
+                mechanism: "Vagal withdrawal & cortisol surge",
+                causal_weight: 0.80,
+            },
+        );
+        graph.add_edge(
+            n_rad,
+            n_immune,
+            AdhgCausalEdge {
+                mechanism: "Bone marrow & lymphoid ROS",
+                causal_weight: 0.75,
+            },
+        );
+        graph.add_edge(
+            n_immune,
+            n_ijv,
+            AdhgCausalEdge {
+                mechanism: "Systemic cytokine surge & pro-thrombotic state",
+                causal_weight: 0.60,
+            },
+        );
+        graph.add_edge(
+            n_co2,
+            n_fatigue,
+            AdhgCausalEdge {
+                mechanism: "Executive slowing & cerebral lethargy",
+                causal_weight: 0.55,
+            },
+        );
 
         Self {
             graph,
@@ -174,6 +294,11 @@ impl AdhgCausalEngine {
             n_ijv,
             n_pocus,
             n_sans,
+            n_co2,
+            n_renal,
+            n_pv,
+            n_fatigue,
+            n_immune,
         }
     }
 
@@ -183,13 +308,19 @@ impl AdhgCausalEngine {
         &self.graph
     }
 
-    /// Aggiorna lo stato dei nodi nel grafo `petgraph` e restituisce la sintesi causale attiva.
-    pub fn update_and_extract_causal_chain(
+    /// Aggiorna lo stato esteso a 13 nodi dell'ADHG e restituisce la sintesi causale multisistema.
+    #[allow(clippy::too_many_arguments)]
+    pub fn update_and_extract_causal_chain_ext(
         &mut self,
         musculo: &Musculoskeletal,
         jugular: &JugularHemodynamics,
         sans: &SansOcular,
         radiation_msv_d: f64,
+        cabin_ppco2_mmhg: f64,
+        renal: Option<&RenalNephrolithiasis>,
+        orthostatic: Option<&OrthostaticFluid>,
+        circadian: Option<&MarsCircadianSleep>,
+        immune: Option<&NeuroImmuneViral>,
     ) -> (PocusPosteriorEstimate, Vec<String>) {
         let pocus = evaluate_two_stage_bayesian_pocus(jugular, musculo, radiation_msv_d);
 
@@ -217,8 +348,31 @@ impl AdhgCausalEngine {
         if let Some(n) = self.graph.node_weight_mut(self.n_sans) {
             n.anomaly_severity = sans.sans_risk_index;
         }
+        if let Some(n) = self.graph.node_weight_mut(self.n_co2) {
+            n.anomaly_severity = ((cabin_ppco2_mmhg - 1.8) / 3.0).clamp(0.0, 1.0);
+        }
+        if let Some(r) = renal
+            && let Some(n) = self.graph.node_weight_mut(self.n_renal)
+        {
+            n.anomaly_severity = ((r.rsr_calcium_oxalate - 2.0) / 3.0).clamp(0.0, 1.0);
+        }
+        if let Some(o) = orthostatic
+            && let Some(n) = self.graph.node_weight_mut(self.n_pv)
+        {
+            n.anomaly_severity = ((-o.plasma_volume_delta_pct - 8.0) / 12.0).clamp(0.0, 1.0);
+        }
+        if let Some(c) = circadian
+            && let Some(n) = self.graph.node_weight_mut(self.n_fatigue)
+        {
+            n.anomaly_severity = c.pvt_lapse_probability;
+        }
+        if let Some(i) = immune
+            && let Some(n) = self.graph.node_weight_mut(self.n_immune)
+        {
+            n.anomaly_severity = (i.viral_reactivation_risk_pct / 100.0).clamp(0.0, 1.0);
+        }
 
-        let mut chain = Vec::with_capacity(4);
+        let mut chain = Vec::with_capacity(8);
         chain.push(format!(
             "ARED Load {:.0} kgf -> Soleus MQI {:.2} & SOST {:.1} pmol/L",
             musculo.ared_daily_load_kgf, musculo.mqi_index, musculo.sclerostin_pmol_l
@@ -234,11 +388,57 @@ impl AdhgCausalEngine {
             jugular.pocus_thrombus_confirmed
         ));
         chain.push(format!(
-            "Illustrative SANS index {:.2} (ONSD {:.2} mm, Choroidal Delta +{:.0} um)",
-            sans.sans_risk_index, sans.onsd_mm, sans.choroidal_delta_um
+            "Illustrative SANS index {:.2} (ONSD {:.2} mm, Choroidal Delta +{:.0} um, cabin ppCO2 {:.1} mmHg)",
+            sans.sans_risk_index, sans.onsd_mm, sans.choroidal_delta_um, cabin_ppco2_mmhg
         ));
 
+        if let Some(r) = renal {
+            chain.push(format!(
+                "Renal Lithiasis: RSR CaOx {:.2} (Diuresis {:.2} L/d, Citrate {:.0} mg/d, Colic Risk {:.2})",
+                r.rsr_calcium_oxalate, r.estimated_urine_output_l_d, r.urinary_citrate_mg_d, r.renal_colic_risk_index
+            ));
+        }
+        if let Some(o) = orthostatic {
+            chain.push(format!(
+                "Orthostatic Dynamics: Delta PV {:.1}% | mu(Hct) {:.4} Poise (Hct {:.1}%) | Shock Index {:.2}",
+                o.plasma_volume_delta_pct, o.apparent_blood_viscosity_poise, o.hematocrit_pct, o.shock_index
+            ));
+        }
+        if let Some(c) = circadian {
+            chain.push(format!(
+                "Mars Circadian: Sol frac {:.3} | S={:.2} | C={:.2} | Sleep Debt {:.1}h | PVT Lapse P={:.2}",
+                c.mars_sol_fraction, c.homeostatic_sleep_pressure_s, c.circadian_phase_c, c.sleep_debt_hours, c.pvt_lapse_probability
+            ));
+        }
+        if let Some(i) = immune {
+            chain.push(format!(
+                "Space Immunology: Stress {:.2} | Th1/Th2 {:.2} | Viral Reactivation Risk {:.1}% (Shedding suspected: {})",
+                i.neuroendocrine_stress_score, i.th1_th2_cytokine_ratio, i.viral_reactivation_risk_pct, i.vzv_ebv_active_shedding_suspected
+            ));
+        }
+
         (pocus, chain)
+    }
+
+    /// Aggiorna lo stato dei nodi nel grafo `petgraph` e restituisce la sintesi causale attiva.
+    pub fn update_and_extract_causal_chain(
+        &mut self,
+        musculo: &Musculoskeletal,
+        jugular: &JugularHemodynamics,
+        sans: &SansOcular,
+        radiation_msv_d: f64,
+    ) -> (PocusPosteriorEstimate, Vec<String>) {
+        self.update_and_extract_causal_chain_ext(
+            musculo,
+            jugular,
+            sans,
+            radiation_msv_d,
+            1.8,
+            None,
+            None,
+            None,
+            None,
+        )
     }
 }
 
@@ -252,8 +452,8 @@ mod tests {
     #[test]
     fn test_adhg_graph_updates_nodes_and_builds_causal_chain() {
         let mut engine = AdhgCausalEngine::new();
-        assert_eq!(engine.graph().node_count(), 8);
-        assert_eq!(engine.graph().edge_count(), 8);
+        assert_eq!(engine.graph().node_count(), 13);
+        assert_eq!(engine.graph().edge_count(), 16);
 
         let musculo = compute_musculoskeletal_state(90, 0.0);
         let scenario = StressTestScenarioInput {

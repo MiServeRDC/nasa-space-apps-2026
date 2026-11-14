@@ -1262,6 +1262,17 @@ mod tests {
             radiation_dose_rate_msv_d: 0.45,
             sqi_score: 0.90,
             missing_channels: Vec::new(),
+            sbp_mmhg: None,
+            dbp_mmhg: None,
+            ptt_ms: None,
+            core_temp_celsius: None,
+            skin_temp_celsius: None,
+            sleep_stage_code: None,
+            melanopic_edi_lux: None,
+            personal_dose_rate_ugy_h: None,
+            let_quality_factor: None,
+            suit_metabolic_watts: None,
+            helmet_ppco2_mmhg: None,
         }
     }
 

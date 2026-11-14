@@ -59,6 +59,8 @@ fn build_telemetry_packet(
         anticoagulant_lock_active: true,
         lbnp_auto_vent_armed: true,
         eva_suit_damping_active: what_if,
+        gate4_invasive_decompression_locked: true,
+        gate4_eva_fitness_no_go: false,
     };
 
     TelemetryPacket {
@@ -105,6 +107,17 @@ fn build_telemetry_packet(
             radiation_dose_rate_msv_d: radiation_msv_d,
             sqi_score: 0.94,
             missing_channels: missing,
+            sbp_mmhg: None,
+            dbp_mmhg: None,
+            ptt_ms: None,
+            core_temp_celsius: None,
+            skin_temp_celsius: None,
+            sleep_stage_code: None,
+            melanopic_edi_lux: None,
+            personal_dose_rate_ugy_h: None,
+            let_quality_factor: None,
+            suit_metabolic_watts: None,
+            helmet_ppco2_mmhg: None,
         },
         musculoskeletal: Musculoskeletal {
             ared_daily_load_kgf: if what_if { 15.0 } else { 128.0 },
@@ -145,6 +158,10 @@ fn build_telemetry_packet(
             ttv_ci95_high_hours: if with_hrv { Some(192.0) } else { None },
             mri_pct: if with_hrv { Some(81.0) } else { None },
             ttv_interval_kind: Some(TtvIntervalKind::IllustrativeScenarioRange),
+            rho_renal: Some(0.44),
+            rho_orthostatic: Some(0.65),
+            rho_circadian: Some(0.81),
+            rho_immune: Some(0.70),
         },
         active_playbook: ActivePlaybook {
             playbook_id: playbook_id.to_string(),
@@ -158,6 +175,11 @@ fn build_telemetry_packet(
                 delta_rho_per_hour: 0.15,
             }],
         },
+        spot_poct: None,
+        renal_nephrolithiasis: None,
+        orthostatic_fluid: None,
+        mars_circadian_sleep: None,
+        neuro_immune_viral: None,
     }
 }
 

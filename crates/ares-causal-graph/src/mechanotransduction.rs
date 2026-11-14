@@ -61,7 +61,7 @@ pub fn compute_musculoskeletal_state(
     compute_musculoskeletal_state_with_policy(
         flight_day,
         ared_daily_load_kgf,
-        Rk4HorizonPolicy::Bounded60DaysLegacy,
+        Rk4HorizonPolicy::AdaptiveUnbounded { max_dt_days: 0.5 },
     )
 }
 

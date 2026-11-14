@@ -63,6 +63,8 @@ pub const FLAG_CHANNEL_NAN_DROPOUT: u32 = 1 << 8;
 pub const FLAG_CONFORMAL_ABSTAINED: u32 = 1 << 9;
 pub const FLAG_SEU_RECOVERY_ACTIVE: u32 = 1 << 10;
 pub const FLAG_TERRESTRIAL_BENCHMARKED_ONLY: u32 = 1 << 11;
+pub const FLAG_GATE4A_DECOMPRESSION_LOCK: u32 = 1 << 12;
+pub const FLAG_GATE4B_EVA_NO_GO: u32 = 1 << 13;
 
 /// Reflected Castagnoli CRC-32C polynomial (`0x1EDC6F41` -> `0x82F63B78`).
 const CRC32C_POLY_REFLECTED: u32 = 0x82F6_3B78;
@@ -399,6 +401,12 @@ impl BinaryTelemetryFrame {
         }
         if pkt.active_playbook.safety_gates.eva_suit_damping_active {
             quality_flags_mask |= FLAG_GATE3_EVA_DAMPING;
+        }
+        if pkt.active_playbook.safety_gates.gate4_invasive_decompression_locked {
+            quality_flags_mask |= FLAG_GATE4A_DECOMPRESSION_LOCK;
+        }
+        if pkt.active_playbook.safety_gates.gate4_eva_fitness_no_go {
+            quality_flags_mask |= FLAG_GATE4B_EVA_NO_GO;
         }
         if matches!(
             pkt.biometrics.hrv_unavailable_reason,
@@ -835,6 +843,17 @@ mod tests {
                 radiation_dose_rate_msv_d: 0.45,
                 sqi_score: 0.88,
                 missing_channels: missing,
+                sbp_mmhg: Some(118.0),
+                dbp_mmhg: Some(78.0),
+                ptt_ms: Some(210.0),
+                core_temp_celsius: Some(36.8),
+                skin_temp_celsius: Some(33.5),
+                sleep_stage_code: Some(2),
+                melanopic_edi_lux: Some(450.0),
+                personal_dose_rate_ugy_h: Some(18.5),
+                let_quality_factor: Some(2.8),
+                suit_metabolic_watts: Some(220.0),
+                helmet_ppco2_mmhg: Some(2.1),
             },
             musculoskeletal: Musculoskeletal {
                 ared_daily_load_kgf: 125.0,
@@ -871,6 +890,10 @@ mod tests {
                 ttv_ci95_high_hours: if with_hrv { Some(220.0) } else { None },
                 mri_pct: if with_hrv { Some(82.5) } else { None },
                 ttv_interval_kind: Some(TtvIntervalKind::IllustrativeScenarioRange),
+                rho_renal: Some(0.44),
+                rho_orthostatic: Some(0.65),
+                rho_circadian: Some(0.81),
+                rho_immune: Some(0.70),
             },
             active_playbook: ActivePlaybook {
                 playbook_id: "PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED".to_string(),
@@ -880,6 +903,8 @@ mod tests {
                     anticoagulant_lock_active: true,
                     lbnp_auto_vent_armed: true,
                     eva_suit_damping_active: false,
+                    gate4_invasive_decompression_locked: true,
+                    gate4_eva_fitness_no_go: false,
                 },
                 actions: vec![CountermeasureAction {
                     action_id: "ACT_ARED".to_string(),
@@ -888,6 +913,11 @@ mod tests {
                     delta_rho_per_hour: 0.11,
                 }],
             },
+            spot_poct: None,
+            renal_nephrolithiasis: None,
+            orthostatic_fluid: None,
+            mars_circadian_sleep: None,
+            neuro_immune_viral: None,
         }
     }
 

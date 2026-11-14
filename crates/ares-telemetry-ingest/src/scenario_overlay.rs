@@ -83,6 +83,17 @@ pub fn biometrics_with_signal_quality(
         radiation_dose_rate_msv_d: scenario.radiation_dose_rate_msv_d.clamp(0.0, 50.0),
         sqi_score: eval.sqi_score,
         missing_channels,
+        sbp_mmhg: None,
+        dbp_mmhg: None,
+        ptt_ms: None,
+        core_temp_celsius: None,
+        skin_temp_celsius: None,
+        sleep_stage_code: None,
+        melanopic_edi_lux: None,
+        personal_dose_rate_ugy_h: None,
+        let_quality_factor: None,
+        suit_metabolic_watts: None,
+        helmet_ppco2_mmhg: None,
     }
 }
 

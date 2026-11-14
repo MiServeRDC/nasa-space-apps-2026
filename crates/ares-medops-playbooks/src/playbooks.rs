@@ -1,27 +1,107 @@
-//! Fase 10 (E1): Esecutore deterministico Type-1 Crystallized dei 5 Playbook MedOps (#01-#05).
+//! Fase 10 (E1) & Fase 41 (N4): Esecutore deterministico Type-1 Crystallized dei 15 Playbook MedOps (#01-#15).
 
+use crate::pocus_multiorgan::{PocusEfastScan, PocusRenalBladderScan};
 use ares_core_types::telemetry::{
     ActivePlaybook, Biometrics, CountermeasureAction, JugularHemodynamics, Musculoskeletal,
     NqsStlMargins, SafetyGates,
 };
 use ares_core_types::{AnomalyDetectorKind, AnomalyStatus, VitalsAnomalyReport};
 
-/// Seleziona deterministicamente il Playbook candidato prima dell'applicazione finale dei Safety Gates.
+/// Seleziona deterministicamente il Playbook candidato secondo la gerarchia clinica rigorosa (Carbon Condition 9):
+/// 1. Trauma / Shock / Pneumotorace (#15)
+/// 2. Allarmi Fisiologici Acuti Vitals (#06, #07, #09)
+/// 3. Urgenze d'Organo (#02 Trombo IJV, #10 Litiasi Renale, #14 Ipercapnia ECLSS)
+/// 4. Rischi Subacuti / Cronici (#05 Radiazioni, #01 Stasi IJV, #04 SANS, #11 Fluid Loading Marte, #12 Circadiano Sol, #13 Immunologia, #08 Perdita Sensore, #03 ARED Base)
 #[inline]
-pub fn select_candidate_playbook(
+#[allow(clippy::too_many_arguments)]
+pub fn select_candidate_playbook_ext(
     biometrics: &Biometrics,
     musculo: &Musculoskeletal,
     jugular: &JugularHemodynamics,
     nqs: &NqsStlMargins,
-    causal_chain_summary: Vec<String>,
+    mut causal_chain_summary: Vec<String>,
+    efast: Option<&PocusEfastScan>,
+    renal_pocus: Option<&PocusRenalBladderScan>,
+    vitals_report: Option<&VitalsAnomalyReport>,
+    _flight_sol: u32,
+    fatigue_score: Option<f64>,
+    immune_risk_pct: Option<f64>,
 ) -> ActivePlaybook {
     let default_gates = SafetyGates {
         anticoagulant_lock_active: !jugular.pocus_thrombus_confirmed,
         lbnp_auto_vent_armed: true,
         eva_suit_damping_active: musculo.gai_pct > 12.0,
+        gate4_invasive_decompression_locked: true,
+        gate4_eva_fitness_no_go: false,
     };
 
-    // Priorita 1: Trombo giugulare confermato al POCUS B-Mode (#02)
+    // LIVELLO 1: Trauma, Barotrauma da Decompressione o Shock Severo (Playbook #15)
+    let shock_index = biometrics.sbp_mmhg.and_then(|sbp| {
+        if sbp > 0.0 {
+            Some(biometrics.heart_rate_bpm.unwrap_or(72.0) / sbp)
+        } else {
+            None
+        }
+    });
+    let trauma_finding = efast.is_some_and(|e| e.has_any_trauma_finding());
+    let shock_severe = shock_index.is_some_and(|si| si >= 1.20);
+    if trauma_finding || shock_severe {
+        if let Some(e) = efast {
+            if e.is_pneumothorax_verified() {
+                causal_chain_summary.push("eFAST confirmed pneumothorax: absent lung sliding and M-mode barcode".to_string());
+            } else if e.has_abdominal_free_fluid() {
+                causal_chain_summary.push("eFAST confirmed abdominal free fluid in peritoneal windows".to_string());
+            } else if e.has_pericardial_tamponade_risk() {
+                causal_chain_summary.push("eFAST confirmed pericardial effusion with tamponade risk".to_string());
+            }
+        }
+        if shock_severe {
+            causal_chain_summary.push("Severe cardiovascular shock: Shock Index >= 1.20".to_string());
+        }
+        return ActivePlaybook {
+            playbook_id: "PLAYBOOK_15_EFAST_TRAUMA_TRIAGE".to_string(),
+            title: "Playbook #15: eFAST Thoraco-Abdominal Trauma Triage & Needle Thoracostomy Protocol".to_string(),
+            causal_chain_summary,
+            safety_gates: default_gates,
+            actions: vec![
+                CountermeasureAction {
+                    action_id: "ACT_RAPID_5_WINDOW_EFAST_SCAN".to_string(),
+                    label: "Execute systematic eFAST ultrasound protocol (RUQ, LUQ, pelvic, subxiphoid, bilateral thoracic)".to_string(),
+                    category: "DIAGNOSTIC_VERIFICATION".to_string(),
+                    delta_rho_per_hour: 0.0,
+                },
+                CountermeasureAction {
+                    action_id: "ACT_PLEURAL_M_MODE_BARCODE_VERIFY".to_string(),
+                    label: "Obtain thoracic M-mode clips over 2nd intercostal mid-clavicular line to assess seashore vs barcode sign".to_string(),
+                    category: "DIAGNOSTIC_VERIFICATION".to_string(),
+                    delta_rho_per_hour: 0.0,
+                },
+                CountermeasureAction {
+                    action_id: "ACT_NEEDLE_DECOMPRESSION_2ND_ICL".to_string(),
+                    label: "Perform emergency needle decompression 2nd intercostal mid-clavicular line (requires Gate 4 confirmation)".to_string(),
+                    category: "INVASIVE_PROCEDURE".to_string(),
+                    delta_rho_per_hour: 0.35,
+                },
+                CountermeasureAction {
+                    action_id: "ACT_INTRAVENOUS_ACCESS_AND_AUTOTRANSFUSION".to_string(),
+                    label: "Establish bilateral large-bore peripheral access and prepare closed autotransfusion set".to_string(),
+                    category: "CLINICAL_COUNTERMEASURE".to_string(),
+                    delta_rho_per_hour: 0.20,
+                },
+            ],
+        };
+    }
+
+    // LIVELLO 2: Allarmi Fisiologici Acuti Vitals (#06 Desaturazione, #07 Frequenza Cardiaca, #09 Multiparametrico)
+    if let Some(acute_pb) = vitals_report
+        .and_then(|report| select_vitals_anomaly_playbook(report, default_gates))
+        .filter(|pb| pb.playbook_id != "PLAYBOOK_08_SENSOR_SIGNAL_LOSS")
+    {
+        return acute_pb;
+    }
+
+    // LIVELLO 3: Urgenze d'Organo (#02 Trombo IJV, #10 Litiasi Renale, #14 Ipercapnia ECLSS)
+    // 3A: Trombo giugulare confermato al POCUS B-Mode (#02)
     if jugular.pocus_thrombus_confirmed {
         return ActivePlaybook {
             playbook_id: "PLAYBOOK_02_CONFIRMED_IJV_THROMBUS".to_string(),
@@ -31,17 +111,13 @@ pub fn select_candidate_playbook(
             actions: vec![
                 CountermeasureAction {
                     action_id: "ACT_ANTICOAG_ENOXAPARIN".to_string(),
-                    label:
-                        "Initiate weight-adjusted Enoxaparin / Apixaban (POCUS thrombus verified)"
-                            .to_string(),
+                    label: "Initiate weight-adjusted Enoxaparin / Apixaban (POCUS thrombus verified)".to_string(),
                     category: "PHARMACOLOGICAL_UNLOCKED".to_string(),
                     delta_rho_per_hour: 0.22,
                 },
                 CountermeasureAction {
                     action_id: "ACT_SUSPEND_VALSALVA_ARED".to_string(),
-                    label:
-                        "Suspend high-Valsalva heavy ARED squats to prevent thrombus embolization"
-                            .to_string(),
+                    label: "Suspend high-Valsalva heavy ARED squats to prevent thrombus embolization".to_string(),
                     category: "MECHANICAL_RESTRICTION".to_string(),
                     delta_rho_per_hour: 0.15,
                 },
@@ -49,7 +125,76 @@ pub fn select_candidate_playbook(
         };
     }
 
-    // Priorita 2: Allerta Radiazioni Solari CSA CANS (#05)
+    // 3B: Rischio Litiasi Renale / Ritenzione Vescicale (#10)
+    let renal_critical = nqs.rho_renal.is_some_and(|r| r < 0.20)
+        || renal_pocus.is_some_and(|r| r.is_colic_risk() || r.is_urinary_retention());
+    if renal_critical {
+        return ActivePlaybook {
+            playbook_id: "PLAYBOOK_10_RENAL_LITHIASIS".to_string(),
+            title: "Playbook #10: Renal Lithiasis Hydration, Citrate Buffering & Bladder Protocol".to_string(),
+            causal_chain_summary,
+            safety_gates: default_gates,
+            actions: vec![
+                CountermeasureAction {
+                    action_id: "ACT_POCUS_RENAL_BLADDER_SCAN".to_string(),
+                    label: "Execute guided renal and bladder ultrasound (assess hydronephrosis and bladder volume)".to_string(),
+                    category: "DIAGNOSTIC_VERIFICATION".to_string(),
+                    delta_rho_per_hour: 0.12,
+                },
+                CountermeasureAction {
+                    action_id: "ACT_ORAL_HYDRATION_BOLUS_1000ML".to_string(),
+                    label: "Administer 1.0 L balanced oral electrolyte solution over 60 minutes".to_string(),
+                    category: "METABOLIC_COUNTERMEASURE".to_string(),
+                    delta_rho_per_hour: 0.25,
+                },
+                CountermeasureAction {
+                    action_id: "ACT_PHARMACOLOGICAL_POTASSIUM_CITRATE_30MEQ".to_string(),
+                    label: "Initiate Potassium Citrate 30 mEq PO daily to alkalinize urine and chelate calcium".to_string(),
+                    category: "PHARMACOLOGICAL_UNLOCKED".to_string(),
+                    delta_rho_per_hour: 0.18,
+                },
+                CountermeasureAction {
+                    action_id: "ACT_ANALGESIA_KETOROLAC_AND_TAMSULOSIN".to_string(),
+                    label: "Administer Ketorolac 10 mg IM/IV + Tamsulosin 0.4 mg PO for ureteral smooth muscle relaxation".to_string(),
+                    category: "PHARMACOLOGICAL_UNLOCKED".to_string(),
+                    delta_rho_per_hour: 0.15,
+                },
+            ],
+        };
+    }
+
+    // 3C: Ipercapnia Ambientale Cabin ppCO2 > 3.0 mmHg (#14)
+    if biometrics.helmet_ppco2_mmhg.is_some_and(|co2| co2 > 3.0) {
+        return ActivePlaybook {
+            playbook_id: "PLAYBOOK_14_CO2_SCRUBBER_SANS".to_string(),
+            title: "Playbook #14: Cabin ppCO2 Hypercapnia Scrubbing & Ocular Vasodilation Mitigation".to_string(),
+            causal_chain_summary,
+            safety_gates: default_gates,
+            actions: vec![
+                CountermeasureAction {
+                    action_id: "ACT_INSPECT_CDRA_DESICCANT_BEDS".to_string(),
+                    label: "Verify Carbon Dioxide Removal Assembly cycle timing and inspect backup LiOH canisters".to_string(),
+                    category: "ENVIRONMENTAL_CHECK".to_string(),
+                    delta_rho_per_hour: 0.30,
+                },
+                CountermeasureAction {
+                    action_id: "ACT_DEPLOY_PORTABLE_CABIN_FANS".to_string(),
+                    label: "Install supplementary duct fans in crew sleeping quarters to eliminate microgravity CO2 pockets".to_string(),
+                    category: "ENVIRONMENTAL_CHECK".to_string(),
+                    delta_rho_per_hour: 0.15,
+                },
+                CountermeasureAction {
+                    action_id: "ACT_SERIAL_SANS_OCULAR_MONITORING".to_string(),
+                    label: "Acquire repeat optic nerve sheath ultrasound (ONSD) and tonometry intraocular pressure".to_string(),
+                    category: "DIAGNOSTIC_VERIFICATION".to_string(),
+                    delta_rho_per_hour: 0.10,
+                },
+            ],
+        };
+    }
+
+    // LIVELLO 4: Rischi Subacuti / Cronici
+    // 4A: Allerta Radiazioni Solari SPE CSA CANS (#05)
     if biometrics.radiation_dose_rate_msv_d > 1.5 {
         return ActivePlaybook {
             playbook_id: "PLAYBOOK_05_SPE_RADIATION_SHELTER_CANS".to_string(),
@@ -59,16 +204,13 @@ pub fn select_candidate_playbook(
             actions: vec![
                 CountermeasureAction {
                     action_id: "ACT_STORM_SHELTER_INGRESS".to_string(),
-                    label: "Relocate crew to polyethylene/water-shielded habitat core immediately"
-                        .to_string(),
+                    label: "Relocate crew to polyethylene/water-shielded habitat core immediately".to_string(),
                     category: "RADIATION_ALARA".to_string(),
                     delta_rho_per_hour: 0.28,
                 },
                 CountermeasureAction {
                     action_id: "ACT_ENDOTHELIAL_ANTIOXIDANT".to_string(),
-                    label:
-                        "Administer endothelial antioxidant & B-Complex radioprotective protocol"
-                            .to_string(),
+                    label: "Administer endothelial antioxidant & B-Complex radioprotective protocol".to_string(),
                     category: "METABOLIC_COUNTERMEASURE".to_string(),
                     delta_rho_per_hour: 0.09,
                 },
@@ -76,7 +218,7 @@ pub fn select_candidate_playbook(
         };
     }
 
-    // Priorita 3: Stasi Venosa Giugulare / Shear Stress Critico senza trombo (#01)
+    // 4B: Stasi Venosa Giugulare / Shear Stress Critico (#01)
     if nqs.rho_tau_w < 0.15 {
         return ActivePlaybook {
             playbook_id: "PLAYBOOK_01_VENOUS_STASIS_LBNP".to_string(),
@@ -100,26 +242,124 @@ pub fn select_candidate_playbook(
         };
     }
 
-    // Priorita 4: Rischio Neuro-Oculare SANS (#04)
+    // 4C: Rischio Neuro-Oculare SANS (#04)
     if nqs.rho_sans < 0.20 {
         return ActivePlaybook {
             playbook_id: "PLAYBOOK_04_SANS_TRANSLAMINAR_MITIGATION".to_string(),
-            title: "Playbook #04: SANS Translaminar Pressure & Venous Decongestion Protocol"
-                .to_string(),
+            title: "Playbook #04: SANS Translaminar Pressure & Venous Decongestion Protocol".to_string(),
             causal_chain_summary,
             safety_gates: default_gates,
             actions: vec![CountermeasureAction {
                 action_id: "ACT_VENOUS_THIGH_CUFFS".to_string(),
-                label:
-                    "Apply calibrated lower-extremity Venous Thigh Cuffs (50 mmHg) + nocturnal LBNP"
-                        .to_string(),
+                label: "Apply calibrated lower-extremity Venous Thigh Cuffs (50 mmHg) + nocturnal LBNP".to_string(),
                 category: "PHYSICAL_HEMODYNAMIC".to_string(),
                 delta_rho_per_hour: 0.14,
             }],
         };
     }
 
-    // Default / Priorita 5: Ottimizzazione Meccanotrasduzione ARED & Osso (#03)
+    // 4D: Rischio Emodinamico Collasso Ortostatico Marte 0.38g (#11)
+    if nqs.rho_orthostatic.is_some_and(|o| o < 0.25) {
+        return ActivePlaybook {
+            playbook_id: "PLAYBOOK_11_MARS_ENTRY_FLUID_LOADING".to_string(),
+            title: "Playbook #11: Mars Entry 0.38g Pre-Landing Fluid Loading & Orthostatic Protocol".to_string(),
+            causal_chain_summary,
+            safety_gates: default_gates,
+            actions: vec![
+                CountermeasureAction {
+                    action_id: "ACT_ISOTONIC_SALT_WATER_LOADING_15ML_KG".to_string(),
+                    label: "Ingest 15 mL/kg body mass of isotonic electrolyte solution within 2 hours of entry burn".to_string(),
+                    category: "METABOLIC_COUNTERMEASURE".to_string(),
+                    delta_rho_per_hour: 0.28,
+                },
+                CountermeasureAction {
+                    action_id: "ACT_DON_ANTI_G_COMPRESSION_GARMENT".to_string(),
+                    label: "Don inflatable abdominal-thigh compression garment set to 35-45 mmHg gradient".to_string(),
+                    category: "PHYSICAL_HEMODYNAMIC".to_string(),
+                    delta_rho_per_hour: 0.22,
+                },
+                CountermeasureAction {
+                    action_id: "ACT_SEATED_BAROREFLEX_CHALLENGE".to_string(),
+                    label: "Perform active 3-minute seated orthostatic baroreflex test with continuous BP monitoring".to_string(),
+                    category: "CLINICAL_ASSESSMENT".to_string(),
+                    delta_rho_per_hour: 0.10,
+                },
+            ],
+        };
+    }
+
+    // 4E: Desincronizzazione Circadiana Sol Marte & Fatica Cognitiva (#12)
+    let circadian_risk = nqs.rho_circadian.is_some_and(|c| c < 0.25)
+        || fatigue_score.is_some_and(|f| f > 0.55);
+    if circadian_risk {
+        return ActivePlaybook {
+            playbook_id: "PLAYBOOK_12_CIRCADIAN_LIGHT_HYGIENE".to_string(),
+            title: "Playbook #12: Mars Sol Circadian Phototherapy, Blue Enrichment & Sleep Hygiene".to_string(),
+            causal_chain_summary,
+            safety_gates: default_gates,
+            actions: vec![
+                CountermeasureAction {
+                    action_id: "ACT_MELANOPIC_LIGHT_480NM_450LUX".to_string(),
+                    label: "Deliver 45 minutes of 480 nm blue-enriched light (> 450 EDI lux) immediately upon waking".to_string(),
+                    category: "ENVIRONMENTAL_CHECK".to_string(),
+                    delta_rho_per_hour: 0.20,
+                },
+                CountermeasureAction {
+                    action_id: "ACT_BLUE_DEPLETION_EVENING_FILTER".to_string(),
+                    label: "Enforce optical blue-blocking eyewear (< 10 lux melanopic) starting 2 hours prior to scheduled sleep".to_string(),
+                    category: "ENVIRONMENTAL_CHECK".to_string(),
+                    delta_rho_per_hour: 0.15,
+                },
+                CountermeasureAction {
+                    action_id: "ACT_ECLSS_BERTH_ACOUSTIC_MITIGATION".to_string(),
+                    label: "Deploy active noise cancellation and verify sleeping berth acoustic levels < 48 dBA".to_string(),
+                    category: "ENVIRONMENTAL_CHECK".to_string(),
+                    delta_rho_per_hour: 0.10,
+                },
+            ],
+        };
+    }
+
+    // 4F: Disregolazione Immunitaria & Riattivazione Virale (#13)
+    let immune_risk = nqs.rho_immune.is_some_and(|i| i < 0.25)
+        || immune_risk_pct.is_some_and(|im| im >= 60.0);
+    if immune_risk {
+        return ActivePlaybook {
+            playbook_id: "PLAYBOOK_13_VIRAL_IMMUNE_VALACYCLOVIR".to_string(),
+            title: "Playbook #13: Spaceflight Immune Dysregulation & Latent Herpesvirus Reactivation Protocol".to_string(),
+            causal_chain_summary,
+            safety_gates: default_gates,
+            actions: vec![
+                CountermeasureAction {
+                    action_id: "ACT_CLINICAL_DERMATOMIC_INSPECTION".to_string(),
+                    label: "Perform targeted examination of cranial nerves (V1 ophthalmic branch) and thoracic dermatomes".to_string(),
+                    category: "CLINICAL_ASSESSMENT".to_string(),
+                    delta_rho_per_hour: 0.10,
+                },
+                CountermeasureAction {
+                    action_id: "ACT_VALACYCLOVIR_ANTIVIRAL_THERAPY".to_string(),
+                    label: "Initiate Oral Valacyclovir 1000 mg TID for 7 days (cleared by Gate 1 non-anticoagulant filter)".to_string(),
+                    category: "PHARMACOLOGICAL_UNLOCKED".to_string(),
+                    delta_rho_per_hour: 0.25,
+                },
+                CountermeasureAction {
+                    action_id: "ACT_HABITAT_AIR_SURFACE_SANITIZATION".to_string(),
+                    label: "Boost photocatalytic oxidation and HEPA filtration cycle in crew living quarters".to_string(),
+                    category: "ENVIRONMENTAL_CHECK".to_string(),
+                    delta_rho_per_hour: 0.12,
+                },
+            ],
+        };
+    }
+
+    // 4G: Segnale Sensore Perso (Playbook #08)
+    if let Some(dropout_pb) =
+        vitals_report.and_then(|report| select_vitals_anomaly_playbook(report, default_gates))
+    {
+        return dropout_pb;
+    }
+
+    // 4H / Default: Ottimizzazione Meccanotrasduzione ARED & Osso (#03)
     ActivePlaybook {
         playbook_id: "PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED".to_string(),
         title: "Playbook #03: Frost Mechanostat ARED Loading & Renal Stone Prevention".to_string(),
@@ -140,6 +380,20 @@ pub fn select_candidate_playbook(
             },
         ],
     }
+}
+
+/// Seleziona deterministicamente il Playbook candidato (firma standard di retrocompatibilita).
+#[inline]
+pub fn select_candidate_playbook(
+    biometrics: &Biometrics,
+    musculo: &Musculoskeletal,
+    jugular: &JugularHemodynamics,
+    nqs: &NqsStlMargins,
+    causal_chain_summary: Vec<String>,
+) -> ActivePlaybook {
+    select_candidate_playbook_ext(
+        biometrics, musculo, jugular, nqs, causal_chain_summary, None, None, None, 0, None, None,
+    )
 }
 
 /// Acute vitals playbook (#06-#09) for an ALARM-level anomaly report, or `None`.
@@ -293,6 +547,17 @@ mod tests {
             radiation_dose_rate_msv_d: rad_msv_d,
             sqi_score: 0.92,
             missing_channels: vec![],
+            sbp_mmhg: None,
+            dbp_mmhg: None,
+            ptt_ms: None,
+            core_temp_celsius: None,
+            skin_temp_celsius: None,
+            sleep_stage_code: None,
+            melanopic_edi_lux: None,
+            personal_dose_rate_ugy_h: None,
+            let_quality_factor: None,
+            suit_metabolic_watts: None,
+            helmet_ppco2_mmhg: None,
         }
     }
 
@@ -339,6 +604,10 @@ mod tests {
             ttv_interval_kind: Some(
                 ares_core_types::telemetry::TtvIntervalKind::IllustrativeScenarioRange,
             ),
+            rho_renal: Some(0.44),
+            rho_orthostatic: Some(0.65),
+            rho_circadian: Some(0.81),
+            rho_immune: Some(0.70),
         }
     }
 
@@ -428,6 +697,8 @@ mod tests {
             anticoagulant_lock_active: true,
             lbnp_auto_vent_armed: true,
             eva_suit_damping_active: false,
+            gate4_invasive_decompression_locked: true,
+            gate4_eva_fitness_no_go: false,
         };
         let pick = |entries: &[(&str, AnomalyStatus, AnomalyDetectorKind)]| {
             select_vitals_anomaly_playbook(&anomaly_report(entries), gates).map(|p| p.playbook_id)
@@ -460,5 +731,66 @@ mod tests {
         .expect("playbook");
         assert_eq!(pb.causal_chain_summary, vec!["spo2_pct reason".to_string()]);
         assert_eq!(pb.safety_gates, gates);
+    }
+
+    #[test]
+    fn test_playbook_10_to_15_and_strict_hierarchy() {
+        let bio_nom = sample_biometrics(0.4);
+        let musc = sample_musculo();
+        let jug = sample_jugular(2.40, false);
+        let nqs_nom = sample_nqs(0.75, 0.75);
+
+        // Test Playbook #10 on low renal margin (< 0.20)
+        let mut nqs_renal = nqs_nom;
+        nqs_renal.rho_renal = Some(0.12);
+        let pb10 = select_candidate_playbook_ext(
+            &bio_nom, &musc, &jug, &nqs_renal, vec![], None, None, None, 0, None, None,
+        );
+        assert_eq!(pb10.playbook_id, "PLAYBOOK_10_RENAL_LITHIASIS");
+
+        // Test Playbook #14 on cabin CO2 > 3.0 mmHg
+        let bio_co2 = Biometrics {
+            helmet_ppco2_mmhg: Some(3.8),
+            ..bio_nom.clone()
+        };
+        let pb14 = select_candidate_playbook_ext(
+            &bio_co2, &musc, &jug, &nqs_nom, vec![], None, None, None, 0, None, None,
+        );
+        assert_eq!(pb14.playbook_id, "PLAYBOOK_14_CO2_SCRUBBER_SANS");
+
+        // Test Playbook #11 on low orthostatic margin (< 0.25)
+        let mut nqs_ortho = nqs_nom;
+        nqs_ortho.rho_orthostatic = Some(0.18);
+        let pb11 = select_candidate_playbook_ext(
+            &bio_nom, &musc, &jug, &nqs_ortho, vec![], None, None, None, 0, None, None,
+        );
+        assert_eq!(pb11.playbook_id, "PLAYBOOK_11_MARS_ENTRY_FLUID_LOADING");
+
+        // Test Playbook #12 on low circadian margin (< 0.25) or fatigue (> 0.55)
+        let mut nqs_circ = nqs_nom;
+        nqs_circ.rho_circadian = Some(0.15);
+        let pb12 = select_candidate_playbook_ext(
+            &bio_nom, &musc, &jug, &nqs_circ, vec![], None, None, None, 0, None, None,
+        );
+        assert_eq!(pb12.playbook_id, "PLAYBOOK_12_CIRCADIAN_LIGHT_HYGIENE");
+
+        // Test Playbook #13 on low immune margin (< 0.25) or immune risk >= 60%
+        let mut nqs_immune = nqs_nom;
+        nqs_immune.rho_immune = Some(0.14);
+        let pb13 = select_candidate_playbook_ext(
+            &bio_nom, &musc, &jug, &nqs_immune, vec![], None, None, None, 0, None, None,
+        );
+        assert_eq!(pb13.playbook_id, "PLAYBOOK_13_VIRAL_IMMUNE_VALACYCLOVIR");
+
+        // Test Playbook #15 outranks everything (Trauma finding in eFAST)
+        let efast_trauma = PocusEfastScan {
+            lung_sliding_absent: true,
+            m_mode_barcode_sign_confirmed: true,
+            ..Default::default()
+        };
+        let pb15 = select_candidate_playbook_ext(
+            &bio_co2, &musc, &jug, &nqs_renal, vec![], Some(&efast_trauma), None, None, 0, None, None,
+        );
+        assert_eq!(pb15.playbook_id, "PLAYBOOK_15_EFAST_TRAUMA_TRIAGE");
     }
 }

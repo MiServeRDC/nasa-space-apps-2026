@@ -45,6 +45,23 @@ pub const LBNP_MAX_SAFE_HR_BPM: f64 = 115.0;
 /// Hard Safety Gate 3: Soglia massima di asimmetria del passo (GAI %) a 0.38g (Marte).
 pub const GAI_MAX_SAFE_PCT: f64 = 12.0;
 
+/// Limite massimo ammissibile di ppCO2 in cabina secondo NASA-STD-3001 (mmHg).
+pub const MAX_SAFE_CABIN_PPCO2_MMHG: f64 = 3.0;
+
+/// Soglia di rischio litiasico renale da supersaturazione ossalato di calcio (Tiselius RSR).
+pub const RSR_CALCIUM_OXALATE_ATTENTION: f64 = 2.5;
+pub const RSR_CALCIUM_OXALATE_CRITICAL: f64 = 4.5;
+
+/// Soglie di Shock Index (HR / SBP) per ipovolemia e rischio collasso ortostatico.
+pub const SHOCK_INDEX_ATTENTION: f64 = 0.90;
+pub const SHOCK_INDEX_CRITICAL: f64 = 1.20;
+
+/// Durata nominale di un Sol marziano in secondi (24 ore, 39 minuti, 35.244 secondi).
+pub const MARS_SOL_SECONDS: f64 = 88775.244;
+
+/// Quota minima di fototerapia melanopica ad alto spettro blu-arricchito (EDI Lux).
+pub const MELANOPIC_LUX_THERAPY_MIN: f64 = 400.0;
+
 /// Limite massimo di token per singola risposta FastMCP Context-Mode (< 150 token ~= 600 byte).
 pub const MAX_MCP_CONTEXT_MODE_BYTES: usize = 600;
 

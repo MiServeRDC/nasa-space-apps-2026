@@ -600,7 +600,7 @@ pub struct NormativeClinicalGrounding {
     pub descriptor: BiomedicalEvidenceDescriptor,
 }
 
-const GROUNDING_TABLE: [NormativeClinicalGrounding; 8] = [
+const GROUNDING_TABLE: [NormativeClinicalGrounding; 13] = [
     NormativeClinicalGrounding {
         adhg_node: AdhgNodeKind::AredMechanicalLoad,
         normative_clause: NormativeClauseId::V1_3002_MusculoskeletalAred,
@@ -755,6 +755,101 @@ const GROUNDING_TABLE: [NormativeClinicalGrounding; 8] = [
             deontic_flags::GATE2_LBNP_AUTO_VENT,
         ),
     },
+    NormativeClinicalGrounding {
+        adhg_node: AdhgNodeKind::CabinHypercapniaEnv,
+        normative_clause: NormativeClauseId::V2_6001_AcousticAndCo2Limits,
+        anatomical_region: AnatomicalRegionId::BrainVestibularCns,
+        habitat_zone: HabitatZoneId::AredExerciseBay,
+        playbook_id: "PLAYBOOK_14_CO2_SCRUBBER_SANS",
+        playbook_number: 14,
+        descriptor: BiomedicalEvidenceDescriptor::new(
+            31, // ECLSS Atmosphere
+            NormativeClauseId::V2_6001_AcousticAndCo2Limits.numeric_id(),
+            8058,
+            AnatomicalRegionId::BrainVestibularCns.uberon_numeric(),
+            312, // d = +1.22
+            16,
+            EvidenceGrade::High as u8,
+            14,
+            0,
+        ),
+    },
+    NormativeClinicalGrounding {
+        adhg_node: AdhgNodeKind::RenalSupersaturationRsr,
+        normative_clause: NormativeClauseId::V2_6026_RenalStoneHydration,
+        anatomical_region: AnatomicalRegionId::HeartCardioAutonomic,
+        habitat_zone: HabitatZoneId::MedOpsUltrasoundBay,
+        playbook_id: "PLAYBOOK_10_RENAL_LITHIASIS",
+        playbook_number: 10,
+        descriptor: BiomedicalEvidenceDescriptor::new(
+            32, // Renal Tiselius Model
+            NormativeClauseId::V2_6026_RenalStoneHydration.numeric_id(),
+            8059,
+            AnatomicalRegionId::HeartCardioAutonomic.uberon_numeric(),
+            384, // d = +1.50
+            28,
+            EvidenceGrade::High as u8,
+            10,
+            0,
+        ),
+    },
+    NormativeClinicalGrounding {
+        adhg_node: AdhgNodeKind::PlasmaVolumeOrthostatic,
+        normative_clause: NormativeClauseId::V1_3003_PreventiveMonitoring,
+        anatomical_region: AnatomicalRegionId::HeartCardioAutonomic,
+        habitat_zone: HabitatZoneId::LbnpChamber,
+        playbook_id: "PLAYBOOK_11_MARS_ENTRY_FLUID_LOADING",
+        playbook_number: 11,
+        descriptor: BiomedicalEvidenceDescriptor::new(
+            33, // Gauer-Henry Hemodynamics
+            NormativeClauseId::V1_3003_PreventiveMonitoring.numeric_id(),
+            8060,
+            AnatomicalRegionId::HeartCardioAutonomic.uberon_numeric(),
+            -307, // d = -1.20
+            30,
+            EvidenceGrade::High as u8,
+            11,
+            deontic_flags::GATE2_LBNP_AUTO_VENT,
+        ),
+    },
+    NormativeClinicalGrounding {
+        adhg_node: AdhgNodeKind::MarsCircadianCognitiveFatigue,
+        normative_clause: NormativeClauseId::V1_3001_CrewHealth,
+        anatomical_region: AnatomicalRegionId::BrainVestibularCns,
+        habitat_zone: HabitatZoneId::SleepQuarters,
+        playbook_id: "PLAYBOOK_12_CIRCADIAN_LIGHT_HYGIENE",
+        playbook_number: 12,
+        descriptor: BiomedicalEvidenceDescriptor::new(
+            34, // Borbely Two-Process Model
+            NormativeClauseId::V1_3001_CrewHealth.numeric_id(),
+            8061,
+            AnatomicalRegionId::BrainVestibularCns.uberon_numeric(),
+            256, // d = +1.00
+            45,
+            EvidenceGrade::High as u8,
+            12,
+            0,
+        ),
+    },
+    NormativeClinicalGrounding {
+        adhg_node: AdhgNodeKind::NeuroImmuneViralReactivation,
+        normative_clause: NormativeClauseId::V1_3001_CrewHealth,
+        anatomical_region: AnatomicalRegionId::HeartCardioAutonomic,
+        habitat_zone: HabitatZoneId::MedOpsUltrasoundBay,
+        playbook_id: "PLAYBOOK_13_VIRAL_IMMUNE_VALACYCLOVIR",
+        playbook_number: 13,
+        descriptor: BiomedicalEvidenceDescriptor::new(
+            35, // Immune Th1/Th2 Dysregulation
+            NormativeClauseId::V1_3001_CrewHealth.numeric_id(),
+            8062,
+            AnatomicalRegionId::HeartCardioAutonomic.uberon_numeric(),
+            294, // d = +1.15
+            24,
+            EvidenceGrade::Moderate as u8,
+            13,
+            0,
+        ),
+    },
 ];
 
 /// O(1) lookup connecting any `AdhgNodeKind` to its normative `NASA-STD-3001` /
@@ -771,13 +866,18 @@ pub const fn ground_adhg_node_o1(kind: AdhgNodeKind) -> &'static NormativeClinic
         AdhgNodeKind::IjvVenousStasisShearStress => 5,
         AdhgNodeKind::PocusThrombusPosterior => 6,
         AdhgNodeKind::SansTranslaminarGradient => 7,
+        AdhgNodeKind::CabinHypercapniaEnv => 8,
+        AdhgNodeKind::RenalSupersaturationRsr => 9,
+        AdhgNodeKind::PlasmaVolumeOrthostatic => 10,
+        AdhgNodeKind::MarsCircadianCognitiveFatigue => 11,
+        AdhgNodeKind::NeuroImmuneViralReactivation => 12,
     };
     &GROUNDING_TABLE[idx]
 }
 
-/// Returns the entire static 8-entry normative grounding table.
+/// Returns the entire static 13-entry normative grounding table.
 #[inline]
-pub const fn all_normative_groundings() -> &'static [NormativeClinicalGrounding; 8] {
+pub const fn all_normative_groundings() -> &'static [NormativeClinicalGrounding; 13] {
     &GROUNDING_TABLE
 }
 
@@ -885,21 +985,11 @@ mod tests {
 
     #[test]
     fn test_o1_normative_grounding_covers_all_adhg_nodes_and_clauses() {
-        let all_nodes = [
-            AdhgNodeKind::AredMechanicalLoad,
-            AdhgNodeKind::SoleusMuscleQualityMqi,
-            AdhgNodeKind::OsteocyteSclerostinSost,
-            AdhgNodeKind::EndothelialProtectiveSecretome,
-            AdhgNodeKind::CansRadiationOxidativeStress,
-            AdhgNodeKind::IjvVenousStasisShearStress,
-            AdhgNodeKind::PocusThrombusPosterior,
-            AdhgNodeKind::SansTranslaminarGradient,
-        ];
-        for k in all_nodes {
+        for k in AdhgNodeKind::ALL {
             let g = ground_adhg_node_o1(k);
             assert_eq!(g.adhg_node, k);
             assert!(g.descriptor.verify_crc().is_ok());
-            assert!(g.playbook_id.starts_with("PLAYBOOK_0"));
+            assert!(g.playbook_id.starts_with("PLAYBOOK_"));
         }
         assert_eq!(
             NormativeClauseId::V1_3001_CrewHealth.official_code(),

@@ -13,6 +13,22 @@ pub fn evaluate_nqs_stl_and_mri(
     jugular: &JugularHemodynamics,
     sans: &SansOcular,
 ) -> (NqsStlMargins, AlertSeverity) {
+    evaluate_nqs_stl_and_mri_ext(biometrics, musculo, jugular, sans, None, None, None, None)
+}
+
+/// Versione estesa di valutazione NQS-STL che include i margini di Blocco N:
+/// rho_renal, rho_orthostatic, rho_circadian, rho_immune.
+#[allow(clippy::too_many_arguments)]
+pub fn evaluate_nqs_stl_and_mri_ext(
+    biometrics: &Biometrics,
+    musculo: &Musculoskeletal,
+    jugular: &JugularHemodynamics,
+    sans: &SansOcular,
+    renal: Option<&ares_core_types::telemetry::RenalNephrolithiasis>,
+    orthostatic: Option<&ares_core_types::telemetry::OrthostaticFluid>,
+    circadian: Option<&ares_core_types::telemetry::MarsCircadianSleep>,
+    immune: Option<&ares_core_types::telemetry::NeuroImmuneViral>,
+) -> (NqsStlMargins, AlertSeverity) {
     let (rho_tau_w, rho_ared, rho_sost, rho_rmssd, rho_sans) = compute_atomic_nqs_margins(
         jugular.tau_w_dyn_cm2,
         musculo.ared_daily_load_kgf,
@@ -20,7 +36,18 @@ pub fn evaluate_nqs_stl_and_mri(
         biometrics.rmssd_ms,
         sans.sans_risk_index,
     );
-    let known_min = rho_tau_w.min(rho_ared).min(rho_sost).min(rho_sans);
+
+    let rho_renal = renal.map(|r| crate::normalizer::normalize_renal_rsr_margin(r.rsr_calcium_oxalate));
+    let rho_orthostatic = orthostatic.map(|o| crate::normalizer::normalize_orthostatic_margin(o.shock_index));
+    let rho_circadian = circadian.map(|c| crate::normalizer::normalize_circadian_margin(c.pvt_lapse_probability));
+    let rho_immune = immune.map(|i| crate::normalizer::normalize_immune_margin(i.viral_reactivation_risk_pct));
+
+    let mut known_min = rho_tau_w.min(rho_ared).min(rho_sost).min(rho_sans);
+    if let Some(r) = rho_renal { known_min = known_min.min(r); }
+    if let Some(o) = rho_orthostatic { known_min = known_min.min(o); }
+    if let Some(c) = rho_circadian { known_min = known_min.min(c); }
+    if let Some(i) = rho_immune { known_min = known_min.min(i); }
+
     let rho_global = rho_rmssd.map(|rho| known_min.min(rho));
 
     // Existing scenario model; its uncertainty is not clinically calibrated (#12).
@@ -33,7 +60,11 @@ pub fn evaluate_nqs_stl_and_mri(
     let ttv_ci95_high_hours = forecast.map(|(_, _, high)| high);
     let mri_pct = rho_rmssd.map(|rho| {
         let weighted =
-            0.30 * rho_tau_w + 0.25 * rho_ared + 0.15 * rho_sost + 0.15 * rho + 0.15 * rho_sans;
+            0.20 * rho_tau_w + 0.15 * rho_ared + 0.10 * rho_sost + 0.15 * rho + 0.10 * rho_sans
+            + 0.10 * rho_renal.unwrap_or(0.5)
+            + 0.10 * rho_orthostatic.unwrap_or(0.5)
+            + 0.05 * rho_circadian.unwrap_or(0.5)
+            + 0.05 * rho_immune.unwrap_or(0.5);
         ((weighted + 1.0) * 50.0).clamp(5.0, 100.0)
     });
 
@@ -65,6 +96,10 @@ pub fn evaluate_nqs_stl_and_mri(
             mri_pct,
             ttv_interval_kind: forecast
                 .map(|_| ares_core_types::telemetry::TtvIntervalKind::IllustrativeScenarioRange),
+            rho_renal,
+            rho_orthostatic,
+            rho_circadian,
+            rho_immune,
         },
         severity,
     )
@@ -93,6 +128,17 @@ mod tests {
             radiation_dose_rate_msv_d: rad_msv_d,
             sqi_score: 0.94,
             missing_channels: Vec::new(),
+            sbp_mmhg: None,
+            dbp_mmhg: None,
+            ptt_ms: None,
+            core_temp_celsius: None,
+            skin_temp_celsius: None,
+            sleep_stage_code: None,
+            melanopic_edi_lux: None,
+            personal_dose_rate_ugy_h: None,
+            let_quality_factor: None,
+            suit_metabolic_watts: None,
+            helmet_ppco2_mmhg: None,
         }
     }
 

@@ -3,11 +3,17 @@
 
 pub mod grounding;
 pub mod playbooks;
+pub mod pocus_multiorgan;
 pub mod safety_gates;
 
 pub use grounding::{
     PlaybookError, PlaybookGovernanceVerdict, PlaybookNormativeGrounding, ground_playbook_normative,
     verify_playbook_governance,
 };
-pub use playbooks::{select_candidate_playbook, select_vitals_anomaly_playbook};
-pub use safety_gates::enforce_hard_clinical_safety_gates;
+pub use playbooks::{
+    select_candidate_playbook, select_candidate_playbook_ext, select_vitals_anomaly_playbook,
+};
+pub use pocus_multiorgan::{
+    PocusAnatomicalTarget, PocusEfastScan, PocusOcularScan, PocusRenalBladderScan,
+};
+pub use safety_gates::{enforce_hard_clinical_safety_gates, enforce_hard_clinical_safety_gates_ext};
