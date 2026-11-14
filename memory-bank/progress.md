@@ -161,6 +161,13 @@
 - [x] **Fase 43 (`O2` — Verificato):** Rotatable Dual-Gender 3D Biodigital Twin:
   - `AnatomicalLayers.tsx`: anatomia procedurale avanzata per gemello digitale maschile e femminile (`MALE` / `FEMALE`) con differenziazione morfometrica (dimorfismo pelvico, gabbia toracica, massa muscolare scheletrica differenziale), simulazione pulsatile del cephalad fluid shift microgravitario, e null-safety su sessioni di replay BIDMC terrestre.
   - `BodyHeatmap.tsx`: integrazione OrbitControls con smorzamento inerziale (`dampingFactor: 0.05`), vincoli di zoom (1.2m–6.5m), rotazione a 360 gradi, fusione nodi UBERON spaziali e asset GLB Z-Anatomy.
+- [x] **Fase 44 (`O3` — Verificato):** Awwwards-Grade Glassmorphic Restyling & Unified Single-Screen Cockpit Restoration:
+  - Ripristinato il layout a schermo singolo unificato a 2 colonne come interfaccia di volo primaria perenne, eliminando l'interruzione del flusso di monitoraggio provocata dal cambio pagina globale.
+  - Convertite le viste secondarie (MissionPortal, OpenScreenStudio, 3D Twin Fullscreen) in cassetti/modali HUD glassmorphic ad alte prestazioni con sfocatura di sfondo (`backdrop-filter: blur(20px)`) e chiusura immediata con tasto `ESC`.
+  - Implementati stili `.hud-glass`, `.hud-glass-interactive`, `.hud-pill`, bordi micro-accentati e scrollbar aeronautiche scure in `index.css` nel pieno rispetto delle linee guida NASA-STD-3001 OLED (`#000000`).
+  - Chip di azione rapida integrati direttamente nell'header `TriPhaseHeader.tsx` (`[GROUND PORTAL]`, `[STUDIO]`, `[AUDIT CHAIN]`, `[?]`, `[CMD+K]`) mantenendo il flusso primario `[1. GATHER] -> [2. EVALUATE] -> [3. ACT]`.
+  - Toggle tattile MALE/FEMALE e launcher HUD Fullscreen integrati direttamente nel card header della vista 3D.
+  - Verificato con tutti i 21 test Cockpit superati, linting TypeScript pulito e build di produzione Vite completata.
 
 ---
 

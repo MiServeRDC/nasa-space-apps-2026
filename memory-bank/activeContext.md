@@ -74,6 +74,13 @@
       - `ares-cockpit/src/modules/ui-primitives/KeyboardShortcutsModal.tsx`: Accessible OLED dialog with declarative hotkeys (`1-4`, `M/F`, `Space`, `R`, `?`, `ESC`).
       - `ares-cockpit/src/modules/body-3d-heatmap/AnatomicalLayers.tsx` & `BodyHeatmap.tsx`: Fully sculpted procedural dual-gender 3D twin (neurocranium, 20-segment S-spine, ribs, pelvis, femurs with Frost mechanostat collar, volumetric brain with ventricles, beating 4-chamber heart with curved aortic arch, asymmetric IJVs with Poiseuille/Womersley $\tau_w$ shear coloration, traveling harmonic cephalad fluid shift, soleus atrophy and dynamic pennation chevrons, C-infinity lofts, and corrected vertex winding normals), paired with OrbitControls smooth damping (`dampingFactor: 0.05`), while seamlessly preserving Fabio's UBERON spatial hypergraph node overlay and Z-Anatomy GLB loader.
 
+12. **Awwwards-Grade Frontend Elevation & Single-Screen Cockpit Restoration (`670f1a7`):**
+    * Restored the unified single-screen bedside cockpit layout as the authoritative primary flight view, resolving user feedback regarding full navbar view unloads.
+    * Converted secondary operational interfaces (`VIEW_PORTAL`, `VIEW_STUDIO`, `VIEW_TWIN`) into high-performance HUD glassmorphic modal overlays with instant `ESC` dismissal, preserving continuous 20 Hz state streaming and bedside monitoring.
+    * Upgraded CSS styling in `ares-cockpit/src/index.css` with `.hud-glass`, `.hud-glass-interactive`, `.hud-pill`, micro-accent borders (`border-white/[0.08]`, `cyan-500/20`), and ultra-compact dark aerospace scrollbars adhering strictly to NASA-STD-3001 `#000000` OLED guidelines.
+    * Integrated top-header action chips directly in `TriPhaseHeader.tsx` (`[GROUND PORTAL]`, `[STUDIO]`, `[AUDIT CHAIN]`, `[?]`, `[CMD+K]`) while anchoring the core `[1. GATHER] -> [2. EVALUATE] -> [3. ACT]` tri-phase progression.
+    * Added tactile `MALE` / `FEMALE` morphological switcher and full-screen HUD expander directly within the 3D anatomical card header.
+    * Verified with `agent_probe.sh --fast`, TypeScript linting (`tsc -b --noEmit`), Vite build (`623` modules), and `21/21` Node tests passing across `7` suites.
 
 ---
 
