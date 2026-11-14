@@ -28,6 +28,46 @@ input[type="range"] {
 }
 
 /* OLED #000000 bedside monitor, trend sparkline, and tri-phase ergonomics. */
+.hud-glass {
+  background: rgba(10, 10, 12, 0.78);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6), inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+}
+
+.hud-glass-interactive {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.hud-glass-interactive:hover {
+  border-color: rgba(34, 211, 238, 0.3);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8), 0 0 20px -5px rgba(34, 211, 238, 0.15), inset 0 1px 0 0 rgba(34, 211, 238, 0.2);
+}
+
+.hud-pill {
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+/* Custom minimal scrollbar for data dense aerospace viewports */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #000000;
+}
+::-webkit-scrollbar-thumb {
+  background: #1f2937;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #374151;
+}
+
 .health-trend {
   background: #0a0a0a;
   border: 1px solid #1f2937;

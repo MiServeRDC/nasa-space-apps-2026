@@ -46,6 +46,10 @@ export function TriPhaseHeader({
   recommendedPhase,
   onSelectPhase,
   onOpenAudit,
+  onOpenPortal,
+  onOpenStudio,
+  onOpenShortcuts,
+  onTogglePalette,
 }: {
   astronautId: string;
   alarm: AlarmLevel;
@@ -55,6 +59,10 @@ export function TriPhaseHeader({
   recommendedPhase: Phase;
   onSelectPhase: (p: Phase) => void;
   onOpenAudit?: () => void;
+  onOpenPortal?: () => void;
+  onOpenStudio?: () => void;
+  onOpenShortcuts?: () => void;
+  onTogglePalette?: () => void;
 }) {
   const [profile, setProfile] = useState<Profile>(LATENCY_PROFILES[1]);
   const [now, setNow] = useState(() => new Date());
@@ -115,13 +123,54 @@ export function TriPhaseHeader({
         <span className={link === 'ENGINE_LIVE' ? 'text-ok' : 'text-warning'}>
           {link === 'ENGINE_LIVE' ? (wsConnected ? 'ENGINE WS LIVE' : 'ENGINE SNAPSHOT') : 'LOCAL SIMULATION'}
         </span>
+        {onOpenPortal && (
+          <button
+            type="button"
+            onClick={onOpenPortal}
+            className="min-h-12 cursor-pointer rounded border border-cyan-500/50 bg-cyan-950/30 px-3 py-1 text-xs font-bold text-cyan-300 hover:border-cyan-400 hover:bg-cyan-400 hover:text-black transition-all"
+            title="Open Ground Control Telemedicine View & 24-Dataset Scientific Atlas"
+          >
+            GROUND PORTAL
+          </button>
+        )}
+        {onOpenStudio && (
+          <button
+            type="button"
+            onClick={onOpenStudio}
+            className="min-h-12 cursor-pointer rounded border border-zinc-700 bg-zinc-900/60 px-3 py-1 text-xs font-bold text-zinc-300 hover:border-zinc-500 hover:text-white transition-all"
+            title="OpenScreen Multi-Track Replay Studio"
+          >
+            STUDIO
+          </button>
+        )}
         {onOpenAudit && (
           <button
             type="button"
             onClick={onOpenAudit}
-            className="min-h-12 cursor-pointer rounded border border-cyan-400 bg-cyan-950/40 px-3 py-1 font-bold text-cyan-300 hover:bg-cyan-400 hover:text-black transition-colors"
+            className="min-h-12 cursor-pointer rounded border border-emerald-500/50 bg-emerald-950/30 px-3 py-1 text-xs font-bold text-emerald-300 hover:border-emerald-400 hover:bg-emerald-400 hover:text-black transition-all"
+            title="SHA-256 Medical Override Audit Chain"
           >
             AUDIT CHAIN
+          </button>
+        )}
+        {onOpenShortcuts && (
+          <button
+            type="button"
+            onClick={onOpenShortcuts}
+            className="min-h-12 cursor-pointer rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs font-mono text-zinc-400 hover:border-zinc-600 hover:text-white transition-all"
+            title="Keyboard Shortcuts (?)"
+          >
+            ?
+          </button>
+        )}
+        {onTogglePalette && (
+          <button
+            type="button"
+            onClick={onTogglePalette}
+            className="min-h-12 cursor-pointer rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs font-mono text-cyan-400 hover:border-cyan-500 hover:text-cyan-300 transition-all"
+            title="Command Palette (Cmd+K / Alt+Space)"
+          >
+            CMD+K
           </button>
         )}
         <AlarmBadge level={alarm} />

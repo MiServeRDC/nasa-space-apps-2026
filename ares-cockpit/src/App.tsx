@@ -73,14 +73,14 @@ function Card({
   className?: string;
 }) {
   return (
-    <div className={`flex flex-col rounded-lg border border-line bg-panel p-4 ${className}`}>
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <h3 className="text-base font-semibold text-gray-100">{title}</h3>
+    <div className={`hud-glass hud-glass-interactive flex flex-col rounded-xl p-4.5 ${className}`}>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.06] pb-2.5">
+        <div className="flex items-center gap-2.5">
+          <h3 className="text-sm font-semibold tracking-wide text-gray-100 uppercase">{title}</h3>
           {origin && <OriginBadge origin={origin} />}
           {freshness && <FreshnessBadge freshness={freshness} />}
         </div>
-        {tag && <span className="font-mono text-xs text-gray-500">{tag}</span>}
+        {tag && <span className="font-mono text-[11px] text-zinc-400 tracking-wider uppercase bg-white/[0.04] px-2 py-0.5 rounded border border-white/[0.06]">{tag}</span>}
       </div>
       <div className="min-h-0 flex-1">{children}</div>
     </div>
@@ -622,6 +622,10 @@ export default function App() {
         handleWhatIfChange({ ...whatIf, sex: 'MALE' });
       } else if (e.key.toLowerCase() === 'f' && !e.ctrlKey && !e.metaKey) {
         handleWhatIfChange({ ...whatIf, sex: 'FEMALE' });
+      } else if (e.key === 'Escape') {
+        setActiveView('VIEW_COCKPIT');
+        setShortcutsModalOpen(false);
+        setAuditModalOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -655,74 +659,6 @@ export default function App() {
         paletteOpen={paletteOpen}
         onTogglePalette={() => setPaletteOpen((v) => !v)}
       />
-      <MissionSuiteNavbar
-        activeView={activeView}
-        onSelectView={setActiveView}
-        astronautId={packet.astronaut_id}
-        sex={whatIf.sex}
-        onChangeSex={(sex) => handleWhatIfChange({ ...whatIf, sex })}
-        alarmLevel={sm.alarm_level}
-        link={link}
-        wsConnected={status.wsConnected}
-        onOpenShortcuts={() => setShortcutsModalOpen(true)}
-      />
-
-      {activeView === 'VIEW_PORTAL' ? (
-        <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col gap-3 overflow-hidden p-4 h-[calc(100vh-140px)]">
-          <MissionPortal
-            packet={packet}
-            s={hasHemodynamics || hasMusculoskeletal ? s : null}
-            whatIf={whatIf}
-            thrombus={thrombus}
-            onSetThrombus={handleThrombusChange}
-            sex={whatIf.sex}
-          />
-        </div>
-      ) : activeView === 'VIEW_STUDIO' ? (
-        <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col gap-3 overflow-hidden p-4 h-[calc(100vh-140px)]">
-          <OpenScreenStudio
-            packet={packet}
-            s={hasHemodynamics || hasMusculoskeletal ? s : null}
-            whatIf={whatIf}
-            sex={whatIf.sex}
-          />
-        </div>
-      ) : activeView === 'VIEW_TWIN' ? (
-        <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col gap-3 overflow-hidden p-4 h-[calc(100vh-140px)]">
-          <Card
-            title="ARES Biodigital Twin 3D Viewport (Full Screen)"
-            tag="OrbitControls 360-degree interactive anatomical twin"
-            origin={hasHemodynamics || hasMusculoskeletal ? (packet.is_local_simulation ? 'SIMULATED_SCENARIO_INPUT' : 'DERIVED_FROM_HYBRID_SCENARIO') : 'UNAVAILABLE'}
-            className="min-h-0 flex-1 h-full"
-          >
-            <BodyHeatmap
-              s={hasHemodynamics || hasMusculoskeletal ? s : null}
-              sex={whatIf.sex}
-              hypergraphSpatial={packet.hypergraph_spatial}
-              isLocalSimulation={Boolean(packet.is_local_simulation)}
-              modelValidationStatus={packet.model_validation_status}
-              injuries={injuries}
-              onAddInjury={addInjury}
-              onResolveInjury={resolveInjury}
-              onChangeSex={(sex) => handleWhatIfChange({ ...whatIf, sex })}
-              onOpenTab={(tab) => {
-                setEvalTab(tab);
-                setActivePhase('EVALUATE');
-                setActiveView('VIEW_COCKPIT');
-              }}
-              onOpenPlaybook={(playbookId) => {
-                setActivePhase('ACT');
-                setActiveView('VIEW_COCKPIT');
-                setRequestedPlaybook((prev) => ({
-                  id: playbookId ?? 'PLAYBOOK_01_VENOUS_STASIS_LBNP',
-                  seq: (prev?.seq ?? 0) + 1,
-                }));
-              }}
-            />
-          </Card>
-        </div>
-      ) : (
-        <>
       <TriPhaseHeader
         astronautId={packet.astronaut_id}
         alarm={sm.alarm_level}
@@ -732,6 +668,10 @@ export default function App() {
         recommendedPhase={recommendedPhase}
         onSelectPhase={setActivePhase}
         onOpenAudit={() => setAuditModalOpen(true)}
+        onOpenPortal={() => setActiveView('VIEW_PORTAL')}
+        onOpenStudio={() => setActiveView('VIEW_STUDIO')}
+        onOpenShortcuts={() => setShortcutsModalOpen(true)}
+        onTogglePalette={() => setPaletteOpen((v) => !v)}
       />
 
       <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col gap-3 overflow-hidden p-4">
@@ -913,10 +853,38 @@ export default function App() {
                 {evalTab === 'BODY_3D' && (
                   <Card
                     title="Your 3D Body Scan & Atlas"
-                    tag="Click any UBERON or injury pin to inspect, drag to rotate"
+                    tag={`Mesh: ${whatIf.sex} • OrbitControls 360°`}
                     origin={hasHemodynamics || hasMusculoskeletal ? (packet.is_local_simulation ? 'SIMULATED_SCENARIO_INPUT' : 'DERIVED_FROM_HYBRID_SCENARIO') : 'UNAVAILABLE'}
                     className="min-h-0 flex-1"
                   >
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.04] pb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-[11px] text-zinc-400">BIODIGITAL MESH:</span>
+                        <div className="flex rounded border border-zinc-700 bg-black/60 p-0.5 font-mono text-xs">
+                          <button
+                            type="button"
+                            onClick={() => handleWhatIfChange({ ...whatIf, sex: 'MALE' })}
+                            className={`cursor-pointer px-2.5 py-0.5 rounded transition-all ${whatIf.sex === 'MALE' ? 'bg-cyan-500 text-black font-bold shadow-[0_0_10px_rgba(6,182,212,0.5)]' : 'text-zinc-400 hover:text-white'}`}
+                          >
+                            MALE
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleWhatIfChange({ ...whatIf, sex: 'FEMALE' })}
+                            className={`cursor-pointer px-2.5 py-0.5 rounded transition-all ${whatIf.sex === 'FEMALE' ? 'bg-cyan-500 text-black font-bold shadow-[0_0_10px_rgba(6,182,212,0.5)]' : 'text-zinc-400 hover:text-white'}`}
+                          >
+                            FEMALE
+                          </button>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setActiveView('VIEW_TWIN')}
+                        className="cursor-pointer rounded border border-cyan-500/40 bg-cyan-950/20 px-2.5 py-1 font-mono text-xs text-cyan-300 hover:border-cyan-400 hover:bg-cyan-400 hover:text-black transition-all"
+                      >
+                        FULLSCREEN HUD &rarr;
+                      </button>
+                    </div>
                     <BodyHeatmap
                       s={hasHemodynamics || hasMusculoskeletal ? s : null}
                       sex={whatIf.sex}
@@ -1213,7 +1181,133 @@ export default function App() {
           </aside>
         </div>
       </div>
-        </>
+
+      {/* Ground Control Telemedicine & 24-Dataset Scientific Atlas Modal */}
+      {activeView === 'VIEW_PORTAL' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-xl p-4 md:p-8 animate-in fade-in duration-200">
+          <div className="flex h-full w-full max-w-[1700px] flex-col rounded-xl border border-cyan-500/30 bg-zinc-950 shadow-[0_0_50px_rgba(0,0,0,0.9)] overflow-hidden">
+            <div className="flex items-center justify-between border-b border-zinc-800 px-6 py-3 bg-black/60">
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-xs font-bold text-cyan-400 tracking-widest uppercase">Deep Space Network Ground Control</span>
+                <span className="text-zinc-500 font-mono text-xs">|</span>
+                <span className="text-xs text-zinc-300 font-mono">Telemedicine Review Station &amp; 24-Dataset Evidence Atlas</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveView('VIEW_COCKPIT')}
+                className="cursor-pointer rounded border border-zinc-700 px-3 py-1 font-mono text-xs text-zinc-300 hover:border-zinc-400 hover:text-white"
+              >
+                ESC CLOSE
+              </button>
+            </div>
+            <div className="flex-1 min-h-0 overflow-y-auto p-4">
+              <MissionPortal
+                packet={packet}
+                s={hasHemodynamics || hasMusculoskeletal ? s : null}
+                whatIf={whatIf}
+                thrombus={thrombus}
+                onSetThrombus={handleThrombusChange}
+                sex={whatIf.sex}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* OpenScreen Multi-Track Studio Modal */}
+      {activeView === 'VIEW_STUDIO' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-xl p-4 md:p-8 animate-in fade-in duration-200">
+          <div className="flex h-full w-full max-w-[1700px] flex-col rounded-xl border border-cyan-500/30 bg-zinc-950 shadow-[0_0_50px_rgba(0,0,0,0.9)] overflow-hidden">
+            <div className="flex items-center justify-between border-b border-zinc-800 px-6 py-3 bg-black/60">
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-xs font-bold text-cyan-400 tracking-widest uppercase">OpenScreen Multi-Track Replay Studio</span>
+                <span className="text-zinc-500 font-mono text-xs">|</span>
+                <span className="text-xs text-zinc-300 font-mono">Telemetry Scrubbing &amp; Camera Rig</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveView('VIEW_COCKPIT')}
+                className="cursor-pointer rounded border border-zinc-700 px-3 py-1 font-mono text-xs text-zinc-300 hover:border-zinc-400 hover:text-white"
+              >
+                ESC CLOSE
+              </button>
+            </div>
+            <div className="flex-1 min-h-0 overflow-y-auto p-4">
+              <OpenScreenStudio
+                packet={packet}
+                s={hasHemodynamics || hasMusculoskeletal ? s : null}
+                whatIf={whatIf}
+                sex={whatIf.sex}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fullscreen 3D Anatomical Twin Viewport Modal */}
+      {activeView === 'VIEW_TWIN' && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-2xl p-4 md:p-6 animate-in fade-in duration-200">
+          <div className="flex h-full w-full max-w-[1800px] flex-col rounded-xl border border-cyan-500/40 bg-black shadow-[0_0_80px_rgba(6,182,212,0.15)] overflow-hidden">
+            <div className="flex items-center justify-between border-b border-zinc-800 px-6 py-3 bg-zinc-950/80">
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-xs font-bold text-cyan-400 tracking-widest uppercase">ARES Biodigital Twin 3D Viewport</span>
+                <span className="text-zinc-500 font-mono text-xs">|</span>
+                <span className="text-xs text-zinc-300 font-mono">360-Degree Anatomical Mesh &bull; Sex: {whatIf.sex}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex rounded border border-zinc-700 bg-black p-0.5 font-mono text-xs">
+                  <button
+                    type="button"
+                    onClick={() => handleWhatIfChange({ ...whatIf, sex: 'MALE' })}
+                    className={`cursor-pointer px-2.5 py-0.5 rounded ${whatIf.sex === 'MALE' ? 'bg-cyan-500 text-black font-bold' : 'text-zinc-400 hover:text-white'}`}
+                  >
+                    MALE
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleWhatIfChange({ ...whatIf, sex: 'FEMALE' })}
+                    className={`cursor-pointer px-2.5 py-0.5 rounded ${whatIf.sex === 'FEMALE' ? 'bg-cyan-500 text-black font-bold' : 'text-zinc-400 hover:text-white'}`}
+                  >
+                    FEMALE
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveView('VIEW_COCKPIT')}
+                  className="cursor-pointer rounded border border-zinc-700 px-3 py-1 font-mono text-xs text-zinc-300 hover:border-zinc-400 hover:text-white"
+                >
+                  ESC CLOSE
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 min-h-0 p-2">
+              <BodyHeatmap
+                s={hasHemodynamics || hasMusculoskeletal ? s : null}
+                sex={whatIf.sex}
+                hypergraphSpatial={packet.hypergraph_spatial}
+                isLocalSimulation={Boolean(packet.is_local_simulation)}
+                modelValidationStatus={packet.model_validation_status}
+                injuries={injuries}
+                onAddInjury={addInjury}
+                onResolveInjury={resolveInjury}
+                onChangeSex={(sex) => handleWhatIfChange({ ...whatIf, sex })}
+                onOpenTab={(tab) => {
+                  setEvalTab(tab);
+                  setActivePhase('EVALUATE');
+                  setActiveView('VIEW_COCKPIT');
+                }}
+                onOpenPlaybook={(playbookId) => {
+                  setActivePhase('ACT');
+                  setActiveView('VIEW_COCKPIT');
+                  setRequestedPlaybook((prev) => ({
+                    id: playbookId ?? 'PLAYBOOK_01_VENOUS_STASIS_LBNP',
+                    seq: (prev?.seq ?? 0) + 1,
+                  }));
+                }}
+              />
+            </div>
+          </div>
+        </div>
       )}
 
       <KeyboardShortcutsModal
