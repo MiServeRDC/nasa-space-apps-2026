@@ -69,3 +69,24 @@
   (ODC-By-1.0, existing fixture and native rate), and
   [ARES-Health issue #10](https://github.com/MiServeRDC/nasa-space-apps-2026/issues/10)
   (regression and acceptance criteria). No new external code or dependency.
+
+### CSV-to-cockpit integration check (Issues #8 and #10)
+
+- Server checked at `e3d4398`; cockpit checked at `127fde0`.
+- A local WebSocket client compared 105 frames against the matching rows in
+  `bidmc_01_Numerics.csv`. Five complete recorded seconds each emitted 20
+  frames. No missing row fell in this capture. The existing controlled-clock
+  server test verifies missing values across the entire recording.
+- The cockpit currently requests `/ws`, which returned HTTP 404. The server
+  streams on `/ws/telemetry`. The cockpit expects `safety_margins`,
+  `biometrics.spo2_percent` and `biometrics.respiration_rate_brpm`, while the
+  server emits `nqs_stl`, `biometrics.spo2_pct` and `biometrics.resp_rate_brpm`.
+  An endpoint-only change cannot complete the browser check. Agree on the
+  wire contract with the owners before updating the cockpit.
+- Demo evidence boundary: label the replay as terrestrial ICU data. Use it
+  for technical pipeline checks and missing-value handling. Present spaceflight
+  what-if scenarios separately and do not use BIDMC as an astronaut baseline.
+- Sources: [PhysioNet BIDMC v1.0.0](https://physionet.org/content/bidmc/1.0.0/),
+  [NASA: Cardiovascular Health in Microgravity](https://www.nasa.gov/humans-in-space/cardiovascular-health-in-microgravity/),
+  [cockpit review #8](https://github.com/MiServeRDC/nasa-space-apps-2026/issues/8)
+  and [replay cadence #10](https://github.com/MiServeRDC/nasa-space-apps-2026/issues/10).
