@@ -11,7 +11,6 @@ import type { InjuryMarker } from './types/injury';
 import { WhatIfConsole } from './modules/whatif-console/WhatIfConsole';
 import { PlaybookRunner } from './modules/playbook-runner/PlaybookRunner';
 import { EcgStrip, OcularOnsd, PocusIjv } from './modules/analysis-imaging/Imaging';
-import { buildOpenMHealthJson, buildHl7FhirJson, downloadJsonFile } from './lib/exportStandard';
 import { AuditChainModal } from './modules/audit-chain/AuditChainModal';
 
 type EvalTab = 'BODY_3D' | 'POCUS' | 'MUSCLE_BONE' | 'FORECAST';
@@ -171,39 +170,6 @@ export default function App() {
                   )}
                 </div>
               </Card>
-
-              {/* Clinical Interoperability Standards Export */}
-              <div className="rounded-lg border border-line bg-panel p-4 font-mono text-xs">
-                <div className="flex items-center justify-between border-b border-line pb-2 font-bold text-gray-200">
-                  <span>CLINICAL INTEROPERABILITY EXPORT (NASA-STD-3001)</span>
-                  <span className="text-[10px] font-normal text-gray-500">AIR-GAPPED TELEMETRY SYNC</span>
-                </div>
-                <p className="mt-2 text-gray-400 font-sans text-xs">
-                  Deterministic edge export for Earth synchronization. Compliant with Open mHealth (OMH v1.0) and HL7 FHIR R4 Vital Signs Profile with LOINC bindings (8867-4, 2708-6, 9279-1, 8480-6, 8310-5, 2062-8).
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const omh = buildOpenMHealthJson(packet, s);
-                      downloadJsonFile(`ares_open_mhealth_day${whatIf.mission_day}.json`, omh);
-                    }}
-                    className="cursor-pointer rounded border border-line bg-black/60 px-3 py-1.5 text-gray-200 hover:border-cyan-400 hover:text-cyan-300"
-                  >
-                    EXPORT OPEN mHEALTH (JSON)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const fhir = buildHl7FhirJson(packet, s);
-                      downloadJsonFile(`ares_fhir_vitals_day${whatIf.mission_day}.json`, fhir);
-                    }}
-                    className="cursor-pointer rounded border border-line bg-black/60 px-3 py-1.5 text-gray-200 hover:border-lime-400 hover:text-lime-300"
-                  >
-                    EXPORT HL7 FHIR R4 (JSON)
-                  </button>
-                </div>
-              </div>
             </div>
           )}
 
