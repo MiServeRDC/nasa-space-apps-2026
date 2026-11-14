@@ -80,6 +80,10 @@ export const PLAYBOOK_ID_BY_CODE: Record<number, string> = {
   3: 'PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED',
   4: 'PLAYBOOK_04_SANS_TRANSLAMINAR_MITIGATION',
   5: 'PLAYBOOK_05_SPE_RADIATION_SHELTER_CANS',
+  6: 'PLAYBOOK_06_HYPOXEMIA_DESATURATION',
+  7: 'PLAYBOOK_07_TACHYCARDIA_AUTONOMIC_STRESS',
+  8: 'PLAYBOOK_08_SIGNAL_QUALITY_SENSOR_CHECK',
+  9: 'PLAYBOOK_09_MULTIPARAMETER_DETERIORATION',
 };
 
 interface BinaryPlaybookDefaultMeta {
@@ -214,6 +218,100 @@ export const BINARY_PLAYBOOK_DEFAULTS: Record<number, BinaryPlaybookDefaultMeta>
         label: 'Lockout EVA Airlock Egress (Deontic Gate)',
         category: 'DEONTIC_HABITAT_LOCK',
         delta_rho_per_hour: 0.15,
+      },
+    ],
+  },
+  6: {
+    playbook_id: 'PLAYBOOK_06_HYPOXEMIA_DESATURATION',
+    title: 'Playbook #06: Acute Hypoxemia / SpO2 Desaturation Response',
+    total_steps: 3,
+    step_instruction:
+      'Verify pulse oximeter probe seating, assess cabin O2/ppCO2, and initiate supplemental O2 titration if confirmed',
+    causal_chain_summary: [
+      'SpO2_drop_below_baseline -> alveolar_hypoventilation_or_hypoxia',
+      'Multichannel_check -> rule_out_motion_or_probe_detach',
+    ],
+    actions: [
+      {
+        action_id: 'VERIFY_OXIMETER_AND_CABIN_PPO2',
+        label: 'Verify Pulse Oximeter Perfusion & Cabin ppO2',
+        category: 'HYPOXEMIA_TRIAGE',
+        delta_rho_per_hour: 0.18,
+      },
+      {
+        action_id: 'SUPPLEMENTAL_O2_TITRATION',
+        label: 'Initiate Supplemental O2 Titration (Target >= 94%)',
+        category: 'OXYGEN_THERAPY',
+        delta_rho_per_hour: 0.24,
+      },
+    ],
+  },
+  7: {
+    playbook_id: 'PLAYBOOK_07_TACHYCARDIA_AUTONOMIC_STRESS',
+    title: 'Playbook #07: Sustained Tachycardia & Autonomic Stress Evaluation',
+    total_steps: 3,
+    step_instruction:
+      'Evaluate sustained HR elevation above personal baseline; correlate orthostatic load, hydration, and fever/pain',
+    causal_chain_summary: [
+      'Sustained_HR_z_score -> sympathetic_or_hemodynamic_stress',
+      'Baroreflex_demand -> intravascular_volume_or_workload_check',
+    ],
+    actions: [
+      {
+        action_id: 'ASSESS_REST_HYDRATION_ORTHOSTATIC',
+        label: 'Pause Exertion & Assess Hydration / Orthostatic Stress',
+        category: 'AUTONOMIC_STABILIZATION',
+        delta_rho_per_hour: 0.16,
+      },
+      {
+        action_id: 'CAPTURE_12LEAD_AND_BP_CHECK',
+        label: 'Acquire Resting Rhythm Strip & Cuff Blood Pressure',
+        category: 'CARDIAC_DIAGNOSTICS',
+        delta_rho_per_hour: 0.14,
+      },
+    ],
+  },
+  8: {
+    playbook_id: 'PLAYBOOK_08_SIGNAL_QUALITY_SENSOR_CHECK',
+    title: 'Playbook #08: Sensor Detachment & Signal Quality Recovery',
+    total_steps: 2,
+    step_instruction:
+      'Abstain automated alarms on degraded signal; inspect ECG electrodes and SpO2 optical clip before clinical escalation',
+    causal_chain_summary: [
+      'Sensor_dropout_or_low_SQI -> unreliable_physiological_estimate',
+      'Epistemic_guard -> reseat_transducers_before_treatment',
+    ],
+    actions: [
+      {
+        action_id: 'RESEAT_SPO2_AND_ECG_LEADS',
+        label: 'Reseat SpO2 Finger Clip & Clean/Replace ECG Electrodes',
+        category: 'SENSOR_MAINTENANCE',
+        delta_rho_per_hour: 0.12,
+      },
+    ],
+  },
+  9: {
+    playbook_id: 'PLAYBOOK_09_MULTIPARAMETER_DETERIORATION',
+    title: 'Playbook #09: Multiparameter Acute Cardiorespiratory Deterioration',
+    total_steps: 3,
+    step_instruction:
+      'Concurrent HR/SpO2 Mahalanobis excursion detected: perform immediate crew medical assessment and ground surgeon consult',
+    causal_chain_summary: [
+      'Joint_HR_SpO2_Mahalanobis_D2 -> acute_cardiorespiratory_decompensation',
+      'Combined_autonomic_hypoxic_load -> urgent_multimodal_intervention',
+    ],
+    actions: [
+      {
+        action_id: 'AIRWAY_BREATHING_CIRCULATION_CHECK',
+        label: 'Execute Immediate ABC Assessment & Supplemental O2',
+        category: 'CRITICAL_RESPONSE',
+        delta_rho_per_hour: 0.30,
+      },
+      {
+        action_id: 'FLIGHT_SURGEON_TELEMEDICINE_CALL',
+        label: 'Establish Priority Ground Flight Surgeon Consultation',
+        category: 'TELEMEDICINE_ESCALATION',
+        delta_rho_per_hour: 0.20,
       },
     ],
   },

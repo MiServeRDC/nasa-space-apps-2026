@@ -32,8 +32,11 @@
     },
     "astronaut_id": {
       "type": "string",
-      "enum": ["ASTRO-01", "ASTRO-02", "ASTRO-03", "ASTRO-04", "BIDMC-SUBJECT-01", "BIDMC-SUBJECT-02", "BIDMC-SUBJECT-03"],
-      "description": "Identifier of the monitored crew member or terrestrial replay subject."
+      "oneOf": [
+        { "enum": ["ASTRO-01", "ASTRO-02", "ASTRO-03", "ASTRO-04"] },
+        { "pattern": "^BIDMC-SUBJECT-(0[1-9]|[1-4][0-9]|5[0-3])$" }
+      ],
+      "description": "Identifier of the monitored crew member or terrestrial replay subject (BIDMC-SUBJECT-01..53)."
     },
     "provenance_manifest": {
       "type": "object",
@@ -363,6 +366,54 @@
         },
         "step_instruction": {
           "type": "string"
+        }
+      }
+    },
+    "vitals_anomaly": {
+      "type": ["object", "null"],
+      "description": "Per-subject anomaly detector output on the recorded vitals (DERIVED_COMPUTED). Thresholds are nominal; measured recall and alert rates are in docs/evaluation/ANOMALY_DETECTOR_EVAL.md.",
+      "required": ["baseline_ready", "overall", "channels"],
+      "properties": {
+        "recording_time_s": { "type": "number" },
+        "baseline_ready": { "type": "boolean" },
+        "baseline_samples": { "type": "integer" },
+        "baseline_required": { "type": "integer" },
+        "overall": {
+          "type": "string",
+          "enum": ["NORMAL", "ATTENTION", "ALARM"]
+        },
+        "mahalanobis_d2": { "type": ["number", "null"] },
+        "channels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["channel", "status", "evaluable", "reason"],
+            "properties": {
+              "channel": { "type": "string" },
+              "status": { "type": "string", "enum": ["NORMAL", "ATTENTION", "ALARM"] },
+              "evaluable": { "type": "boolean" },
+              "detector": {
+                "type": ["string", "null"],
+                "enum": ["ROBUST_Z_SCORE", "CUSUM_DRIFT", "MAHALANOBIS", "SENSOR_DROPOUT", null]
+              },
+              "value": { "type": ["number", "null"] },
+              "baseline_median": { "type": ["number", "null"] },
+              "baseline_sigma": { "type": ["number", "null"] },
+              "z_score": { "type": ["number", "null"] },
+              "duration_s": { "type": "number" },
+              "reason": { "type": "string" }
+            }
+          }
+        },
+        "injection": {
+          "type": ["object", "null"],
+          "properties": {
+            "kind": { "type": "string" },
+            "description": { "type": "string" },
+            "onset_s": { "type": "number" },
+            "elapsed_s": { "type": "number" },
+            "duration_s": { "type": "number" }
+          }
         }
       }
     }

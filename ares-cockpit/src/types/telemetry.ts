@@ -55,7 +55,69 @@ export type CrystallizedPlaybookId =
   | 'PLAYBOOK_02_CONFIRMED_IJV_THROMBUS'
   | 'PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED'
   | 'PLAYBOOK_04_SANS_TRANSLAMINAR_MITIGATION'
-  | 'PLAYBOOK_05_SPE_RADIATION_SHELTER_CANS';
+  | 'PLAYBOOK_05_SPE_RADIATION_SHELTER_CANS'
+  | 'PLAYBOOK_06_HYPOXEMIA_DESATURATION'
+  | 'PLAYBOOK_07_TACHYCARDIA_AUTONOMIC_STRESS'
+  | 'PLAYBOOK_08_SIGNAL_QUALITY_SENSOR_CHECK'
+  | 'PLAYBOOK_09_MULTIPARAMETER_DETERIORATION';
+
+export type AnomalyStatus = 'NORMAL' | 'ATTENTION' | 'ALARM';
+
+export type AnomalyDetectorKind =
+  | 'ROBUST_Z_SCORE'
+  | 'CUSUM_DRIFT'
+  | 'MAHALANOBIS'
+  | 'SENSOR_DROPOUT';
+
+export interface ChannelAnomalyState {
+  channel: string;
+  status: AnomalyStatus;
+  /** False when the channel has no frozen baseline yet or no current sample: NORMAL then means "not assessed". */
+  evaluable: boolean;
+  detector: AnomalyDetectorKind | string | null;
+  value: number | null;
+  baseline_median: number | null;
+  baseline_sigma: number | null;
+  z_score: number | null;
+  duration_s: number;
+  reason: string;
+}
+
+export interface VitalsAnomalyInjection {
+  kind: string;
+  description: string;
+  onset_s: number;
+  elapsed_s: number;
+  duration_s: number;
+}
+
+/** Engine anomaly detector output (`vitals_anomaly` block of the wire packet). */
+export interface VitalsAnomalyReport {
+  recording_time_s: number;
+  baseline_ready: boolean;
+  baseline_samples: number;
+  baseline_required: number;
+  overall: AnomalyStatus;
+  mahalanobis_d2: number | null;
+  channels: ChannelAnomalyState[];
+  injection: VitalsAnomalyInjection | null;
+}
+
+export type ForecastMethod =
+  | 'DETERMINISTIC_COLD_START'
+  | 'TIMESTRAL_GREY_BOX_1HZ'
+  | 'EWMA_EMPIRICAL_RESIDUAL_QUANTILES'
+  | 'HYBRID_TIMESTRAL_AND_EWMA_SHORT_HORIZON';
+
+export interface ShortHorizonCone {
+  channel_name: string;
+  ewma_level?: number;
+  horizon_5s: MonotoneQuantileTriplet | null;
+  horizon_10s: MonotoneQuantileTriplet | null;
+  horizon_30s: MonotoneQuantileTriplet | null;
+  horizon_60s: MonotoneQuantileTriplet | null;
+  horizon_120s: MonotoneQuantileTriplet | null;
+}
 
 export interface SafetyGatesState {
   anticoagulant_lock_active: boolean;
@@ -195,6 +257,10 @@ export interface TimestralQuantilesSummary {
   conformal_status?: string;
   abstention_certificate?: AbstentionCertificate | null;
   short_horizon_s?: number;
+  forecast_method?: ForecastMethod;
+  ewma_short_horizon_max_s?: number;
+  short_horizon_cones?: ShortHorizonCone[];
+  short_horizon_abstention?: string | AbstentionCertificate | null;
   heart_rate_bpm_cone?: MonotoneQuantileTriplet | null;
   resp_rate_brpm_cone?: MonotoneQuantileTriplet | null;
   rmssd_ms_cone?: MonotoneQuantileTriplet | null;
@@ -272,6 +338,7 @@ export interface TelemetryPacket {
   quality_flags?: string[];
   hypergraph_spatial?: HypergraphSpatialSummary | null;
   timestral_quantiles?: TimestralQuantilesSummary | null;
+  vitals_anomaly?: VitalsAnomalyReport | null;
   is_local_simulation?: boolean;
 }
 

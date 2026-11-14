@@ -13,7 +13,8 @@ use crate::timestral_safetensors::{
 use crate::ttv_predictor::estimate_greybox_quantile_ttv_cone;
 use ares_core_types::telemetry::{Biometrics, JugularHemodynamics, Musculoskeletal, SansOcular};
 use ares_core_types::{
-    ChannelQuantileCone, ConformalGateStatus, MonotoneQuantileTriplet, NqsQuantileForecastSnapshot,
+    ChannelQuantileCone, ConformalGateStatus, ForecastMethod, MonotoneQuantileTriplet,
+    NqsQuantileForecastSnapshot,
 };
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -255,6 +256,10 @@ pub fn compute_greybox_forecast_snapshot(
             .collect(),
         pessimistic_ttv_q05_hours: ttv_hours_cone.map(|cone| cone.q05),
         inference_latency_us,
+        forecast_method: ForecastMethod::TimestralGreyBox1Hz,
+        ewma_short_horizon_max_s: 120,
+        short_horizon_cones: Vec::new(),
+        short_horizon_abstention: None,
     }
 }
 

@@ -6,6 +6,7 @@
 //! contactless (`radar_csi_dsp`), i biomarcatori vocali YIN (`vocal_acoustic_dsp`)
 //! e l'estrattore Pan-Tompkins R-R a 125-500 Hz (`waveform_rr_extractor`).
 
+pub mod anomaly_injection;
 pub mod bidmc_replayer;
 pub mod radar_csi_dsp;
 pub mod scenario_overlay;
@@ -14,6 +15,7 @@ pub mod vocal_acoustic_dsp;
 pub mod waveform_rr_extractor;
 pub mod wearable_packet;
 
+pub use anomaly_injection::{AnomalyInjection, InjectedAnomalyKind, InjectionProfile};
 pub use bidmc_replayer::{BidmcNumericRow, BidmcReplayer, IngestError};
 pub use radar_csi_dsp::{
     BiquadSos, DspError, RADAR_DECIMATED_HZ, RADAR_RING_LEN, RadarCarrierBand, RadarCsiConfig,

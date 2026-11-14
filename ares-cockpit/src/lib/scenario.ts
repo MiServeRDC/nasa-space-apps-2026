@@ -361,6 +361,8 @@ export function buildPacket(w: WhatIf, tick: number, thrombus: boolean | null, l
       model_validation_status: 'ILLUSTRATIVE_UNVALIDATED',
       confidence_state: 'ABSTAINED_FALLBACK_DETERMINISTIC',
       conformal_status: 'ABSTAINED_FALLBACK_DETERMINISTIC',
+      forecast_method: 'HYBRID_TIMESTRAL_AND_EWMA_SHORT_HORIZON',
+      ewma_short_horizon_max_s: 120,
       abstention_certificate: {
         abstained: true,
         status: 'ABSTAINED_FALLBACK_DETERMINISTIC',
@@ -404,10 +406,36 @@ export function buildPacket(w: WhatIf, tick: number, thrombus: boolean | null, l
           horizon_24h: { q05: Math.max(4, s.resp - qSpreadResp * 1.3), q50: s.resp, q95: s.resp + qSpreadResp * 1.3 },
         },
       ],
+      short_horizon_cones: [
+        ...(s.hrAccepted
+          ? [
+              {
+                channel_name: 'hr_bpm',
+                ewma_level: s.hr,
+                horizon_5s: { q05: s.hr - 1.5, q50: s.hr, q95: s.hr + 1.5 },
+                horizon_10s: { q05: s.hr - 2.2, q50: s.hr, q95: s.hr + 2.2 },
+                horizon_30s: { q05: s.hr - 3.6, q50: s.hr, q95: s.hr + 3.6 },
+                horizon_60s: { q05: s.hr - 5.0, q50: s.hr, q95: s.hr + 5.0 },
+                horizon_120s: { q05: s.hr - 6.8, q50: s.hr, q95: s.hr + 6.8 },
+              },
+            ]
+          : []),
+        {
+          channel_name: 'resp_brpm',
+          ewma_level: s.resp,
+          horizon_5s: { q05: Math.max(4, s.resp - 0.6), q50: s.resp, q95: s.resp + 0.6 },
+          horizon_10s: { q05: Math.max(4, s.resp - 0.9), q50: s.resp, q95: s.resp + 0.9 },
+          horizon_30s: { q05: Math.max(4, s.resp - 1.4), q50: s.resp, q95: s.resp + 1.4 },
+          horizon_60s: { q05: Math.max(4, s.resp - 2.0), q50: s.resp, q95: s.resp + 2.0 },
+          horizon_120s: { q05: Math.max(4, s.resp - 2.8), q50: s.resp, q95: s.resp + 2.8 },
+        },
+      ],
+      short_horizon_abstention: 'LOCAL_WHATIF_UNCONFORMALIZED_EWMA_PREVIEW',
       ttv_q05_days: null,
       ttv_q50_days: null,
       ttv_q95_days: null,
     },
+    vitals_anomaly: null,
     quality_flags: s.hrAccepted
       ? ['LOCAL_OFFLINE_SIMULATION', 'BEAT_INTERVALS_NOT_AVAILABLE']
       : ['LOCAL_OFFLINE_SIMULATION', 'SQI_REJECTED', 'BEAT_INTERVALS_NOT_AVAILABLE'],

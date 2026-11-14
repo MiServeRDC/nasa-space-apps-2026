@@ -130,8 +130,19 @@ async fn tauri_runtime_bridge_handles_all_ipc_commands_and_copilot() {
     });
 
     let bridge = HeadlessTauriBridge::new(std::sync::Arc::new(shell));
+    assert_eq!(bridge.command_names().len(), 8);
     assert!(bridge.command_names().contains(&"ipc_ask_edge_copilot"));
+    assert!(bridge.command_names().contains(&"ipc_inject_anomaly"));
     assert!(bridge.command_names().contains(&"subscribe_binary_telemetry"));
+
+    // Baseline learning is not yet complete at t=0, so injection must be cleanly refused.
+    let early_err = bridge
+        .ipc_inject_anomaly(ares_server_cli::wire_contract::AnomalyInjectionRequest {
+            kind: Some(ares_telemetry_ingest::anomaly_injection::InjectedAnomalyKind::DesaturationFast),
+            magnitude: None,
+        })
+        .expect_err("baseline not ready at t=0");
+    assert!(early_err.to_string().contains("personal baseline"));
 
     let snapshot = bridge.get_full_wire_snapshot().expect("snapshot");
     assert_eq!(snapshot.biometrics.rmssd_ms, None);

@@ -27,8 +27,10 @@ use ares_server_cli::edge_llm_bridge::{CopilotAskRequest, CopilotAskResponse};
 use ares_server_cli::fastmcp_router::{
     JsonRpcRequest, JsonRpcResponse, handle_fastmcp_jsonrpc_request,
 };
-use ares_server_cli::wire_contract::{StressTestPatchRequest, WireTelemetryPacket};
-use ares_server_cli::ws_server::{ServerRuntimeError, SharedMissionState};
+use ares_server_cli::wire_contract::{
+    AnomalyInjectionRequest, StressTestPatchRequest, WireTelemetryPacket,
+};
+use ares_server_cli::ws_server::{InjectAnomalyError, ServerRuntimeError, SharedMissionState};
 use ares_telemetry_ingest::wearable_packet::{
     WEARABLE_SYNC_WORD, WFLAG_EVA_SUIT_NODE, WFLAG_SEU_RECOVERY_EVENT, WMASK_HR_BPM,
     WMASK_IMU_RMS, WMASK_RESP_BRPM, WMASK_SPO2_PCT, ValidatedTelemetryFrame, WearableSensorPacket,
@@ -71,6 +73,9 @@ pub enum DesktopShellError {
 
     #[error("offline voice ASR error: {0}")]
     OfflineVoice(String),
+
+    #[error("anomaly injection refused: {0}")]
+    AnomalyInjection(#[from] InjectAnomalyError),
 
     #[error("smoke test invariant failed: {0}")]
     SmokeTestFailed(String),
@@ -457,6 +462,16 @@ impl AresMedOsWorkstationShell {
         self.mission
             .apply_stress_test_patch(patch)
             .ok_or(DesktopShellError::StateLockUnavailable)
+    }
+
+    /// In-process IPC dispatcher: schedules or clears a synthetic demo vitals anomaly.
+    pub fn ipc_inject_anomaly(
+        &self,
+        request: AnomalyInjectionRequest,
+    ) -> Result<WireTelemetryPacket, DesktopShellError> {
+        self.mission
+            .inject_anomaly_wire(request.kind)
+            .map_err(DesktopShellError::from)
     }
 
     /// In-process IPC dispatcher: executes a Context-Mode `FastMCP` JSON-RPC 2.0 request.

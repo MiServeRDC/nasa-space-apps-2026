@@ -189,6 +189,12 @@ export function EcgStrip({
         const y = EH * 0.65;
         ctx.moveTo(0, y);
         ctx.lineTo(EW, y);
+        ctx.stroke();
+        ctx.lineWidth = 1;
+        ctx.font = 'bold 13px monospace';
+        ctx.fillStyle = '#facc15';
+        const unavailableText = 'Heart rate unavailable';
+        ctx.fillText(unavailableText, (EW - ctx.measureText(unavailableText).width) / 2, EH * 0.45);
       } else {
         const period = 60 / h;
         const secondsShown = 4;
@@ -201,8 +207,8 @@ export function EcgStrip({
           const y = EH * 0.65 - v * EH * 0.45;
           if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
         }
+        ctx.stroke();
       }
-      ctx.stroke();
       ctx.lineWidth = 1;
       ctx.font = '12px monospace';
       ctx.fillStyle = missingHr ? '#facc15' : rejected ? '#f43f5e' : '#4ade80';
@@ -218,5 +224,14 @@ export function EcgStrip({
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
   }, []);
-  return <canvas ref={ref} width={720} height={150} className="w-full rounded border border-line" />;
+  return (
+    <canvas
+      ref={ref}
+      width={720}
+      height={150}
+      role="img"
+      aria-label="Synthetic ECG illustration driven by heart rate"
+      className="monitor-trace w-full rounded border border-line"
+    />
+  );
 }

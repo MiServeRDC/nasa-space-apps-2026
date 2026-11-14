@@ -11,6 +11,7 @@ use ares_causal_graph::hypergraph_spatial::{
 };
 use ares_core_types::NqsQuantileForecastSnapshot;
 use ares_core_types::security::McpInputSanitizer;
+use ares_core_types::anomaly::VitalsAnomalyReport;
 use ares_core_types::telemetry::TelemetryPacket;
 use ares_security_privacy::sanitizer::StrictMcpSanitizer;
 use serde_json::{Value, json};
@@ -52,6 +53,7 @@ pub fn handle_mcp_jsonrpc_request<S: McpInputSanitizer>(
     let ctx = FastMcpRuntimeContext {
         latest_packet: latest_packet.clone(),
         quantile_snapshot,
+        vitals_anomaly: VitalsAnomalyReport::default(),
         heatmap,
         habitat_assessment,
         grounding: *ground_adhg_node_o1(AdhgNodeKind::AredMechanicalLoad),

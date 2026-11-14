@@ -2,6 +2,7 @@
 
 use anyhow::{Context, Result, ensure};
 use ares_causal_graph::dataset_graph::AresUnifiedDatasetGraph;
+use ares_server_cli::anomaly_eval::{Split, evaluate_split, load_records, render_markdown};
 use ares_server_cli::mcp_stdio::run_mcp_stdio_loop;
 use ares_server_cli::ws_server::{SharedMissionState, build_axum_router};
 use clap::{Parser, ValueEnum};
@@ -20,6 +21,15 @@ pub enum ServerMode {
     SmokeTest,
     /// Costruisce `AresUnifiedDatasetGraph` (24 dataset + slice BIDMC) ed esporta i 4 file del knowledge graph su disco.
     BuildGraph,
+    /// Valuta il detector di anomalie sui vitali con eventi iniettati sui record BIDMC e scrive il report Markdown.
+    EvalAnomaly,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum EvalSplitArg {
+    Dev,
+    HeldOut,
+    All,
 }
 
 #[derive(Debug, Parser)]
@@ -44,6 +54,18 @@ pub struct CliArgs {
     /// Percorso della root del repository per l'esportazione di `data/knowledge_graph/` e `graphify-out/`.
     #[arg(long)]
     pub repo_root: Option<PathBuf>,
+
+    /// Directory con i record BIDMC aggiuntivi (04-53) usati solo da `--mode eval-anomaly`.
+    #[arg(long, default_value = "data/bidmc_eval")]
+    pub eval_dir: PathBuf,
+
+    /// Sottoinsieme di record da valutare con `--mode eval-anomaly`.
+    #[arg(long, value_enum, default_value_t = EvalSplitArg::All)]
+    pub eval_split: EvalSplitArg,
+
+    /// File Markdown di output per `--mode eval-anomaly` (stampa su stdout se assente).
+    #[arg(long)]
+    pub eval_out: Option<PathBuf>,
 }
 
 fn resolve_repo_root(explicit: Option<&Path>, data_dir: &Path) -> PathBuf {
@@ -126,11 +148,36 @@ async fn main() -> Result<()> {
         return Ok(());
     }
 
+    if args.mode == ServerMode::EvalAnomaly {
+        let records = load_records(&[args.data_dir.as_path(), args.eval_dir.as_path()])
+            .context("impossibile caricare i record BIDMC per la valutazione")?;
+        ensure!(!records.is_empty(), "nessun record BIDMC trovato");
+        let splits: &[Split] = match args.eval_split {
+            EvalSplitArg::Dev => &[Split::Development],
+            EvalSplitArg::HeldOut => &[Split::HeldOut],
+            EvalSplitArg::All => &[Split::HeldOut, Split::Development],
+        };
+        let reports: Vec<_> = splits.iter().map(|s| evaluate_split(&records, *s)).collect();
+        let markdown = render_markdown(&reports);
+        match &args.eval_out {
+            Some(path) => {
+                if let Some(parent) = path.parent() {
+                    std::fs::create_dir_all(parent)
+                        .with_context(|| format!("impossibile creare {parent:?}"))?;
+                }
+                std::fs::write(path, &markdown)
+                    .with_context(|| format!("impossibile scrivere {path:?}"))?;
+            }
+            None => print!("{markdown}"),
+        }
+        return Ok(());
+    }
+
     let state = SharedMissionState::from_data_dir(&args.data_dir)
         .with_context(|| format!("impossibile inizializzare i dataset da {:?}", args.data_dir))?;
 
     match args.mode {
-        ServerMode::BuildGraph => unreachable!(),
+        ServerMode::BuildGraph | ServerMode::EvalAnomaly => unreachable!(),
         ServerMode::SmokeTest => {
             let mut last_pkt = None;
             for _ in 0..20 {

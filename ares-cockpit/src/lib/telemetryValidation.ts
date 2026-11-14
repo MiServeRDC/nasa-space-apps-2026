@@ -2,14 +2,17 @@ import type {
   AbstentionCertificate,
   ActivePlaybook,
   AlarmLevel,
+  AnomalyStatus,
   Biometrics,
   BiometricsSource,
+  ChannelAnomalyState,
   ChannelProvenance,
   ChannelQuantileCone,
   ConformalGateStatus,
   CountermeasureAction,
   DataOrigin,
   Environment,
+  ForecastMethod,
   FreshnessStatus,
   HeatmapCellWire,
   Hemodynamics,
@@ -21,9 +24,11 @@ import type {
   ProvenanceManifest,
   SafetyMargins,
   ScenarioOverlayMode,
+  ShortHorizonCone,
   TelemetryPacket,
   TimestralQuantilesSummary,
   TtvIntervalKind,
+  VitalsAnomalyReport,
 } from '../types/telemetry';
 
 type JsonRecord = Record<string, unknown>;
@@ -52,6 +57,21 @@ const ASTRONAUT_IDS = new Set<string>([
   'ARES-CDR-02',
   'ARES-CDR-03',
   'ARES-CDR-04',
+]);
+
+const BIDMC_SUBJECT_ID_RE = /^BIDMC-SUBJECT-(0[1-9]|[1-4][0-9]|5[0-3])$/;
+
+export function isValidAstronautId(id: string): boolean {
+  return ASTRONAUT_IDS.has(id) || BIDMC_SUBJECT_ID_RE.test(id);
+}
+
+const ANOMALY_STATUSES = new Set<string>(['NORMAL', 'ATTENTION', 'ALARM']);
+
+const FORECAST_METHODS = new Set<string>([
+  'DETERMINISTIC_COLD_START',
+  'TIMESTRAL_GREY_BOX_1HZ',
+  'EWMA_EMPIRICAL_RESIDUAL_QUANTILES',
+  'HYBRID_TIMESTRAL_AND_EWMA_SHORT_HORIZON',
 ]);
 
 const ALARM_LEVELS = new Set<string>([
@@ -168,7 +188,7 @@ export function isValidTelemetryPayload(data: unknown): boolean {
   if (typeof data.source_record_id !== 'string' || data.source_record_id.trim().length === 0) {
     return false;
   }
-  if (typeof data.astronaut_id !== 'string' || !ASTRONAUT_IDS.has(data.astronaut_id)) {
+  if (typeof data.astronaut_id !== 'string' || !isValidAstronautId(data.astronaut_id)) {
     return false;
   }
   if (
@@ -288,6 +308,12 @@ export function isValidTelemetryPayload(data: unknown): boolean {
 
   if (data.quality_flags !== undefined && !isStringArray(data.quality_flags)) {
     return false;
+  }
+
+  if (data.vitals_anomaly !== undefined && data.vitals_anomaly !== null) {
+    if (normalizeVitalsAnomaly(data.vitals_anomaly) === null) {
+      return false;
+    }
   }
 
   return true;
@@ -432,6 +458,70 @@ export function normalizeCountermeasureActions(raw: unknown): CountermeasureActi
   return out;
 }
 
+function normalizeAbstentionCertificate(raw: unknown): AbstentionCertificate | null {
+  if (!isRecord(raw)) return null;
+  const status = normalizeConformalGateStatus(raw.status) ?? 'ABSTAINED_FALLBACK_DETERMINISTIC';
+  return {
+    abstained:
+      typeof raw.abstained === 'boolean'
+        ? raw.abstained
+        : status === 'ABSTAINED_FALLBACK_DETERMINISTIC',
+    status,
+    reason: typeof raw.reason === 'string' ? raw.reason : 'unspecified gate diagnostic',
+    empirical_coverage_error: isFiniteNum(raw.empirical_coverage_error)
+      ? raw.empirical_coverage_error
+      : 0,
+    adaptive_alpha_t: isFiniteNum(raw.adaptive_alpha_t) ? raw.adaptive_alpha_t : 0.1,
+    interval_width: isFiniteNum(raw.interval_width) ? raw.interval_width : 0,
+    sqi_score: isFiniteNum(raw.sqi_score) ? raw.sqi_score : 0,
+    missing_ratio: isFiniteNum(raw.missing_ratio) ? raw.missing_ratio : 0,
+    timestamp_s: isFiniteNum(raw.timestamp_s) ? raw.timestamp_s : 0,
+  };
+}
+
+export function normalizeVitalsAnomaly(raw: unknown): VitalsAnomalyReport | null {
+  if (!isRecord(raw) || !Array.isArray(raw.channels) || !ANOMALY_STATUSES.has(String(raw.overall))) {
+    return null;
+  }
+  const channels: ChannelAnomalyState[] = [];
+  for (const ch of raw.channels) {
+    if (!isRecord(ch) || !ANOMALY_STATUSES.has(String(ch.status)) || typeof ch.reason !== 'string') {
+      return null;
+    }
+    channels.push({
+      channel: String(ch.channel),
+      status: ch.status as AnomalyStatus,
+      evaluable: ch.evaluable === true,
+      detector: typeof ch.detector === 'string' ? ch.detector : null,
+      value: asNullableNumber(ch.value),
+      baseline_median: asNullableNumber(ch.baseline_median),
+      baseline_sigma: asNullableNumber(ch.baseline_sigma),
+      z_score: asNullableNumber(ch.z_score),
+      duration_s: asNullableNumber(ch.duration_s) ?? 0,
+      reason: ch.reason,
+    });
+  }
+  const inj = raw.injection;
+  return {
+    recording_time_s: asNullableNumber(raw.recording_time_s) ?? 0,
+    baseline_ready: raw.baseline_ready === true,
+    baseline_samples: asNullableNumber(raw.baseline_samples) ?? 0,
+    baseline_required: asNullableNumber(raw.baseline_required) ?? 0,
+    overall: raw.overall as AnomalyStatus,
+    mahalanobis_d2: asNullableNumber(raw.mahalanobis_d2),
+    channels,
+    injection: isRecord(inj)
+      ? {
+          kind: String(inj.kind),
+          description: typeof inj.description === 'string' ? inj.description : '',
+          onset_s: asNullableNumber(inj.onset_s) ?? 0,
+          elapsed_s: asNullableNumber(inj.elapsed_s) ?? 0,
+          duration_s: asNullableNumber(inj.duration_s) ?? 0,
+        }
+      : null,
+  };
+}
+
 export function normalizeTimestralQuantiles(
   raw: unknown,
   opts: {
@@ -448,22 +538,8 @@ export function normalizeTimestralQuantiles(
   const confidenceState = normalizeConformalGateStatus(raw.confidence_state ?? raw.conformal_status);
   const conformalStatus = normalizeConformalGateStatus(raw.conformal_status ?? raw.confidence_state);
 
-  let abstentionCertificate: AbstentionCertificate | null = null;
-  if (isRecord(raw.abstention_certificate)) {
-    const c = raw.abstention_certificate;
-    const status = normalizeConformalGateStatus(c.status) ?? 'ABSTAINED_FALLBACK_DETERMINISTIC';
-    abstentionCertificate = {
-      abstained: typeof c.abstained === 'boolean' ? c.abstained : status === 'ABSTAINED_FALLBACK_DETERMINISTIC',
-      status,
-      reason: typeof c.reason === 'string' ? c.reason : 'unspecified gate diagnostic',
-      empirical_coverage_error: isFiniteNum(c.empirical_coverage_error) ? c.empirical_coverage_error : 0,
-      adaptive_alpha_t: isFiniteNum(c.adaptive_alpha_t) ? c.adaptive_alpha_t : 0.1,
-      interval_width: isFiniteNum(c.interval_width) ? c.interval_width : 0,
-      sqi_score: isFiniteNum(c.sqi_score) ? c.sqi_score : 0,
-      missing_ratio: isFiniteNum(c.missing_ratio) ? c.missing_ratio : 0,
-      timestamp_s: isFiniteNum(c.timestamp_s) ? c.timestamp_s : 0,
-    };
-  }
+  const abstentionCertificate = normalizeAbstentionCertificate(raw.abstention_certificate);
+  const shortHorizonAbstention = normalizeAbstentionCertificate(raw.short_horizon_abstention);
 
   const rawChannelCones = Array.isArray(raw.channel_cones) ? raw.channel_cones : [];
   const channelCones: ChannelQuantileCone[] = [];
@@ -485,6 +561,35 @@ export function normalizeTimestralQuantiles(
       horizon_24h: h24h,
     });
   }
+
+  const rawShortCones = Array.isArray(raw.short_horizon_cones) ? raw.short_horizon_cones : [];
+  const shortHorizonCones: ShortHorizonCone[] = [];
+  for (const item of rawShortCones) {
+    if (!isRecord(item) || typeof item.channel_name !== 'string') continue;
+    if (hrvUnavailable && RR_DEPENDENT_CONE_CHANNELS.has(item.channel_name)) {
+      continue;
+    }
+    const h5s = parseMonotoneQuantileTriplet(item.horizon_5s);
+    const h10s = parseMonotoneQuantileTriplet(item.horizon_10s);
+    const h30s = parseMonotoneQuantileTriplet(item.horizon_30s);
+    const h60s = parseMonotoneQuantileTriplet(item.horizon_60s);
+    const h120s = parseMonotoneQuantileTriplet(item.horizon_120s);
+    if (!h5s && !h10s && !h30s && !h60s && !h120s) continue;
+    shortHorizonCones.push({
+      channel_name: item.channel_name,
+      ewma_level: isFiniteNum(item.ewma_level) ? item.ewma_level : undefined,
+      horizon_5s: h5s,
+      horizon_10s: h10s,
+      horizon_30s: h30s,
+      horizon_60s: h60s,
+      horizon_120s: h120s,
+    });
+  }
+
+  const forecastMethod: ForecastMethod | undefined =
+    typeof raw.forecast_method === 'string' && FORECAST_METHODS.has(raw.forecast_method)
+      ? (raw.forecast_method as ForecastMethod)
+      : undefined;
 
   const ttvHoursCone = hrvUnavailable ? null : parseMonotoneQuantileTriplet(raw.ttv_hours_cone);
   const ttvQ05Days = hrvUnavailable
@@ -509,6 +614,15 @@ export function normalizeTimestralQuantiles(
     conformal_status: conformalStatus,
     abstention_certificate: abstentionCertificate,
     short_horizon_s: isFiniteNum(raw.short_horizon_s) ? raw.short_horizon_s : undefined,
+    forecast_method: forecastMethod,
+    ewma_short_horizon_max_s: isFiniteNum(raw.ewma_short_horizon_max_s)
+      ? raw.ewma_short_horizon_max_s
+      : undefined,
+    short_horizon_cones:
+      shortHorizonCones.length > 0 || Array.isArray(raw.short_horizon_cones)
+        ? shortHorizonCones
+        : undefined,
+    short_horizon_abstention: shortHorizonAbstention,
     heart_rate_bpm_cone: parseMonotoneQuantileTriplet(raw.heart_rate_bpm_cone),
     resp_rate_brpm_cone: parseMonotoneQuantileTriplet(raw.resp_rate_brpm_cone),
     rmssd_ms_cone: hrvUnavailable ? null : parseMonotoneQuantileTriplet(raw.rmssd_ms_cone),
@@ -896,6 +1010,7 @@ export function normalizeTelemetryPacket(data: unknown): TelemetryPacket | null 
       hrvUnavailableReason: biometrics.hrv_unavailable_reason,
       hrvRmssdMs: biometrics.hrv_rmssd_ms,
     }),
+    vitals_anomaly: normalizeVitalsAnomaly(d.vitals_anomaly),
     is_local_simulation: false,
   };
 }

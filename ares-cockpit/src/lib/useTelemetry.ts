@@ -27,6 +27,28 @@ export const ENGINE_WS_URL: string =
 
 export type LinkState = 'ENGINE_LIVE' | 'LOCAL_SIMULATION';
 
+export type AnomalyInjectionKind =
+  | 'DESATURATION_FAST'
+  | 'DESATURATION_MODERATE'
+  | 'DESATURATION_SLOW'
+  | 'TACHYCARDIA_FAST'
+  | 'TACHYCARDIA_MODERATE'
+  | 'TACHYCARDIA_SLOW'
+  | 'COMBINED_SUBTLE'
+  | 'SENSOR_DETACH'
+  | 'CLEAR'
+  | null;
+
+export interface AnomalyInjectionWireRequest {
+  kind: string | null;
+  duration_s?: number;
+}
+
+export interface AnomalyInjectionResult {
+  ok: boolean;
+  error?: string;
+}
+
 export interface RecordedHistoryPoint {
   relativeTimeS: number;
   hr: number | null;
@@ -315,6 +337,77 @@ export function useTelemetry(
     [acceptRawPayload],
   );
 
+  const injectAnomaly = useCallback(
+    async (
+      kind: AnomalyInjectionKind,
+      duration_s?: number,
+    ): Promise<AnomalyInjectionResult> => {
+      const normalizedKind = kind === 'CLEAR' ? null : kind;
+      const wireRequest: AnomalyInjectionWireRequest =
+        typeof duration_s === 'number' && Number.isFinite(duration_s)
+          ? { kind: normalizedKind, duration_s }
+          : { kind: normalizedKind };
+
+      if (IS_ARES_DESKTOP_SHELL) {
+        const tauri = getTauriInternals();
+        if (tauri?.invoke) {
+          try {
+            const start = performance.now();
+            const updated = await tauri.invoke('ipc_inject_anomaly', {
+              kind: normalizedKind,
+              duration_s: wireRequest.duration_s,
+              durationS: wireRequest.duration_s,
+              request: wireRequest,
+            });
+            const elapsedUs = Math.max(1, Math.round((performance.now() - start) * 1000));
+            setLastSyncLatencyUs(elapsedUs);
+            setIpcLatencyUs(elapsedUs);
+            if (updated) {
+              acceptRawPayload(updated, 'TAURI ipc_inject_anomaly');
+            }
+            return { ok: true };
+          } catch (err) {
+            // Fall through to HTTP loopback if command is not registered, otherwise surface message
+            const msg = err instanceof Error ? err.message : String(err);
+            if (!msg.toLowerCase().includes('not found') && !msg.toLowerCase().includes('unknown command')) {
+              return { ok: false, error: msg || 'Tauri anomaly injection failed' };
+            }
+          }
+        }
+      }
+
+      try {
+        const start = performance.now();
+        const res = await fetch(`${ENGINE_HTTP_URL}/api/inject-anomaly`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(wireRequest),
+        });
+        if (!res.ok) {
+          const body = (await res.json().catch(() => null)) as { error?: string } | null;
+          return {
+            ok: false,
+            error: body?.error ?? `Engine refused the request (HTTP ${res.status})`,
+          };
+        }
+        const body = (await res.json().catch(() => null)) as unknown;
+        const elapsedUs = Math.max(1, Math.round((performance.now() - start) * 1000));
+        setLastSyncLatencyUs(elapsedUs);
+        if (body && (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN)) {
+          const candidate =
+            typeof body === 'object' && body !== null && 'packet' in body
+              ? (body as Record<string, unknown>).packet
+              : body;
+          acceptRawPayload(candidate, 'POST /api/inject-anomaly');
+        }
+        return { ok: true };
+      } catch {
+        return { ok: false, error: 'Engine not reachable' };
+      }
+    },
+    [acceptRawPayload],
+  );
+
   // 1A. Native Tauri v2 IPC transport (when running inside ARES-MedOS desktop shell)
   useEffect(() => {
     if (!IS_ARES_DESKTOP_SHELL) return;
@@ -590,5 +683,6 @@ export function useTelemetry(
     status,
     recordedHistory,
     syncWhatIfNow: () => postStressTestOverride(whatIf, thrombusConfirmed),
+    injectAnomaly,
   };
 }

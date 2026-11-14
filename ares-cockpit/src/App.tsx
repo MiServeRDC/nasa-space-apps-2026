@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   alarmFor,
   clamp,
@@ -23,11 +23,17 @@ import { BodyHeatmap } from './modules/body-3d-heatmap/BodyHeatmap';
 import { WhatIfConsole } from './modules/whatif-console/WhatIfConsole';
 import { PlaybookRunner } from './modules/playbook-runner/PlaybookRunner';
 import { EcgStrip, OcularOnsd, PocusIjv } from './modules/analysis-imaging/Imaging';
+import {
+  EnginePlaybookCard,
+  isAcuteVitalsPlaybook,
+  VitalsAnomalyPanel,
+} from './modules/vitals-anomaly/VitalsAnomalyPanel';
 import { FreshnessBadge, OriginBadge, ProvenanceBanner } from './modules/provenance/ProvenanceInspector';
 import { OsSystemStatusBar } from './modules/os-shell/OsSystemStatusBar';
 import { OsCommandPalette } from './modules/os-shell/OsCommandPalette';
 import { OsVoiceCopilot } from './modules/os-shell/OsVoiceCopilot';
 import type { VoiceIntentClassification } from './lib/voiceIntentRouter';
+import type { InjuryMarker } from './types/injury';
 import type { DataOrigin, FreshnessStatus, TelemetryPacket } from './types/telemetry';
 
 type EvalTab = 'BODY_3D' | 'POCUS' | 'MUSCLE_BONE' | 'FORECAST';
@@ -246,6 +252,105 @@ function deriveStateFromPacket(
   };
 }
 
+/** SVG vital trend sparkline with explicit pen-lifts across null BIDMC intervals. */
+function VitalsTrend({ history }: { history: RecordedHistoryPoint[] }) {
+  const [metric, setMetric] = useState<'hr' | 'spo2' | 'resp' | 'pulse'>('hr');
+  const signals = {
+    hr: ['Heart rate', 'bpm'],
+    spo2: ['Blood oxygen', '%'],
+    resp: ['Breathing', 'br/min'],
+    pulse: ['Pulse', 'bpm'],
+  } as const;
+
+  const points = history.filter((point) => point[metric] !== null);
+  const values = points.map((point) => point[metric] ?? 0);
+  const low = values.length ? Math.min(...values) : 0;
+  const high = values.length ? Math.max(...values) : 0;
+  const padding = Math.max(1, (high - low) * 0.15);
+  const start = history[0]?.relativeTimeS ?? 0;
+  const end = history.at(-1)?.relativeTimeS ?? start;
+  const x = (t: number) => 12 + ((t - start) * 736) / Math.max(1, end - start);
+  const y = (v: number) => 12 + ((high + padding - v) * 130) / Math.max(1e-6, high - low + 2 * padding);
+
+  let penDown = false;
+  const path = history
+    .map((point) => {
+      const value = point[metric];
+      if (value === null) {
+        penDown = false;
+        return '';
+      }
+      const command = penDown ? 'L' : 'M';
+      penDown = true;
+      return `${command}${x(point.relativeTimeS).toFixed(1)},${y(value).toFixed(1)}`;
+    })
+    .filter(Boolean)
+    .join(' ');
+
+  return (
+    <section className="health-trend" aria-label="Recorded vital trends">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <h2>Recorded trends (pen-lift on null gaps)</h2>
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Choose trend signal">
+          {(Object.keys(signals) as (keyof typeof signals)[]).map((key) => (
+            <button
+              key={key}
+              type="button"
+              aria-pressed={key === metric}
+              onClick={() => setMetric(key)}
+              className="health-choice font-mono"
+            >
+              {signals[key][0]}
+            </button>
+          ))}
+        </div>
+      </div>
+      {points.length >= 2 ? (
+        <>
+          <svg
+            viewBox="0 0 760 154"
+            preserveAspectRatio="none"
+            role="img"
+            aria-label={`${signals[metric][0]} over recorded time`}
+            className="mt-3 h-32 w-full"
+          >
+            {[22, 62, 102, 142].map((row) => (
+              <line key={row} x1="12" x2="748" y1={row} y2={row} stroke="#1f2937" />
+            ))}
+            <path
+              d={path}
+              fill="none"
+              stroke="#22d3ee"
+              strokeWidth="2"
+              vectorEffect="non-scaling-stroke"
+            />
+            {points.map((point) => (
+              <circle
+                key={point.relativeTimeS}
+                cx={x(point.relativeTimeS)}
+                cy={y(point[metric] ?? 0)}
+                r="2"
+                fill="#22d3ee"
+              />
+            ))}
+          </svg>
+          <div className="mt-1 flex justify-between font-mono text-xs text-gray-400">
+            <span>{start.toFixed(0)} s</span>
+            <span>
+              {low.toFixed(1)} - {high.toFixed(1)} {signals[metric][1]}
+            </span>
+            <span>{end.toFixed(0)} s</span>
+          </div>
+        </>
+      ) : (
+        <p className="py-6 font-mono text-xs text-gray-400">
+          Waiting for recorded samples for {signals[metric][0].toLowerCase()}.
+        </p>
+      )}
+    </section>
+  );
+}
+
 export default function App() {
   const [whatIf, setWhatIf] = useState<WhatIf>(DEFAULT_WHATIF);
   const [thrombus, setThrombus] = useState<boolean | null>(null);
@@ -257,6 +362,50 @@ export default function App() {
   const [paletteOpen, setPaletteOpen] = useState<boolean>(false);
   const [paletteInitialMode, setPaletteInitialMode] = useState<'TOOLS' | 'COPILOT'>('TOOLS');
   const [requestedPlaybook, setRequestedPlaybook] = useState<{ id: string; seq: number } | null>(null);
+  const [injuries, setInjuries] = useState<InjuryMarker[]>([]);
+  const injuryPhotoUrls = useRef(new Set<string>());
+
+  useEffect(() => {
+    const urls = injuryPhotoUrls.current;
+    return () => {
+      urls.forEach((url) => URL.revokeObjectURL(url));
+      urls.clear();
+    };
+  }, []);
+
+  const releaseInjuryPhoto = useCallback((injury?: InjuryMarker) => {
+    const url = injury?.photoUrl;
+    if (!url || !url.startsWith('blob:')) return;
+    URL.revokeObjectURL(url);
+    injuryPhotoUrls.current.delete(url);
+  }, []);
+
+  const addInjury = useCallback(
+    (injury: InjuryMarker) => {
+      if (injury.photoUrl?.startsWith('blob:')) {
+        injuryPhotoUrls.current.add(injury.photoUrl);
+      }
+      setInjuries((prev) => {
+        const replaced = prev.find((item) => item.region === injury.region);
+        if (replaced && replaced.photoUrl !== injury.photoUrl) {
+          releaseInjuryPhoto(replaced);
+        }
+        return [...prev.filter((item) => item.region !== injury.region), injury];
+      });
+    },
+    [releaseInjuryPhoto],
+  );
+
+  const resolveInjury = useCallback(
+    (id: string) => {
+      setInjuries((prev) => {
+        const target = prev.find((item) => item.id === id);
+        if (target) releaseInjuryPhoto(target);
+        return prev.filter((item) => item.id !== id);
+      });
+    },
+    [releaseInjuryPhoto],
+  );
 
   const {
     packet,
@@ -269,6 +418,7 @@ export default function App() {
     status,
     recordedHistory,
     syncWhatIfNow,
+    injectAnomaly,
   } = useTelemetry(
     whatIf,
     thrombus,
@@ -495,61 +645,104 @@ export default function App() {
             {/* PAGE 1: GATHER */}
             {activePhase === 'GATHER' && (
               <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
-                <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-                  {[
-                    { key: 'Heart Rate (ECG)', fmt: hrFmt, unit: 'bpm' },
-                    { key: 'Pulse Rate (PPG)', fmt: pulseFmt, unit: 'bpm' },
-                    { key: 'Blood Oxygen (SpO2)', fmt: spo2Fmt, unit: '%' },
-                    { key: 'Breathing Rate', fmt: respFmt, unit: 'br/min' },
-                    { key: 'HRV (RMSSD)', fmt: hrvFmt, unit: 'ms' },
-                  ].map((item) => (
-                    <div key={item.key} className="flex flex-col justify-between rounded-lg border border-line bg-panel p-3">
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="text-xs text-gray-400">{item.key}</span>
+                <VitalsAnomalyPanel
+                  report={packet.vitals_anomaly}
+                  engineLive={link === 'ENGINE_LIVE'}
+                  httpBaseUrl={ENGINE_HTTP_URL}
+                  onInjectAnomaly={injectAnomaly}
+                />
+
+                <section className="bedside-monitor" aria-label="Bedside patient monitor">
+                  <div className="monitor-heading font-mono text-xs">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-gray-100">Bedside Monitor &amp; ECG Trace</h2>
+                      <OriginBadge origin={b.heart_rate_bpm === null ? 'UNAVAILABLE' : bioOrigin} />
+                      <FreshnessBadge
+                        freshness={bioFreshness(b.heart_rate_bpm === null)}
+                        ageMs={status.heldSample ? status.heldAgeMs : null}
+                      />
+                    </div>
+                    <span className="text-gray-400">
+                      {packet.provenance_manifest.biometrics_source} | SQI {(b.sqi_score ?? (isRecordedBiometrics ? 1.0 : localSim.sqi)).toFixed(2)}
+                    </span>
+                  </div>
+
+                  <div className="monitor-cardiac">
+                    <div>
+                      <div className="monitor-trace-label font-mono">
+                        Lead II Synthetic ECG Visualizer (driven by recorded/simulated HR)
                       </div>
-                      <div
-                        className={`mt-1 font-mono ${
-                          item.fmt.unavailable ? 'text-xs font-bold leading-snug text-advisory' : 'text-2xl text-white'
-                        }`}
-                      >
-                        {item.fmt.text}
-                      </div>
-                      <div className="mt-1.5 flex flex-wrap items-center justify-between gap-1">
-                        <span className="font-mono text-[10px] text-gray-500">{item.fmt.unavailable ? '--' : item.unit}</span>
-                        <div className="flex flex-wrap gap-1">
+                      <EcgStrip
+                        hr={b.heart_rate_bpm}
+                        artifact={isRecordedBiometrics ? 0 : whatIf.artifact_level}
+                        sqi={b.sqi_score ?? (isRecordedBiometrics ? 1.0 : localSim.sqi)}
+                        isRecorded={isRecordedBiometrics}
+                      />
+                    </div>
+                    <div className="monitor-vital monitor-heart">
+                      <span>Heart Rate (ECG)</span>
+                      <strong className={hrFmt.unavailable ? 'vital-unavailable' : ''}>
+                        {hrFmt.text}
+                      </strong>
+                      {!hrFmt.unavailable && <small>bpm</small>}
+                    </div>
+                  </div>
+
+                  <dl className="monitor-secondary">
+                    {[
+                      { cls: 'monitor-oxygen', label: 'Blood Oxygen (SpO2)', fmt: spo2Fmt, unit: '%' },
+                      { cls: 'monitor-breathing', label: 'Breathing Rate', fmt: respFmt, unit: 'br/min' },
+                      { cls: 'monitor-pulse', label: 'Pulse Rate (PPG)', fmt: pulseFmt, unit: 'bpm' },
+                    ].map((item) => (
+                      <div key={item.label} className={`monitor-vital ${item.cls}`}>
+                        <dt className="flex flex-wrap items-center gap-1.5">
+                          <span>{item.label}</span>
                           <OriginBadge origin={item.fmt.unavailable ? 'UNAVAILABLE' : bioOrigin} />
                           <FreshnessBadge
                             freshness={bioFreshness(item.fmt.unavailable)}
                             ageMs={status.heldSample ? status.heldAgeMs : null}
                           />
-                        </div>
+                        </dt>
+                        <dd>
+                          <strong className={item.fmt.unavailable ? 'vital-unavailable' : ''}>
+                            {item.fmt.text}
+                          </strong>
+                          {!item.fmt.unavailable && <small>{item.unit}</small>}
+                        </dd>
                       </div>
+                    ))}
+                  </dl>
+                </section>
+
+                <div className="grid gap-3 md:grid-cols-[1fr_280px]">
+                  <VitalsTrend history={recordedHistory} />
+
+                  <div className="flex flex-col justify-between rounded-lg border border-line bg-panel p-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-semibold text-gray-300">HRV (RMSSD)</span>
+                      <OriginBadge origin={hrvFmt.unavailable ? 'UNAVAILABLE' : bioOrigin} />
                     </div>
-                  ))}
+                    <div
+                      className={`my-2 font-mono ${
+                        hrvFmt.unavailable ? 'text-xs font-bold leading-snug text-advisory' : 'text-2xl text-white'
+                      }`}
+                    >
+                      {hrvFmt.text}
+                      {!hrvFmt.unavailable && <span className="ml-1 text-xs text-gray-500">ms</span>}
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-1">
+                      <FreshnessBadge
+                        freshness={bioFreshness(hrvFmt.unavailable)}
+                        ageMs={status.heldSample ? status.heldAgeMs : null}
+                      />
+                      <span className="font-mono text-[10px] text-gray-500">
+                        Never coerced to 0
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
                 <RecordedHistoryStrip history={recordedHistory} />
-
-                <Card
-                  title="ECG Waveform Visualizer & Signal Quality Check"
-                  tag={packet.provenance_manifest.biometrics_source}
-                  origin={b.heart_rate_bpm === null ? 'UNAVAILABLE' : bioOrigin}
-                  freshness={bioFreshness(b.heart_rate_bpm === null)}
-                  className="min-h-0 flex-1"
-                >
-                  <div className="flex h-full flex-col justify-between gap-3">
-                    <EcgStrip
-                      hr={b.heart_rate_bpm}
-                      artifact={isRecordedBiometrics ? 0 : whatIf.artifact_level}
-                      sqi={b.sqi_score ?? (isRecordedBiometrics ? 1.0 : localSim.sqi)}
-                      isRecorded={isRecordedBiometrics}
-                    />
-                    <p className="text-xs text-gray-300">
-                      Missing or null channels remain explicitly <span className="font-mono text-advisory">MISSING</span> /{' '}
-                      <span className="font-mono text-advisory">UNAVAILABLE (BEAT_INTERVALS_NOT_AVAILABLE)</span> and are never coerced to 0 or overwritten by What-If sliders.
-                    </p>
-                  </div>
-                </Card>
               </div>
             )}
 
@@ -567,7 +760,7 @@ export default function App() {
                       key={id}
                       type="button"
                       onClick={() => setEvalTab(id)}
-                      className={`cursor-pointer rounded border px-3 py-1.5 ${
+                      className={`min-h-12 cursor-pointer rounded border px-3 py-1.5 ${
                         evalTab === id ? 'border-nominal bg-nominal/15 font-bold text-nominal' : 'border-line text-gray-400 hover:text-white'
                       }`}
                     >
@@ -578,29 +771,30 @@ export default function App() {
 
                 {evalTab === 'BODY_3D' && (
                   <Card
-                    title="Your 3D Body Scan"
-                    tag="Click any point to inspect, drag to rotate"
+                    title="Your 3D Body Scan & Atlas"
+                    tag="Click any UBERON or injury pin to inspect, drag to rotate"
                     origin={hasHemodynamics || hasMusculoskeletal ? (packet.is_local_simulation ? 'SIMULATED_SCENARIO_INPUT' : 'DERIVED_FROM_HYBRID_SCENARIO') : 'UNAVAILABLE'}
                     className="min-h-0 flex-1"
                   >
-                    {!hasHemodynamics && !hasMusculoskeletal ? (
-                      <UnavailableSubsystemPanel
-                        title="3D MICROGRAVITY HEATMAP UNAVAILABLE IN PURE BIDMC REPLAY"
-                        reason="The active stream is pure terrestrial BIDMC v1.0.0 replay (hemodynamics and musculoskeletal blocks are null). No fabricated organ values are rendered."
-                        linkIsLive={link === 'ENGINE_LIVE'}
-                        onEngageOverlay={() => setWhatIfOverlayActive(true)}
-                      />
-                    ) : (
-                      <BodyHeatmap
-                        s={s}
-                        sex={whatIf.sex}
-                        hypergraphSpatial={packet.hypergraph_spatial}
-                        isLocalSimulation={Boolean(packet.is_local_simulation)}
-                        modelValidationStatus={packet.model_validation_status}
-                        onChangeSex={(sex) => handleWhatIfChange({ ...whatIf, sex })}
-                        onOpenTab={setEvalTab}
-                      />
-                    )}
+                    <BodyHeatmap
+                      s={hasHemodynamics || hasMusculoskeletal ? s : null}
+                      sex={whatIf.sex}
+                      hypergraphSpatial={packet.hypergraph_spatial}
+                      isLocalSimulation={Boolean(packet.is_local_simulation)}
+                      modelValidationStatus={packet.model_validation_status}
+                      injuries={injuries}
+                      onAddInjury={addInjury}
+                      onResolveInjury={resolveInjury}
+                      onChangeSex={(sex) => handleWhatIfChange({ ...whatIf, sex })}
+                      onOpenTab={setEvalTab}
+                      onOpenPlaybook={(playbookId) => {
+                        setActivePhase('ACT');
+                        setRequestedPlaybook((prev) => ({
+                          id: playbookId ?? 'PLAYBOOK_01_VENOUS_STASIS_LBNP',
+                          seq: (prev?.seq ?? 0) + 1,
+                        }));
+                      }}
+                    />
                   </Card>
                 )}
 
@@ -733,23 +927,28 @@ export default function App() {
 
             {/* PAGE 3: ACT */}
             {activePhase === 'ACT' && (
-              <div className="grid min-h-0 flex-1 gap-4 md:grid-cols-[1.3fr_1fr]">
+              <div className="act-grid min-h-0 flex-1 overflow-y-auto">
                 <Card
                   title="Guided Medical Procedure"
                   origin={packet.active_playbook ? 'DERIVED_FROM_HYBRID_SCENARIO' : 'SIMULATED_SCENARIO_INPUT'}
                   className="min-h-0"
                 >
-                  <PlaybookRunner
-                    activePlaybook={packet.active_playbook}
-                    isLiveEngine={link === 'ENGINE_LIVE'}
-                    thrombusConfirmed={thrombus}
-                    ventEvent={ventEvent}
-                    syncLatencyUs={ipcLatencyUs}
-                    modelValidationStatus={packet.model_validation_status}
-                    requestedPlaybook={requestedPlaybook}
-                    onConfirmPocusThrombus={handleThrombusChange}
-                    onRearmLbnp={() => setVentEvent(null)}
-                  />
+                  <div className="space-y-3">
+                    {packet.active_playbook && isAcuteVitalsPlaybook(packet.active_playbook) && (
+                      <EnginePlaybookCard playbook={packet.active_playbook} />
+                    )}
+                    <PlaybookRunner
+                      activePlaybook={packet.active_playbook}
+                      isLiveEngine={link === 'ENGINE_LIVE'}
+                      thrombusConfirmed={thrombus}
+                      ventEvent={ventEvent}
+                      syncLatencyUs={ipcLatencyUs}
+                      modelValidationStatus={packet.model_validation_status}
+                      requestedPlaybook={requestedPlaybook}
+                      onConfirmPocusThrombus={handleThrombusChange}
+                      onRearmLbnp={() => setVentEvent(null)}
+                    />
+                  </div>
                 </Card>
                 <Card title="Active Safety Protections" origin={packet.is_local_simulation ? 'SIMULATED_SCENARIO_INPUT' : 'DERIVED_COMPUTED'} className="min-h-0">
                   <div className="space-y-4 text-sm text-gray-300">
@@ -827,37 +1026,42 @@ export default function App() {
               <MriGauge safety={sm} qualityFlags={qualityFlags} />
             </div>
 
-            <div className="min-h-0 flex-1 rounded-lg border border-line bg-panel p-4">
-              <div className="mb-2 flex items-center justify-between">
-                <span className="font-mono text-xs tracking-widest text-gray-500">ADJUST CONDITIONS</span>
+            <details
+              open={whatIfOverlayActive || undefined}
+              className="min-h-0 rounded-lg border border-line bg-panel p-4"
+            >
+              <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-2 font-mono text-xs tracking-widest text-gray-300">
+                <span>ADJUST CONDITIONS (WHAT-IF)</span>
                 <OriginBadge origin="SIMULATED_SCENARIO_INPUT" />
-              </div>
-              <WhatIfConsole
-                value={whatIf}
-                onChange={handleWhatIfChange}
-                ventEvent={ventEvent}
-                onRearm={() => setVentEvent(null)}
-                link={link}
-                overlayActive={whatIfOverlayActive}
-                onToggleOverlay={setWhatIfOverlayActive}
-                onSyncNow={() => {
-                  setWhatIfOverlayActive(true);
-                  void syncWhatIfNow();
-                }}
-              />
+              </summary>
+              <div className="mt-3">
+                <WhatIfConsole
+                  value={whatIf}
+                  onChange={handleWhatIfChange}
+                  ventEvent={ventEvent}
+                  onRearm={() => setVentEvent(null)}
+                  link={link}
+                  overlayActive={whatIfOverlayActive}
+                  onToggleOverlay={setWhatIfOverlayActive}
+                  onSyncNow={() => {
+                    setWhatIfOverlayActive(true);
+                    void syncWhatIfNow();
+                  }}
+                />
 
-              {isPureReplay && (
-                <div className="mt-3 rounded border border-warning/40 bg-black p-2.5 font-mono text-[11px]">
-                  <div className="flex items-center justify-between text-warning">
-                    <span>LOCAL WHAT-IF PREVIEW</span>
-                    <span>NOT LIVE TELEMETRY</span>
+                {isPureReplay && (
+                  <div className="mt-3 rounded border border-warning/40 bg-black p-2.5 font-mono text-[11px]">
+                    <div className="flex items-center justify-between text-warning">
+                      <span>LOCAL WHAT-IF PREVIEW</span>
+                      <span>NOT LIVE TELEMETRY</span>
+                    </div>
+                    <div className="mt-1 text-gray-400">
+                      Preview MRI: {localSim.mri} | tau_w: {localSim.tauW.toFixed(2)} dyn/cm2 | SBP: {localSim.sbp.toFixed(0)} mmHg
+                    </div>
                   </div>
-                  <div className="mt-1 text-gray-400">
-                    Preview MRI: {localSim.mri} | tau_w: {localSim.tauW.toFixed(2)} dyn/cm2 | SBP: {localSim.sbp.toFixed(0)} mmHg
-                  </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            </details>
           </aside>
         </div>
       </div>

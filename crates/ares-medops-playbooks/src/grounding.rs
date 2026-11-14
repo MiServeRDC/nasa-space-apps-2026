@@ -43,22 +43,43 @@ pub struct PlaybookNormativeGrounding {
     pub descriptor: BiomedicalEvidenceDescriptor,
 }
 
-/// Risolve in O(1) il grounding `ARES-BioKG` di uno dei 5 Playbook MedOps (`#01..#05`).
+/// Risolve in O(1) il grounding `ARES-BioKG` di uno dei 9 Playbook MedOps (`#01..#09`).
 pub fn ground_playbook_normative(
     playbook_id: &str,
 ) -> Result<PlaybookNormativeGrounding, PlaybookError> {
-    let node = match playbook_id {
-        "PLAYBOOK_01_VENOUS_STASIS_LBNP" => AdhgNodeKind::IjvVenousStasisShearStress,
-        "PLAYBOOK_02_CONFIRMED_IJV_THROMBUS" => AdhgNodeKind::PocusThrombusPosterior,
-        "PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED" => AdhgNodeKind::AredMechanicalLoad,
-        "PLAYBOOK_04_SANS_TRANSLAMINAR_MITIGATION" => AdhgNodeKind::SansTranslaminarGradient,
-        "PLAYBOOK_05_SPE_RADIATION_SHELTER_CANS" => AdhgNodeKind::CansRadiationOxidativeStress,
+    let (node, override_pb): (AdhgNodeKind, Option<(&'static str, u8)>) = match playbook_id {
+        "PLAYBOOK_01_VENOUS_STASIS_LBNP" => (AdhgNodeKind::IjvVenousStasisShearStress, None),
+        "PLAYBOOK_02_CONFIRMED_IJV_THROMBUS" => (AdhgNodeKind::PocusThrombusPosterior, None),
+        "PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED" => (AdhgNodeKind::AredMechanicalLoad, None),
+        "PLAYBOOK_04_SANS_TRANSLAMINAR_MITIGATION" => {
+            (AdhgNodeKind::SansTranslaminarGradient, None)
+        }
+        "PLAYBOOK_05_SPE_RADIATION_SHELTER_CANS" => {
+            (AdhgNodeKind::CansRadiationOxidativeStress, None)
+        }
+        "PLAYBOOK_06_HYPOXEMIA_DESATURATION" => (
+            AdhgNodeKind::EndothelialProtectiveSecretome,
+            Some(("PLAYBOOK_06_HYPOXEMIA_DESATURATION", 6)),
+        ),
+        "PLAYBOOK_07_HEART_RATE_ANOMALY" => (
+            AdhgNodeKind::EndothelialProtectiveSecretome,
+            Some(("PLAYBOOK_07_HEART_RATE_ANOMALY", 7)),
+        ),
+        "PLAYBOOK_08_SENSOR_SIGNAL_LOSS" => (
+            AdhgNodeKind::EndothelialProtectiveSecretome,
+            Some(("PLAYBOOK_08_SENSOR_SIGNAL_LOSS", 8)),
+        ),
+        "PLAYBOOK_09_MULTIPARAMETER_DETERIORATION" => (
+            AdhgNodeKind::EndothelialProtectiveSecretome,
+            Some(("PLAYBOOK_09_MULTIPARAMETER_DETERIORATION", 9)),
+        ),
         other => return Err(PlaybookError::UnknownPlaybookId(other.to_string())),
     };
     let g = ground_adhg_node_o1(node);
+    let (resolved_id, resolved_num) = override_pb.unwrap_or((g.playbook_id, g.playbook_number));
     Ok(PlaybookNormativeGrounding {
-        playbook_id: Cow::Borrowed(g.playbook_id),
-        playbook_number: g.playbook_number,
+        playbook_id: Cow::Borrowed(resolved_id),
+        playbook_number: resolved_num,
         primary_adhg_node: g.adhg_node,
         normative_clause: g.normative_clause,
         anatomical_region: g.anatomical_region,
@@ -131,8 +152,13 @@ mod tests {
             ("PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED", 3),
             ("PLAYBOOK_04_SANS_TRANSLAMINAR_MITIGATION", 4),
             ("PLAYBOOK_05_SPE_RADIATION_SHELTER_CANS", 5),
+            ("PLAYBOOK_06_HYPOXEMIA_DESATURATION", 6),
+            ("PLAYBOOK_07_HEART_RATE_ANOMALY", 7),
+            ("PLAYBOOK_08_SENSOR_SIGNAL_LOSS", 8),
+            ("PLAYBOOK_09_MULTIPARAMETER_DETERIORATION", 9),
         ] {
             let g = ground_playbook_normative(pb_id).unwrap();
+            assert_eq!(g.playbook_id.as_ref(), pb_id);
             assert_eq!(g.playbook_number, expected_num);
             assert!(g.descriptor.verify_crc().is_ok());
         }

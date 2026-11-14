@@ -217,6 +217,14 @@ pub fn playbook_id_to_u16(playbook_id: &str) -> u16 {
         4
     } else if playbook_id.starts_with("PLAYBOOK_05") {
         5
+    } else if playbook_id.starts_with("PLAYBOOK_06") {
+        6
+    } else if playbook_id.starts_with("PLAYBOOK_07") {
+        7
+    } else if playbook_id.starts_with("PLAYBOOK_08") {
+        8
+    } else if playbook_id.starts_with("PLAYBOOK_09") {
+        9
     } else {
         0
     }

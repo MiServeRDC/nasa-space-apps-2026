@@ -396,4 +396,65 @@ Architettura master di riferimento: [`BLOCK_L_GAP_CLOSURE_ARCHITECTURE.md`](plan
   - *Fasi Collegate*: [`Fase 34 (L6)`](plans/phase_34_L6_nasa_submission_pitch_slides_pdf.md)
   - *Applicazione nel Progetto*: Validazione automatica di `PITCH_30S_SUBTITLES_EN.srt` (`<= 00:00:30,000`), `WALKTHROUGH_180S_SUBTITLES_EN.srt` (`<= 00:03:00,000`), doppio oracolo `N_pages == 7` (`typst query` + parser stdlib) e audit semantico Issue `#12` in `scripts/build_submission_docs.sh`.
 
+---
+
+## 12. Blocco M: 3-Tier LSAH Persistence Engine (Issue `#26`), Columnar/Vector Storage (`Lance` & `HNSW`), Lock-Free Real-Time Rings (`LEFT-RS`), Embedded `ChaCha20-Poly1305` AEAD & Multi-Branch Unification (Fasi 35–37)
+
+> Architettura di riferimento: [`docs/plans/BLOCK_M_GAP_CLOSURE_ARCHITECTURE.md`](plans/BLOCK_M_GAP_CLOSURE_ARCHITECTURE.md) | Piani di fase: [`Fase 35 (M1 — Issue #26)`](plans/phase_35_M1_lsah_3tier_persistence_issue26.md), [`Fase 36 (M2 — Multi-Branch Merge)`](plans/phase_36_M2_branch_unification_merge.md), [`Fase 37 (M3 — E2E Verification)`](plans/phase_37_M3_end_to_end_db_cockpit_verification.md).
+
+### 12.1 Adaptive Columnar Multimodal Storage & Approximate Nearest Neighbor Vector Search (`Lance`, `Apache Arrow IPC`, `Zstandard` & `HNSW` — Fase 35 / `M1`)
+
+- **Lance Adaptive Columnar Format (`Miniblock` vs. `Full Zip` Structural Encodings for NVMe + Vectors):**
+  - *Autori*: Weston Pace, Chang She, Lei Xu, Will Jones, Albert Lockett, Jun Wang, Raunak Shah, *"Lance: Efficient Random Access in Columnar Storage through Adaptive Structural Encodings"*, 2025 (`arXiv:2504.15247v1`, `DOI: 10.48550/arXiv.2504.15247`).
+  - *Fasi Collegate*: [`Fase 35 (M1)`](plans/phase_35_M1_lsah_3tier_persistence_issue26.md), [`Fase 37 (M3)`](plans/phase_37_M3_end_to_end_db_cockpit_verification.md)
+  - *Applicazione nel Progetto*: Fondamento architetturale del **Warm Tier** in `crates/ares-storage-lsah`: giustifica la normalizzazione in due tabelle distinte (`lsah_telemetry_frames` densa a `20 Hz` con null-bitmap nativi per Issue `#11` vs. `lsah_pocus_signatures` episodica con `FixedSizeList<Float32, D>` per scansioni ecografiche POCUS `D = 128 / 256`, evitando `~1.6 TB` di zero-padding su `900` Sol) e il trait modulare `WarmColumnarVectorBackend` che supporta sia il backend nativo snello `ArrowIpcZstdHnswBackend` (`default`, `62` crate 100% offline, `0` crate HTTP) sia `LanceDbEmbeddedWarmBackend` (`--features lancedb-warm`, `lancedb 0.40.0` / `lance 13.0.0` con guardia air-gap `validate_airgapped_lsah_dir()`).
+
+- **Hierarchical Navigable Small World (`HNSW`) Graphs for $O(\log N)$ Longitudinal Ultrasound Retrieval:**
+  - *Autori*: Yu. A. Malkov, D. A. Yashunin, *"Efficient and robust approximate nearest neighbor search using Hierarchical Navigable Small World graphs"*, *IEEE Transactions on Pattern Analysis and Machine Intelligence (TPAMI)*, Vol. 42, No. 4, pp. 824–836, 2020 (`DOI: 10.1109/TPAMI.2018.2889473`, `arXiv:1603.09320v4`).
+  - *Fasi Collegate*: [`Fase 35 (M1)`](plans/phase_35_M1_lsah_3tier_persistence_issue26.md)
+  - *Applicazione nel Progetto*: Implementazione pure-Rust deterministica (`SplitMix64` level sampling, `M = 16`, `M_max0 = 32`, `ef_construction = 64`, `ef_search = 32`, snapshot `.hnsw.bin` protetto da `CRC-32C`) in `crates/ares-storage-lsah/src/hnsw_index.rs` per il confronto longitudinale `Sol 180` vs. baseline `Sol 1` delle firme ecografiche `IJV` (`tau_w`, `IJV_CSA`, texture B-mode) in `< 260 us` (`Recall@5 >= 0.98`), mantenendo il vincolo Issue `#12` (`ProceduralBModeSimulation` / `IllustrativeUnvalidated`) e il blocco invalicabile del **Hard Safety Gate 1** (`advisory_only_gate1_locked = true`).
+
+- **Apache Arrow Columnar In-Memory/IPC Format & Zstandard (`RFC 8878`) Frame Compression:**
+  - *Fonti*: Apache Arrow Specification (`Format Version 1.0 / IPC File v2`, `https://arrow.apache.org/docs/format/Columnar.html`); Yann Collet, Murray Kucherawy, *"Zstandard Compression and the 'application/zstd' Media Type"*, IETF *RFC 8878*, February 2021 (`DOI: 10.17487/rfc8878`).
+  - *Fasi Collegate*: [`Fase 35 (M1)`](plans/phase_35_M1_lsah_3tier_persistence_issue26.md)
+  - *Applicazione nel Progetto*: Serializzazione colonnare `arrow-ipc 58.4.0` + `zstd 0.13.3` (`level = 3` nel Warm Tier, `level = 6` nel Cold Tier con rapporto di compressione `5x–9x`), preservando bit-per-bit i bitmap di validita `NULL` (`rmssd_ms == None` su tutti i `53` tracciati numerici `1 Hz` `BIDMC` in conformita a Issue `#11`) senza dipendere dal crate `parquet` assente dalla cache offline.
+
+### 12.2 Lock-Free / Wait-Free Real-Time Ring Buffering & Flash Wear-Leveling Isolation (`LEFT-RS` — Fase 35 / `M1`)
+
+- **Lock-Free Fault-Tolerant Resource Sharing & Wait-Free Producer/Consumer Isolation:**
+  - *Autori*: Nan Chen, Xiaotian Dai, Tong Cheng et al., *"LEFT-RS: A Lock-Free Fault-Tolerant Resource Sharing Protocol for Multicore Real-Time Systems"*, 2025 (`arXiv:2512.21701v1`, `DOI: 10.48550/arXiv.2512.21701`); Ivan Cibrario Bertolotti, Gabriele Manduchi, *"Lock and Wait-Free Communication"*, in *Real-Time Embedded Systems*, CRC Press, 2017 (`DOI: 10.1201/b11651-10`); Hyeonjoong Cho, Binoy Ravindran, E. Douglas Jensen, *"Lock-Free Synchronization for Dynamic Embedded Real-Time Systems"*, *Proc. Design, Automation and Test in Europe (DATE)*, 2006 (`DOI: 10.1109/date.2006.243800`).
+  - *Fasi Collegate*: [`Fase 35 (M1)`](plans/phase_35_M1_lsah_3tier_persistence_issue26.md), [`Fase 37 (M3)`](plans/phase_37_M3_end_to_end_db_cockpit_verification.md)
+  - *Applicazione nel Progetto*: Progettazione di `HotLsahSlot` (`256 B`, `#[repr(C, align(64))]`, `Copy`, `0` puntatori heap post-init, `< 250 ns` insert) in `HotRingBuffer` (`60–300 s @ 20 Hz`) e del doppio buffer di staging `WarmStagingSwapBuffer` (`2 x 200` slot + coalescenza d'emergenza `WelfordAccumulator` su `spawn_blocking`), garantendo che picchi di latenza `fsync()` (`50–250 ms`) su flash eMMC/NVMe rad-tolerant non blocchino mai il loop deterministico a `20 Hz` (`p99.9 < 150 us`) e riducendo le scritture flash di **`200x`** (`8,640` vs `1,728,000` sync/Sol) con protocollo crash-atomico `write(.tmp) -> sync_all -> rename`.
+
+### 12.3 Embedded `ChaCha20-Poly1305` AEAD, Monotonic Nonce Discipline & Tamper-Evident Audit Binding (Fase 35 / `M1`)
+
+- **High-Speed Embedded `ChaCha20-Poly1305` & Structured `96-bit` Nonce Uniqueness (`DATE 2017`, `RFC 8103`, `RFC 8439`):**
+  - *Autori*: Fabrizio De Santis, Andreas Schauer, Georg Sigl, *"ChaCha20-Poly1305 authenticated encryption for high-speed embedded IoT applications"*, *Proc. Design, Automation & Test in Europe Conference & Exhibition (DATE)*, IEEE, pp. 692–697, 2017 (`DOI: 10.23919/date.2017.7927078`); Russ Housley, *"Using ChaCha20-Poly1305 Authenticated Encryption in the Cryptographic Message Syntax (CMS)"*, IETF *RFC 8103*, 2017 (`DOI: 10.17487/rfc8103`); Yoav Nir, Adam Langley, *"ChaCha20 and Poly1305 for IETF Protocols"*, IETF *RFC 8439*, 2018 (`DOI: 10.17487/rfc8439`).
+  - *Fasi Collegate*: [`Fase 35 (M1)`](plans/phase_35_M1_lsah_3tier_persistence_issue26.md), [`Fase 12 (F1)`](plans/phase_12_F1_role_based_crew_privacy_sha256_audit_and_aead_plan.md)
+  - *Applicazione nel Progetto*: Sigillatura del **Cold Tier** (`.lsah.cold.aead`) in `crates/ares-storage-lsah/src/cold_aead_archive.rs` tramite nonce strutturato monotono a `96 bit` `key_epoch_id: u16 LE || mission_sol: u16 LE || chunk_seq: u64 LE` con watermark persistito su disco prima della cifratura (`Err(LsahStorageError::NonceReuseDetected)` in caso di tentato riuso post-riavvio) e legame bidirezionale **Associated Authenticated Data (`AAD`)** con `Sha256AuditLogger` (`ColdChunkHeader` di `144 B` contenente `audit_seq` e digest esadecimale `SHA-256` dell'evento `LSAH_COLD_SEAL`).
+
+### 12.4 NASA `LSAH`, Spaceflight Medical Data Architecture (`ExMC Gap Med 07`), `NASA-STD-3001` & Open Anatomical/Clinical Assets (Fasi 35–37 / `M1–M3`)
+
+- **NASA Lifetime Surveillance of Astronaut Health (`LSAH`) & Exploration Medical Data Architecture (`MDA`):**
+  - *Fonti & Autori*: NASA Johnson Space Center, *Lifetime Surveillance of Astronaut Health (LSAH)* (`https://lsda.jsc.nasa.gov/lsah_home`) & NASA Human Research Program *Exploration Medical Capability (`ExMC`) Gap Med 07: Medical Data Architecture*; Albert Assad, Olivier L. de Weck, *"Medical supply logistics for human spaceflight: Modularity, reliability, and autonomous medical data architectures"*, *Acta Astronautica*, Vol. 110, pp. 135–150, 2015 (`DOI: 10.1016/j.actaastro.2014.10.009`); Luke Stegeman et al., *"Longitudinal astronaut health surveillance and space radiation risk modeling"*, *Carcinogenesis*, 2025 (`DOI: 10.1093/carcin/bgaf076`); `NASA-STD-3001 Vol. 1 Rev C` (`[V1 3003]` *Crew Medical Privacy Governance*, `[V1 3006]` *Earth-Independent Medical Operations — EIMO*).
+  - *Fasi Collegate*: [`Fase 35 (M1)`](plans/phase_35_M1_lsah_3tier_persistence_issue26.md), [`Fase 37 (M3)`](plans/phase_37_M3_end_to_end_db_cockpit_verification.md)
+  - *Applicazione nel Progetto*: Governa il ciclo di vita completo Hot $\to$ Warm $\to$ Cold, la coda Store-and-Forward prioritizzata `DsnDownlinkOutbox` (`P0 = CriticalSafetyAlert`, `P1 = PocusSignature`, `P2 = NominalSol`) per finestre radio Terra-Marte (`OWLT 8–48 min` / blackout di congiunzione solare `14 giorni`), e il filtro di privacy per ruolo `AresSecurityGuard::apply_privacy_tier` (`[V1 3003]`) su tutte le letture storiche.
+
+- **Expanded 53-Subject PhysioNet BIDMC Cohort & Open `CC-BY-SA-4.0` 3D Anatomical Mesh Atlas (Fase 36 / `M2` & Fase 37 / `M3`):**
+  - *Fonti*: Marco A. F. Pimentel et al., *"Toward a Robust Estimation of Respiratory Rate From Pulse Oximeters"*, *IEEE TBME*, 64(8):1914–1923, 2017 — *PhysioNet BIDMC PPG and Respiration Dataset v1.0.0* (`DOI: 10.13026/C2208R`, `ODC-By v1.0`, tutti i `53` soggetti `bidmc_01..53_Numerics.csv` verificati via `SHA-256`); Gauthier Kervyn / Z-Anatomy & BodyParts3D (*Database Center for Life Science*, Mitsuhashi et al., *Nucleic Acids Research*, 37:D782–D785, 2009, `DOI: 10.1093/nar/gkn613`, licenza `CC-BY-SA-4.0` documentata in `ares-cockpit/public/anatomy/ATTRIBUTION.md` & `MANIFEST.json`).
+  - *Fasi Collegate*: [`Fase 36 (M2)`](plans/phase_36_M2_branch_unification_merge.md), [`Fase 37 (M3)`](plans/phase_37_M3_end_to_end_db_cockpit_verification.md)
+  - *Applicazione nel Progetto*: Espansione del benchmark terrestre `SubjectDisjointSplit` anti-leakage a tutti i `53` soggetti ICU `BIDMC` (mantenendo `rmssd_ms == None` per Issue `#11` e `ModelValidationStatus::IllustrativeUnvalidated` / `FLAG_TERRESTRIAL_BENCHMARKED_ONLY` per Issue `#12`) e rendering 3D air-gapped dei `5` sistemi anatomici `.glb` (`0x46546C67` magic check + mapping `UBERON:` `observed=false`).
+
+### 12.5 Open-Source Rust Storage & Cryptography Repositories Used in Blocco M (`crates/ares-storage-lsah`)
+
+| Repository Open-Source | Versione Locale in Cache | Licenza | Impiego in `crates/ares-storage-lsah` |
+| :--- | :---: | :---: | :--- |
+| [`apache/arrow-rs`](https://github.com/apache/arrow-rs) (`arrow-array`, `arrow-schema`, `arrow-ipc`) | `58.4.0` | `Apache-2.0` | Schema colonnare tipizzato, bitmap di validita `NULL` (Issue `#11`) e formato `Arrow IPC File v2`. |
+| [`gyscos/zstd-rs`](https://github.com/gyscos/zstd-rs) (`zstd`) | `0.13.3` | `MIT` | Compressione colonnare `Zstd` (`level = 3` Warm, `level = 6` Cold `5x–9x`) 100% offline. |
+| [`lancedb/lancedb`](https://github.com/lancedb/lancedb) & [`lance-format/lance`](https://github.com/lance-format/lance) | `0.40.0` / `13.0.0` | `Apache-2.0` | Backend embedded opzionale (`--features lancedb-warm`) dietro `WarmColumnarVectorBackend` + guardia air-gap. |
+| [`Amanieu/parking_lot`](https://github.com/Amanieu/parking_lot) | `0.12.5` | `MIT OR Apache-2.0` | Sincronizzazione deterministica sub-microsecondo su `HotRingBuffer` e `WarmStagingSwapBuffer`. |
+| [`srijs/rust-crc32fast`](https://github.com/srijs/rust-crc32fast) | `1.5.2` | `MIT OR Apache-2.0` | Checksum `CRC-32C` su `HotLsahSlot`, snapshot `.hnsw.bin`, `MANIFEST.lsah.json` e `ColdChunkHeader`. |
+| [`RustCrypto/AEADs`](https://github.com/RustCrypto/AEADs) (`chacha20poly1305`) & [`RustCrypto/hashes`](https://github.com/RustCrypto/hashes) (`sha2`) | `0.10.1` / `0.10.9` | `MIT OR Apache-2.0` | Sigillatura autenticata Cold Tier con nonce monotono `96-bit` e `AAD` bidirezionale su `Sha256AuditLogger`. |
+
+
 

@@ -1,12 +1,17 @@
 //! `ares-core-types`: Contratti telemetrici condivisi, manifesto di provenienza,
 //! costanti normative NASA-STD-3001, errori fortemente tipizzati e trait di sicurezza.
 
+pub mod anomaly;
 pub mod binary_ipc;
 pub mod constants;
 pub mod error;
 pub mod security;
 pub mod telemetry;
 
+pub use anomaly::{
+    AnomalyDetectorKind, AnomalyStatus, ChannelAnomalyState, EWMA_SHORT_HORIZONS_SECONDS,
+    ForecastMethod, ShortHorizonCone, VitalsAnomalyReport,
+};
 pub use binary_ipc::{
     ARES_BINARY_FRAME_BYTES, ARES_BINARY_MAGIC, ARES_BINARY_VERSION, BinaryFrameMeta,
     BinaryTelemetryFrame, FLAG_TERRESTRIAL_BENCHMARKED_ONLY, SeqlockTelemetryRing,
@@ -155,6 +160,10 @@ pub struct AbstentionCertificate {
     pub timestamp_s: f64,
 }
 
+const fn default_ewma_short_horizon_max_s() -> u32 {
+    120
+}
+
 /// Immutable grey-box forecast snapshot published by the 1 Hz worker and read lock-free at 20 Hz.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct NqsQuantileForecastSnapshot {
@@ -173,6 +182,14 @@ pub struct NqsQuantileForecastSnapshot {
     pub channel_cones: Vec<ChannelQuantileCone>,
     pub pessimistic_ttv_q05_hours: Option<f64>,
     pub inference_latency_us: u64,
+    #[serde(default)]
+    pub forecast_method: ForecastMethod,
+    #[serde(default = "default_ewma_short_horizon_max_s")]
+    pub ewma_short_horizon_max_s: u32,
+    #[serde(default)]
+    pub short_horizon_cones: Vec<ShortHorizonCone>,
+    #[serde(default)]
+    pub short_horizon_abstention: Option<AbstentionCertificate>,
 }
 
 impl NqsQuantileForecastSnapshot {
@@ -222,6 +239,10 @@ impl NqsQuantileForecastSnapshot {
             channel_cones: Vec::new(),
             pessimistic_ttv_q05_hours: ttv.map(|cone| cone.q05),
             inference_latency_us: 0,
+            forecast_method: ForecastMethod::DeterministicColdStart,
+            ewma_short_horizon_max_s: default_ewma_short_horizon_max_s(),
+            short_horizon_cones: Vec::new(),
+            short_horizon_abstention: None,
         }
     }
 
@@ -239,6 +260,9 @@ impl NqsQuantileForecastSnapshot {
             cone.assert_monotone()?;
         }
         for cone in &self.channel_cones {
+            cone.assert_monotone()?;
+        }
+        for cone in &self.short_horizon_cones {
             cone.assert_monotone()?;
         }
         Ok(())

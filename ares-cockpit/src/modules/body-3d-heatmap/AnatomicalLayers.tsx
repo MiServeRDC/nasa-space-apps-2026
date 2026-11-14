@@ -32,9 +32,9 @@ function tubeFrom(pts: V3[], radius: number, tubularSegs = 20, radialSegs = 8): 
 }
 
 /** Layer 1: Anatomically sculpted Skeleton (cranium, orbits, S-spine, 8 rib pairs, pelvis, condyle long bones). */
-export function SkeletonLayer({ s, sex }: { s: ScenarioState; sex: CrewSex }) {
-  const boneRho = s.rho.sclerostin;
-  const boneTint = boneRho < 0.4 ? riskColor(boneRho) : undefined;
+export function SkeletonLayer({ s, sex }: { s: ScenarioState | null; sex: CrewSex }) {
+  const boneRho = s?.rho.sclerostin;
+  const boneTint = boneRho !== undefined && boneRho < 0.4 ? riskColor(boneRho) : undefined;
   const isF = sex === 'FEMALE';
   const shoulderX = isF ? 0.25 : 0.29;
   const pelvisW = isF ? 1.12 : 0.96;
@@ -163,7 +163,7 @@ export function VascularNeuroLayer({
   s,
   nodesByRegion,
 }: {
-  s: ScenarioState;
+  s: ScenarioState | null;
   nodesByRegion?: Record<AnatomicalRegionWireId, ProjectedAnatomicalNode>;
 }) {
   const ijvNode = nodesByRegion?.InternalJugularVein;
@@ -171,12 +171,12 @@ export function VascularNeuroLayer({
   const heartNode = nodesByRegion?.HeartCardioAutonomic;
   const cnsNode = nodesByRegion?.BrainVestibularCns;
 
-  const ijvColor = ijvNode ? ijvNode.color : riskColor(s.rho.tau_w);
-  const onsdColor = sansNode ? sansNode.color : riskColor(Math.min(s.rho.onsd, s.rho.ppco2));
-  const heartColor = heartNode ? (heartNode.observed ? heartNode.color : heartNode.color) : '#dc2626';
-  const cnsColor = cnsNode && cnsNode.localIntensity >= 0.25 ? cnsNode.color : '#f472b6';
-  const ijvR = 0.011 + Math.min(0.018, Math.max(0, (s.csa - 0.7) * 0.007));
-  const onsdR = 0.015 + Math.max(0, (s.onsdMm - 4.8) * 0.005);
+  const ijvColor = ijvNode ? ijvNode.color : s ? riskColor(s.rho.tau_w) : '#6b7280';
+  const onsdColor = sansNode ? sansNode.color : s ? riskColor(Math.min(s.rho.onsd, s.rho.ppco2)) : '#6b7280';
+  const heartColor = heartNode ? heartNode.color : s ? '#dc2626' : '#6b7280';
+  const cnsColor = cnsNode ? (cnsNode.observed && cnsNode.localIntensity >= 0.25 ? cnsNode.color : cnsNode.observed ? '#f472b6' : '#6b7280') : s ? '#f472b6' : '#6b7280';
+  const ijvR = s ? 0.011 + Math.min(0.018, Math.max(0, (s.csa - 0.7) * 0.007)) : 0.012;
+  const onsdR = s ? 0.015 + Math.max(0, (s.onsdMm - 4.8) * 0.005) : 0.015;
 
   const tubes = useMemo(() => ({
     aorta: tubeFrom([[0.02, 0.98, 0.05], [0.03, 1.12, 0.02], [0.0, 1.05, -0.02], [0.0, 0.52, -0.01]], 0.017, 24, 10),
@@ -241,14 +241,14 @@ export function VascularNeuroLayer({
         <meshStandardMaterial
           color={ijvColor}
           emissive={ijvColor}
-          emissiveIntensity={ijvNode ? (ijvNode.observed ? 1.1 : 0.25) : s.rho.tau_w < 0.4 ? 1.4 : 0.4}
+          emissiveIntensity={ijvNode ? (ijvNode.observed ? 1.1 : 0.25) : s && s.rho.tau_w < 0.4 ? 1.4 : 0.4}
         />
       </mesh>
       <mesh geometry={tubes.ijvR}>
         <meshStandardMaterial
           color={ijvColor}
           emissive={ijvColor}
-          emissiveIntensity={ijvNode ? (ijvNode.observed ? 1.1 : 0.25) : s.rho.tau_w < 0.4 ? 1.4 : 0.4}
+          emissiveIntensity={ijvNode ? (ijvNode.observed ? 1.1 : 0.25) : s && s.rho.tau_w < 0.4 ? 1.4 : 0.4}
         />
       </mesh>
     </group>
@@ -262,27 +262,29 @@ export function MusclesLayer({
   sex,
   soleusNode,
 }: {
-  s: ScenarioState;
+  s: ScenarioState | null;
   opacity: number;
   sex: CrewSex;
   soleusNode?: ProjectedAnatomicalNode;
 }) {
   const soleusColor = soleusNode
-    ? soleusNode.observed && soleusNode.localIntensity < 0.25
-      ? '#991b1b'
-      : soleusNode.color
-    : s.rho.soleus < 0.4
+    ? !soleusNode.observed
+      ? '#6b7280'
+      : soleusNode.localIntensity < 0.25
+        ? '#991b1b'
+        : soleusNode.color
+    : s && s.rho.soleus < 0.4
       ? riskColor(s.rho.soleus)
       : '#991b1b';
   const soleusEmissive = soleusNode
     ? soleusNode.observed && soleusNode.localIntensity >= 0.25
       ? soleusNode.color
       : '#000000'
-    : s.rho.soleus < 0.4
+    : s && s.rho.soleus < 0.4
       ? soleusColor
       : '#000000';
   const soleusBase = sex === 'FEMALE' ? 14.0 : 16.0;
-  const soleusScale = Math.max(0.55, s.soleusMm / soleusBase);
+  const soleusScale = s ? Math.max(0.55, s.soleusMm / soleusBase) : 1.0;
   const isF = sex === 'FEMALE';
   const armScale = isF ? 0.84 : 1.0;
   const shoulderX = isF ? 0.25 : 0.29;

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  ALL_CRYSTALLIZED_PLAYBOOK_LIST,
   CRYSTALLIZED_PLAYBOOK_LIST,
   enforceHardSafetyGatesOnActions,
   getCatalogEntry,
@@ -168,7 +169,7 @@ export function PlaybookRunner({
             setFollowLiveEngine(true);
             setManualStepIdx(0);
           }}
-          className={`min-h-[44px] min-w-[44px] rounded border px-3 py-2 text-xs font-semibold transition-colors ${
+          className={`min-h-12 min-w-[44px] rounded border px-3 py-2 text-xs font-semibold transition-colors ${
             followLiveEngine
               ? 'border-nominal bg-nominal/10 text-nominal'
               : 'border-line bg-black text-gray-300 hover:border-gray-500'
@@ -178,9 +179,9 @@ export function PlaybookRunner({
         </button>
       </div>
 
-      {/* Playbook Tabs (#01 .. #05) */}
+      {/* Playbook Tabs (#01 .. #09) */}
       <div className="flex flex-wrap gap-2" role="tablist" aria-label="Crystallized MedOps Playbooks">
-        {CRYSTALLIZED_PLAYBOOK_LIST.map((pb) => {
+        {ALL_CRYSTALLIZED_PLAYBOOK_LIST.map((pb) => {
           const isSelected = pb.playbook_id === selectedEntry.playbook_id;
           const isEngineRecommended = liveCatalogMatch?.playbook_id === pb.playbook_id;
           return (
@@ -194,7 +195,7 @@ export function PlaybookRunner({
                 setManualPlaybookId(pb.playbook_id);
                 setManualStepIdx(0);
               }}
-              className={`min-h-[44px] min-w-[44px] rounded border px-3 py-2 text-xs transition-colors ${
+              className={`min-h-12 min-w-[44px] rounded border px-3 py-2 text-xs transition-colors ${
                 isSelected
                   ? 'border-nominal bg-nominal/10 text-nominal'
                   : 'border-line bg-black text-gray-400 hover:border-gray-600'
@@ -210,7 +211,7 @@ export function PlaybookRunner({
       </div>
 
       {/* Active Playbook Summary & Step Instruction */}
-      <div className="rounded border border-line bg-black p-3">
+      <div className="act-current space-y-2">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <div className="text-sm font-semibold text-gray-100">{displayTitle}</div>
           <div className="text-xs text-gray-400">
@@ -321,6 +322,7 @@ export function PlaybookRunner({
           return (
             <li
               key={i}
+              aria-current={i === activeStepIdx ? 'step' : undefined}
               className={`flex items-center gap-2 rounded border px-2.5 py-1.5 bg-black ${
                 i === activeStepIdx
                   ? 'border-nominal text-white'
@@ -359,7 +361,7 @@ export function PlaybookRunner({
             key={lbl}
             type="button"
             onClick={() => onConfirmPocusThrombus(v)}
-            className={`min-h-[44px] min-w-[44px] rounded border px-3 py-2 text-xs font-semibold transition-colors ${
+            className={`min-h-12 min-w-[44px] rounded border px-3 py-2 text-xs font-semibold transition-colors ${
               thrombusConfirmed === v
                 ? v === true
                   ? 'border-critical bg-critical/10 text-critical'
@@ -372,7 +374,7 @@ export function PlaybookRunner({
         ))}
       </div>
 
-      {/* Stepper Controls (>= 44x44 pt touch targets) */}
+      {/* Stepper Controls (>= 48 px touch targets) */}
       <div className="flex flex-wrap gap-2 text-xs">
         <button
           type="button"
@@ -381,7 +383,7 @@ export function PlaybookRunner({
             setFollowLiveEngine(false);
             setManualStepIdx(Math.max(0, activeStepIdx - 1));
           }}
-          className="min-h-[44px] min-w-[44px] rounded border border-line bg-black px-4 py-2 text-gray-200 disabled:opacity-30"
+          className="min-h-12 min-w-[44px] rounded border border-line bg-black px-4 py-2 text-gray-200 disabled:opacity-30"
         >
           BACK
         </button>
@@ -392,7 +394,7 @@ export function PlaybookRunner({
             setFollowLiveEngine(false);
             setManualStepIdx(Math.min(steps.length, activeStepIdx + 1));
           }}
-          className="min-h-[44px] min-w-[44px] rounded border border-nominal bg-black px-4 py-2 font-semibold text-nominal disabled:border-line disabled:text-gray-600"
+          className="min-h-12 min-w-[44px] rounded border border-nominal bg-black px-4 py-2 font-semibold text-nominal disabled:border-line disabled:text-gray-600"
         >
           {stepLocked
             ? 'LOCKED: POCUS THROMBUS CONFIRMATION REQUIRED'
@@ -407,7 +409,7 @@ export function PlaybookRunner({
               setFollowLiveEngine(false);
               setManualStepIdx(Math.min(steps.length, activeStepIdx + 1));
             }}
-            className="min-h-[44px] min-w-[44px] rounded border border-line bg-black px-4 py-2 text-gray-300"
+            className="min-h-12 min-w-[44px] rounded border border-line bg-black px-4 py-2 text-gray-300"
           >
             SKIP LOCKED STEP
           </button>

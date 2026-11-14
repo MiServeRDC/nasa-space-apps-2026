@@ -9,7 +9,16 @@ import type {
   SafetyGatesState,
 } from '../types/telemetry';
 
-export type PlaybookShortCode = '#01' | '#02' | '#03' | '#04' | '#05';
+export type PlaybookShortCode =
+  | '#01'
+  | '#02'
+  | '#03'
+  | '#04'
+  | '#05'
+  | '#06'
+  | '#07'
+  | '#08'
+  | '#09';
 
 export interface PlaybookCatalogEntry {
   playbook_id: CrystallizedPlaybookId;
@@ -158,6 +167,104 @@ export const CRYSTALLIZED_PLAYBOOK_CATALOG: Record<CrystallizedPlaybookId, Playb
       },
     ],
   },
+  PLAYBOOK_06_HYPOXEMIA_DESATURATION: {
+    playbook_id: 'PLAYBOOK_06_HYPOXEMIA_DESATURATION',
+    short_code: '#06',
+    short_label: 'HYPOXEMIA',
+    title: 'Playbook #06: Acute Hypoxemia / SpO2 Desaturation Response',
+    normative_clause: 'NASA-STD-3001 [V2 6012] / Flight Rule B13-15',
+    default_causal_chain: [
+      'SPO2_DESATURATION_BELOW_BASELINE',
+      'VERIFY_PROBE_AND_CABIN_PPO2',
+      'INITIATE_SUPPLEMENTAL_O2_TITRATION',
+    ],
+    default_actions: [
+      {
+        action_id: 'VERIFY_OXIMETER_AND_CABIN_PPO2',
+        label: 'Verify pulse oximeter perfusion & cabin ppO2 / ppCO2 sensors',
+        category: 'HYPOXEMIA_TRIAGE',
+        delta_rho_per_hour: 0.18,
+      },
+      {
+        action_id: 'SUPPLEMENTAL_O2_TITRATION',
+        label: 'Initiate supplemental O2 titration (target SpO2 >= 94%)',
+        category: 'OXYGEN_THERAPY',
+        delta_rho_per_hour: 0.24,
+      },
+    ],
+  },
+  PLAYBOOK_07_TACHYCARDIA_AUTONOMIC_STRESS: {
+    playbook_id: 'PLAYBOOK_07_TACHYCARDIA_AUTONOMIC_STRESS',
+    short_code: '#07',
+    short_label: 'TACHYCARDIA',
+    title: 'Playbook #07: Sustained Tachycardia & Autonomic Stress Evaluation',
+    normative_clause: 'NASA-STD-3001 [V2 7043] / MEDOPS-ACUTE-HR-07',
+    default_causal_chain: [
+      'SUSTAINED_HR_Z_SCORE_ELEVATION',
+      'RULE_OUT_ORTHOSTATIC_OR_HYPOVOLEMIA',
+      'CAPTURE_RESTING_RHYTHM_AND_BP',
+    ],
+    default_actions: [
+      {
+        action_id: 'ASSESS_REST_HYDRATION_ORTHOSTATIC',
+        label: 'Pause exertion, administer oral rehydration, assess orthostatic load',
+        category: 'AUTONOMIC_STABILIZATION',
+        delta_rho_per_hour: 0.16,
+      },
+      {
+        action_id: 'CAPTURE_12LEAD_AND_BP_CHECK',
+        label: 'Acquire resting ECG rhythm strip & cuff blood pressure',
+        category: 'CARDIAC_DIAGNOSTICS',
+        delta_rho_per_hour: 0.14,
+      },
+    ],
+  },
+  PLAYBOOK_08_SIGNAL_QUALITY_SENSOR_CHECK: {
+    playbook_id: 'PLAYBOOK_08_SIGNAL_QUALITY_SENSOR_CHECK',
+    short_code: '#08',
+    short_label: 'SENSOR_QA',
+    title: 'Playbook #08: Sensor Detachment & Signal Quality Recovery',
+    normative_clause: 'NASA-STD-3001 [V2 10001] / EPISTEMIC-SQI-ABSTENTION',
+    default_causal_chain: [
+      'SENSOR_DETACH_OR_LOW_SQI_DETECTED',
+      'ABSTAIN_AUTOMATED_DIAGNOSTIC_ALARM',
+      'RESEAT_SPO2_AND_ECG_TRANSDUCERS',
+    ],
+    default_actions: [
+      {
+        action_id: 'RESEAT_SPO2_AND_ECG_LEADS',
+        label: 'Reseat SpO2 finger clip & inspect/clean ECG gel electrodes',
+        category: 'SENSOR_MAINTENANCE',
+        delta_rho_per_hour: 0.12,
+      },
+    ],
+  },
+  PLAYBOOK_09_MULTIPARAMETER_DETERIORATION: {
+    playbook_id: 'PLAYBOOK_09_MULTIPARAMETER_DETERIORATION',
+    short_code: '#09',
+    short_label: 'MULTICHAN',
+    title: 'Playbook #09: Multiparameter Acute Cardiorespiratory Deterioration',
+    normative_clause: 'NASA-STD-3001 [V2 6012] / MAHALANOBIS-D2-CRISIS',
+    default_causal_chain: [
+      'JOINT_HR_SPO2_MAHALANOBIS_D2_SPIKE',
+      'CONCURRENT_HYPOXEMIA_AND_TACHYCARDIA',
+      'IMMEDIATE_ABC_AND_SURGEON_CONSULT',
+    ],
+    default_actions: [
+      {
+        action_id: 'AIRWAY_BREATHING_CIRCULATION_CHECK',
+        label: 'Execute immediate ABC survey & high-flow supplemental O2',
+        category: 'CRITICAL_RESPONSE',
+        delta_rho_per_hour: 0.30,
+      },
+      {
+        action_id: 'FLIGHT_SURGEON_TELEMEDICINE_CALL',
+        label: 'Establish priority ground Flight Surgeon telemedicine consult',
+        category: 'TELEMEDICINE_ESCALATION',
+        delta_rho_per_hour: 0.20,
+      },
+    ],
+  },
 };
 
 export const CRYSTALLIZED_PLAYBOOK_LIST: PlaybookCatalogEntry[] = [
@@ -168,12 +275,28 @@ export const CRYSTALLIZED_PLAYBOOK_LIST: PlaybookCatalogEntry[] = [
   CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_05_SPE_RADIATION_SHELTER_CANS,
 ];
 
+export const ACUTE_VITALS_PLAYBOOK_LIST: PlaybookCatalogEntry[] = [
+  CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_06_HYPOXEMIA_DESATURATION,
+  CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_07_TACHYCARDIA_AUTONOMIC_STRESS,
+  CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_08_SIGNAL_QUALITY_SENSOR_CHECK,
+  CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_09_MULTIPARAMETER_DETERIORATION,
+];
+
+export const ALL_CRYSTALLIZED_PLAYBOOK_LIST: PlaybookCatalogEntry[] = [
+  ...CRYSTALLIZED_PLAYBOOK_LIST,
+  ...ACUTE_VITALS_PLAYBOOK_LIST,
+];
+
 export const PLAYBOOK_BY_SHORT_CODE: Record<PlaybookShortCode, PlaybookCatalogEntry> = {
   '#01': CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_01_VENOUS_STASIS_LBNP,
   '#02': CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_02_CONFIRMED_IJV_THROMBUS,
   '#03': CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED,
   '#04': CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_04_SANS_TRANSLAMINAR_MITIGATION,
   '#05': CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_05_SPE_RADIATION_SHELTER_CANS,
+  '#06': CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_06_HYPOXEMIA_DESATURATION,
+  '#07': CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_07_TACHYCARDIA_AUTONOMIC_STRESS,
+  '#08': CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_08_SIGNAL_QUALITY_SENSOR_CHECK,
+  '#09': CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_09_MULTIPARAMETER_DETERIORATION,
 };
 
 export function isCrystallizedPlaybookId(id: string | null | undefined): id is CrystallizedPlaybookId {
@@ -189,7 +312,7 @@ export function getCatalogEntry(id: string | null | undefined): PlaybookCatalogE
   if (normalized in PLAYBOOK_BY_SHORT_CODE) {
     return PLAYBOOK_BY_SHORT_CODE[normalized as PlaybookShortCode];
   }
-  return CRYSTALLIZED_PLAYBOOK_LIST.find(
+  return ALL_CRYSTALLIZED_PLAYBOOK_LIST.find(
     (entry) =>
       entry.playbook_id.includes(normalized) ||
       entry.short_code === normalized,

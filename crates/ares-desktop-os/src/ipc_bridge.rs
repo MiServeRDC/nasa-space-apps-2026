@@ -83,15 +83,18 @@ mod headless_bridge {
     use crate::voice_whisper::OfflineVoiceTranscript;
     use crate::{AresMedOsWorkstationShell, DesktopShellError, OsStatusBarState};
     use ares_server_cli::edge_llm_bridge::{CopilotAskRequest, CopilotAskResponse};
-    use ares_server_cli::wire_contract::{StressTestPatchRequest, WireTelemetryPacket};
+    use ares_server_cli::wire_contract::{
+        AnomalyInjectionRequest, StressTestPatchRequest, WireTelemetryPacket,
+    };
     use std::path::Path;
     use std::sync::Arc;
 
     /// Canonical list of all Tauri v2 IPC command names exposed to `ares-cockpit`.
-    pub const TAURI_IPC_COMMAND_NAMES: [&str; 7] = [
+    pub const TAURI_IPC_COMMAND_NAMES: [&str; 8] = [
         "get_full_wire_snapshot",
         "get_os_status_bar_state",
         "apply_what_if_patch",
+        "ipc_inject_anomaly",
         "invoke_fastmcp_tool",
         "subscribe_binary_telemetry",
         "ipc_ask_edge_copilot",
@@ -129,6 +132,13 @@ mod headless_bridge {
             patch: StressTestPatchRequest,
         ) -> Result<WireTelemetryPacket, DesktopShellError> {
             self.shell.ipc_post_stress_test(patch)
+        }
+
+        pub fn ipc_inject_anomaly(
+            &self,
+            request: AnomalyInjectionRequest,
+        ) -> Result<WireTelemetryPacket, DesktopShellError> {
+            self.shell.ipc_inject_anomaly(request)
         }
 
         pub fn invoke_fastmcp_tool(&self, request_json: &str) -> Result<String, DesktopShellError> {

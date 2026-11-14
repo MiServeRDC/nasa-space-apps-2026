@@ -4,6 +4,7 @@
 
 pub mod calibration_harness;
 pub mod error;
+pub mod ewma_forecaster;
 pub mod mri_index;
 pub mod normalizer;
 pub mod sliding_window;
@@ -12,6 +13,7 @@ pub mod timestral_bridge;
 pub mod timestral_quantiles;
 pub mod timestral_safetensors;
 pub mod ttv_predictor;
+pub mod vitals_anomaly;
 
 // Module aliases preserving exact naming from phase_16_H2 and phase_17_H3 plans.
 pub use timestral_bridge as async_forecaster_bridge;
@@ -21,6 +23,8 @@ pub use ares_core_types::{
     AbstentionCertificate, ChannelQuantileCone, ConformalGateStatus, MonotoneQuantileTriplet,
     NqsQuantileForecastSnapshot,
 };
+pub use ewma_forecaster::{EwmaForecasterConfig, EwmaResidualForecaster};
+pub use vitals_anomaly::{VitalsAnomalyConfig, VitalsAnomalyDetector};
 pub use calibration_harness::{
     CalibrationAuditReport, CalibrationSamplePair, ClopperPearsonBounds,
     ConformalizedQuantileCalibrator, HorizonCellMetrics, HorizonEvaluationStatus, MissingnessBin,

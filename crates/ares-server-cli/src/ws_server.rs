@@ -6,7 +6,9 @@ use crate::edge_llm_bridge::{
     execute_edge_copilot_turn,
 };
 use crate::fastmcp_router::{JsonRpcRequest, JsonRpcResponse, handle_fastmcp_jsonrpc_request};
-use crate::wire_contract::{StressTestPatchRequest, WirePacketContext, WireTelemetryPacket};
+use crate::wire_contract::{
+    AnomalyInjectionRequest, StressTestPatchRequest, WirePacketContext, WireTelemetryPacket,
+};
 use ares_causal_graph::adhg_graph::{AdhgCausalEngine, AdhgNodeKind};
 use ares_causal_graph::biokg_reasoner::{NormativeClinicalGrounding, ground_adhg_node_o1};
 use ares_causal_graph::dataset_graph::AresUnifiedDatasetGraph;
@@ -18,7 +20,10 @@ use ares_causal_graph::hypergraph_spatial::{
     MARS_SOL_SECONDS, MissionLongitudinalCompactor, PhysiologicalTick, ZoneTransitionMarkovModel,
 };
 use ares_causal_graph::mechanotransduction::compute_musculoskeletal_state;
-use ares_core_types::NqsQuantileForecastSnapshot;
+use ares_core_types::anomaly::{
+    AnomalyStatus, EWMA_SHORT_HORIZONS_SECONDS, ForecastMethod, ShortHorizonCone,
+    VitalsAnomalyReport,
+};
 use ares_core_types::binary_ipc::{
     ARES_BINARY_FRAME_BYTES, BinaryFrameMeta, BinaryTelemetryFrame, DEONTIC_EIMO_AUTONOMOUS,
     DEONTIC_EVA_FORBIDDEN, DEONTIC_SHELTER_MANDATORY, DEONTIC_VIOLATES_POLICY,
@@ -26,20 +31,24 @@ use ares_core_types::binary_ipc::{
 };
 use ares_core_types::security::{CrewRole, MedOpsAuditLogger};
 use ares_core_types::telemetry::{
-    Biometrics, BiometricsSource, ProvenanceManifest, ScenarioOverlayMode, StressTestScenarioInput,
-    SystemPhase, TelemetryPacket,
+    AlertSeverity, Biometrics, BiometricsSource, ProvenanceManifest, ScenarioOverlayMode,
+    StressTestScenarioInput, SystemPhase, TelemetryPacket,
 };
-use ares_medops_playbooks::playbooks::select_candidate_playbook;
+use ares_core_types::{AbstentionCertificate, NqsQuantileForecastSnapshot};
+use ares_medops_playbooks::playbooks::{select_candidate_playbook, select_vitals_anomaly_playbook};
 use ares_medops_playbooks::safety_gates::enforce_hard_clinical_safety_gates;
 use ares_nqs_stl::NqsEngine;
 use ares_nqs_stl::error::NqsStlError;
+use ares_nqs_stl::ewma_forecaster::EwmaResidualForecaster;
 use ares_nqs_stl::mri_index::evaluate_nqs_stl_and_mri;
 use ares_nqs_stl::timestral_backbone::{ARES_TIMESTRAL_CHANNELS, TimestralConfig};
 use ares_nqs_stl::timestral_bridge::{
     AresMultivariateSample, AresTemporalForecasterEngine, KnownFutureCovariates,
 };
+use ares_nqs_stl::vitals_anomaly::VitalsAnomalyDetector;
 use ares_security_privacy::audit_chain::Sha256AuditLogger;
 use ares_security_privacy::sanitizer::StrictMcpSanitizer;
+use ares_telemetry_ingest::anomaly_injection::{AnomalyInjection, InjectedAnomalyKind};
 use ares_telemetry_ingest::bidmc_replayer::{BidmcNumericRow, BidmcReplayer, IngestError};
 use ares_telemetry_ingest::scenario_overlay::biometrics_with_signal_quality;
 use ares_telemetry_ingest::sqi_filter::{SqiEvaluation, SqiFilter};
@@ -139,6 +148,19 @@ pub enum ServerRuntimeError {
     CausalGraph(#[from] CausalGraphError),
 }
 
+/// Why a demo anomaly injection request was refused.
+#[derive(Debug, Error, Clone, PartialEq, Eq)]
+pub enum InjectAnomalyError {
+    #[error("personal baseline still being learned ({samples}/{required} s); retry afterwards")]
+    BaselineLearning { samples: u32, required: u32 },
+    #[error(
+        "the event lasts {duration_s} s but only {seconds_left} s are left before the record restarts and the personal baseline is re-learned; retry after the restart"
+    )]
+    CrossesRecordRestart { duration_s: u64, seconds_left: u64 },
+    #[error("mission state unavailable")]
+    StateUnavailable,
+}
+
 /// Restituisce lo scenario nominale iniziale per l'avvio della missione.
 #[inline]
 pub fn default_scenario_input() -> StressTestScenarioInput {
@@ -163,6 +185,12 @@ pub fn primary_adhg_node_for_playbook(playbook_id: &str) -> AdhgNodeKind {
         "PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED" => AdhgNodeKind::AredMechanicalLoad,
         "PLAYBOOK_04_SANS_TRANSLAMINAR_MITIGATION" => AdhgNodeKind::SansTranslaminarGradient,
         "PLAYBOOK_05_SPE_RADIATION_SHELTER_CANS" => AdhgNodeKind::CansRadiationOxidativeStress,
+        "PLAYBOOK_06_HYPOXEMIA_DESATURATION"
+        | "PLAYBOOK_07_ACUTE_TACHYCARDIA"
+        | "PLAYBOOK_08_ACUTE_BRADYPNEA_RESPIRATORY"
+        | "PLAYBOOK_09_MULTICHANNEL_CARDIORESPIRATORY_DRIFT" => {
+            AdhgNodeKind::EndothelialProtectiveSecretome
+        }
         _ => AdhgNodeKind::AredMechanicalLoad,
     }
 }
@@ -185,8 +213,17 @@ pub fn compute_mission_telemetry_tick(
         scenario,
         mission_elapsed_s,
         false,
+        VitalsContext::default(),
     )
     .0
+}
+
+/// Vitals anomaly inputs of one tick: the latest detector report and whether
+/// the row carries a synthetic injected event (no longer a pure recording).
+#[derive(Debug, Clone, Copy, Default)]
+struct VitalsContext<'a> {
+    report: Option<&'a VitalsAnomalyReport>,
+    injected: bool,
 }
 
 fn compute_mission_telemetry_tick_from_row(
@@ -196,6 +233,7 @@ fn compute_mission_telemetry_tick_from_row(
     scenario: &StressTestScenarioInput,
     mission_elapsed_s: f64,
     what_if_active: bool,
+    vitals: VitalsContext<'_>,
 ) -> (TelemetryPacket, f64, Vec<String>) {
     // 2. EVALUATE (Parte 1): ODE RK4 Frost-Hargens, Shear Stress Giugulare tau_w, SANS e Grafo ADHG
     let musculo = compute_musculoskeletal_state(scenario.flight_day, scenario.ared_daily_load_kgf);
@@ -208,17 +246,35 @@ fn compute_mission_telemetry_tick_from_row(
     );
 
     // 2. EVALUATE (Parte 2): Margini normalizzati NQS-STL, TTV +/- 1.96 sigma e Mission Readiness Index
-    let (nqs_stl, alert_severity) =
-        evaluate_nqs_stl_and_mri(&biometrics, &musculo, &jugular, &sans);
+    let (nqs_stl, nqs_severity) = evaluate_nqs_stl_and_mri(&biometrics, &musculo, &jugular, &sans);
+    let anomaly_status = vitals.report.map_or(AnomalyStatus::Normal, |r| r.overall);
+    let alert_severity = nqs_severity.max(match anomaly_status {
+        AnomalyStatus::Normal => AlertSeverity::Nominal,
+        AnomalyStatus::Attention => AlertSeverity::Caution,
+        AnomalyStatus::Alarm => AlertSeverity::Warning,
+    });
 
-    // 3. ACT: Selezione Playbook #01-#05 e applicazione inflessibile dei 3 Hard Clinical Safety Gates
-    let candidate_playbook = select_candidate_playbook(
+    // 3. ACT: Selezione Playbook #01-#09 e applicazione inflessibile dei 3 Hard Clinical Safety Gates.
+    // Gli eventi vitali acuti (#06-#09) prevalgono sui playbook cronici (#01,#03,#04), mentre
+    // le emergenze cliniche (#02 trombosi POCUS, #05 SPE radiazione) mantengono precedenza massima.
+    let chronic_playbook = select_candidate_playbook(
         &biometrics,
         &musculo,
         &jugular,
         &nqs_stl,
         causal_chain.clone(),
     );
+    let candidate_playbook = if matches!(
+        chronic_playbook.playbook_id.as_str(),
+        "PLAYBOOK_02_CONFIRMED_IJV_THROMBUS" | "PLAYBOOK_05_SPE_RADIATION_SHELTER_CANS"
+    ) {
+        chronic_playbook
+    } else {
+        vitals
+            .report
+            .and_then(|r| select_vitals_anomaly_playbook(r, chronic_playbook.safety_gates))
+            .unwrap_or(chronic_playbook)
+    };
     let active_playbook = enforce_hard_clinical_safety_gates(
         candidate_playbook,
         &biometrics,
@@ -227,7 +283,10 @@ fn compute_mission_telemetry_tick_from_row(
         scenario,
     );
 
-    let system_phase = if nqs_stl.has_known_violation() || jugular.pocus_thrombus_confirmed {
+    let system_phase = if nqs_stl.has_known_violation()
+        || jugular.pocus_thrombus_confirmed
+        || anomaly_status == AnomalyStatus::Alarm
+    {
         SystemPhase::Act
     } else {
         SystemPhase::Evaluate
@@ -245,7 +304,11 @@ fn compute_mission_telemetry_tick_from_row(
         model_validation_status:
             ares_core_types::telemetry::ModelValidationStatus::IllustrativeUnvalidated,
         provenance_manifest: ProvenanceManifest {
-            biometrics_source: BiometricsSource::RecordedTerrestrialBidmcCsv,
+            biometrics_source: if vitals.injected {
+                BiometricsSource::SimulatedScenarioInput
+            } else {
+                BiometricsSource::RecordedTerrestrialBidmcCsv
+            },
             biometrics_native_rate_hz: 1.0,
             ui_refresh_rate_hz: 20.0,
             scenario_overlay_mode: if what_if_active {
@@ -275,6 +338,7 @@ fn compute_mission_telemetry_tick_from_row(
 pub struct FastMcpRuntimeContext {
     pub latest_packet: TelemetryPacket,
     pub quantile_snapshot: Arc<NqsQuantileForecastSnapshot>,
+    pub vitals_anomaly: VitalsAnomalyReport,
     pub heatmap: BodyHeatmap,
     pub habitat_assessment: HabitatDeonticAssessment,
     pub grounding: NormativeClinicalGrounding,
@@ -298,6 +362,14 @@ pub struct MissionRuntimeInner {
     pub latest_packet: TelemetryPacket,
     pub nqs_engine: NqsEngine,
     pub forecaster_engine: AresTemporalForecasterEngine,
+    pub ewma_forecaster: EwmaResidualForecaster,
+    pub latest_short_horizon_cones: Vec<ShortHorizonCone>,
+    pub latest_short_horizon_abstention: Option<AbstentionCertificate>,
+    pub has_timestral_inference: bool,
+    pub anomaly_detector: VitalsAnomalyDetector,
+    pub latest_anomaly: VitalsAnomalyReport,
+    /// Synthetic demo event currently scheduled on the replay clock, if any.
+    pub injection: Option<AnomalyInjection>,
     pub longitudinal_compactor: MissionLongitudinalCompactor,
     pub anatomical_subgraph: AnatomicalRegionSubgraph,
     pub latest_heatmap: BodyHeatmap,
@@ -316,6 +388,55 @@ pub struct MissionRuntimeInner {
 }
 
 impl MissionRuntimeInner {
+    fn merge_short_horizon_into_snapshot(&mut self) {
+        let mut snap = (*self.latest_quantile_snapshot).clone();
+        snap.ewma_short_horizon_max_s =
+            EWMA_SHORT_HORIZONS_SECONDS[EWMA_SHORT_HORIZONS_SECONDS.len() - 1];
+        snap.short_horizon_cones = self.latest_short_horizon_cones.clone();
+        snap.short_horizon_abstention = self.latest_short_horizon_abstention.clone();
+        snap.forecast_method = if !snap.short_horizon_cones.is_empty() {
+            if self.has_timestral_inference {
+                ForecastMethod::HybridTimestralAndEwmaShortHorizon
+            } else {
+                ForecastMethod::EwmaEmpiricalResidualQuantiles
+            }
+        } else if self.has_timestral_inference {
+            ForecastMethod::TimestralGreyBox1Hz
+        } else {
+            ForecastMethod::DeterministicColdStart
+        };
+        self.latest_quantile_snapshot = Arc::new(snap);
+    }
+
+    /// Row at the current replay second, with the active synthetic event (if any)
+    /// applied, and whether it was modified by that event.
+    fn current_replay_row(&self) -> (BidmcNumericRow, bool) {
+        let second = self.replay_elapsed.as_secs();
+        let total_rows = self.replayer.len().max(1) as u64;
+        let recorded = self.replayer.row_at_second((second % total_rows) as usize);
+        match self.injection {
+            Some(injection) if injection.is_active(second as f64) => {
+                (injection.apply(recorded, second as f64), true)
+            }
+            _ => (recorded.clone(), false),
+        }
+    }
+
+    fn ingest_short_horizon_sample(&mut self) {
+        let pkt = &self.latest_packet;
+        let sample = AresMultivariateSample::from_telemetry_components(
+            pkt.relative_recording_time_s,
+            &pkt.biometrics,
+            &pkt.musculoskeletal,
+            &pkt.jugular_hemodynamics,
+            &pkt.sans_ocular,
+            pkt.nqs_stl.rho_global,
+        );
+        let (cones, abstention) = self.ewma_forecaster.ingest_short_horizon_1hz(&sample);
+        self.latest_short_horizon_cones = cones;
+        self.latest_short_horizon_abstention = Some(abstention);
+    }
+
     fn update_hypergraph_and_nqs_hot_path(&mut self) {
         let eval = {
             let pkt = &self.latest_packet;
@@ -329,6 +450,7 @@ impl MissionRuntimeInner {
         };
         self.latest_packet.nqs_stl = eval.margins;
         self.latest_quantile_snapshot = eval.quantile_snapshot;
+        self.merge_short_horizon_into_snapshot();
         let pkt = &self.latest_packet;
 
         let tick = PhysiologicalTick {
@@ -379,6 +501,21 @@ impl MissionRuntimeInner {
     fn to_wire_packet(&self) -> WireTelemetryPacket {
         let timestral_quantiles =
             serde_json::to_value(&*self.latest_quantile_snapshot).unwrap_or(serde_json::Value::Null);
+        let mut vitals_anomaly =
+            serde_json::to_value(&self.latest_anomaly).unwrap_or(serde_json::Value::Null);
+        if let Some(obj) = vitals_anomaly.as_object_mut() {
+            let now_s = self.replay_elapsed.as_secs() as f64;
+            let injection = self.injection.filter(|i| i.is_active(now_s)).map(|i| {
+                serde_json::json!({
+                    "kind": i.kind,
+                    "description": i.kind.description(),
+                    "onset_s": i.onset_s,
+                    "elapsed_s": now_s - i.onset_s,
+                    "duration_s": i.kind.duration_s(),
+                })
+            });
+            obj.insert("injection".to_string(), serde_json::json!(injection));
+        }
         let hypergraph_spatial = serde_json::json!({
             "hottest_region": self.latest_heatmap.hottest_region,
             "cells": self.latest_heatmap.cells,
@@ -395,6 +532,7 @@ impl MissionRuntimeInner {
             pocus_posterior: self.latest_pocus_posterior,
             causal_chain: self.latest_causal_chain.clone(),
             timestral_quantiles,
+            vitals_anomaly,
             hypergraph_spatial,
             recompute_latency_us: self.latest_recompute_latency_us,
         })
@@ -427,8 +565,10 @@ impl MissionRuntimeInner {
             .forecaster_engine
             .ingest_sample_1hz(&sample, &covariates, ode_drift)?;
         self.last_timestral_latency_us = t_start.elapsed().as_micros() as u64;
+        self.has_timestral_inference = true;
         self.latest_quantile_snapshot = Arc::clone(&snap);
-        Ok(snap)
+        self.merge_short_horizon_into_snapshot();
+        Ok(Arc::clone(&self.latest_quantile_snapshot))
     }
 
     fn build_binary_frame(&self, ipc_latency_ns: u32) -> BinaryTelemetryFrame {
@@ -598,6 +738,11 @@ impl SharedMissionState {
         let first_row = replayer.row_at_second(0).clone();
         let signal_quality = sqi_filter.evaluate_row_detailed(&first_row);
         let first_biometrics = biometrics_with_signal_quality(&first_row, &scenario, &signal_quality);
+        let mut anomaly_detector = VitalsAnomalyDetector::default();
+        let latest_anomaly = anomaly_detector.update(
+            first_row.relative_time_s,
+            [first_row.hr_bpm, first_row.spo2_pct, first_row.resp_brpm],
+        );
         let (latest_packet, latest_pocus_posterior, latest_causal_chain) =
             compute_mission_telemetry_tick_from_row(
                 &first_row,
@@ -606,6 +751,10 @@ impl SharedMissionState {
                 &scenario,
                 0.0,
                 false,
+                VitalsContext {
+                    report: Some(&latest_anomaly),
+                    injected: false,
+                },
             );
 
         let timestral_cfg = TimestralConfig {
@@ -618,6 +767,7 @@ impl SharedMissionState {
             ..TimestralConfig::default()
         };
         let mut forecaster_engine = AresTemporalForecasterEngine::new(timestral_cfg)?;
+        let mut ewma_forecaster = EwmaResidualForecaster::default();
         let mut nqs_engine = NqsEngine::with_forecaster_handle(60.0, forecaster_engine.handle());
 
         let mut longitudinal_compactor = MissionLongitudinalCompactor::new(900)?;
@@ -635,6 +785,8 @@ impl SharedMissionState {
         let zone_markov = ZoneTransitionMarkovModel::default();
 
         // Warm-up deterministico di 8 campioni a 1 Hz per calibrare il cono quantilico iniziale.
+        let mut latest_short_horizon_cones = Vec::new();
+        let mut latest_short_horizon_abstention = None;
         for step in 0..8 {
             let sample = AresMultivariateSample::from_telemetry_components(
                 step as f64,
@@ -649,6 +801,11 @@ impl SharedMissionState {
                 &KnownFutureCovariates::default(),
                 -0.002,
             )?;
+            if step == 0 {
+                let (cones, abstention) = ewma_forecaster.ingest_short_horizon_1hz(&sample);
+                latest_short_horizon_cones = cones;
+                latest_short_horizon_abstention = Some(abstention);
+            }
         }
         let eval = nqs_engine.evaluate_tick(
             latest_packet.relative_recording_time_s,
@@ -657,7 +814,13 @@ impl SharedMissionState {
             &latest_packet.jugular_hemodynamics,
             &latest_packet.sans_ocular,
         );
-        let latest_quantile_snapshot = eval.quantile_snapshot;
+        let mut initial_snap = (*eval.quantile_snapshot).clone();
+        initial_snap.ewma_short_horizon_max_s =
+            EWMA_SHORT_HORIZONS_SECONDS[EWMA_SHORT_HORIZONS_SECONDS.len() - 1];
+        initial_snap.short_horizon_cones = latest_short_horizon_cones.clone();
+        initial_snap.short_horizon_abstention = latest_short_horizon_abstention.clone();
+        initial_snap.forecast_method = ForecastMethod::HybridTimestralAndEwmaShortHorizon;
+        let latest_quantile_snapshot = Arc::new(initial_snap);
         let _ = longitudinal_compactor.observe(
             0.0,
             &PhysiologicalTick {
@@ -717,6 +880,13 @@ impl SharedMissionState {
                 latest_packet,
                 nqs_engine,
                 forecaster_engine,
+                ewma_forecaster,
+                latest_short_horizon_cones,
+                latest_short_horizon_abstention,
+                has_timestral_inference: true,
+                anomaly_detector,
+                latest_anomaly,
+                injection: None,
                 longitudinal_compactor,
                 anatomical_subgraph,
                 latest_heatmap,
@@ -802,6 +972,7 @@ impl SharedMissionState {
                 &scenario,
                 elapsed,
                 what_if_active,
+                VitalsContext::default(),
             );
         guard.latest_packet = telemetry_packet;
         guard.latest_pocus_posterior = pocus_posterior;
@@ -856,15 +1027,33 @@ impl SharedMissionState {
         guard.replay_elapsed = guard.replay_elapsed.saturating_add(dt);
         let current_second = guard.replay_elapsed.as_secs();
         let total_rows = guard.replayer.len().max(1) as u64;
-        let sample_index = (current_second % total_rows) as usize;
-        let row = guard.replayer.row_at_second(sample_index).clone();
+        let new_native_sample = current_second != previous_second;
+        // The record restarts whenever the replay clock enters a new cycle of the
+        // recording (comparing cycles also covers a multi-second clock jump).
+        let record_restarted =
+            new_native_sample && current_second / total_rows != previous_second / total_rows;
 
-        if current_second != previous_second {
+        let now_s = current_second as f64;
+        if record_restarted
+            || guard.injection.is_some_and(|i| now_s >= i.onset_s + i.kind.duration_s())
+        {
+            guard.injection = None;
+        }
+        let (row, injected) = guard.current_replay_row();
+
+        if new_native_sample {
             let ingest_start = Instant::now();
-            if sample_index == 0 {
+            if record_restarted {
                 guard.sqi_filter = SqiFilter::default();
+                guard.anomaly_detector = VitalsAnomalyDetector::default();
+                guard.ewma_forecaster = EwmaResidualForecaster::default();
+                guard.latest_short_horizon_cones.clear();
+                guard.latest_short_horizon_abstention = None;
             }
             guard.signal_quality = guard.sqi_filter.evaluate_row_detailed(&row);
+            guard.latest_anomaly = guard
+                .anomaly_detector
+                .update(row.relative_time_s, [row.hr_bpm, row.spo2_pct, row.resp_brpm]);
             guard.last_ingest_latency_us = ingest_start.elapsed().as_micros() as u64;
         }
 
@@ -875,6 +1064,7 @@ impl SharedMissionState {
         let elapsed = guard.mission_elapsed_s;
         let scenario = guard.scenario.clone();
         let what_if_active = guard.what_if_active;
+        let anomaly_report = guard.latest_anomaly.clone();
 
         let (packet, pocus_posterior, causal_chain) = compute_mission_telemetry_tick_from_row(
             &row,
@@ -883,10 +1073,17 @@ impl SharedMissionState {
             &scenario,
             elapsed,
             what_if_active,
+            VitalsContext {
+                report: Some(&anomaly_report),
+                injected,
+            },
         );
         guard.latest_packet = packet;
         guard.latest_pocus_posterior = pocus_posterior;
         guard.latest_causal_chain = causal_chain;
+        if new_native_sample {
+            guard.ingest_short_horizon_sample();
+        }
         guard.update_hypergraph_and_nqs_hot_path();
         guard.latest_recompute_latency_us = start.elapsed().as_micros() as u64;
 
@@ -915,6 +1112,83 @@ impl SharedMissionState {
         guard.run_1hz_timestral_inference().ok()
     }
 
+    /// Latest conformal + EWMA short-horizon forecast snapshot.
+    pub fn latest_forecast_snapshot(&self) -> Option<Arc<NqsQuantileForecastSnapshot>> {
+        self.inner
+            .read()
+            .ok()
+            .map(|g| Arc::clone(&g.latest_quantile_snapshot))
+    }
+
+    /// Latest per-channel vitals anomaly report.
+    pub fn latest_vitals_anomaly(&self) -> Option<VitalsAnomalyReport> {
+        self.inner.read().ok().map(|g| g.latest_anomaly.clone())
+    }
+
+    /// Schedules (or clears, with `None`) a synthetic demo event starting at the next
+    /// replayed second. Refused while the personal baseline is still being learned,
+    /// and refused when the event would still be running when the record restarts.
+    pub fn inject_anomaly(
+        &self,
+        kind: Option<InjectedAnomalyKind>,
+    ) -> Result<Option<AnomalyInjection>, InjectAnomalyError> {
+        let mut guard = self
+            .inner
+            .write()
+            .map_err(|_| InjectAnomalyError::StateUnavailable)?;
+        let Some(kind) = kind else {
+            guard.injection = None;
+            let _ = self
+                .audit_logger
+                .append_audit_event(CrewRole::CrewMedicalOfficer, "DEMO_ANOMALY_INJECTION_CLEARED");
+            return Ok(None);
+        };
+        if !guard.latest_anomaly.baseline_ready {
+            return Err(InjectAnomalyError::BaselineLearning {
+                samples: guard.latest_anomaly.baseline_samples,
+                required: guard.latest_anomaly.baseline_required,
+            });
+        }
+        let now_s = guard.replay_elapsed.as_secs();
+        let total_rows = guard.replayer.len().max(1) as u64;
+        let onset_s = now_s + 1;
+        let duration_s = kind.duration_s().ceil().max(0.0) as u64;
+        let next_restart_s = (now_s / total_rows + 1) * total_rows;
+        if onset_s + duration_s > next_restart_s {
+            return Err(InjectAnomalyError::CrossesRecordRestart {
+                duration_s,
+                seconds_left: next_restart_s.saturating_sub(onset_s),
+            });
+        }
+        let injection = AnomalyInjection {
+            kind,
+            onset_s: onset_s as f64,
+        };
+        guard.injection = Some(injection);
+        let _ = self.audit_logger.append_audit_event(
+            CrewRole::CrewMedicalOfficer,
+            &format!("DEMO_ANOMALY_INJECTION:{}:ONSET_S={:.0}", kind.label(), injection.onset_s),
+        );
+        Ok(Some(injection))
+    }
+
+    /// Schedules or clears a synthetic demo event and returns the current `WireTelemetryPacket`.
+    pub fn inject_anomaly_wire(
+        &self,
+        kind: Option<InjectedAnomalyKind>,
+    ) -> Result<WireTelemetryPacket, InjectAnomalyError> {
+        let _ = self.inject_anomaly(kind)?;
+        let wire = self
+            .latest_wire_snapshot()
+            .ok_or(InjectAnomalyError::StateUnavailable)?;
+        if self.tx.receiver_count() > 0
+            && let Ok(json_str) = serde_json::to_string(&wire)
+        {
+            let _ = self.tx.send(json_str);
+        }
+        Ok(wire)
+    }
+
     /// Applica un nuovo scenario What-If completo senza avanzare il cursore BIDMC (`1 Hz`).
     pub fn apply_stress_test(
         &self,
@@ -937,12 +1211,11 @@ impl SharedMissionState {
         guard.cabin_ppco2_mmhg = next_ppco2;
         guard.what_if_active = true;
 
-        let total_rows = guard.replayer.len().max(1) as u64;
-        let sample_index = (guard.replay_elapsed.as_secs() % total_rows) as usize;
-        let row = guard.replayer.row_at_second(sample_index).clone();
+        let (row, injected) = guard.current_replay_row();
         let biometrics =
             biometrics_with_signal_quality(&row, &new_scenario, &guard.signal_quality);
         let elapsed = guard.mission_elapsed_s;
+        let anomaly_report = guard.latest_anomaly.clone();
 
         let (packet, pocus_posterior, causal_chain) = compute_mission_telemetry_tick_from_row(
             &row,
@@ -951,6 +1224,10 @@ impl SharedMissionState {
             &new_scenario,
             elapsed,
             true,
+            VitalsContext {
+                report: Some(&anomaly_report),
+                injected,
+            },
         );
         guard.latest_packet = packet;
         guard.latest_pocus_posterior = pocus_posterior;
@@ -1002,6 +1279,7 @@ impl SharedMissionState {
         Some(FastMcpRuntimeContext {
             latest_packet: guard.latest_packet.clone(),
             quantile_snapshot: Arc::clone(&guard.latest_quantile_snapshot),
+            vitals_anomaly: guard.latest_anomaly.clone(),
             heatmap: guard.latest_heatmap.clone(),
             habitat_assessment: guard.latest_habitat_assessment.clone(),
             grounding: guard.latest_grounding,
@@ -1058,7 +1336,8 @@ async fn cors_preflight_handler() -> StatusCode {
 }
 
 /// Costruisce il router Axum con `/ws/telemetry`, `GET /api/snapshot`,
-/// `POST /api/stress-test`, `GET /api/os-status`, `GET /api/binary-frame` e `POST /api/mcp`.
+/// `POST /api/stress-test`, `POST /api/inject-anomaly`, `GET /api/os-status`,
+/// `GET /api/binary-frame` e `POST /api/mcp`.
 pub fn build_axum_router(state: Arc<SharedMissionState>) -> Router {
     Router::new()
         .route("/ws/telemetry", get(ws_telemetry_handler))
@@ -1072,6 +1351,10 @@ pub fn build_axum_router(state: Arc<SharedMissionState>) -> Router {
         .route(
             "/api/stress-test",
             post(post_stress_test_handler).options(cors_preflight_handler),
+        )
+        .route(
+            "/api/inject-anomaly",
+            post(post_inject_anomaly_handler).options(cors_preflight_handler),
         )
         .route(
             "/api/copilot/ask",
@@ -1142,6 +1425,23 @@ async fn post_stress_test_handler(
         .apply_stress_test_patch(input)
         .map(Json)
         .ok_or(StatusCode::INTERNAL_SERVER_ERROR)
+}
+
+async fn post_inject_anomaly_handler(
+    State(state): State<Arc<SharedMissionState>>,
+    Json(req): Json<AnomalyInjectionRequest>,
+) -> Response {
+    match state.inject_anomaly_wire(req.kind) {
+        Ok(wire) => Json(wire).into_response(),
+        Err(err) => {
+            let code = match err {
+                InjectAnomalyError::BaselineLearning { .. }
+                | InjectAnomalyError::CrossesRecordRestart { .. } => StatusCode::CONFLICT,
+                InjectAnomalyError::StateUnavailable => StatusCode::INTERNAL_SERVER_ERROR,
+            };
+            (code, Json(serde_json::json!({ "error": err.to_string() }))).into_response()
+        }
+    }
 }
 
 async fn post_copilot_ask_handler(
@@ -1554,5 +1854,131 @@ mod tests {
             assert!(packet.nqs_stl.rho_global.is_none());
             assert!(packet.nqs_stl.ttv_hours.is_none());
         }
+    }
+
+    #[test]
+    fn dual_horizon_timestral_and_ewma_cones_coexist_with_hrv_abstention_intact() {
+        let state = SharedMissionState::from_data_dir(&workspace_bidmc_dir()).expect("state");
+        for _ in 0..160 {
+            state.advance_tick(Duration::from_secs(1)).expect("tick");
+        }
+        let snap = state
+            .run_1hz_timestral_step()
+            .expect("1Hz timestral inference");
+        assert_eq!(
+            snap.forecast_method,
+            ForecastMethod::HybridTimestralAndEwmaShortHorizon
+        );
+        assert_eq!(snap.short_horizon_s, 900);
+        assert_eq!(snap.ewma_short_horizon_max_s, 120);
+        assert!(snap.abstention_certificate.abstained);
+        assert!(snap.rmssd_ms_cone.is_none());
+        assert!(snap.rho_global_cone.is_none());
+        assert!(snap.ttv_hours_cone.is_none());
+        assert_eq!(snap.channel_cones.len(), 8);
+        assert!(!snap.short_horizon_cones.is_empty());
+        snap.assert_monotone().expect("dual-horizon snapshot monotone");
+        let hr_cone = snap
+            .short_horizon_cones
+            .iter()
+            .find(|c| c.channel_name == "heart_rate_bpm")
+            .expect("heart_rate_bpm short-horizon cone");
+        assert!(hr_cone.horizon_5s.is_some());
+        assert!(hr_cone.horizon_10s.is_some());
+        assert!(hr_cone.horizon_30s.is_some());
+        assert!(hr_cone.horizon_60s.is_some());
+        assert!(hr_cone.horizon_120s.is_some());
+    }
+
+    #[test]
+    fn injected_desaturation_raises_alarm_opens_playbook_06_and_is_tagged_synthetic() {
+        let state = SharedMissionState::from_data_dir(&workspace_bidmc_dir()).expect("state");
+        assert!(matches!(
+            state.inject_anomaly(Some(InjectedAnomalyKind::DesaturationFast)),
+            Err(InjectAnomalyError::BaselineLearning { .. })
+        ));
+        // bidmc_01 has no missing SpO2 in 0..240 s; learn the baseline for 150 s.
+        for _ in 0..150 {
+            state.advance_tick(Duration::from_secs(1)).expect("tick");
+        }
+        let before = state.latest_wire_snapshot().expect("wire");
+        assert_eq!(before.vitals_anomaly["baseline_ready"], true);
+        assert_eq!(before.vitals_anomaly["overall"], "NORMAL");
+        assert_eq!(
+            before.active_playbook.playbook_id,
+            "PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED"
+        );
+
+        let injection = state
+            .inject_anomaly(Some(InjectedAnomalyKind::DesaturationFast))
+            .expect("inject")
+            .expect("scheduled");
+        assert_eq!(injection.onset_s, 151.0);
+
+        let mut alarm_delay_s = None;
+        for step in 1..=60 {
+            state.advance_tick(Duration::from_secs(1)).expect("tick");
+            let wire = state.latest_wire_snapshot().expect("wire");
+            assert_eq!(
+                wire.provenance_manifest.biometrics_source,
+                BiometricsSource::SimulatedScenarioInput
+            );
+            assert!(
+                wire.biometrics
+                    .quality_flags
+                    .iter()
+                    .any(|f| f == "INJECTED_SYNTHETIC_ANOMALY")
+            );
+            assert_eq!(wire.vitals_anomaly["injection"]["kind"], "DESATURATION_FAST");
+            if wire.vitals_anomaly["overall"] == "ALARM" {
+                assert_eq!(
+                    wire.active_playbook.playbook_id,
+                    "PLAYBOOK_06_HYPOXEMIA_DESATURATION"
+                );
+                assert_eq!(wire.alert_severity, AlertSeverity::Warning);
+                assert_eq!(wire.system_phase, SystemPhase::Act);
+                let reason = wire.active_playbook.causal_chain_summary[0].clone();
+                assert!(reason.starts_with("SpO2 -"), "{reason}");
+                alarm_delay_s = Some(step);
+                break;
+            }
+        }
+        assert!(alarm_delay_s.is_some_and(|s| s <= 30), "{alarm_delay_s:?}");
+
+        let cleared_wire = state.inject_anomaly_wire(None).expect("clear wire");
+        assert_eq!(cleared_wire.vitals_anomaly["overall"], "ALARM");
+        state.advance_tick(Duration::from_secs(1)).expect("tick");
+        let after = state.latest_wire_snapshot().expect("wire");
+        assert_eq!(
+            after.provenance_manifest.biometrics_source,
+            BiometricsSource::RecordedTerrestrialBidmcCsv
+        );
+        assert!(after.vitals_anomaly["injection"].is_null());
+    }
+
+    #[test]
+    fn injection_that_would_outlive_the_record_is_refused_and_the_restart_clears_it() {
+        let state = SharedMissionState::from_data_dir(&workspace_bidmc_dir()).expect("state");
+        for _ in 0..120 {
+            state.advance_tick(Duration::from_secs(1)).expect("tick");
+        }
+        assert!(state.latest_vitals_anomaly().expect("report").baseline_ready);
+
+        // Jump close to the end of the 481 s record.
+        state.advance_tick(Duration::from_secs(360)).expect("jump");
+        let err = state
+            .inject_anomaly(Some(InjectedAnomalyKind::DesaturationFast))
+            .expect_err("must be refused near the end of the record");
+        assert_eq!(
+            err,
+            InjectAnomalyError::CrossesRecordRestart {
+                duration_s: 100,
+                seconds_left: 0,
+            }
+        );
+
+        // Crossing the restart re-learns the baseline and leaves no event behind.
+        state.advance_tick(Duration::from_secs(10)).expect("wrap");
+        assert!(!state.latest_vitals_anomaly().expect("report").baseline_ready);
     }
 }

@@ -4,6 +4,7 @@ use ares_core_types::telemetry::{
     ActivePlaybook, Biometrics, CountermeasureAction, JugularHemodynamics, Musculoskeletal,
     NqsStlMargins, SafetyGates,
 };
+use ares_core_types::{AnomalyDetectorKind, AnomalyStatus, VitalsAnomalyReport};
 
 /// Seleziona deterministicamente il Playbook candidato prima dell'applicazione finale dei Safety Gates.
 #[inline]
@@ -141,6 +142,136 @@ pub fn select_candidate_playbook(
     }
 }
 
+/// Acute vitals playbook (#06-#09) for an ALARM-level anomaly report, or `None`.
+///
+/// Acute cardiorespiratory alarms pre-empt the chronic deconditioning playbooks.
+/// Physiological alarms outrank sensor dropouts; the detector reason becomes the
+/// first entry of the causal chain. `delta_rho_per_hour` is 0.0: no modelled
+/// effect on the NQS-STL margin is claimed for these first-response checks.
+pub fn select_vitals_anomaly_playbook(
+    report: &VitalsAnomalyReport,
+    safety_gates: SafetyGates,
+) -> Option<ActivePlaybook> {
+    let alarm = |channel: &str, dropout: bool| {
+        report.channels.iter().find(|c| {
+            c.channel == channel
+                && c.status == AnomalyStatus::Alarm
+                && (c.detector == Some(AnomalyDetectorKind::SensorDropout)) == dropout
+        })
+    };
+    let action = |id: &str, label: &str, category: &str| CountermeasureAction {
+        action_id: id.to_string(),
+        label: label.to_string(),
+        category: category.to_string(),
+        delta_rho_per_hour: 0.0,
+    };
+    let (trigger, playbook_id, title, actions) = if let Some(c) = alarm("spo2_pct", false) {
+        (
+            c,
+            "PLAYBOOK_06_HYPOXEMIA_DESATURATION",
+            "Playbook #06: Desaturation Below Personal Baseline",
+            vec![
+                action(
+                    "ACT_VERIFY_SPO2_PROBE",
+                    "Verify SpO2 probe position and perfusion; re-seat and re-read",
+                    "DIAGNOSTIC_VERIFICATION",
+                ),
+                action(
+                    "ACT_AIRWAY_BREATHING_CHECK",
+                    "Check airway, breathing effort and respiratory rate; position crew member upright",
+                    "CLINICAL_ASSESSMENT",
+                ),
+                action(
+                    "ACT_CABIN_ATMOSPHERE_CHECK",
+                    "Check cabin ppO2 / ppCO2 and scrubber status",
+                    "ENVIRONMENTAL_CHECK",
+                ),
+                action(
+                    "ACT_SUPPLEMENTAL_OXYGEN",
+                    "Start supplemental oxygen per medical checklist if desaturation is confirmed",
+                    "CLINICAL_COUNTERMEASURE",
+                ),
+            ],
+        )
+    } else if let Some(c) = alarm("heart_rate_bpm", false) {
+        (
+            c,
+            "PLAYBOOK_07_HEART_RATE_ANOMALY",
+            "Playbook #07: Heart Rate Outside Personal Baseline",
+            vec![
+                action(
+                    "ACT_STOP_EXERTION",
+                    "Stop exercise or LBNP session and rest in a restrained position",
+                    "MECHANICAL_RESTRICTION",
+                ),
+                action(
+                    "ACT_ECG_RHYTHM_CHECK",
+                    "Acquire ECG rhythm strip and cross-check PPG pulse rate",
+                    "DIAGNOSTIC_VERIFICATION",
+                ),
+                action(
+                    "ACT_SYMPTOM_HYDRATION_CHECK",
+                    "Assess symptoms, hydration and temperature; recheck after 5 min of rest",
+                    "CLINICAL_ASSESSMENT",
+                ),
+            ],
+        )
+    } else if let Some(c) =
+        alarm("resp_rate_brpm", false).or_else(|| alarm("joint_hr_spo2_resp", false))
+    {
+        (
+            c,
+            "PLAYBOOK_09_MULTIPARAMETER_DETERIORATION",
+            "Playbook #09: Cardiorespiratory Pattern Outside Personal Baseline",
+            vec![
+                action(
+                    "ACT_FULL_VITALS_REASSESSMENT",
+                    "Repeat full vital signs set manually (HR, SpO2, RESP, blood pressure, temperature)",
+                    "CLINICAL_ASSESSMENT",
+                ),
+                action(
+                    "ACT_SENSOR_CROSS_CHECK",
+                    "Cross-check sensors against a second device",
+                    "DIAGNOSTIC_VERIFICATION",
+                ),
+                action(
+                    "ACT_QUEUE_FLIGHT_SURGEON_REPORT",
+                    "Queue store-and-forward report to the flight surgeon",
+                    "COMMUNICATION",
+                ),
+            ],
+        )
+    } else {
+        let c = ["spo2_pct", "heart_rate_bpm", "resp_rate_brpm"]
+            .into_iter()
+            .find_map(|ch| alarm(ch, true))?;
+        (
+            c,
+            "PLAYBOOK_08_SENSOR_SIGNAL_LOSS",
+            "Playbook #08: Vital Sign Sensor Signal Loss",
+            vec![
+                action(
+                    "ACT_RESEAT_SENSOR",
+                    "Re-seat or replace the sensor and check the cable / wireless link",
+                    "DIAGNOSTIC_VERIFICATION",
+                ),
+                action(
+                    "ACT_MANUAL_SPOT_CHECK",
+                    "Take a manual spot measurement until the signal is restored",
+                    "CLINICAL_ASSESSMENT",
+                ),
+            ],
+        )
+    };
+    Some(ActivePlaybook {
+        playbook_id: playbook_id.to_string(),
+        title: title.to_string(),
+        causal_chain_summary: vec![trigger.reason.clone()],
+        safety_gates,
+        actions,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -261,5 +392,73 @@ mod tests {
         // Playbook #03 default when tau_w and sans are nominal
         let pb03 = select_candidate_playbook(&bio_nom, &musc, &jug, &nqs_nom, vec![]);
         assert_eq!(pb03.playbook_id, "PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED");
+    }
+
+    fn anomaly_report(entries: &[(&str, AnomalyStatus, AnomalyDetectorKind)]) -> VitalsAnomalyReport {
+        VitalsAnomalyReport {
+            recording_time_s: 200.0,
+            baseline_ready: true,
+            baseline_samples: 120,
+            baseline_required: 120,
+            overall: entries.iter().map(|e| e.1).max().unwrap_or_default(),
+            mahalanobis_d2: None,
+            channels: entries
+                .iter()
+                .map(|(channel, status, detector)| ares_core_types::ChannelAnomalyState {
+                    channel: (*channel).to_string(),
+                    status: *status,
+                    evaluable: true,
+                    detector: Some(*detector),
+                    value: None,
+                    baseline_median: None,
+                    baseline_sigma: None,
+                    z_score: None,
+                    duration_s: 20.0,
+                    reason: format!("{channel} reason"),
+                })
+                .collect(),
+        }
+    }
+
+    #[test]
+    fn test_vitals_alarm_selects_acute_playbook_and_physiology_outranks_dropout() {
+        use AnomalyDetectorKind::{CusumDrift, Mahalanobis, RobustZScore, SensorDropout};
+        use AnomalyStatus::{Alarm, Attention};
+        let gates = SafetyGates {
+            anticoagulant_lock_active: true,
+            lbnp_auto_vent_armed: true,
+            eva_suit_damping_active: false,
+        };
+        let pick = |entries: &[(&str, AnomalyStatus, AnomalyDetectorKind)]| {
+            select_vitals_anomaly_playbook(&anomaly_report(entries), gates).map(|p| p.playbook_id)
+        };
+        assert_eq!(pick(&[("spo2_pct", Attention, RobustZScore)]), None);
+        assert_eq!(
+            pick(&[
+                ("heart_rate_bpm", Alarm, SensorDropout),
+                ("spo2_pct", Alarm, CusumDrift)
+            ])
+            .as_deref(),
+            Some("PLAYBOOK_06_HYPOXEMIA_DESATURATION")
+        );
+        assert_eq!(
+            pick(&[("heart_rate_bpm", Alarm, RobustZScore)]).as_deref(),
+            Some("PLAYBOOK_07_HEART_RATE_ANOMALY")
+        );
+        assert_eq!(
+            pick(&[("spo2_pct", Alarm, SensorDropout)]).as_deref(),
+            Some("PLAYBOOK_08_SENSOR_SIGNAL_LOSS")
+        );
+        assert_eq!(
+            pick(&[("joint_hr_spo2_resp", Alarm, Mahalanobis)]).as_deref(),
+            Some("PLAYBOOK_09_MULTIPARAMETER_DETERIORATION")
+        );
+        let pb = select_vitals_anomaly_playbook(
+            &anomaly_report(&[("spo2_pct", Alarm, RobustZScore)]),
+            gates,
+        )
+        .expect("playbook");
+        assert_eq!(pb.causal_chain_summary, vec!["spo2_pct reason".to_string()]);
+        assert_eq!(pb.safety_gates, gates);
     }
 }

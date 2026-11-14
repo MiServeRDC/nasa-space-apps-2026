@@ -543,6 +543,29 @@ flowchart TD
 
 ---
 
+### BLOCCO M: 3-Tier LSAH Persistence Engine (`Issue #26`), Multi-Branch Team Unification & End-to-End Flight-Readiness Verification (`Fasi 35–37`)
+* **Architettura di Riferimento:** [`docs/plans/BLOCK_M_GAP_CLOSURE_ARCHITECTURE.md`](BLOCK_M_GAP_CLOSURE_ARCHITECTURE.md) | **Valutazione Multi-Branch (`M2`):** [`docs/plans/BLOCK_M_MULTI_BRANCH_MERGE_EVALUATION_AND_PATCH_PLAN.md`](BLOCK_M_MULTI_BRANCH_MERGE_EVALUATION_AND_PATCH_PLAN.md)
+* **Obiettivo:** Introdurre il **9° crate `crates/ares-storage-lsah`** per la persistenza clinica longitudinale a 3 tier (**GitHub Issue `#26`** di `@MiServeRDC`: Hot Ring Buffer zero-alloc `60–300 s @ 20 Hz`, Warm Columnar/Vector Store modulare con ricerca ANN `HNSW` su firme ecografiche POCUS `Sol 180` vs `Sol 1`, e Cold Archive `ChaCha20-Poly1305` con nonce monotono + `Sha256AuditLogger` `AAD` + `DsnDownlinkOutbox`), unificare i `4` branch di sviluppo del team su `main` preservando rigorosamente Issue `#11` e Issue `#12`, e certificare l'intero stack a `9` crate + `53` soggetti `BIDMC` + `5` mesh 3D `.glb` + pacchetto `Typst`.
+
+#### Fase 35 (`M1`): 3-Tier LSAH Persistence Engine — Hot Zero-Alloc Ring, Modular Arrow/LanceDB+HNSW Warm Store & Cold AEAD DSN Archive (`Issue #26`)
+* **Stato:** `[x] COMPLETED (TESTED)` (Piano: [`docs/plans/phase_35_M1_lsah_3tier_persistence_issue26.md`](phase_35_M1_lsah_3tier_persistence_issue26.md))
+* **Specifica Tecnica:**
+  * Nuovo crate `crates/ares-storage-lsah` (`#![forbid(unsafe_code)]`, zero `.unwrap()`/`.expect()`): `HotLsahSlot` (`256 B`, `#[repr(C, align(64))]`, `Copy`, `0` allocazioni heap post-init, `< 250 ns`) + `WarmStagingSwapBuffer` wait-free (`200x` riduzione usura NAND flash, isolamento dai picchi `fsync()` SSD).
+  * Trait `WarmColumnarVectorBackend`: backend nativo default `ArrowIpcZstdHnswBackend` (`arrow-array`/`arrow-ipc`/`arrow-schema` `58.4.0` + `zstd 0.13.3` + `HnswVectorIndex` deterministico pure-Rust; `62` crate `100%` offline, `0` crate HTTP) + backend opzionale `--features lancedb-warm` (`lancedb 0.40.0` con guardia air-gap `validate_airgapped_lsah_dir()`), bitmap `NULL` nativi per Issue `#11`, e firme POCUS `128-D`/`256-D` marcate `ProceduralBModeSimulation` + `IllustrativeUnvalidated` con **Hard Gate 1** bloccato (Issue `#12`).
+  * `ColdTierArchiver` (`ChaCha20-Poly1305` nonce monotono `(key_epoch_id, mission_sol, chunk_seq)` + `AAD` bidirezionale su `Sha256AuditLogger` + `DsnDownlinkOutbox`), route Axum `/api/lsah/*`, dispatch `FastMCP` (`<= 600 B`, mantenendo `tools/list == 8`) e pannello OLED `PocusLongitudinalHistory.tsx`.
+
+#### Fase 36 (`M2`): Multi-Branch Team Unification onto `main` (`fertech02`, `MiServeRDC`, `carolina2910`, `LelloXV`)
+* **Stato:** `[x] COMPLETED (TESTED)` (Piani: [`docs/plans/phase_36_M2_branch_unification_merge.md`](phase_36_M2_branch_unification_merge.md) & [`docs/plans/BLOCK_M_MULTI_BRANCH_MERGE_EVALUATION_AND_PATCH_PLAN.md`](BLOCK_M_MULTI_BRANCH_MERGE_EVALUATION_AND_PATCH_PLAN.md))
+* **Specifica Tecnica:**
+  * Unifica controllatamente `work/fertech02` (`vitals_anomaly.rs`, `ewma_forecaster.rs`, `VitalsAnomalyPanel.tsx`, `50` CSV `data/bidmc_eval/bidmc_04..53_Numerics.csv` + `MANIFEST.json`), `work/MiServeRDC` (`5` mesh 3D Z-Anatomy `.glb` `CC-BY-SA-4.0` in `ares-cockpit/public/anatomy/` + `MANIFEST.json` + `AtlasBody.tsx`), `work/carolina2910` (`AiInjuryModal.tsx`, `vlmInjuryEngine.ts` air-gapped, `Imaging.tsx`, `BodyHeatmap.tsx`), e `work/LelloXV` (`1 Hz` native BIDMC replay cadence), preservando tutti i binding live `L1–L6`, zero `.unwrap()` e Issue `#11`/`#12`.
+
+#### Fase 37 (`M3`): End-to-End LSAH Database, Unified Multi-Branch Cockpit, `agent_probe.sh` & Typst Submission Certification
+* **Stato:** `[x] COMPLETED (TESTED)` (Piano: [`docs/plans/phase_37_M3_end_to_end_db_cockpit_verification.md`](phase_37_M3_end_to_end_db_cockpit_verification.md))
+* **Specifica Tecnica:**
+  * Esegue la batteria di certificazione finale a `8` gate (`M3-G01..M3-G08`): `agent_probe.sh` esteso a `9` crate + `53` CSV `BIDMC` + `5` `.glb`, chaos/restart/tamper E2E su `ares-storage-lsah`, calibrazione `SubjectDisjointSplit` anti-leakage su `53` soggetti, contratti HTTP/WS/`FastMCP`/`128 B` IPC, test UI Cockpit unificato, benchmark `--release` `p99.9 < 150 µs` sotto I/O concorrente e rigenerazione deterministica `Typst 0.15.1`.
+
+---
+
 ## 3. Matrice Riassuntiva di Tracciamento dei 12 Blocchi / 34 Fasi e Link ai Piani Implementativi (`docs/plans/phase_*.md`)
 
 | Blocco | Fase | Piano Implementativo Dedicato (`docs/plans/`) | Crate Target | Owner | Latenza / Footprint Target | Stato |
@@ -581,6 +604,9 @@ flowchart TD
 | **Blocco L (Gap Closure)** | **Fase 32 (`L4`)** | [`phase_32_L4_edge_llm_voice_copilot_safetensors.md`](phase_32_L4_edge_llm_voice_copilot_safetensors.md) | `ares-nqs-stl`, `ares-server-cli`, `ares-desktop-os`, `ares-cockpit` | `@fabiomalagutti27-droid` & `@fertech02` | `0 ns` 20Hz / `< 2.5 s` LLM / `< 5 ms` SafeTensors | `[x] COMPLETED (TESTED)` |
 | **Blocco L (Gap Closure)** | **Fase 33 (`L5`)** | [`phase_33_L5_clinical_calibration_24dataset_parquet.md`](phase_33_L5_clinical_calibration_24dataset_parquet.md) | `ares-core-types`, `ares-causal-graph`, `ares-nqs-stl`, `ares-calibrate` | `@fabiomalagutti27-droid` & `@MiServeRDC` | `< 250 ms` CLI audit / `0` network | `[x] COMPLETED (TESTED)` |
 | **Blocco L (Gap Closure)** | **Fase 34 (`L6`)** | [`phase_34_L6_nasa_submission_pitch_slides_pdf.md`](phase_34_L6_nasa_submission_pitch_slides_pdf.md) | `docs/submission/`, `PANORAMICA_*`, `scripts/build_submission_docs.sh` | `@fabiomalagutti27-droid` (Team Review) | `< 2.5 s` Typst + 6 CI Gates | `[x] COMPLETED (TESTED)` |
+| **Blocco M (LSAH & Unification)** | **Fase 35 (`M1`)** | [`phase_35_M1_lsah_3tier_persistence_issue26.md`](phase_35_M1_lsah_3tier_persistence_issue26.md) | `crates/ares-storage-lsah`, `ares-server-cli`, `ares-cockpit` | `@MiServeRDC` & `@fabiomalagutti27-droid` | `< 330 ns` Hot (`0` alloc) / `< 260 µs` HNSW | `[x] COMPLETED (TESTED)` |
+| **Blocco M (LSAH & Unification)** | **Fase 36 (`M2`)** | [`phase_36_M2_branch_unification_merge.md`](phase_36_M2_branch_unification_merge.md) | `ares-telemetry-ingest`, `ares-nqs-stl`, `ares-cockpit/`, `data/bidmc_eval/` | `@fabiomalagutti27-droid`, `@fertech02`, `@MiServeRDC`, `@carolina2910`, `@LelloXV` | `53` BIDMC CSVs / `5` `.glb` (`26.75 MB`) | `[x] COMPLETED (TESTED)` |
+| **Blocco M (LSAH & Unification)** | **Fase 37 (`M3`)** | [`phase_37_M3_end_to_end_db_cockpit_verification.md`](phase_37_M3_end_to_end_db_cockpit_verification.md) | Workspace (`9` crates), `ares-cockpit/`, `scripts/agent_probe.sh`, `Typst` | `@fabiomalagutti27-droid` & `@MiServeRDC` (Full Team) | `p99.9 < 150 µs` (`--release` + I/O) / `8` Gates | `[x] COMPLETED (TESTED)` |
 
 ---
 
@@ -596,4 +622,5 @@ flowchart TD
 | **Blocchi E + F (`Playbook DAG + SHA-256`)** | `11.4 µs` | -- | `< 128 KB` | -- |
 | **Blocco J (`ARES-MedOS` Zero-Copy IPC & Shell)** | **`< 100 ns` SHM Seqlock / `< 0.05 ms` Tauri IPC** | `120 FPS` Metal/Vulkan (`< 8.3 ms`) | `~30–50 MB` (`Tauri v2` native shell) | `~3–10 MB` (installer) |
 | **Blocco L (`L1–L6` Verified Extensions)** | **`0 ns` Copilot / `< 150 ns` `try_dispatch` SHM / `< 15 µs` Level-1 DSP** | `< 2.5 s` LLM (`< 400 µs` fallback) / `< 350 ms` `whisper-rs` / `< 250 ms` `ares-calibrate` | `+ < 28 KB`/crew DSP + `~31–57 MB` (`--features offline-voice`) | `~196 KB` `SafeTensors` + `~31–57 MB` GGML (opz.) |
+| **Blocco M (`M1–M3` Planned LSAH DB & Assets)** | **`< 0.33 µs` (`HotLsahSlot` + Swap, `0` alloc)** | `~1.4–3.2 ms / 10s` Warm IPC+Zstd / `< 260 µs` HNSW / `~8–19 ms / Sol` Cold AEAD | `+ 0.41–1.64 MB` Hot Ring + `< 1.2 MB` HNSW (`1k` scans) | `~18.5 MB / Sol` (`~13–19 GB / 900 Sol`) + `26.8 MB` `.glb` + `1.6 MB` `BIDMC` |
 | **TOTALE PIPELINE SINCRONA (`20 Hz`)** | **`66.38 µs << 150.0 µs` (SLA OK, `p99.9=5.58 µs` `--release`)** | **`6.95 ms << 1000 ms` (`1 Hz` OK)** | **`~9.2 MB` Engine (+ `~38 MB` Shell)** | **`< 0.5 GB` Totali su SSD** |

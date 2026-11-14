@@ -101,10 +101,63 @@ const HORIZON_STEPS = [
   { label: '+24h', hours: 24, key: 'horizon_24h' },
 ] as const;
 
+const SHORT_EWMA_HORIZON_STEPS = [
+  { label: '+5s', seconds: 5, key: 'horizon_5s' },
+  { label: '+10s', seconds: 10, key: 'horizon_10s' },
+  { label: '+30s', seconds: 30, key: 'horizon_30s' },
+  { label: '+60s', seconds: 60, key: 'horizon_60s' },
+  { label: '+120s', seconds: 120, key: 'horizon_120s' },
+] as const;
+
+type ConeHorizonMode = 'LONG' | 'SHORT_EWMA';
+
 interface ConeOption {
   channel: string;
   label: string;
   points: HorizonPoint[];
+  ewmaLevel?: number;
+}
+
+function buildShortEwmaConeOptions(
+  tq: TimestralQuantilesSummary | null | undefined,
+  hrvUnavailable: boolean,
+): ConeOption[] {
+  if (!tq || !Array.isArray(tq.short_horizon_cones)) return [];
+  const options: ConeOption[] = [];
+  const seen = new Set<string>();
+  for (const cone of tq.short_horizon_cones) {
+    if (
+      hrvUnavailable &&
+      (cone.channel_name === 'rmssd_ms' ||
+        cone.channel_name === 'sdnn_ms' ||
+        cone.channel_name === 'lf_hf_ratio' ||
+        cone.channel_name === 'rho_global')
+    ) {
+      continue;
+    }
+    const pts: HorizonPoint[] = [];
+    for (const h of SHORT_EWMA_HORIZON_STEPS) {
+      const parsed = parseMonotoneQuantileTriplet(cone[h.key]);
+      if (parsed) {
+        pts.push({
+          label: h.label,
+          hours: h.seconds / 3600,
+          xi: h.seconds / 120,
+          triplet: parsed,
+        });
+      }
+    }
+    if (pts.length > 0 && !seen.has(cone.channel_name)) {
+      seen.add(cone.channel_name);
+      options.push({
+        channel: cone.channel_name,
+        label: cone.channel_name.toUpperCase(),
+        points: pts,
+        ewmaLevel: typeof cone.ewma_level === 'number' && Number.isFinite(cone.ewma_level) ? cone.ewma_level : undefined,
+      });
+    }
+  }
+  return options;
 }
 
 function buildConeOptions(
@@ -196,7 +249,10 @@ export function TimestralQuantileConePanel({
     packet?.biometrics.hrv_unavailable_reason === 'BEAT_INTERVALS_NOT_AVAILABLE' ||
     packet?.biometrics.hrv_rmssd_ms === null;
 
-  const coneOptions = useMemo(() => buildConeOptions(tq, hrvUnavailable), [tq, hrvUnavailable]);
+  const [horizonMode, setHorizonMode] = useState<ConeHorizonMode>('LONG');
+  const longConeOptions = useMemo(() => buildConeOptions(tq, hrvUnavailable), [tq, hrvUnavailable]);
+  const shortConeOptions = useMemo(() => buildShortEwmaConeOptions(tq, hrvUnavailable), [tq, hrvUnavailable]);
+  const coneOptions = horizonMode === 'SHORT_EWMA' ? shortConeOptions : longConeOptions;
   const [selectedChannel, setSelectedChannel] = useState<string>('hr_bpm');
 
   useEffect(() => {
@@ -207,6 +263,7 @@ export function TimestralQuantileConePanel({
 
   const activeCone =
     coneOptions.find((o) => o.channel === selectedChannel) ?? coneOptions[0] ?? null;
+  const maxShortXi = Math.max(1e-6, ...SHORT_EWMA_HORIZON_STEPS.map((h) => h.seconds / 120));
 
   const validationLabel =
     tq?.model_validation_status ??
@@ -272,6 +329,50 @@ export function TimestralQuantileConePanel({
         </div>
       )}
 
+      {/* Horizon Mode Toggle (+15m..+24h Timestral vs +5s..+120s EWMA) & Channel Selector */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Forecast horizon range">
+          <button
+            type="button"
+            aria-pressed={horizonMode === 'LONG'}
+            onClick={() => setHorizonMode('LONG')}
+            className={`min-h-[44px] rounded border px-3 py-2 text-xs transition-colors ${
+              horizonMode === 'LONG'
+                ? 'border-nominal bg-nominal/10 text-nominal'
+                : 'border-line bg-black text-gray-400 hover:border-gray-600'
+            }`}
+          >
+            LONG HORIZON (+15m..+24h)
+          </button>
+          <button
+            type="button"
+            aria-pressed={horizonMode === 'SHORT_EWMA'}
+            onClick={() => setHorizonMode('SHORT_EWMA')}
+            className={`min-h-[44px] rounded border px-3 py-2 text-xs transition-colors ${
+              horizonMode === 'SHORT_EWMA'
+                ? 'border-nominal bg-nominal/10 text-nominal'
+                : 'border-line bg-black text-gray-400 hover:border-gray-600'
+            }`}
+          >
+            SHORT HORIZON (+5s..+120s EWMA)
+          </button>
+        </div>
+        {tq?.forecast_method && (
+          <span className="rounded border border-gray-700 px-2 py-1 text-[10px] text-gray-400">
+            METHOD: {tq.forecast_method}
+          </span>
+        )}
+      </div>
+
+      {horizonMode === 'SHORT_EWMA' && tq?.short_horizon_abstention && (
+        <div className="rounded border border-advisory/50 bg-black px-2.5 py-1.5 text-[11px] text-advisory">
+          SHORT-HORIZON EWMA STATUS:{' '}
+          {typeof tq.short_horizon_abstention === 'string'
+            ? tq.short_horizon_abstention
+            : tq.short_horizon_abstention.reason}
+        </div>
+      )}
+
       {/* Channel Selector Buttons (>= 44x44 pt) */}
       {coneOptions.length > 0 && (
         <div className="flex flex-wrap gap-2">
@@ -301,7 +402,10 @@ export function TimestralQuantileConePanel({
           const span = Math.max(0.5, maxVal - minVal);
           const yLow = minVal - span * 0.15;
           const yHigh = maxVal + span * 0.15;
-          const sx = (xi: number) => PAD_X + xi * (W - 2 * PAD_X);
+          const xDomainMax = horizonMode === 'SHORT_EWMA'
+            ? Math.max(maxShortXi, ...activeCone.points.map((p) => p.xi))
+            : 1;
+          const sx = (xi: number) => PAD_X + Math.min(1, xi / xDomainMax) * (W - 2 * PAD_X);
           const sy = (val: number) =>
             PAD_Y + ((yHigh - val) / Math.max(1e-6, yHigh - yLow)) * (H - 2 * PAD_Y);
 
@@ -374,8 +478,9 @@ export function TimestralQuantileConePanel({
               {latestPt && (
                 <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-gray-400">
                   <span>
-                    {activeCone.label} +24h NOMINAL q05-q50-q95: [{latestPt.triplet.q05.toFixed(2)},{' '}
+                    {activeCone.label} {latestPt.label} q05-q50-q95: [{latestPt.triplet.q05.toFixed(2)},{' '}
                     {latestPt.triplet.q50.toFixed(2)}, {latestPt.triplet.q95.toFixed(2)}]
+                    {activeCone.ewmaLevel !== undefined ? ` | EWMA=${activeCone.ewmaLevel.toFixed(2)}` : ''}
                   </span>
                   {ttvCone && (
                     <span className="text-advisory">
@@ -390,7 +495,9 @@ export function TimestralQuantileConePanel({
         })()
       ) : (
         <div className="rounded border border-line/60 bg-black p-3 text-gray-500">
-          Timestral quantile cones awaiting telemetry frames...
+          {horizonMode === 'SHORT_EWMA'
+            ? 'Short-horizon EWMA cones warming up (+5s/+10s appear after baseline window)...'
+            : 'Timestral quantile cones awaiting telemetry frames...'}
         </div>
       )}
     </div>

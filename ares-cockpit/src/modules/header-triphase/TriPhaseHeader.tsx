@@ -25,7 +25,16 @@ export function AlarmBadge({ level }: { level: AlarmLevel }) {
     CRITICAL: 'border-critical bg-critical text-black animate-pulse',
     DATA_DEGRADED_MISSING_CHANNELS: 'border-advisory text-advisory',
   };
-  return <span className={`rounded border px-2 py-1 font-bold ${cls[level]}`}>{level}</span>;
+  return (
+    <span
+      role="status"
+      data-alarm-level={level}
+      title={level}
+      className={`rounded border px-2 py-1 font-bold ${cls[level]}`}
+    >
+      {level}
+    </span>
+  );
 }
 
 export function TriPhaseHeader({
@@ -70,8 +79,9 @@ export function TriPhaseHeader({
             <div key={p} className="flex items-center gap-2">
               <button
                 type="button"
+                aria-current={isActive ? 'page' : undefined}
                 onClick={() => onSelectPhase(p)}
-                className={`cursor-pointer rounded border px-3 py-1 transition-colors ${
+                className={`min-h-12 cursor-pointer rounded border px-3 py-2 transition-colors ${
                   isActive
                     ? 'border-nominal bg-nominal font-bold text-black'
                     : isAlert
@@ -90,7 +100,7 @@ export function TriPhaseHeader({
       <div className="flex flex-wrap items-center gap-3">
         <select
           aria-label="Earth link profile"
-          className="rounded border border-line bg-black px-2 py-1 text-gray-200"
+          className="min-h-12 rounded border border-line bg-black px-2 py-1 text-gray-200"
           value={profile.id}
           onChange={(e) => setProfile(LATENCY_PROFILES.find((p) => p.id === e.target.value) ?? LATENCY_PROFILES[1])}
         >
