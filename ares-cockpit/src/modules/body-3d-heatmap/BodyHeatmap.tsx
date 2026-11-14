@@ -492,7 +492,10 @@ export function BodyHeatmap({
   const effectiveAtlasActive = atlasMode && !atlasFailed;
 
   return (
-    <div className="flex h-full flex-col gap-2 bg-black">
+    <div className="anatomical-explorer flex h-full flex-col gap-2 bg-black">
+      <details className="atlas-preferences">
+        <summary>Layers &amp; annotations <span>Display presets, body profile and injury tools</span></summary>
+        <div className="atlas-preferences-content">
       {/* Top bar: Presets + Atlas Toggle + Biological Profile Switch + Injury Triage */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-2 font-mono text-xs">
         <div className="flex flex-wrap gap-1.5">
@@ -678,6 +681,9 @@ export function BodyHeatmap({
           Data unavailable — pure terrestrial BIDMC replay: 3D microgravity organ load models remain unestimated until you engage the What-If Scenario Overlay (Simulated).
         </div>
       )}
+
+        </div>
+      </details>
 
       {/* Spatial Hypergraph & Deontic Habitat HUD Strip */}
       <div className="flex flex-wrap items-center justify-between gap-2 rounded border border-line bg-black px-3 py-1.5 font-mono text-[11px]">
