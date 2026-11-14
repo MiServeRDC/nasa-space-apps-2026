@@ -10,6 +10,7 @@ use ares_core_types::constants::SQI_MIN_VALID_THRESHOLD;
 
 const WINDOW_LEN: usize = 16;
 const EPSILON: f64 = 1e-12;
+pub const ZOH_MAX_HOLD_SECONDS: f64 = 30.0;
 
 /// Risultato dettagliato della valutazione SQI e disponibilita HRV.
 #[derive(Debug, Clone, PartialEq)]
@@ -26,6 +27,7 @@ pub struct SqiFilter {
     write_idx: usize,
     last_hr_bpm: Option<f64>,
     last_valid_rmssd_ms: Option<f64>,
+    last_valid_rmssd_time_s: Option<f64>,
 }
 
 impl Default for SqiFilter {
@@ -35,6 +37,7 @@ impl Default for SqiFilter {
             write_idx: 0,
             last_hr_bpm: None,
             last_valid_rmssd_ms: None,
+            last_valid_rmssd_time_s: None,
         }
     }
 }
@@ -53,15 +56,17 @@ impl SqiFilter {
         row: &BidmcNumericRow,
         raw_rmssd_ms: Option<f64>,
     ) -> SqiEvaluation {
-        let diff_sq = match (row.hr_bpm, self.last_hr_bpm) {
+        let finite_hr = row.hr_bpm.filter(|v| v.is_finite());
+        let diff_sq = match (finite_hr, self.last_hr_bpm) {
             (Some(curr), Some(prev)) => {
                 let d = curr - prev;
-                d * d + 0.25
+                let e = d * d + 0.25;
+                if e.is_finite() { e.min(1e12) } else { 1e12 }
             }
             _ => 1.0,
         };
-        if row.hr_bpm.is_some() {
-            self.last_hr_bpm = row.hr_bpm;
+        if let Some(curr) = finite_hr {
+            self.last_hr_bpm = Some(curr);
         }
 
         self.diff_energy_ring[self.write_idx] = diff_sq;
@@ -74,8 +79,18 @@ impl SqiFilter {
             entropy -= p * p.ln();
         }
         let h_norm = (entropy / (WINDOW_LEN as f64).ln()).clamp(0.0, 1.0);
-        let f_miss = (row.missing_channels.len() as f64 / 4.0).clamp(0.0, 1.0);
-        let sqi_score = (0.96 - 0.14 * h_norm - 0.18 * f_miss).clamp(0.0, 1.0);
+        let invalid_channels = [row.hr_bpm, row.pulse_bpm, row.resp_brpm, row.spo2_pct]
+            .into_iter()
+            .filter(|ch| !ch.is_some_and(f64::is_finite))
+            .count();
+        let miss_count = row.missing_channels.len().max(invalid_channels);
+        let f_miss = (miss_count as f64 / 4.0).clamp(0.0, 1.0);
+        let raw_sqi = 0.96 - 0.14 * h_norm - 0.18 * f_miss;
+        let sqi_score = if raw_sqi.is_finite() {
+            raw_sqi.clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
 
         let mut quality_flags = Vec::new();
         let valid_input = raw_rmssd_ms.filter(|v| v.is_finite() && *v > 0.0);
@@ -83,6 +98,8 @@ impl SqiFilter {
         let rmssd_ms = if sqi_score >= SQI_MIN_VALID_THRESHOLD {
             if let Some(rmssd) = valid_input {
                 self.last_valid_rmssd_ms = Some(rmssd);
+                self.last_valid_rmssd_time_s =
+                    row.relative_time_s.is_finite().then_some(row.relative_time_s);
                 Some(rmssd)
             } else {
                 quality_flags.push("BEAT_INTERVALS_NOT_AVAILABLE".to_string());
@@ -90,9 +107,26 @@ impl SqiFilter {
             }
         } else {
             quality_flags.push("HOLD_LAST_VALID".to_string());
-            if let Some(held) = self.last_valid_rmssd_ms {
+            let within_zoh_window = match (self.last_valid_rmssd_ms, self.last_valid_rmssd_time_s)
+            {
+                (Some(held), Some(t0)) if row.relative_time_s.is_finite() => {
+                    let elapsed = row.relative_time_s - t0;
+                    if (0.0..=ZOH_MAX_HOLD_SECONDS).contains(&elapsed) {
+                        Some(held)
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            };
+            if let Some(held) = within_zoh_window {
                 Some(held)
             } else {
+                if self.last_valid_rmssd_ms.is_some() {
+                    quality_flags.push("ZOH_EXPIRED".to_string());
+                    self.last_valid_rmssd_ms = None;
+                    self.last_valid_rmssd_time_s = None;
+                }
                 quality_flags.push("BEAT_INTERVALS_NOT_AVAILABLE".to_string());
                 None
             }

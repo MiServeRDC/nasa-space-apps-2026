@@ -57,10 +57,10 @@ pub fn biometrics_with_signal_quality(
     };
 
     Biometrics {
-        heart_rate_bpm: row.hr_bpm,
-        pulse_rate_bpm: row.pulse_bpm,
-        resp_rate_brpm: row.resp_brpm,
-        spo2_pct: row.spo2_pct,
+        heart_rate_bpm: row.hr_bpm.filter(|v| v.is_finite()),
+        pulse_rate_bpm: row.pulse_bpm.filter(|v| v.is_finite()),
+        resp_rate_brpm: row.resp_brpm.filter(|v| v.is_finite()),
+        spo2_pct: row.spo2_pct.filter(|v| v.is_finite()),
         rmssd_ms,
         hrv_unavailable_reason,
         sdnn_ms,
