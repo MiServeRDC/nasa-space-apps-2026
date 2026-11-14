@@ -1,5 +1,22 @@
 # Active Context: ARES-Health (NASA Space Apps Challenge 2026)
 
+## Phase 37 (M3): End-to-End Mission Scenario Harnesses & Tier 7 Verification (2026-11-14)
+
+Completed full implementation and verification of Tier 7 of the Master Test Plan (`ARES_HEALTH_MASTER_TEST_PLAN.md`):
+1. **Backend E2E Mission Scenario Harness (`crates/ares-server-cli/tests/phase_37_m3_mission_scenarios_e2e.rs`):**
+   * SCEN-01: Nominal Mars Transit Baseline (FD180) — verifies nominal homeostasis, alert severity <= Caution, and locked decompression.
+   * SCEN-02: Acute Venous Stasis & POCUS Confirmation (Gate 1) — proves anticoagulant lock remains active on stasis and strictly unlocks only upon POCUS intraluminal thrombus verification.
+   * SCEN-03: LBNP Syncope Pre-emption & Auto-Vent (Gate 2) — proves automatic chamber venting to 0 mmHg on SBP drop > 15 mmHg or HR > 115 bpm.
+   * SCEN-04: Mars Aerocapture & 0.38g Landing Gait Asymmetry (Gate 3 & Gate 4B) — proves GAI > 12.0% automatically activates suit damping +25% and flags EVA NO-GO.
+   * SCEN-05: Nephrolithiasis (Renal Stone Risk) & Bone Resorption (Playbook #10) — proves elevated urinary calcium (> 250 mg/d) and renal POCUS twinkling trigger forced hydration bolus and potassium citrate without false anticoagulant stripping.
+   * SCEN-06: Multiple-Trauma Tension Pneumothorax & Invasive Decompression (Gate 4A) — proves needle thoracostomy is locked on negative eFAST and unlocked upon confirmed pneumothorax or emergency vital collapse override (Shock Index >= 1.20 and SpO2 < 85%).
+2. **Cockpit Scenario Contract Test Suite (`ares-cockpit/tests/phase37_scenarios.test.ts`):**
+   * 6 automated scenario tests verifying TypeScript client data model normalization and gate enforcement rules.
+   * Total Cockpit tests: 29/29 passing across 7 suites (`node --test tests/*.test.ts`).
+3. **Workspace Metrics:**
+   * Rust workspace: 211+ tests passing with 0 failures across all 9 crates.
+   * `./scripts/agent_probe.sh --fast`: 4/4 probes passing (0 clippy warnings, 0 unwraps, 0 emojis).
+
 ## Full Resolution of Carbon High Independent Audit & Verified Merge into Main (2026-11-14)
 
 All 5 critical audit vulnerabilities identified by the independent Gemini Carbon High audit have been resolved, comprehensively tested, and cleanly merged into `main` (`ad3bab9`):

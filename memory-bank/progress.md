@@ -187,6 +187,11 @@
   - Chip di azione rapida integrati direttamente nell'header `TriPhaseHeader.tsx` (`[GROUND PORTAL]`, `[STUDIO]`, `[AUDIT CHAIN]`, `[?]`, `[CMD+K]`) mantenendo il flusso primario `[1. GATHER] -> [2. EVALUATE] -> [3. ACT]`.
   - Toggle tattile MALE/FEMALE e launcher HUD Fullscreen integrati direttamente nel card header della vista 3D.
   - Verificato con tutti i 21 test Cockpit superati, linting TypeScript pulito e build di produzione Vite completata.
+- [x] **Fase 37 (Blocco P / `M3` — Verificato):** End-to-End Mission Scenario Harnesses & Tier 7 Test Plan:
+  - Specifica formale `ARES_HEALTH_MASTER_TEST_PLAN.md` su 7 livelli di test (Proprietà matematiche, Gate clinici salvavita 1-4, SEU cosmiche & caos, Latenza edge ARINC 653, Anti-leakage clinico & 53 coorti BIDMC, Accessibilità HSI Cockpit NASA-STD-3001, Scenari di missione E2E).
+  - Test harness E2E Rust in `crates/ares-server-cli/tests/phase_37_m3_mission_scenarios_e2e.rs` (SCEN-01..SCEN-06) con verifica a ciclo chiuso `GATHER -> EVALUATE -> ACT`.
+  - Suite contrattuale Cockpit in `ares-cockpit/tests/phase37_scenarios.test.ts` con 29/29 test superati.
+  - Verifica automatica `agent_probe.sh --fast` e `cargo test --workspace` con 211+ test Rust e 0 warning Clippy.
 
 ---
 
