@@ -7,12 +7,16 @@ use crate::timestral_backbone::{
     TimestralBackbone, TimestralConfig,
 };
 use crate::timestral_quantiles::{ConformalAbstentionGate, QuantileHead};
+use crate::timestral_safetensors::{
+    CheckpointOrigin, load_timestral_or_deterministic_fallback,
+};
 use crate::ttv_predictor::estimate_greybox_quantile_ttv_cone;
 use ares_core_types::telemetry::{Biometrics, JugularHemodynamics, Musculoskeletal, SansOcular};
 use ares_core_types::{
     ChannelQuantileCone, ConformalGateStatus, MonotoneQuantileTriplet, NqsQuantileForecastSnapshot,
 };
 use serde::{Deserialize, Serialize};
+use std::path::Path;
 use std::sync::{Arc, RwLock, TryLockError};
 use std::time::Instant;
 
@@ -254,6 +258,9 @@ pub fn compute_greybox_forecast_snapshot(
     }
 }
 
+/// Default Timestral checkpoint identifier inside `assets/models/MANIFEST.json`.
+pub const DEFAULT_TIMESTRAL_MODEL_ID: &str = "timestral-dhf-v1";
+
 /// Complete Pure-Rust Timestral Grey-Box Forecaster Engine (1 Hz inference + 20 Hz lock-free handle).
 #[derive(Debug, Clone)]
 pub struct AresTemporalForecasterEngine {
@@ -262,6 +269,7 @@ pub struct AresTemporalForecasterEngine {
     pub backbone: TimestralBackbone,
     pub quantile_head: QuantileHead,
     pub gate: ConformalAbstentionGate,
+    pub checkpoint_origin: CheckpointOrigin,
     buffer: CircularTelemetryBuffer,
     handle: AresTemporalForecasterHandle,
     last_rho_cone: Option<MonotoneQuantileTriplet>,
@@ -271,12 +279,30 @@ pub struct AresTemporalForecasterEngine {
 impl AresTemporalForecasterEngine {
     /// Initializes the engine with deterministic weights and a preallocated circular buffer.
     pub fn new(config: TimestralConfig) -> Result<Self, NqsStlError> {
+        Self::new_with_optional_checkpoint(config, None)
+    }
+
+    /// Initializes the engine from an optional verified SafeTensors checkpoint directory,
+    /// falling back cleanly to deterministic stub weights on missing or mismatched artifacts.
+    pub fn new_with_optional_checkpoint(
+        config: TimestralConfig,
+        models_dir: Option<&Path>,
+    ) -> Result<Self, NqsStlError> {
+        Self::new_with_optional_checkpoint_id(config, models_dir, DEFAULT_TIMESTRAL_MODEL_ID)
+    }
+
+    /// Initializes the engine from an optional verified SafeTensors checkpoint directory
+    /// for a specific `model_id` in `MANIFEST.json`.
+    pub fn new_with_optional_checkpoint_id(
+        config: TimestralConfig,
+        models_dir: Option<&Path>,
+        model_id: &str,
+    ) -> Result<Self, NqsStlError> {
         config.validate()?;
+        let bundle = load_timestral_or_deterministic_fallback(config.clone(), models_dir, model_id)?;
         let context_patches = 2usize;
         let buffer_cap = config.patch_len * context_patches;
         let scaler = CausalScaler::new(config.sigma_floor);
-        let backbone = TimestralBackbone::new_deterministic(config.clone())?;
-        let quantile_head = QuantileHead::new_deterministic(config.d_model, 1.0);
         let gate = ConformalAbstentionGate::default();
         let buffer = CircularTelemetryBuffer::new(config.num_channels, buffer_cap)?;
         let initial_snapshot =
@@ -286,14 +312,21 @@ impl AresTemporalForecasterEngine {
         Ok(Self {
             config,
             scaler,
-            backbone,
-            quantile_head,
+            backbone: bundle.backbone,
+            quantile_head: bundle.quantile_head,
             gate,
+            checkpoint_origin: bundle.origin,
             buffer,
             handle,
             last_rho_cone: None,
             context_patches,
         })
+    }
+
+    /// Returns the provenance (`LoadedVerifiedSafeTensors` or `DeterministicStub`) of the active weights.
+    #[inline]
+    pub fn checkpoint_origin(&self) -> &CheckpointOrigin {
+        &self.checkpoint_origin
     }
 
     /// Returns a cloneable non-blocking handle for the 20 Hz hot-path.

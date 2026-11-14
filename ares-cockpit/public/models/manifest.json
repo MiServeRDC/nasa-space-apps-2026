@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "assets": [
+    {
+      "id": "nasa_eva_reference_shell",
+      "label": "Air-Gapped Habitat / Suit Reference Shell (Optional Local GLB)",
+      "url": "/models/nasa_eva_suit.glb",
+      "target_uberon": [
+        "UBERON:0000948",
+        "UBERON:0001389"
+      ],
+      "default_visible": false,
+      "scale": [1.0, 1.0, 1.0],
+      "offset": [0.0, 0.0, 0.0],
+      "license": "Public Domain (NASA 3D Resources — air-gapped local copy)"
+    }
+  ]
+}

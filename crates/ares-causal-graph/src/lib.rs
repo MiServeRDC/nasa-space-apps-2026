@@ -12,3 +12,4 @@ pub mod error;
 pub mod hemodynamics;
 pub mod hypergraph_spatial;
 pub mod mechanotransduction;
+pub mod parquet_adapters;

@@ -2,7 +2,7 @@
 
 - **Blocco Architetturale**: Blocco L (*Operational Deployment, Edge AI Copilot, Clinical Calibration & NASA Space Apps 2026 Submission*, Fasi 29–34)
 - **Fase**: Fase 32 (`L4`)
-- **Stato**: `PLANNED (READY FOR EXECUTION)`
+- **Stato**: `[x] COMPLETED (TESTED)` (`phase_32_l4_safetensors_loader` `4/4` default & `--features candle-safetensors`, `phase_32_l4_edge_llm_copilot` `5/5`, `phase32_voice_l4.test.ts` Node suite)
 - **Architettura Master di Blocco**: `docs/plans/BLOCK_L_OPERATIONAL_DEPLOYMENT_ARCHITECTURE.md` *(coordinata con [MODEL_EVIDENCE_AUDIT.md](file:///Users/fabiomalagutti/Desktop/NASA_Space_Apps_2026/docs/architecture/MODEL_EVIDENCE_AUDIT.md) e `Issue #12`)*
 - **Crate / Moduli Target**: `crates/ares-nqs-stl`, `crates/ares-server-cli`, `crates/ares-desktop-os`, `crates/ares-security-privacy`, `crates/ares-core-types`, `ares-cockpit/`
 - **Piani & File Esistenti di Riferimento**:

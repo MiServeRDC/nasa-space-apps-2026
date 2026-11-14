@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
 import type { CrewSex, ScenarioState } from '../../lib/scenario';
+import type { AnatomicalRegionWireId } from '../../types/telemetry';
+import type { ProjectedAnatomicalNode } from './uberonSpatialMapping';
 
 export type V3 = [number, number, number];
 
@@ -157,9 +159,22 @@ export function SkeletonLayer({ s, sex }: { s: ScenarioState; sex: CrewSex }) {
 }
 
 /** Layer 2: Vascular & Neuro-Ocular (curved IJVs, Aorta, Optic Nerve Sheaths). */
-export function VascularNeuroLayer({ s }: { s: ScenarioState }) {
-  const ijvColor = riskColor(s.rho.tau_w);
-  const onsdColor = riskColor(Math.min(s.rho.onsd, s.rho.ppco2));
+export function VascularNeuroLayer({
+  s,
+  nodesByRegion,
+}: {
+  s: ScenarioState;
+  nodesByRegion?: Record<AnatomicalRegionWireId, ProjectedAnatomicalNode>;
+}) {
+  const ijvNode = nodesByRegion?.InternalJugularVein;
+  const sansNode = nodesByRegion?.EyeOcularSans;
+  const heartNode = nodesByRegion?.HeartCardioAutonomic;
+  const cnsNode = nodesByRegion?.BrainVestibularCns;
+
+  const ijvColor = ijvNode ? ijvNode.color : riskColor(s.rho.tau_w);
+  const onsdColor = sansNode ? sansNode.color : riskColor(Math.min(s.rho.onsd, s.rho.ppco2));
+  const heartColor = heartNode ? (heartNode.observed ? heartNode.color : heartNode.color) : '#dc2626';
+  const cnsColor = cnsNode && cnsNode.localIntensity >= 0.25 ? cnsNode.color : '#f472b6';
   const ijvR = 0.011 + Math.min(0.018, Math.max(0, (s.csa - 0.7) * 0.007));
   const onsdR = 0.015 + Math.max(0, (s.onsdMm - 4.8) * 0.005);
 
@@ -175,11 +190,25 @@ export function VascularNeuroLayer({ s }: { s: ScenarioState }) {
     <group name="vascular-neuro-layer">
       <mesh position={[-0.036, 1.61, -0.01]} scale={[0.75, 0.95, 1.15]}>
         <sphereGeometry args={[0.082, 16, 16]} />
-        <meshStandardMaterial color="#f472b6" transparent opacity={0.45} roughness={0.45} />
+        <meshStandardMaterial
+          color={cnsColor}
+          emissive={cnsNode && cnsNode.localIntensity >= 0.25 ? cnsColor : '#000000'}
+          emissiveIntensity={cnsNode && cnsNode.localIntensity >= 0.25 ? 0.5 : 0}
+          transparent
+          opacity={0.45}
+          roughness={0.45}
+        />
       </mesh>
       <mesh position={[0.036, 1.61, -0.01]} scale={[0.75, 0.95, 1.15]}>
         <sphereGeometry args={[0.082, 16, 16]} />
-        <meshStandardMaterial color="#f472b6" transparent opacity={0.45} roughness={0.45} />
+        <meshStandardMaterial
+          color={cnsColor}
+          emissive={cnsNode && cnsNode.localIntensity >= 0.25 ? cnsColor : '#000000'}
+          emissiveIntensity={cnsNode && cnsNode.localIntensity >= 0.25 ? 0.5 : 0}
+          transparent
+          opacity={0.45}
+          roughness={0.45}
+        />
       </mesh>
 
       {[-0.046, 0.046].map((x) => (
@@ -190,14 +219,18 @@ export function VascularNeuroLayer({ s }: { s: ScenarioState }) {
           </mesh>
           <mesh position={[x * 0.78, 1.56, 0.055]} rotation={[Math.PI / 2, 0, 0]}>
             <cylinderGeometry args={[onsdR, onsdR, 0.10, 12]} />
-            <meshStandardMaterial color={onsdColor} emissive={onsdColor} emissiveIntensity={1.2} />
+            <meshStandardMaterial color={onsdColor} emissive={onsdColor} emissiveIntensity={sansNode?.observed === false ? 0.2 : 1.2} />
           </mesh>
         </group>
       ))}
 
       <mesh position={[0.03, 0.97, 0.06]} rotation={[0, 0, -0.3]} scale={[0.9, 1.15, 0.85]}>
         <sphereGeometry args={[0.063, 16, 16]} />
-        <meshStandardMaterial color="#dc2626" emissive="#7f1d1d" emissiveIntensity={0.6} />
+        <meshStandardMaterial
+          color={heartNode ? heartColor : '#dc2626'}
+          emissive={heartNode ? (heartNode.observed ? heartColor : '#1f2937') : '#7f1d1d'}
+          emissiveIntensity={heartNode ? (heartNode.observed ? 0.8 : 0.15) : 0.6}
+        />
       </mesh>
 
       <mesh geometry={tubes.aorta}><meshStandardMaterial color="#ef4444" /></mesh>
@@ -205,18 +238,49 @@ export function VascularNeuroLayer({ s }: { s: ScenarioState }) {
       <mesh geometry={tubes.iliacR}><meshStandardMaterial color="#ef4444" /></mesh>
 
       <mesh geometry={tubes.ijvL}>
-        <meshStandardMaterial color={ijvColor} emissive={ijvColor} emissiveIntensity={s.rho.tau_w < 0.4 ? 1.4 : 0.4} />
+        <meshStandardMaterial
+          color={ijvColor}
+          emissive={ijvColor}
+          emissiveIntensity={ijvNode ? (ijvNode.observed ? 1.1 : 0.25) : s.rho.tau_w < 0.4 ? 1.4 : 0.4}
+        />
       </mesh>
       <mesh geometry={tubes.ijvR}>
-        <meshStandardMaterial color={ijvColor} emissive={ijvColor} emissiveIntensity={s.rho.tau_w < 0.4 ? 1.4 : 0.4} />
+        <meshStandardMaterial
+          color={ijvColor}
+          emissive={ijvColor}
+          emissiveIntensity={ijvNode ? (ijvNode.observed ? 1.1 : 0.25) : s.rho.tau_w < 0.4 ? 1.4 : 0.4}
+        />
       </mesh>
     </group>
   );
 }
 
 /** Layer 3: Sculpted Muscle Bellies (Soleus scales dynamically with soleusMm). */
-export function MusclesLayer({ s, opacity, sex }: { s: ScenarioState; opacity: number; sex: CrewSex }) {
-  const soleusColor = s.rho.soleus < 0.4 ? riskColor(s.rho.soleus) : '#991b1b';
+export function MusclesLayer({
+  s,
+  opacity,
+  sex,
+  soleusNode,
+}: {
+  s: ScenarioState;
+  opacity: number;
+  sex: CrewSex;
+  soleusNode?: ProjectedAnatomicalNode;
+}) {
+  const soleusColor = soleusNode
+    ? soleusNode.observed && soleusNode.localIntensity < 0.25
+      ? '#991b1b'
+      : soleusNode.color
+    : s.rho.soleus < 0.4
+      ? riskColor(s.rho.soleus)
+      : '#991b1b';
+  const soleusEmissive = soleusNode
+    ? soleusNode.observed && soleusNode.localIntensity >= 0.25
+      ? soleusNode.color
+      : '#000000'
+    : s.rho.soleus < 0.4
+      ? soleusColor
+      : '#000000';
   const soleusBase = sex === 'FEMALE' ? 14.0 : 16.0;
   const soleusScale = Math.max(0.55, s.soleusMm / soleusBase);
   const isF = sex === 'FEMALE';
@@ -267,8 +331,8 @@ export function MusclesLayer({ s, opacity, sex }: { s: ScenarioState; opacity: n
           <mesh geometry={geo.calf} position={[x * 0.92, -0.39, -0.02]} scale={[soleusScale, 1, soleusScale]}>
             <meshStandardMaterial
               color={soleusColor}
-              emissive={s.rho.soleus < 0.4 ? soleusColor : '#000000'}
-              emissiveIntensity={s.rho.soleus < 0.4 ? 0.65 : 0}
+              emissive={soleusEmissive}
+              emissiveIntensity={soleusEmissive !== '#000000' ? 0.65 : 0}
               transparent
               opacity={Math.min(0.95, opacity + 0.2)}
               roughness={0.55}

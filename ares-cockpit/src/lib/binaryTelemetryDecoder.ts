@@ -2,7 +2,14 @@
 // ARES-MedOS BinaryTelemetryFrame ABI (Phase 21 J1 / Phase 23 J3).
 // Strict Mode: zero emojis, strict nullability (missing channels never coerced to 0).
 
-import type { AlarmLevel, TelemetryPacket } from '../types/telemetry';
+import type {
+  ActivePlaybook,
+  AlarmLevel,
+  ConformalGateStatus,
+  CountermeasureAction,
+  ModelValidationStatus,
+  TelemetryPacket,
+} from '../types/telemetry';
 
 export const ARES_BINARY_MAGIC = 0x41524553; // "ARES"
 export const ARES_BINARY_SCHEMA_VERSION = 1;
@@ -64,6 +71,7 @@ export const FLAG_ILLUSTRATIVE_UNVALIDATED = 1 << 7;
 export const FLAG_CHANNEL_NAN_DROPOUT = 1 << 8;
 export const FLAG_CONFORMAL_ABSTAINED = 1 << 9;
 export const FLAG_SEU_RECOVERY_ACTIVE = 1 << 10;
+export const FLAG_TERRESTRIAL_BENCHMARKED_ONLY = 1 << 11;
 
 export const PLAYBOOK_ID_BY_CODE: Record<number, string> = {
   0: 'NONE',
@@ -72,6 +80,143 @@ export const PLAYBOOK_ID_BY_CODE: Record<number, string> = {
   3: 'PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED',
   4: 'PLAYBOOK_04_SANS_TRANSLAMINAR_MITIGATION',
   5: 'PLAYBOOK_05_SPE_RADIATION_SHELTER_CANS',
+};
+
+interface BinaryPlaybookDefaultMeta {
+  playbook_id: string;
+  title: string;
+  total_steps: number;
+  step_instruction: string;
+  causal_chain_summary: string[];
+  actions: CountermeasureAction[];
+}
+
+export const BINARY_PLAYBOOK_DEFAULTS: Record<number, BinaryPlaybookDefaultMeta> = {
+  1: {
+    playbook_id: 'PLAYBOOK_01_VENOUS_STASIS_LBNP',
+    title: 'Playbook #01: Microgravity Venous Stasis & LBNP',
+    total_steps: 3,
+    step_instruction:
+      'Execute 30 min LBNP at -25 mmHg with active optical/BP auto-vent safety guard',
+    causal_chain_summary: [
+      '0g_fluid_shift -> IJV_cross_section_enlargement',
+      'IJV_stasis -> wall_shear_stress_drop -> elevated_thrombosis_risk',
+    ],
+    actions: [
+      {
+        action_id: 'LBNP_25_MMHG_30M',
+        label: 'LBNP -25 mmHg (30 min)',
+        category: 'MECHANICAL_LBNP',
+        delta_rho_per_hour: 0.14,
+      },
+      {
+        action_id: 'BILATERAL_IJV_POCUS_SWEEP',
+        label: 'Bilateral IJV Compression POCUS',
+        category: 'DIAGNOSTIC_IMAGING',
+        delta_rho_per_hour: 0.02,
+      },
+    ],
+  },
+  2: {
+    playbook_id: 'PLAYBOOK_02_CONFIRMED_IJV_THROMBUS',
+    title: 'Playbook #02: Confirmed IJV Thrombus Gate & Anticoagulant Guard',
+    total_steps: 3,
+    step_instruction:
+      'Engage anticoagulant safety lock until POCUS thrombus confirmation and flight-surgeon authorization',
+    causal_chain_summary: [
+      'IJV_stasis -> retrograde_flow_vortex -> POCUS_confirmed_thrombus',
+      'Thrombus_detected -> Gate1_anticoagulant_lock_verified',
+    ],
+    actions: [
+      {
+        action_id: 'POCUS_COMPRESSIBILITY_CONFIRM',
+        label: 'Confirm POCUS Non-Compressibility',
+        category: 'DIAGNOSTIC_IMAGING',
+        delta_rho_per_hour: 0.01,
+      },
+      {
+        action_id: 'ENOXAPARIN_THERAPEUTIC_GUARD',
+        label: 'Enoxaparin 1 mg/kg SC (Gate 1 Locked)',
+        category: 'ANTICOAGULANT_PHARMACOTHERAPY',
+        delta_rho_per_hour: 0.18,
+      },
+    ],
+  },
+  3: {
+    playbook_id: 'PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED',
+    title: 'Playbook #03: ARED Resistive Loading & Osteopenia Countermeasure',
+    total_steps: 3,
+    step_instruction:
+      'Schedule ARED squat/deadlift eccentric loading protocol to suppress sclerostin surge',
+    causal_chain_summary: [
+      '0.38g_or_0g_unloading -> osteocyte_sclerostin_surge',
+      'Sclerostin_elevation -> Wnt_inhibition -> trabecular_BMD_loss',
+    ],
+    actions: [
+      {
+        action_id: 'ARED_RESISTIVE_PROTOCOL_A',
+        label: 'ARED Resistive Loading (45 min)',
+        category: 'EXERCISE_RESISTIVE',
+        delta_rho_per_hour: 0.16,
+      },
+      {
+        action_id: 'TARGETED_PROTEIN_VITD_SUPPLEMENT',
+        label: 'Protein + VitD3/Calcium Countermeasure',
+        category: 'NUTRITIONAL_SUPPLEMENT',
+        delta_rho_per_hour: 0.05,
+      },
+    ],
+  },
+  4: {
+    playbook_id: 'PLAYBOOK_04_SANS_TRANSLAMINAR_MITIGATION',
+    title: 'Playbook #04: SANS Translaminar Pressure & Choroidal Guard',
+    total_steps: 3,
+    step_instruction:
+      'Deploy evening Chibis/LBNP cephalad unloading and restrict high-strain Valsalva ARED sets',
+    causal_chain_summary: [
+      'Cephalad_venous_congestion + CO2_vasodilation -> ICP_rise',
+      'Translaminar_gradient_inversion -> RNFL_choroidal_edema_SANS',
+    ],
+    actions: [
+      {
+        action_id: 'EVENING_LBNP_CHIBIS_PROTOCOL',
+        label: 'Evening LBNP -20 mmHg Cephalad Unloading',
+        category: 'MECHANICAL_LBNP',
+        delta_rho_per_hour: 0.12,
+      },
+      {
+        action_id: 'MODULATE_CABIN_CO2_SCRUBBING',
+        label: 'Boost CDRA CO2 Scrubbing (< 2.0 mmHg)',
+        category: 'ENVIRONMENTAL_ECLSS',
+        delta_rho_per_hour: 0.09,
+      },
+    ],
+  },
+  5: {
+    playbook_id: 'PLAYBOOK_05_SPE_RADIATION_SHELTER_CANS',
+    title: 'Playbook #05: SPE Solar Particle Storm Shelter & CANS Shielding',
+    total_steps: 3,
+    step_instruction:
+      'MANDATORY: Relocate crew to Radiation Storm Shelter immediately; forbid EVA airlock egress',
+    causal_chain_summary: [
+      'Solar_particle_event -> acute_dose_rate_spike (> 10 mSv/d)',
+      'Deontic_constraint -> EVA_forbidden_shelter_mandatory',
+    ],
+    actions: [
+      {
+        action_id: 'SHELTER_PROTOCOL_WATER_WALL',
+        label: 'Storm Shelter Hydrogenated Water-Wall Posture',
+        category: 'RADIATION_SHELTER',
+        delta_rho_per_hour: 0.28,
+      },
+      {
+        action_id: 'EVA_AIRLOCK_HARD_LOCKOUT',
+        label: 'Lockout EVA Airlock Egress (Deontic Gate)',
+        category: 'DEONTIC_HABITAT_LOCK',
+        delta_rho_per_hour: 0.15,
+      },
+    ],
+  },
 };
 
 export const ALERT_LEVEL_BY_CODE: Record<number, AlarmLevel> = {
@@ -488,27 +633,83 @@ export function mergeBinaryFrameIntoPacket(
         }
       : prev.musculoskeletal;
 
-  const nextPlaybook =
-    prev.active_playbook !== null && prev.active_playbook !== undefined
-      ? {
-          ...prev.active_playbook,
-          playbook_id:
-            PLAYBOOK_ID_BY_CODE[frame.active_playbook_id] ??
-            prev.active_playbook.playbook_id,
-          safety_gates: {
-            anticoagulant_lock_active:
-              (frame.quality_flags_mask & FLAG_GATE1_ANTICOAG_LOCK) !== 0,
-            lbnp_auto_vent_armed:
-              (frame.quality_flags_mask & FLAG_GATE2_LBNP_VENT) !== 0,
-            eva_suit_damping_active:
-              (frame.quality_flags_mask & FLAG_GATE3_EVA_DAMPING) !== 0,
-          },
-        }
-      : prev.active_playbook;
+  const safetyGates = {
+    anticoagulant_lock_active:
+      (frame.quality_flags_mask & FLAG_GATE1_ANTICOAG_LOCK) !== 0,
+    lbnp_auto_vent_armed:
+      (frame.quality_flags_mask & FLAG_GATE2_LBNP_VENT) !== 0,
+    eva_suit_damping_active:
+      (frame.quality_flags_mask & FLAG_GATE3_EVA_DAMPING) !== 0,
+  };
+
+  const binaryDefault = BINARY_PLAYBOOK_DEFAULTS[frame.active_playbook_id];
+  let nextPlaybook: ActivePlaybook | null = prev.active_playbook ?? null;
+  if (binaryDefault) {
+    const samePlaybook = prev.active_playbook?.playbook_id === binaryDefault.playbook_id;
+    nextPlaybook = {
+      playbook_id: binaryDefault.playbook_id,
+      title: (samePlaybook ? prev.active_playbook?.title : undefined) ?? binaryDefault.title,
+      current_step: samePlaybook ? (prev.active_playbook?.current_step ?? 1) : 1,
+      total_steps:
+        (samePlaybook ? prev.active_playbook?.total_steps : undefined) ?? binaryDefault.total_steps,
+      step_instruction:
+        (samePlaybook ? prev.active_playbook?.step_instruction : undefined) ??
+        binaryDefault.step_instruction,
+      causal_chain_summary:
+        (samePlaybook &&
+        prev.active_playbook?.causal_chain_summary &&
+        prev.active_playbook.causal_chain_summary.length > 0
+          ? prev.active_playbook.causal_chain_summary
+          : undefined) ?? binaryDefault.causal_chain_summary,
+      actions:
+        (samePlaybook &&
+        prev.active_playbook?.actions &&
+        prev.active_playbook.actions.length > 0
+          ? prev.active_playbook.actions
+          : undefined) ?? binaryDefault.actions,
+      safety_gates: safetyGates,
+    };
+  } else if (prev.active_playbook !== null && prev.active_playbook !== undefined) {
+    nextPlaybook = {
+      ...prev.active_playbook,
+      playbook_id:
+        PLAYBOOK_ID_BY_CODE[frame.active_playbook_id] ??
+        prev.active_playbook.playbook_id,
+      safety_gates: safetyGates,
+    };
+  }
+
+  const modelValidationStatus: ModelValidationStatus =
+    (frame.quality_flags_mask & FLAG_TERRESTRIAL_BENCHMARKED_ONLY) !== 0
+      ? 'INTERNALLY_BENCHMARKED_TERRESTRIAL'
+      : frame.illustrative_unvalidated
+        ? 'ILLUSTRATIVE_UNVALIDATED'
+        : prev.model_validation_status ?? 'ILLUSTRATIVE_UNVALIDATED';
+
+  const prevConformal = prev.timestral_quantiles?.conformal_status;
+  const conformalStatus: ConformalGateStatus | undefined =
+    (frame.quality_flags_mask & FLAG_CONFORMAL_ABSTAINED) !== 0
+      ? 'ABSTAINED_FALLBACK_DETERMINISTIC'
+      : prevConformal === 'ABSTAINED_FALLBACK_DETERMINISTIC' ||
+          prevConformal === 'ABSTAINED_FALLBACK' ||
+          prevConformal === 'AbstainedFallbackDeterministic'
+        ? 'ABSTAINED_FALLBACK_DETERMINISTIC'
+        : prevConformal === 'HEURISTIC_GATE_ACCEPTED' ||
+            prevConformal === 'HeuristicGateAccepted' ||
+            prevConformal === 'CALIBRATED_QUANTILE_CONE' ||
+            frame.ttv_q50_days !== null
+          ? 'HEURISTIC_GATE_ACCEPTED'
+          : undefined;
+
+  const hasTtvRange =
+    frame.ttv_q05_days !== null ||
+    frame.ttv_q50_days !== null ||
+    frame.ttv_q95_days !== null;
 
   return {
     ...prev,
     timestamp_ms: frame.timestamp_ms,
+    model_validation_status: modelValidationStatus,
     biometrics: {
       ...prev.biometrics,
       heart_rate_bpm: frame.hr_bpm,
@@ -532,6 +733,9 @@ export function mergeBinaryFrameIntoPacket(
       ttv_most_likely_days: frame.ttv_q50_days,
       ttv_p5_days: frame.ttv_q05_days,
       ttv_p95_days: frame.ttv_q95_days,
+      ttv_interval_kind: hasTtvRange
+        ? (prev.safety_margins.ttv_interval_kind ?? 'ILLUSTRATIVE_SCENARIO_RANGE')
+        : prev.safety_margins.ttv_interval_kind,
       alarm_level: alarmLevel,
     },
     active_playbook: nextPlaybook,
@@ -541,10 +745,9 @@ export function mergeBinaryFrameIntoPacket(
     },
     timestral_quantiles: {
       ...(prev.timestral_quantiles ?? {}),
-      conformal_status:
-        (frame.quality_flags_mask & FLAG_CONFORMAL_ABSTAINED) !== 0
-          ? 'ABSTAINED_FALLBACK'
-          : prev.timestral_quantiles?.conformal_status,
+      model_validation_status: modelValidationStatus,
+      confidence_state: conformalStatus,
+      conformal_status: conformalStatus,
       ttv_q05_days: frame.ttv_q05_days,
       ttv_q50_days: frame.ttv_q50_days,
       ttv_q95_days: frame.ttv_q95_days,

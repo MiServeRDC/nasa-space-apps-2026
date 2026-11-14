@@ -2,10 +2,22 @@
 //! e gli input della What-If Stress-Test Console (`SIMULATED_SCENARIO_INPUT`).
 
 use crate::bidmc_replayer::BidmcNumericRow;
+use crate::radar_csi_dsp::RadarVitalEstimate;
 use crate::sqi_filter::{SqiEvaluation, SqiFilter};
+use crate::vocal_acoustic_dsp::VocalBiomarkerFrame;
+use crate::waveform_rr_extractor::TimeDomainHrvMetrics;
+use ares_core_types::constants::SQI_MIN_VALID_THRESHOLD;
 use ares_core_types::telemetry::{Biometrics, HrvUnavailableReason, StressTestScenarioInput};
 
 const HRV_CHANNELS: [&str; 4] = ["rmssd_ms", "sdnn_ms", "pnn50_pct", "lf_hf_ratio"];
+
+/// Snapshot opzionale dei moduli DSP Level-1 GATHER da fondere con la riga telemetrica.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct GatherDspOverlay {
+    pub radar: Option<RadarVitalEstimate>,
+    pub vocal: Option<VocalBiomarkerFrame>,
+    pub waveform_hrv: Option<TimeDomainHrvMetrics>,
+}
 
 /// Fonde una riga reale BIDMC (`RECORDED_TERRESTRIAL_BIDMC_CSV`) con gli input di scenario,
 /// mantenendo `rmssd_ms: None` e `BEAT_INTERVALS_NOT_AVAILABLE` sulle sorgenti numeriche 1 Hz.
@@ -72,6 +84,80 @@ pub fn biometrics_with_signal_quality(
         sqi_score: eval.sqi_score,
         missing_channels,
     }
+}
+
+/// Fonde una riga `BidmcNumericRow`, lo scenario operativo e i moduli DSP Level-1 GATHER:
+/// - Se `overlay.waveform_hrv` e `None` (es. CSV BIDMC 1 Hz), `SqiFilter::evaluate_row_with_rmssd`
+///   riceve `None` e preserva rigorosamente `rmssd_ms: None` + `BeatIntervalsNotAvailable` (Issue #11).
+/// - Se `overlay.waveform_hrv` contiene metriche beat-to-beat verificate (`rmssd_ms: Some(_)`),
+///   popola `rmssd_ms`, `sdnn_ms` e `pnn50_pct` reali (non scalati euristicamente) con `hrv_unavailable_reason: None`.
+/// - Se `overlay.vocal` e presente ma `voiced == false`, emette `vocal_f0_hz: None` e `vocal_jitter_pct: None`
+///   registrando `"vocal_f0_hz"` e `"vocal_jitter_pct"` in `missing_channels`.
+/// - Se `row.hr_bpm` o `row.resp_brpm` sono `None` ma `overlay.radar` ha `radar_sqi >= 0.70`,
+///   consente il fallback contactless per HR/RESP mantenendo intatta la nullabilita HRV.
+pub fn merge_biometrics_with_gather_dsp(
+    row: &BidmcNumericRow,
+    scenario: &StressTestScenarioInput,
+    sqi_filter: &mut SqiFilter,
+    overlay: &GatherDspOverlay,
+) -> (Biometrics, SqiEvaluation) {
+    let raw_rmssd_ms = overlay
+        .waveform_hrv
+        .and_then(|hrv| hrv.rmssd_ms)
+        .filter(|v| v.is_finite() && *v > 0.0);
+    let eval = sqi_filter.evaluate_row_with_rmssd(row, raw_rmssd_ms);
+    let mut bio = biometrics_with_signal_quality(row, scenario, &eval);
+
+    if eval.rmssd_ms.is_some()
+        && let Some(hrv) = overlay.waveform_hrv
+    {
+        if let Some(sdnn) = hrv.sdnn_ms.filter(|v| v.is_finite()) {
+            bio.sdnn_ms = Some(sdnn);
+        }
+        if let Some(pnn50) = hrv.pnn50_pct.filter(|v| v.is_finite()) {
+            bio.pnn50_pct = Some(pnn50);
+        }
+        bio.hrv_unavailable_reason = None;
+    }
+
+    if let Some(radar) = overlay.radar
+        && radar.radar_sqi >= SQI_MIN_VALID_THRESHOLD
+    {
+        if bio.heart_rate_bpm.is_none()
+            && let Some(hr) = radar.heart_rate_bpm.filter(|v| v.is_finite())
+        {
+            bio.heart_rate_bpm = Some(hr);
+            bio.missing_channels.retain(|ch| ch != "heart_rate_bpm");
+        }
+        if bio.resp_rate_brpm.is_none()
+            && let Some(rr) = radar.resp_rate_brpm.filter(|v| v.is_finite())
+        {
+            bio.resp_rate_brpm = Some(rr);
+            bio.missing_channels.retain(|ch| ch != "resp_rate_brpm");
+        }
+    }
+
+    if let Some(vocal) = overlay.vocal {
+        if vocal.voiced {
+            bio.vocal_f0_hz = vocal.vocal_f0_hz.filter(|v| v.is_finite());
+            bio.vocal_jitter_pct = vocal.vocal_jitter_pct.filter(|v| v.is_finite());
+        } else {
+            bio.vocal_f0_hz = None;
+            bio.vocal_jitter_pct = None;
+        }
+        if bio.vocal_f0_hz.is_none()
+            && !bio.missing_channels.iter().any(|c| c == "vocal_f0_hz")
+        {
+            bio.missing_channels.push("vocal_f0_hz".to_string());
+        }
+        if bio.vocal_jitter_pct.is_none()
+            && !bio.missing_channels.iter().any(|c| c == "vocal_jitter_pct")
+        {
+            bio.missing_channels.push("vocal_jitter_pct".to_string());
+        }
+    }
+
+    (bio, eval)
 }
 
 #[cfg(test)]

@@ -1,6 +1,10 @@
 //! Fase 13 (G1) + Blocchi H & I: Server HTTP/WebSocket Axum a 20 Hz su `127.0.0.1:8080`,
 //! API `/api/stress-test`, bridge Timestral 1 Hz -> 20 Hz e ARES-HyperGraph / ARES-DatasetGraph.
 
+use crate::edge_llm_bridge::{
+    CopilotAskRequest, CopilotAskResponse, EdgeCopilotError, EdgeLlmConfig,
+    execute_edge_copilot_turn,
+};
 use crate::fastmcp_router::{JsonRpcRequest, JsonRpcResponse, handle_fastmcp_jsonrpc_request};
 use crate::wire_contract::{StressTestPatchRequest, WirePacketContext, WireTelemetryPacket};
 use ares_causal_graph::adhg_graph::{AdhgCausalEngine, AdhgNodeKind};
@@ -480,6 +484,22 @@ impl MissionRuntimeInner {
         BinaryTelemetryFrame::from_telemetry_packet(p, Some(&self.latest_quantile_snapshot), meta)
     }
 
+    fn owlt_comm_state(&self) -> OwltMarsCommState {
+        let mins = (self.owlt_delay_sec / 60.0).floor() as u32;
+        let secs = (self.owlt_delay_sec % 60.0).round() as u32;
+        let owlt_label = if self.eimo_autonomous_active {
+            format!("OWLT: {mins}m {secs:02}s (EIMO AUTONOMOUS)")
+        } else {
+            format!("OWLT: {:.1}s (LEO NOMINAL)", self.owlt_delay_sec)
+        };
+        OwltMarsCommState {
+            owlt_seconds: self.owlt_delay_sec,
+            eimo_autonomous_active: self.eimo_autonomous_active,
+            blackout_active: false,
+            label: owlt_label,
+        }
+    }
+
     fn build_os_status_bar_state(
         &self,
         shell_name: &str,
@@ -500,14 +520,7 @@ impl MissionRuntimeInner {
             == DeonticModality::Mandatory;
         let sol_offset = (self.mission_elapsed_s / MARS_SOL_SECONDS).floor().max(0.0) as u32;
         let sol_number = self.latest_packet.flight_day.saturating_add(sol_offset);
-
-        let mins = (self.owlt_delay_sec / 60.0).floor() as u32;
-        let secs = (self.owlt_delay_sec % 60.0).round() as u32;
-        let owlt_label = if self.eimo_autonomous_active {
-            format!("OWLT: {mins}m {secs:02}s (EIMO AUTONOMOUS)")
-        } else {
-            format!("OWLT: {:.1}s (LEO NOMINAL)", self.owlt_delay_sec)
-        };
+        let owlt = self.owlt_comm_state();
 
         OsStatusBarState {
             shell_name: shell_name.to_string(),
@@ -521,12 +534,7 @@ impl MissionRuntimeInner {
             target_ipc_budget_us: 50,
             sol_number,
             mission_elapsed_s: self.mission_elapsed_s,
-            owlt: OwltMarsCommState {
-                owlt_seconds: self.owlt_delay_sec,
-                eimo_autonomous_active: self.eimo_autonomous_active,
-                blackout_active: false,
-                label: owlt_label,
-            },
+            owlt,
             partitions: vec![
                 Arinc653PartitionHealth {
                     id: PartitionId::TelemetryIngest,
@@ -573,6 +581,9 @@ pub struct SharedMissionState {
     pub binary_ring: Arc<SeqlockTelemetryRing<64>>,
     pub audit_logger: Sha256AuditLogger,
     pub dataset_graph: Arc<AresUnifiedDatasetGraph>,
+    pub edge_llm_config: RwLock<EdgeLlmConfig>,
+    #[cfg(feature = "shm-ipc")]
+    pub shm_dispatcher: Option<crate::shm_bus::NonBlockingShmDsnDispatcher>,
 }
 
 impl SharedMissionState {
@@ -683,6 +694,12 @@ impl SharedMissionState {
         );
 
         let binary_ring = Arc::new(SeqlockTelemetryRing::<64>::new());
+        let edge_llm_config = RwLock::new(EdgeLlmConfig::default());
+        #[cfg(feature = "shm-ipc")]
+        let shm_dispatcher = crate::shm_bus::NonBlockingShmDsnDispatcher::spawn_default(
+            crate::shm_bus::DEFAULT_IOX2_SERVICE_NAME,
+        )
+        .ok();
         let shared = Arc::new(Self {
             inner: RwLock::new(MissionRuntimeInner {
                 replayer,
@@ -720,6 +737,9 @@ impl SharedMissionState {
             binary_ring,
             audit_logger,
             dataset_graph,
+            edge_llm_config,
+            #[cfg(feature = "shm-ipc")]
+            shm_dispatcher,
         });
         shared.publish_latest_binary_frame(0);
         Ok(shared)
@@ -792,6 +812,11 @@ impl SharedMissionState {
 
         let frame = guard.build_binary_frame((start.elapsed().as_nanos()).min(u128::from(u32::MAX)) as u32);
         self.binary_ring.publish(&frame);
+        #[cfg(feature = "shm-ipc")]
+        if let Some(dispatcher) = &self.shm_dispatcher {
+            let owlt = guard.owlt_comm_state();
+            dispatcher.try_dispatch(&guard.latest_packet, &frame, &owlt, true);
+        }
         let _ = self.audit_logger.append_audit_event(
             CrewRole::CrewMedicalOfficer,
             &format!(
@@ -869,6 +894,11 @@ impl SharedMissionState {
             start.elapsed().as_nanos().min(u128::from(u32::MAX)) as u32,
         );
         self.binary_ring.publish(&bin_frame);
+        #[cfg(feature = "shm-ipc")]
+        if let Some(dispatcher) = &self.shm_dispatcher {
+            let owlt = guard.owlt_comm_state();
+            dispatcher.try_dispatch(&guard.latest_packet, &bin_frame, &owlt, false);
+        }
 
         let snapshot_packet = guard.latest_packet.clone();
         if self.tx.receiver_count() > 0
@@ -933,6 +963,11 @@ impl SharedMissionState {
             start.elapsed().as_nanos().min(u128::from(u32::MAX)) as u32,
         );
         self.binary_ring.publish(&bin_frame);
+        #[cfg(feature = "shm-ipc")]
+        if let Some(dispatcher) = &self.shm_dispatcher {
+            let owlt = guard.owlt_comm_state();
+            dispatcher.try_dispatch(&guard.latest_packet, &bin_frame, &owlt, true);
+        }
 
         let wire_snapshot = guard.to_wire_packet();
         let _ = self.audit_logger.append_audit_event(
@@ -973,6 +1008,31 @@ impl SharedMissionState {
             dataset_graph: Arc::clone(&self.dataset_graph),
         })
     }
+
+    /// Updates the Edge LLM configuration cleanly at runtime.
+    pub fn set_edge_llm_config(&self, config: EdgeLlmConfig) {
+        if let Ok(mut guard) = self.edge_llm_config.write() {
+            *guard = config;
+        }
+    }
+
+    /// Executes an air-gapped Edge LLM Copilot query with deterministic Type-1 fallback.
+    pub async fn ask_edge_copilot(
+        &self,
+        req: CopilotAskRequest,
+    ) -> Result<CopilotAskResponse, EdgeCopilotError> {
+        let ctx = self.fastmcp_context().ok_or_else(|| EdgeCopilotError::Transport {
+            reason: "mission runtime state lock unavailable".to_string(),
+        })?;
+        let cfg = self
+            .edge_llm_config
+            .read()
+            .map_err(|_| EdgeCopilotError::Transport {
+                reason: "edge LLM config lock unavailable".to_string(),
+            })?
+            .clone();
+        execute_edge_copilot_turn(&req, &ctx, &cfg, &self.audit_logger).await
+    }
 }
 
 async fn loopback_cors_middleware(req: Request<axum::body::Body>, next: Next) -> Response {
@@ -1012,6 +1072,14 @@ pub fn build_axum_router(state: Arc<SharedMissionState>) -> Router {
         .route(
             "/api/stress-test",
             post(post_stress_test_handler).options(cors_preflight_handler),
+        )
+        .route(
+            "/api/copilot/ask",
+            post(post_copilot_ask_handler).options(cors_preflight_handler),
+        )
+        .route(
+            "/api/copilot/stream",
+            post(post_copilot_stream_handler).options(cors_preflight_handler),
         )
         .layer(middleware::from_fn(loopback_cors_middleware))
         .with_state(state)
@@ -1074,6 +1142,80 @@ async fn post_stress_test_handler(
         .apply_stress_test_patch(input)
         .map(Json)
         .ok_or(StatusCode::INTERNAL_SERVER_ERROR)
+}
+
+async fn post_copilot_ask_handler(
+    State(state): State<Arc<SharedMissionState>>,
+    Json(req): Json<CopilotAskRequest>,
+) -> Response {
+    match state.ask_edge_copilot(req).await {
+        Ok(resp) => (StatusCode::OK, Json(resp)).into_response(),
+        Err(err @ (EdgeCopilotError::PromptSanitizer(_) | EdgeCopilotError::AirGapViolation { .. })) => {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({ "error": err.to_string() })),
+            )
+                .into_response()
+        }
+        Err(err) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({ "error": err.to_string() })),
+        )
+            .into_response(),
+    }
+}
+
+async fn post_copilot_stream_handler(
+    State(state): State<Arc<SharedMissionState>>,
+    Json(req): Json<CopilotAskRequest>,
+) -> Response {
+    match state.ask_edge_copilot(req).await {
+        Ok(resp) => {
+            let mut sse = String::new();
+            for trace in &resp.tools_invoked {
+                if let Ok(trace_json) = serde_json::to_string(trace) {
+                    sse.push_str("event: tool_trace\ndata: ");
+                    sse.push_str(&trace_json);
+                    sse.push_str("\n\n");
+                }
+            }
+            for chunk in resp.answer_markdown.split_inclusive(' ') {
+                if let Ok(delta_json) = serde_json::to_string(&serde_json::json!({ "delta": chunk }))
+                {
+                    sse.push_str("event: delta\ndata: ");
+                    sse.push_str(&delta_json);
+                    sse.push_str("\n\n");
+                }
+            }
+            if let Ok(done_json) = serde_json::to_string(&resp) {
+                sse.push_str("event: complete\ndata: ");
+                sse.push_str(&done_json);
+                sse.push_str("\n\n");
+            }
+            let mut response = axum::body::Body::from(sse).into_response();
+            response.headers_mut().insert(
+                header::CONTENT_TYPE,
+                HeaderValue::from_static("text/event-stream"),
+            );
+            response.headers_mut().insert(
+                header::CACHE_CONTROL,
+                HeaderValue::from_static("no-cache"),
+            );
+            response
+        }
+        Err(err @ (EdgeCopilotError::PromptSanitizer(_) | EdgeCopilotError::AirGapViolation { .. })) => {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({ "error": err.to_string() })),
+            )
+                .into_response()
+        }
+        Err(err) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({ "error": err.to_string() })),
+        )
+            .into_response(),
+    }
 }
 
 async fn ws_telemetry_handler(

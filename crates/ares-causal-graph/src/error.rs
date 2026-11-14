@@ -58,6 +58,22 @@ pub enum CausalGraphError {
     /// An ontology CURIE does not match its declared prefix grammar.
     #[error("malformed ontology CURIE `{0}`")]
     MalformedCurie(String),
+
+    /// SHA-256 checksum verification failed against a dataset MANIFEST.json.
+    #[error("manifest SHA-256 mismatch for `{path}`: expected {expected}, computed {computed}")]
+    ManifestChecksumMismatch {
+        path: PathBuf,
+        expected: String,
+        computed: String,
+    },
+
+    /// A `.parquet` dataset was encountered without `--features parquet-ingest` support.
+    #[error("parquet ingestion requested for `{path}` without `parquet-ingest` support enabled")]
+    ParquetFeatureDisabled { path: PathBuf },
+
+    /// A columnar or tabular dataset record failed structural parsing.
+    #[error("columnar parse error in `{file}`: {reason}")]
+    ColumnarParse { file: String, reason: String },
 }
 
 impl CausalGraphError {

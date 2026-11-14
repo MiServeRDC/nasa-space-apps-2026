@@ -68,12 +68,201 @@ pub enum JugularFlowGrade {
     OccludedThrombus,
 }
 
-/// Validation status of the current demonstration models, not of recorded vitals.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+/// Terrestrial dataset scope used for technical out-of-sample benchmarking (never spaceflight validation).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum TerrestrialBenchmarkScope {
+    BidmcNumericsShortSubHorizon,
+    BidmcPlusFantasiaBeatIntervals,
+    MultiCohortPhysioNetUciTerrestrial,
+}
+
+/// 32-byte SHA-256 digest (`Copy` on stack) serialized in JSON as a 64-character lowercase hex string.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub struct Sha256DigestHex(pub [u8; 32]);
+
+impl Sha256DigestHex {
+    /// Zero-filled placeholder digest (all zeros).
+    pub const ZERO: Self = Self([0u8; 32]);
+
+    #[inline]
+    pub const fn from_bytes(bytes: [u8; 32]) -> Self {
+        Self(bytes)
+    }
+
+    #[inline]
+    pub const fn as_bytes(&self) -> &[u8; 32] {
+        &self.0
+    }
+
+    /// Parses a 64-character hexadecimal string (case-insensitive) into a `Sha256DigestHex`.
+    pub fn from_hex(hex: &str) -> Result<Self, crate::error::AresCoreError> {
+        let trimmed = hex.trim();
+        if trimmed.len() != 64 {
+            return Err(crate::error::AresCoreError::ContractSerialization(format!(
+                "expected 64-character SHA-256 hex digest, got length {}",
+                trimmed.len()
+            )));
+        }
+        let mut out = [0u8; 32];
+        let bytes = trimmed.as_bytes();
+        for (i, slot) in out.iter_mut().enumerate() {
+            let hi = decode_hex_nibble(bytes[i * 2]).ok_or_else(|| {
+                crate::error::AresCoreError::ContractSerialization(format!(
+                    "invalid hex digit in SHA-256 digest at byte {i}"
+                ))
+            })?;
+            let lo = decode_hex_nibble(bytes[i * 2 + 1]).ok_or_else(|| {
+                crate::error::AresCoreError::ContractSerialization(format!(
+                    "invalid hex digit in SHA-256 digest at byte {i}"
+                ))
+            })?;
+            *slot = (hi << 4) | lo;
+        }
+        Ok(Self(out))
+    }
+
+    /// Formats the digest as a 64-character lowercase hexadecimal string.
+    pub fn to_hex(&self) -> String {
+        let mut out = String::with_capacity(64);
+        for b in self.0 {
+            use core::fmt::Write as _;
+            let _ = write!(&mut out, "{b:02x}");
+        }
+        out
+    }
+}
+
+#[inline]
+const fn decode_hex_nibble(byte: u8) -> Option<u8> {
+    match byte {
+        b'0'..=b'9' => Some(byte - b'0'),
+        b'a'..=b'f' => Some(byte - b'a' + 10),
+        b'A'..=b'F' => Some(byte - b'A' + 10),
+        _ => None,
+    }
+}
+
+impl core::fmt::Display for Sha256DigestHex {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        for b in self.0 {
+            write!(f, "{b:02x}")?;
+        }
+        Ok(())
+    }
+}
+
+impl Serialize for Sha256DigestHex {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&self.to_hex())
+    }
+}
+
+impl<'de> Deserialize<'de> for Sha256DigestHex {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let s = String::deserialize(deserializer)?;
+        Self::from_hex(&s).map_err(serde::de::Error::custom)
+    }
+}
+
+/// Formal validation state machine for derived and predictive models (Issue #12 closure).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ModelValidationStatus {
+    /// Mandatory default when no empirical calibration artifact is verified or external cohorts are absent.
     #[default]
     IllustrativeUnvalidated,
+    /// Technical out-of-sample benchmark on held-out terrestrial datasets only (NOT spaceflight validated).
+    InternallyBenchmarkedTerrestrial {
+        dataset_scope: TerrestrialBenchmarkScope,
+        coverage_pct: f64,
+        brier_score: f64,
+        artifact_sha256: Sha256DigestHex,
+    },
+    /// Reachable only when all 5 gates of `MODEL_EVIDENCE_AUDIT.md`, paired NASA/DLR clinical cohorts,
+    /// and a signed reviewer manifest are cryptographically verified.
+    ClinicallyCalibratedSubjectToReview,
+}
+
+impl ModelValidationStatus {
+    /// Returns true only when all 5 clinical/audit gates and paired flight-analog cohorts are verified.
+    #[inline]
+    pub const fn is_flight_validated(self) -> bool {
+        matches!(self, Self::ClinicallyCalibratedSubjectToReview)
+    }
+
+    /// Returns true when the model remains strictly illustrative/unvalidated.
+    #[inline]
+    pub const fn is_illustrative_only(self) -> bool {
+        matches!(self, Self::IllustrativeUnvalidated)
+    }
+
+    /// Returns true when benchmarked strictly on held-out terrestrial cohorts.
+    #[inline]
+    pub const fn is_terrestrial_benchmarked(self) -> bool {
+        matches!(self, Self::InternallyBenchmarkedTerrestrial { .. })
+    }
+
+    /// Returns the mandatory cockpit UI disclaimer banner for this validation state.
+    #[inline]
+    pub const fn mandatory_ui_banner(self) -> &'static str {
+        match self {
+            Self::IllustrativeUnvalidated => {
+                "ILLUSTRATIVE SCENARIO MODEL - NOT CLINICALLY VALIDATED"
+            }
+            Self::InternallyBenchmarkedTerrestrial { .. } => {
+                "TERRESTRIAL BENCHMARK ONLY - NOT SPACEFLIGHT VALIDATED"
+            }
+            Self::ClinicallyCalibratedSubjectToReview => {
+                "CALIBRATED AGAINST PAIRED COHORTS - SUBJECT TO FLIGHT SURGEON REVIEW"
+            }
+        }
+    }
+}
+
+/// Signed cryptographic governance manifest covering the 5 gates of `MODEL_EVIDENCE_AUDIT.md`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ValidationManifest {
+    pub schema_version: u32,
+    pub reviewer_id: String,
+    pub commit_sha: String,
+    pub unresolved_mappings: usize,
+    pub review_signature_sha256: Option<Sha256DigestHex>,
+    pub paired_cohorts_verified: bool,
+    pub bidmc_only: bool,
+    pub paired_modalities: Vec<String>,
+    pub subject_disjoint_split_verified: bool,
+    pub zero_leakage_dhf_horizons_verified: bool,
+    pub calibration_report_sha256: Sha256DigestHex,
+    pub brier_score: f64,
+    pub ece_10_bins: f64,
+    pub beats_or_ties_baselines: bool,
+    pub contains_synthetic_data: bool,
+    pub workflow_study_sha256: Option<Sha256DigestHex>,
+    pub workflow_study_path: Option<String>,
+}
+
+impl ValidationManifest {
+    /// Checks whether every structural, anti-leakage, calibration, and human-workflow gate passes.
+    pub fn passes_all_five_clinical_gates(&self) -> bool {
+        let gate1_review = !self.reviewer_id.trim().is_empty()
+            && !self.commit_sha.trim().is_empty()
+            && self.unresolved_mappings == 0
+            && self.review_signature_sha256.is_some();
+        let gate2_paired =
+            self.paired_cohorts_verified && !self.bidmc_only && !self.paired_modalities.is_empty();
+        let gate3_split =
+            self.subject_disjoint_split_verified && self.zero_leakage_dhf_horizons_verified;
+        let gate4_calibration = !self.contains_synthetic_data
+            && self.brier_score.is_finite()
+            && self.brier_score <= 0.15
+            && self.ece_10_bins.is_finite()
+            && self.ece_10_bins <= 0.08
+            && self.beats_or_ties_baselines;
+        let gate5_workflow = self.workflow_study_sha256.is_some();
+
+        gate1_review && gate2_paired && gate3_split && gate4_calibration && gate5_workflow
+    }
 }
 
 /// The current TTV bounds are scenario sensitivity ranges, not calibrated confidence limits.

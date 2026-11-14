@@ -2,7 +2,7 @@
 
 - **Blocco Architetturale**: Blocco L (*`ARES-Gather-v2`: Multi-Modal Edge Signal Processing, High-Rate Waveform Ingestion & Sensor Fusion Hardening — `1. GATHER`*, Fasi 29–32)
 - **Fase**: Fase 31 (`L3`)
-- **Stato**: PIANO DEFINITIVO APPROVATO PER IMPLEMENTAZIONE (`READY FOR IMPLEMENTATION`)
+- **Stato**: `[x] COMPLETED (TESTED)` (`phase_31_l3_gather_dsp` `7/7`, `ares-telemetry-ingest` `20/20`)
 - **Crate Principali**: [`crates/ares-telemetry-ingest`](../../crates/ares-telemetry-ingest/README.md) & [`crates/ares-core-types`](../../crates/ares-core-types/README.md) *(sola lettura dei contratti condivisi)*
 - **Documenti Architetturali & Audit di Riferimento**:
   - [`crates/ares-telemetry-ingest/README.md`](../../crates/ares-telemetry-ingest/README.md)

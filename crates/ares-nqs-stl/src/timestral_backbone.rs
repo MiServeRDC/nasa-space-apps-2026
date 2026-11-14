@@ -493,6 +493,51 @@ impl LinearLayer {
         }
     }
 
+    /// Constructs a `LinearLayer` from validated checkpoint weights (`[out_dim, in_dim]`) and bias (`[out_dim]`).
+    pub fn from_loaded_weights(
+        in_dim: usize,
+        out_dim: usize,
+        weights: Vec<f64>,
+        bias: Vec<f64>,
+    ) -> Result<Self, NqsStlError> {
+        if in_dim == 0 || out_dim == 0 {
+            return Err(NqsStlError::InvalidConfig {
+                reason: "LinearLayer in_dim and out_dim must be > 0",
+            });
+        }
+        let expected_weights = out_dim.checked_mul(in_dim).ok_or(NqsStlError::InvalidConfig {
+            reason: "LinearLayer weight dimension overflow",
+        })?;
+        if weights.len() != expected_weights {
+            return Err(NqsStlError::DimensionMismatch {
+                expected: expected_weights,
+                found: weights.len(),
+            });
+        }
+        if bias.len() != out_dim {
+            return Err(NqsStlError::DimensionMismatch {
+                expected: out_dim,
+                found: bias.len(),
+            });
+        }
+        if weights.iter().any(|w| !w.is_finite()) {
+            return Err(NqsStlError::NonFiniteValue {
+                field: "LinearLayer::weights",
+            });
+        }
+        if bias.iter().any(|b| !b.is_finite()) {
+            return Err(NqsStlError::NonFiniteValue {
+                field: "LinearLayer::bias",
+            });
+        }
+        Ok(Self {
+            in_dim,
+            out_dim,
+            weights,
+            bias,
+        })
+    }
+
     pub fn forward(&self, x: &[f64]) -> Result<Vec<f64>, NqsStlError> {
         if x.len() != self.in_dim {
             return Err(NqsStlError::DimensionMismatch {
@@ -526,6 +571,29 @@ impl RmsNorm {
         }
         Ok(Self {
             gamma: vec![1.0; dim],
+            eps: eps.max(1e-12),
+        })
+    }
+
+    /// Constructs an `RmsNorm` layer from validated checkpoint scale weights `gamma`.
+    pub fn from_loaded_weights(gamma: Vec<f64>, eps: f64) -> Result<Self, NqsStlError> {
+        if gamma.is_empty() {
+            return Err(NqsStlError::InvalidConfig {
+                reason: "RmsNorm gamma must be non-empty",
+            });
+        }
+        if !eps.is_finite() || eps <= 0.0 {
+            return Err(NqsStlError::InvalidConfig {
+                reason: "RmsNorm eps must be finite and > 0",
+            });
+        }
+        if gamma.iter().any(|g| !g.is_finite()) {
+            return Err(NqsStlError::NonFiniteValue {
+                field: "RmsNorm::gamma",
+            });
+        }
+        Ok(Self {
+            gamma,
             eps: eps.max(1e-12),
         })
     }
@@ -568,6 +636,44 @@ impl FusedSwiGlu {
             w_up: LinearLayer::deterministic(d_model, d_ff, prng),
             w_down: LinearLayer::deterministic(d_ff, d_model, prng),
         }
+    }
+
+    /// Constructs a `FusedSwiGlu` block from validated projection layers.
+    pub fn from_loaded_weights(
+        d_model: usize,
+        d_ff: usize,
+        w_gate: LinearLayer,
+        w_up: LinearLayer,
+        w_down: LinearLayer,
+    ) -> Result<Self, NqsStlError> {
+        if d_model == 0 || d_ff == 0 {
+            return Err(NqsStlError::InvalidConfig {
+                reason: "FusedSwiGlu d_model and d_ff must be > 0",
+            });
+        }
+        if w_gate.in_dim != d_model || w_gate.out_dim != d_ff {
+            return Err(NqsStlError::DimensionMismatch {
+                expected: d_ff * d_model,
+                found: w_gate.weights.len(),
+            });
+        }
+        if w_up.in_dim != d_model || w_up.out_dim != d_ff {
+            return Err(NqsStlError::DimensionMismatch {
+                expected: d_ff * d_model,
+                found: w_up.weights.len(),
+            });
+        }
+        if w_down.in_dim != d_ff || w_down.out_dim != d_model {
+            return Err(NqsStlError::DimensionMismatch {
+                expected: d_model * d_ff,
+                found: w_down.weights.len(),
+            });
+        }
+        Ok(Self {
+            w_gate,
+            w_up,
+            w_down,
+        })
     }
 
     pub fn forward(&self, x: &[f64]) -> Result<Vec<f64>, NqsStlError> {
@@ -724,6 +830,69 @@ impl DualAxisAttention {
             w_gate: LinearLayer::deterministic(cfg.d_model, cfg.d_model, prng),
             w_out: LinearLayer::deterministic(cfg.d_model, cfg.d_model, prng),
             variate_prior_bias,
+            num_channels: cfg.num_channels,
+        })
+    }
+
+    /// Constructs a `DualAxisAttention` block from validated projection layers and optional prior bias.
+    #[allow(clippy::too_many_arguments)]
+    pub fn from_loaded_weights(
+        cfg: &TimestralConfig,
+        layer_kind: LayerKind,
+        w_q: LinearLayer,
+        w_k: LinearLayer,
+        w_v: LinearLayer,
+        w_gate: LinearLayer,
+        w_out: LinearLayer,
+        variate_prior_bias: Option<Vec<f64>>,
+    ) -> Result<Self, NqsStlError> {
+        cfg.validate()?;
+        for layer in [&w_q, &w_k, &w_v, &w_gate, &w_out] {
+            if layer.in_dim != cfg.d_model || layer.out_dim != cfg.d_model {
+                return Err(NqsStlError::DimensionMismatch {
+                    expected: cfg.d_model * cfg.d_model,
+                    found: layer.weights.len(),
+                });
+            }
+        }
+        let expected_prior = cfg.num_channels * cfg.num_channels;
+        let bias = match variate_prior_bias {
+            Some(b) => {
+                if b.len() != expected_prior {
+                    return Err(NqsStlError::DimensionMismatch {
+                        expected: expected_prior,
+                        found: b.len(),
+                    });
+                }
+                if b.iter().any(|v| !v.is_finite()) {
+                    return Err(NqsStlError::NonFiniteValue {
+                        field: "DualAxisAttention::variate_prior_bias",
+                    });
+                }
+                b
+            }
+            None => {
+                let mut default_bias = vec![0.0; expected_prior];
+                for i in 0..cfg.num_channels {
+                    default_bias[i * cfg.num_channels + i] = 0.5;
+                }
+                default_bias
+            }
+        };
+        let head_dim = cfg.d_model / cfg.n_heads;
+        let rope = SinCosRoPe::new(head_dim, cfg.rope_fraction, cfg.rope_theta)?;
+        Ok(Self {
+            d_model: cfg.d_model,
+            n_heads: cfg.n_heads,
+            head_dim,
+            layer_kind,
+            rope,
+            w_q,
+            w_k,
+            w_v,
+            w_gate,
+            w_out,
+            variate_prior_bias: bias,
             num_channels: cfg.num_channels,
         })
     }
@@ -886,6 +1055,15 @@ pub fn dual_axis_sdpa_sigmoid_gate(
         .collect())
 }
 
+/// Public validated container for a single loaded Timestral transformer block.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TimestralBlockWeights {
+    pub norm_attn: RmsNorm,
+    pub attn: DualAxisAttention,
+    pub norm_ffn: RmsNorm,
+    pub ffn: FusedSwiGlu,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 struct TimestralBlock {
     norm_attn: RmsNorm,
@@ -924,6 +1102,80 @@ impl TimestralBackbone {
             config,
             patch_embed,
             blocks,
+            final_norm,
+        })
+    }
+
+    /// Constructs a `TimestralBackbone` from validated checkpoint weights.
+    pub fn from_loaded_weights(
+        config: TimestralConfig,
+        patch_embed: LinearLayer,
+        blocks: Vec<TimestralBlockWeights>,
+        final_norm: RmsNorm,
+    ) -> Result<Self, NqsStlError> {
+        config.validate()?;
+        if patch_embed.in_dim != 2 * config.patch_len || patch_embed.out_dim != config.d_model {
+            return Err(NqsStlError::DimensionMismatch {
+                expected: config.d_model * 2 * config.patch_len,
+                found: patch_embed.weights.len(),
+            });
+        }
+        if blocks.len() != config.num_layers {
+            return Err(NqsStlError::DimensionMismatch {
+                expected: config.num_layers,
+                found: blocks.len(),
+            });
+        }
+        if final_norm.gamma.len() != config.d_model {
+            return Err(NqsStlError::DimensionMismatch {
+                expected: config.d_model,
+                found: final_norm.gamma.len(),
+            });
+        }
+
+        let mut internal_blocks = Vec::with_capacity(blocks.len());
+        for (idx, b) in blocks.into_iter().enumerate() {
+            if b.norm_attn.gamma.len() != config.d_model {
+                return Err(NqsStlError::DimensionMismatch {
+                    expected: config.d_model,
+                    found: b.norm_attn.gamma.len(),
+                });
+            }
+            if b.norm_ffn.gamma.len() != config.d_model {
+                return Err(NqsStlError::DimensionMismatch {
+                    expected: config.d_model,
+                    found: b.norm_ffn.gamma.len(),
+                });
+            }
+            if b.attn.d_model != config.d_model
+                || b.attn.n_heads != config.n_heads
+                || b.attn.num_channels != config.num_channels
+                || b.attn.layer_kind != config.layer_kind(idx)
+            {
+                return Err(NqsStlError::InvalidConfig {
+                    reason: "loaded attention block dimensions or layer_kind mismatch TimestralConfig",
+                });
+            }
+            if b.ffn.w_gate.in_dim != config.d_model
+                || b.ffn.w_gate.out_dim != config.d_ff
+                || b.ffn.w_down.out_dim != config.d_model
+            {
+                return Err(NqsStlError::InvalidConfig {
+                    reason: "loaded FusedSwiGlu dimensions mismatch TimestralConfig",
+                });
+            }
+            internal_blocks.push(TimestralBlock {
+                norm_attn: b.norm_attn,
+                attn: b.attn,
+                norm_ffn: b.norm_ffn,
+                ffn: b.ffn,
+            });
+        }
+
+        Ok(Self {
+            config,
+            patch_embed,
+            blocks: internal_blocks,
             final_norm,
         })
     }

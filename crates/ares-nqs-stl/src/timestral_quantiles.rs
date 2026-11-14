@@ -77,6 +77,49 @@ impl QuantileHead {
         }
     }
 
+    /// Constructs a validated `QuantileHead` from checkpoint weights (`[28, d_model]`) and
+    /// `spread_scale_gamma >= 1e-4`.
+    pub fn from_loaded_weights(
+        d_model: usize,
+        spread_scale_gamma: f64,
+        proj_weights: Vec<f64>,
+    ) -> Result<Self, NqsStlError> {
+        if d_model == 0 {
+            return Err(NqsStlError::InvalidConfig {
+                reason: "QuantileHead d_model must be > 0",
+            });
+        }
+        if !spread_scale_gamma.is_finite() {
+            return Err(NqsStlError::NonFiniteValue {
+                field: "QuantileHead::spread_scale_gamma",
+            });
+        }
+        if spread_scale_gamma < 1e-4 {
+            return Err(NqsStlError::InvalidConfig {
+                reason: "QuantileHead spread_scale_gamma must be >= 1e-4",
+            });
+        }
+        let expected_len = 28usize.checked_mul(d_model).ok_or(NqsStlError::InvalidConfig {
+            reason: "QuantileHead projection weight dimension overflow",
+        })?;
+        if proj_weights.len() != expected_len {
+            return Err(NqsStlError::DimensionMismatch {
+                expected: expected_len,
+                found: proj_weights.len(),
+            });
+        }
+        if proj_weights.iter().any(|w| !w.is_finite()) {
+            return Err(NqsStlError::NonFiniteValue {
+                field: "QuantileHead::proj_weights",
+            });
+        }
+        Ok(Self {
+            spread_scale_gamma,
+            d_model,
+            proj_weights,
+        })
+    }
+
     /// Projects a 7-logit vector into 7 strictly non-crossing quantiles via upper/lower
     /// triangular softplus accumulation anchored at the median (index 3).
     pub fn project_seven_quantiles(&self, raw_logits: &[f64; 7]) -> [f64; 7] {

@@ -62,6 +62,7 @@ pub const FLAG_ILLUSTRATIVE_UNVALIDATED: u32 = 1 << 7;
 pub const FLAG_CHANNEL_NAN_DROPOUT: u32 = 1 << 8;
 pub const FLAG_CONFORMAL_ABSTAINED: u32 = 1 << 9;
 pub const FLAG_SEU_RECOVERY_ACTIVE: u32 = 1 << 10;
+pub const FLAG_TERRESTRIAL_BENCHMARKED_ONLY: u32 = 1 << 11;
 
 /// Reflected Castagnoli CRC-32C polynomial (`0x1EDC6F41` -> `0x82F63B78`).
 const CRC32C_POLY_REFLECTED: u32 = 0x82F6_3B78;
@@ -398,11 +399,17 @@ impl BinaryTelemetryFrame {
         {
             quality_flags_mask |= FLAG_BEAT_INTERVALS_NOT_AVAILABLE;
         }
-        if matches!(
-            pkt.model_validation_status,
-            ModelValidationStatus::IllustrativeUnvalidated
-        ) {
-            quality_flags_mask |= FLAG_ILLUSTRATIVE_UNVALIDATED;
+        match pkt.model_validation_status {
+            ModelValidationStatus::IllustrativeUnvalidated => {
+                quality_flags_mask |= FLAG_ILLUSTRATIVE_UNVALIDATED;
+            }
+            ModelValidationStatus::InternallyBenchmarkedTerrestrial { .. } => {
+                // Keep FLAG_ILLUSTRATIVE_UNVALIDATED active alongside FLAG_TERRESTRIAL_BENCHMARKED_ONLY
+                // so cockpit displays indicate spaceflight physiological models remain unvalidated.
+                quality_flags_mask |=
+                    FLAG_ILLUSTRATIVE_UNVALIDATED | FLAG_TERRESTRIAL_BENCHMARKED_ONLY;
+            }
+            ModelValidationStatus::ClinicallyCalibratedSubjectToReview => {}
         }
         if !pkt.biometrics.missing_channels.is_empty() {
             quality_flags_mask |= FLAG_CHANNEL_NAN_DROPOUT;
@@ -450,6 +457,16 @@ impl BinaryTelemetryFrame {
         let bytes = frame.to_le_bytes();
         frame.crc32c = u32::from_le_bytes([bytes[104], bytes[105], bytes[106], bytes[107]]);
         frame
+    }
+
+    /// Alias of `from_telemetry_packet` for Phase 33 (`L5`) encoder call sites.
+    #[inline]
+    pub fn encode_from_packet(
+        pkt: &TelemetryPacket,
+        quantile_snapshot: Option<&NqsQuantileForecastSnapshot>,
+        meta: BinaryFrameMeta,
+    ) -> Self {
+        Self::from_telemetry_packet(pkt, quantile_snapshot, meta)
     }
 
     /// Serializes the frame to exact 128 little-endian bytes with Castagnoli CRC-32C at `104..108`.
@@ -1025,5 +1042,37 @@ mod tests {
         let latest = ring.read_latest().expect("latest frame present");
         assert_eq!(latest.seq, 5_000);
         assert_eq!(ring.write_count(), 5_000);
+    }
+
+    #[test]
+    fn test_binary_frame_sets_terrestrial_benchmarked_flag_preserving_illustrative_bit() {
+        use crate::telemetry::{Sha256DigestHex, TerrestrialBenchmarkScope};
+
+        let mut pkt = sample_packet(true, false);
+        pkt.model_validation_status = ModelValidationStatus::InternallyBenchmarkedTerrestrial {
+            dataset_scope: TerrestrialBenchmarkScope::BidmcNumericsShortSubHorizon,
+            coverage_pct: 91.2,
+            brier_score: 0.12,
+            artifact_sha256: Sha256DigestHex([0xAB; 32]),
+        };
+
+        let frame = BinaryTelemetryFrame::encode_from_packet(&pkt, None, BinaryFrameMeta::default());
+        assert_ne!(frame.quality_flags_mask & FLAG_ILLUSTRATIVE_UNVALIDATED, 0);
+        assert_ne!(
+            frame.quality_flags_mask & FLAG_TERRESTRIAL_BENCHMARKED_ONLY,
+            0
+        );
+
+        pkt.model_validation_status = ModelValidationStatus::ClinicallyCalibratedSubjectToReview;
+        let cal_frame =
+            BinaryTelemetryFrame::encode_from_packet(&pkt, None, BinaryFrameMeta::default());
+        assert_eq!(
+            cal_frame.quality_flags_mask & FLAG_ILLUSTRATIVE_UNVALIDATED,
+            0
+        );
+        assert_eq!(
+            cal_frame.quality_flags_mask & FLAG_TERRESTRIAL_BENCHMARKED_ONLY,
+            0
+        );
     }
 }

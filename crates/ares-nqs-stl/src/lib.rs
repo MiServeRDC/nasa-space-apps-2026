@@ -2,6 +2,7 @@
 //! O(1) Lemire-Donze monotonic wedge, EWMA-OLS & Grey-Box Timestral TTV predictor,
 //! Mission Readiness Index (`MRI %`), and Pure-Rust Timestral Probabilistic Forecaster.
 
+pub mod calibration_harness;
 pub mod error;
 pub mod mri_index;
 pub mod normalizer;
@@ -9,6 +10,7 @@ pub mod sliding_window;
 pub mod timestral_backbone;
 pub mod timestral_bridge;
 pub mod timestral_quantiles;
+pub mod timestral_safetensors;
 pub mod ttv_predictor;
 
 // Module aliases preserving exact naming from phase_16_H2 and phase_17_H3 plans.
@@ -19,19 +21,38 @@ pub use ares_core_types::{
     AbstentionCertificate, ChannelQuantileCone, ConformalGateStatus, MonotoneQuantileTriplet,
     NqsQuantileForecastSnapshot,
 };
-pub use error::NqsStlError;
+pub use calibration_harness::{
+    CalibrationAuditReport, CalibrationSamplePair, ClopperPearsonBounds,
+    ConformalizedQuantileCalibrator, HorizonCellMetrics, HorizonEvaluationStatus, MissingnessBin,
+    PersistenceCqrBaseline, ProbabilisticCalibrationAudit, ReliabilityBinSummary,
+    RollingMedianIqrBaseline, SostRk4SensitivityAudit, assign_subject_split_role,
+    canonical_subject_id, clopper_pearson_exact_95, compute_brier_and_ece_10_bins,
+    evaluate_horizon_cells, pinball_loss, regularized_incomplete_beta,
+    resolve_validation_status_fail_closed, resolve_validation_status_with_report_hash,
+    run_sost_rk4_sensitivity_audit, verify_anti_leakage_invariants, winkler_score,
+};
+pub use error::{LeakageViolationError, NqsStlError, SplitRole};
 pub use mri_index::evaluate_nqs_stl_and_mri;
 pub use sliding_window::LemireMinWedge;
 pub use timestral_backbone::{
     ARES_TIMESTRAL_CHANNELS, CausalScaler, ChannelCausalStats, CircularTelemetryBuffer,
-    DualAxisAttention, FusedSwiGlu, LayerKind, PHYSIOLOGICAL_CHANNELS, PatchRepresentation,
-    RmsNorm, SinCosRoPe, TimestralBackbone, TimestralConfig,
+    DualAxisAttention, FusedSwiGlu, LayerKind, LinearLayer, PHYSIOLOGICAL_CHANNELS,
+    PatchRepresentation, RmsNorm, SinCosRoPe, TimestralBackbone, TimestralBlockWeights,
+    TimestralConfig,
 };
 pub use timestral_bridge::{
     AresMultivariateSample, AresTemporalForecasterEngine, AresTemporalForecasterHandle,
-    KnownFutureCovariates, compute_greybox_forecast_snapshot,
+    DEFAULT_TIMESTRAL_MODEL_ID, KnownFutureCovariates, compute_greybox_forecast_snapshot,
 };
 pub use timestral_quantiles::{ConformalAbstentionGate, MonotoneQuantileHead, QuantileHead};
+pub use timestral_safetensors::{
+    CheckpointLoaderBackend, CheckpointOrigin, DETERMINISTIC_STUB_SEED_HEX,
+    LoadedTimestralBundle, ModelArtifactEntry, ModelsManifest, SafeTensorDtype, SafeTensorView,
+    SafeTensorsArchive, active_loader_backend, compute_sha256_hex, decode_tensor_view_to_f64,
+    encode_f64_slice_as_dtype, load_timestral_or_deterministic_fallback,
+    load_verified_timestral_checkpoint, serialize_deterministic_timestral_checkpoint,
+    serialize_f64_map_to_safetensors, serialize_safetensors_v1,
+};
 
 use ares_core_types::telemetry::{
     AlertSeverity, Biometrics, JugularHemodynamics, Musculoskeletal, NqsStlMargins, SansOcular,

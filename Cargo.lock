@@ -85,6 +85,7 @@ dependencies = [
  "petgraph",
  "serde",
  "serde_json",
+ "sha2",
  "thiserror",
 ]
 
@@ -137,6 +138,8 @@ dependencies = [
  "ares-causal-graph",
  "ares-core-types",
  "serde",
+ "serde_json",
+ "sha2",
  "thiserror",
 ]
 
@@ -168,6 +171,7 @@ dependencies = [
  "clap",
  "serde",
  "serde_json",
+ "sha2",
  "thiserror",
  "tokio",
  "tracing",

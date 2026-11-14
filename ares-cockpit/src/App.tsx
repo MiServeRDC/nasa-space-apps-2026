@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   alarmFor,
   clamp,
@@ -26,6 +26,8 @@ import { EcgStrip, OcularOnsd, PocusIjv } from './modules/analysis-imaging/Imagi
 import { FreshnessBadge, OriginBadge, ProvenanceBanner } from './modules/provenance/ProvenanceInspector';
 import { OsSystemStatusBar } from './modules/os-shell/OsSystemStatusBar';
 import { OsCommandPalette } from './modules/os-shell/OsCommandPalette';
+import { OsVoiceCopilot } from './modules/os-shell/OsVoiceCopilot';
+import type { VoiceIntentClassification } from './lib/voiceIntentRouter';
 import type { DataOrigin, FreshnessStatus, TelemetryPacket } from './types/telemetry';
 
 type EvalTab = 'BODY_3D' | 'POCUS' | 'MUSCLE_BONE' | 'FORECAST';
@@ -253,6 +255,8 @@ export default function App() {
   const [evalTab, setEvalTab] = useState<EvalTab>('BODY_3D');
   const [whatIfOverlayActive, setWhatIfOverlayActive] = useState<boolean>(false);
   const [paletteOpen, setPaletteOpen] = useState<boolean>(false);
+  const [paletteInitialMode, setPaletteInitialMode] = useState<'TOOLS' | 'COPILOT'>('TOOLS');
+  const [requestedPlaybook, setRequestedPlaybook] = useState<{ id: string; seq: number } | null>(null);
 
   const {
     packet,
@@ -366,6 +370,42 @@ export default function App() {
     }
   };
 
+  const handleVoiceIntent = useCallback(
+    (intent: Exclude<VoiceIntentClassification, { kind: 'CONVERSATIONAL_COPILOT_ASK' }>) => {
+      switch (intent.kind) {
+        case 'SAFETY_INTERLOCK_BLOCKED':
+          // NASA-STD-3001 [V2 10027]: strictly refuse vocal Gate 1 / POCUS mutations
+          return;
+        case 'NAVIGATE_PHASE':
+          setActivePhase(intent.phase);
+          return;
+        case 'NAVIGATE_EVAL_TAB':
+          setActivePhase('EVALUATE');
+          setEvalTab(intent.tab);
+          return;
+        case 'SHOW_QUANTILE_CONES':
+          setActivePhase('EVALUATE');
+          setEvalTab('FORECAST');
+          return;
+        case 'OPEN_PLAYBOOK':
+          setActivePhase('ACT');
+          setRequestedPlaybook((prev) => ({ id: intent.playbook_id, seq: (prev?.seq ?? 0) + 1 }));
+          return;
+        case 'RUN_WHAT_IF_LBNP':
+          setWhatIf((prev) => ({ ...prev, lbnp_mmhg: intent.lbnp_mmhg }));
+          if (link === 'ENGINE_LIVE') {
+            setWhatIfOverlayActive(true);
+          }
+          return;
+        case 'OPEN_COMMAND_PALETTE':
+          setPaletteInitialMode(intent.initial_tab);
+          setPaletteOpen(true);
+          return;
+      }
+    },
+    [link],
+  );
+
   const hasHemodynamics = packet.hemodynamics !== null && packet.hemodynamics !== undefined;
   const hasMusculoskeletal = packet.musculoskeletal !== null && packet.musculoskeletal !== undefined;
 
@@ -405,6 +445,14 @@ export default function App() {
 
       <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col gap-3 overflow-hidden p-4">
         <ProvenanceBanner packet={packet} status={status} />
+        <OsVoiceCopilot
+          packet={packet}
+          whatIf={whatIf}
+          whatIfOverlayActive={whatIfOverlayActive}
+          transportMode={transportMode}
+          httpBaseUrl={ENGINE_HTTP_URL}
+          onExecuteIntent={handleVoiceIntent}
+        />
 
         <div className="grid min-h-0 flex-1 gap-4 overflow-hidden lg:grid-cols-[1fr_340px]">
           {/* Left / Center Authoritative Workspace */}
@@ -546,6 +594,9 @@ export default function App() {
                       <BodyHeatmap
                         s={s}
                         sex={whatIf.sex}
+                        hypergraphSpatial={packet.hypergraph_spatial}
+                        isLocalSimulation={Boolean(packet.is_local_simulation)}
+                        modelValidationStatus={packet.model_validation_status}
                         onChangeSex={(sex) => handleWhatIfChange({ ...whatIf, sex })}
                         onOpenTab={setEvalTab}
                       />
@@ -658,13 +709,18 @@ export default function App() {
 
                 {evalTab === 'FORECAST' && (
                   <Card
-                    title="14-Day Safety Margin Forecast"
+                    title="Multi-Horizon Timestral & STL Forecast"
                     tag={sm.provenance}
                     origin={sm.provenance}
                     className="min-h-0 flex-1"
                   >
                     <div className="flex h-full flex-col justify-between gap-3">
-                      <StlChart whatIf={whatIf} lastScanDay={lastScanDay} isPureReplay={isPureReplay} />
+                      <StlChart
+                        whatIf={whatIf}
+                        lastScanDay={lastScanDay}
+                        isPureReplay={isPureReplay}
+                        packet={packet}
+                      />
                       <PredicateBars rho={predicateBarsMap} />
                       <p className="text-xs text-gray-400">
                         Above 0 is within NASA safety limits; below 0 is a limit violation. Unavailable predicates remain explicitly N/A.
@@ -683,23 +739,35 @@ export default function App() {
                   origin={packet.active_playbook ? 'DERIVED_FROM_HYBRID_SCENARIO' : 'SIMULATED_SCENARIO_INPUT'}
                   className="min-h-0"
                 >
-                  <PlaybookRunner thrombus={thrombus} setThrombus={handleThrombusChange} />
-                  {packet.active_playbook && (
-                    <div className="mt-3 rounded border border-nominal/50 bg-black p-2.5 font-mono text-xs">
-                      <div className="text-nominal">ACTIVE ENGINE PLAYBOOK: {packet.active_playbook.playbook_id}</div>
-                      {packet.active_playbook.step_instruction && (
-                        <div className="mt-1 text-gray-300">{packet.active_playbook.step_instruction}</div>
-                      )}
-                    </div>
-                  )}
+                  <PlaybookRunner
+                    activePlaybook={packet.active_playbook}
+                    isLiveEngine={link === 'ENGINE_LIVE'}
+                    thrombusConfirmed={thrombus}
+                    ventEvent={ventEvent}
+                    syncLatencyUs={ipcLatencyUs}
+                    modelValidationStatus={packet.model_validation_status}
+                    requestedPlaybook={requestedPlaybook}
+                    onConfirmPocusThrombus={handleThrombusChange}
+                    onRearmLbnp={() => setVentEvent(null)}
+                  />
                 </Card>
                 <Card title="Active Safety Protections" origin={packet.is_local_simulation ? 'SIMULATED_SCENARIO_INPUT' : 'DERIVED_COMPUTED'} className="min-h-0">
                   <div className="space-y-4 text-sm text-gray-300">
                     <div className="rounded border border-line p-3">
                       <div className="flex justify-between font-mono text-xs">
-                        <span className="font-bold text-white">NO BLIND BLOOD THINNERS</span>
-                        <span className={thrombus === true ? 'text-ok' : 'text-critical'}>
-                          {thrombus === true ? 'OPEN' : 'LOCKED'}
+                        <span className="font-bold text-white">GATE 1: NO BLIND BLOOD THINNERS</span>
+                        <span
+                          className={
+                            thrombus === true &&
+                            !packet.active_playbook?.safety_gates?.anticoagulant_lock_active
+                              ? 'text-ok'
+                              : 'text-critical'
+                          }
+                        >
+                          {thrombus === true &&
+                          !packet.active_playbook?.safety_gates?.anticoagulant_lock_active
+                            ? 'OPEN'
+                            : 'LOCKED'}
                         </span>
                       </div>
                       <p className="mt-1 text-xs text-gray-400">
@@ -708,13 +776,36 @@ export default function App() {
                     </div>
                     <div className="rounded border border-line p-3">
                       <div className="flex justify-between font-mono text-xs">
-                        <span className="font-bold text-white">FAINTING PROTECTION (LBNP)</span>
+                        <span className="font-bold text-white">GATE 2: FAINTING PROTECTION (LBNP)</span>
                         <span className={ventEvent ? 'text-critical' : 'text-ok'}>
-                          {ventEvent ? 'VENTED' : 'ARMED'}
+                          {ventEvent
+                            ? 'VENTED'
+                            : packet.active_playbook?.safety_gates?.lbnp_auto_vent_armed === false
+                              ? 'STANDBY'
+                              : 'ARMED'}
                         </span>
                       </div>
                       <p className="mt-1 text-xs text-gray-400">
                         If your blood pressure drops more than 15 mmHg or your heart rate passes 115 bpm during LBNP, the chamber vents back to 0 mmHg right away.
+                      </p>
+                    </div>
+                    <div className="rounded border border-line p-3">
+                      <div className="flex justify-between font-mono text-xs">
+                        <span className="font-bold text-white">GATE 3: MARTIAN 0.38g EVA SUIT DAMPING</span>
+                        <span
+                          className={
+                            packet.active_playbook?.safety_gates?.eva_suit_damping_active
+                              ? 'text-caution'
+                              : 'text-gray-400'
+                          }
+                        >
+                          {packet.active_playbook?.safety_gates?.eva_suit_damping_active
+                            ? 'ACTIVE (+25% ANKLE)'
+                            : 'STANDBY'}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-gray-400">
+                        When Gait Asymmetry Index exceeds 12.0%, Martian EVA ankle damping engages and high-impact plyometric loading is locked out.
                       </p>
                     </div>
                   </div>
@@ -773,13 +864,17 @@ export default function App() {
 
       <OsCommandPalette
         open={paletteOpen}
-        onClose={() => setPaletteOpen(false)}
+        onClose={() => {
+          setPaletteOpen(false);
+          setPaletteInitialMode('TOOLS');
+        }}
         onToggle={() => setPaletteOpen((v) => !v)}
         httpBaseUrl={ENGINE_HTTP_URL}
         packet={packet}
         whatIf={whatIf}
         transportMode={transportMode}
         osStatus={osStatus}
+        initialMode={paletteInitialMode}
       />
     </div>
   );
