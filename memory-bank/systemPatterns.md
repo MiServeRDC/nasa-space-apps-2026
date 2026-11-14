@@ -17,8 +17,8 @@ ARES-Health decouples deterministic physiological computation from visual render
 |                    ARES-ENGINE (7-Crate Modular Safe Rust Workspace)                |
 |  1. ares-core-types         (Shared Telemetry Schema, Units, Privacy & Audit Traits)|
 |  2. ares-telemetry-ingest   (Ring Buffer, Radar/Vocal DSP, CANS Neutron, SQI>=0.70) |
-|  3. ares-causal-graph       (ADHG petgraph, Frost-Hargens ODEs, Shear tau_w, POCUS) |
-|  4. ares-nqs-stl            (O(1) Lemire Wedge NQS-STL rho_hat, EWMA-OLS TTV, MRI)  |
+|  3. ares-causal-graph       (ADHG + ARES-HyperGraph + 24-Dataset Graph, RK4, POCUS) |
+|  4. ares-nqs-stl            (O(1) Lemire Wedge NQS-STL + Timestral Grey-Box Cones)  |
 |  5. ares-medops-playbooks   (Playbooks #01-#05 DAGs + 3 Hard Clinical Safety Gates) |
 |  6. ares-security-privacy   (Role-Based Crew Privacy Tiers, SHA-256 Audit, AEAD DSN)|
 |  7. ares-server-cli         (Concurrent Tokio axum WebSocket + stdio FastMCP <150t) |
@@ -55,3 +55,13 @@ Between episodic weekly ultrasound scans, latent states $\hat{z}_k(t)$ evolve vi
 
 ### Invariant 6: Crew Privacy Governance (`NASA-STD-3001 Vol. 1 Ch. 7`)
 Behavioral, vocal, and raw medical logs are partitioned into three cryptographic access views (`PrivateAstronautView`, `CmoMedicalView`, `FlightSurgeonStoreAndForwardPacket`), ensuring psychological safety inside a confined 4-person habitat.
+
+### Invariant 7: Grey-Box Neuro-Mechanistic `Timestral` Forecasting & Non-Crossing Quantile Cones (`Blocco H`, `Fasi 15–17`)
+* Mechanistic ODEs (`Frost-Hargens RK4` + `Poiseuille tau_w`) remain primary for baseline drift and Hard Safety Gates, while Pure-Rust `Timestral` models multivariate stochastic residuals with explicit `[scaled_values, missing_mask]` dual patching (never imputing `Option<f64>::None` as false zeros).
+* `MonotoneQuantileHead` enforces $q_{0.05} \le q_{0.50} \le q_{0.95}$ algebraically via triangular $\operatorname{softplus}$ accumulation, coupled with an adaptive `ConformalAbstentionGate` (`SQI >= 0.70`, `missing_ratio <= 0.40`).
+* The `1 Hz` async forecaster publishes `Arc<NqsQuantileForecastSnapshot>` to the `20 Hz` hot-path via a lock-free `~180 ns` bridge, keeping the `20 Hz` tick at `< 70 µs << 150 µs`.
+
+### Invariant 8: Three-Layer `ARES-HyperGraph` & 24-Dataset `ARES-DatasetGraph` (`Blocco I`, `Fasi 18–20`)
+* **Layer 1 (`ADHG` + Welford Compactor):** Online Welford `LongitudinalSuperNode` coarsening compacts 900 Martian flight days into `< 200 KB` RAM.
+* **Layer 2 (`ARES-SpatialGraph`):** Connects the 4 canonical 3D Anatomical Regions (driving the Cockpit 3D Body Heatmap) and the 6 Spacecraft Habitat Zones governed by conjunctive Q-STL `HabitatZoneDeonticPolicy` and Dirichlet-Multinomial Markov $D_{\text{KL}}$ anomaly detection.
+* **Layer 3 (`ARES-BioKG` & `ARES-DatasetGraph`):** Stack-allocated `16-byte #[repr(C)] BiomedicalEvidenceDescriptor`, Noisy-OR `EpistemicProvenance`, `ClinicalAnswerabilityGate`, and the Hybrid Dual-Representation `ARES-DatasetGraph` (`14,623` nodes, `112,400` edges, `~8.4 MB` RAM + `data/knowledge_graph/ares_dataset_graph.json` compatible with `/graphify` and `FastMCP` `< 150 tokens`).

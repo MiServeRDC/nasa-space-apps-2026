@@ -1,0 +1,23 @@
+[package]
+name = "ares-server-cli"
+version = "0.1.0"
+edition = "2024"
+description = "Dual-Transport Tokio Orchestrator: Axum 20 Hz WebSocket Telemetry Server + Native FastMCP JSON-RPC 2.0 stdio Server"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+ares-core-types = { path = "../ares-core-types" }
+ares-telemetry-ingest = { path = "../ares-telemetry-ingest" }
+ares-causal-graph = { path = "../ares-causal-graph" }
+ares-nqs-stl = { path = "../ares-nqs-stl" }
+ares-medops-playbooks = { path = "../ares-medops-playbooks" }
+ares-security-privacy = { path = "../ares-security-privacy" }
+anyhow = "1.0"
+axum = { version = "0.8", features = ["ws"] }
+clap = { version = "4.5", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
+tokio = { version = "1.40", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

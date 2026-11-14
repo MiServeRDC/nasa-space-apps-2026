@@ -1,0 +1,13 @@
+[package]
+name = "ares-causal-graph"
+version = "0.1.0"
+edition = "2024"
+description = "Astronaut Digital Health Graph (ADHG), Frost-Hargens RK4 Sclerostin ODE, Jugular Shear Stress & Two-Stage Bayesian POCUS Observer"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+ares-core-types = { path = "../ares-core-types" }
+petgraph = "0.7"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
