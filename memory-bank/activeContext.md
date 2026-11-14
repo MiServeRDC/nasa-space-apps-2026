@@ -1,6 +1,6 @@
 # Active Context: ARES-Health (NASA Space Apps Challenge 2026)
 
-## Optimization implementation in progress (2026-11-14)
+## Reliability/performance optimization completed (2026-11-14)
 
 User authorized resolving all reviewed reliability/performance weaknesses, one at
 a time, on `work/MiServeRDC-optimization` (isolated worktree `/tmp/ares-optimization`,
@@ -16,8 +16,14 @@ adaptive/saved quality, hidden/covered viewport suspension and pooled atlas
 materials. Main entry is 432.32 kB (131.41 kB gzip); actual atlas material objects
 drop from 3,746 to 11. All 24 Node tests, lint/build and browser/process checks pass,
 including reconnect, alarm delivery, lazy-load failure isolation and shutdown with
-a real WebSocket still connected. Forecast validation/results are recorded in the
-next commit. Hosted Actions remain disabled; no main merge is requested here.
+a real WebSocket still connected. Longer validation runs 8 hours each of stationary,
+artificial drift and dropout streams; delayed scores are cross-checked independently
+and retained history remains at 8,940 entries. The horizon-scaled experimental gain
+stays false: it improves synthetic width stability but worsens real development
+coverage. Detector/forecast table results remain unchanged; no clinical validation
+is implied. Reproduction and limits are in `docs/operations/PROJECT_OPTIMIZATION.md`
+and `docs/evaluation/OPTIMIZATION_RESULTS.md`. Work is complete on the dedicated
+branch for review. Hosted Actions remain disabled; no main merge is requested here.
 
 ## User-approved medical-blue cockpit integration (2026-11-14)
 

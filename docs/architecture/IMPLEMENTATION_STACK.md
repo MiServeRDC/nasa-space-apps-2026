@@ -9,6 +9,26 @@
 
 ## 1. Scopo del Registro (Ispirato a `spatiotemporal-mcp-engine`)
 
+### Optimization evidence addendum (2026-11-14)
+
+- Streaming intervals: [Gibbs/Candes 2021](https://arxiv.org/abs/2106.00170),
+  [Szabadvary, COPA 2024](https://proceedings.mlr.press/v230/hallberg-szabadvary24a.html)
+  and [Wu et al., ICLR 2025](https://arxiv.org/abs/2502.00818) motivate separate
+  coverage/width evaluation across horizons and distribution shifts. No theorem
+  from these papers is claimed for the current clipped empirical EWMA controller.
+  The experimental gain divided by horizon is our engineering candidate, not a
+  literature-derived constant. It remains off: real development coverage worsens
+  despite improved synthetic width stability. No new physiological thresholds.
+- UI/engine implementation follows [React lazy](https://react.dev/reference/react/lazy),
+  [R3F scaling](https://r3f.docs.pmnd.rs/advanced/scaling-performance),
+  [Drei PerformanceMonitor](https://drei.docs.pmnd.rs/performances/performance-monitor),
+  [Tokio shared state](https://tokio.rs/tokio/tutorial/shared-state) and
+  [graceful shutdown](https://tokio.rs/tokio/topics/shutdown). Rendering FPS bounds
+  and pixel-density limits are UI policies, unrelated to clinical inference.
+- Reproduction and limits: [optimization operations](../operations/PROJECT_OPTIMIZATION.md),
+  [8-hour synthetic stress](../evaluation/FORECAST_STRESS_8H.md),
+  [development comparison](../evaluation/FORECAST_CONTROLLER_DEVELOPMENT.md).
+
 Questo documento traccia formalmente:
 1. **Quali crate costituiscono il "Motore Rust" (Core Engine) e l'intero Backend Rust** di ARES-Health.
 2. **Tutte le librerie open-source dell'ecosistema Rust 2024** utilizzate in ciascun crate, con file coinvolti e motivazione architetturale.

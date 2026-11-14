@@ -7,10 +7,18 @@
 2. `vitals-anomaly/`: Per-subject 1 Hz vital-signs anomaly detector (`VitalsAnomalyPanel.tsx`) and controlled synthetic fault injection (`DESATURATION_*`, `TACHYCARDIA_*`, `SENSOR_DETACH`, `COMBINED_SUBTLE`, `CLEAR`) via Tauri IPC / HTTP.
 3. `mri-and-stl/`: Composite Mission Readiness Index (`MRI in [0, 100]`) gauge and dual-band quantile cone viewer (`+15m/+1h/+6h/+24h` Timestral grey-box cones alongside `+5s/+10s/+30s/+60s/+120s` EWMA residual cones) with strict Issue #11 abstention preservation.
 4. `body-3d-heatmap/`: 5-source unified `Three.js` / `@react-three/fiber` 3D anatomical cockpit supporting both static `CC BY-SA 4.0` Z-Anatomy `.glb` meshes (`public/anatomy/`, air-gapped `MeshoptDecoder` without external CDN) and `MALE`/`FEMALE` procedural rig + `NasaGlbAssetLayer`, UBERON 5-node/6-arc hypergraph projection, null-safe pure-replay inspection, neon-lime trauma pins, and offline optical RGB skin triage (`AiInjuryModal.tsx` / `vlmInjuryEngine.ts`).
-5. `playbook-runner/`: Deterministic NASA MedOps Playbook `#01..#09` interactive runner (`#01..#05` deep-space + `#06..#09` acute vitals) with visible Hard Clinical Safety Gate lock badges.
-6. `whatif-console/` & `os-shell/`: Live `< 1 ms` What-If Stress-Test sliders (`ppCO2`, `ARED Load`, `LBNP Pressure`, `Mission Day`) + always-visible `OsSystemStatusBar`, `ProvenanceBanner`, `OsVoiceCopilot`, and `Cmd+K` / `Alt+Space` `OsCommandPalette`.
+5. `playbook-runner/`: Deterministic NASA MedOps Playbook `#01..#15` interactive runner (`#01..#05` deep-space + `#06..#09` acute vitals) with visible Hard Clinical Safety Gate lock badges.
+6. `whatif-console/` & `os-shell/`: Live `< 1 ms` What-If Stress-Test sliders (`ppCO2`, `ARED Load`, `LBNP Pressure`, `Mission Day`) + expandable `OsSystemStatusBar`, `ProvenanceBanner`, `OsVoiceCopilot`, and `Cmd+K` / `Alt+Space` `OsCommandPalette`.
 
 ## Quickstart
+
+The approved medical-blue cockpit loads optional 3D/portal/studio/dialog code on
+demand, using local chunks. Anatomy offers Auto/Lite/Standard/High quality, honors
+reduced motion, pauses behind overlays/offscreen and retains the chosen profile.
+The unused 20 Hz preview pauses during ordinary live telemetry; alarm processing
+is unchanged. System diagnostics are in the expandable system details section.
+See [optimization operations](../docs/operations/PROJECT_OPTIMIZATION.md) for local
+recording, browser regression checks and measurement limits.
 
 Requires Node.js 20+.
 

@@ -37,6 +37,9 @@ pub struct EwmaForecasterConfig {
     /// conformal inference (Gibbs and Candes 2021). 0 keeps the raw quantiles.
     /// Chosen on the development records only.
     pub width_gamma: f64,
+    /// Experimental delay-aware gain: scale the feedback step by the horizon.
+    /// Compare on development records before enabling in production.
+    pub horizon_scaled_width: bool,
     /// Seconds without a sample after which a channel is stale: its level no
     /// longer describes the present, so its intervals are withdrawn instead of
     /// being published from pre-blackout data.
@@ -50,6 +53,7 @@ impl Default for EwmaForecasterConfig {
             residual_window: 240,
             min_residuals: 30,
             width_gamma: 0.1,
+            horizon_scaled_width: false,
             max_stale_s: 10,
         }
     }
@@ -113,6 +117,12 @@ impl Default for EwmaResidualForecaster {
 }
 
 impl EwmaResidualForecaster {
+    /// Number of retained history/residual/issued entries (diagnostic, not byte size).
+    pub fn retained_sample_count(&self) -> usize {
+        self.channels.iter().map(|c| c.level_history.len()
+            + c.residuals.iter().map(VecDeque::len).sum::<usize>()
+            + c.issued.iter().map(VecDeque::len).sum::<usize>()).sum()
+    }
     pub fn new(config: EwmaForecasterConfig) -> Self {
         let initial =
             NqsQuantileForecastSnapshot::initial_deterministic(0.0, None, None, None, None);
@@ -208,8 +218,11 @@ impl EwmaResidualForecaster {
                         // Widen after a miss, narrow slightly after a hit.
                         let target = 1.0 - EWMA_NOMINAL_COVERAGE;
                         let miss = if covered { 0.0 } else { 1.0 };
+                        let gamma = if self.config.horizon_scaled_width {
+                            width_gamma / h as f64
+                        } else { width_gamma };
                         ch.width_scale[h_idx] = (ch.width_scale[h_idx]
-                            * (width_gamma * (miss - target)).exp())
+                            * (gamma * (miss - target)).exp())
                         .clamp(0.5, 20.0);
                     }
                 }

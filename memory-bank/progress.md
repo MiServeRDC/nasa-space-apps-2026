@@ -12,7 +12,11 @@
 - [x] Paused unused fallback simulation and stabilized expensive anatomical rendering;
   split optional local UI; added adaptive quality, viewport suspension and regional
   material pooling. All 24 frontend tests, lint/build and browser/process checks pass.
-- Remaining commit records forecasting comparisons, measured limits and final docs.
+- [x] Eight-hour stationary/drift/dropout comparisons with independent delayed
+  scoring; one-hour bounded-state/blackout test; development-only controller
+  comparison. Candidate remains disabled after worse real development coverage.
+- [x] Final operations, evidence registry, reproduction commands and measured
+  limitations documented. No change to clinical defaults or validation status.
 
 ## Approved medical-blue cockpit refresh (2026-11-14)
 

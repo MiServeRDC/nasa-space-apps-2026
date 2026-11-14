@@ -3,6 +3,11 @@
 Base: main `2b0a9bc`. Authorized by the user to resolve the reviewed weaknesses
 one at a time. Work on an isolated branch, with local checks only.
 
+Status: software steps 1–6 and the reproducible validation in step 7 are complete.
+See [measured results](../evaluation/OPTIMIZATION_RESULTS.md). The forecast candidate
+was compared on development data and deliberately not promoted; no clinical
+calibration or multi-day human validation is claimed.
+
 ## Ordered implementation and acceptance criteria
 
 1. **Durable warm flushing.** Retain ownership of a batch until success, retry
