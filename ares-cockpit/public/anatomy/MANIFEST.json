@@ -1,0 +1,37 @@
+{
+  "source_repository": "https://github.com/pernelluvsya/atlas-proto",
+  "source_commit": "236f3a183108bcccc1f95fda1558be19d7486d00",
+  "geometry_license": "CC BY-SA 4.0 (upstream Z-Anatomy/BodyParts3D attribution applies)",
+  "files": [
+    {
+      "file": "SkeletalSystem100.glb",
+      "bytes": 5674676,
+      "sha256": "cdf521002c17ada3a139b1ba3ca04f1f62421a558b067de7f7fb964b0a9a2884",
+      "source_url": "https://raw.githubusercontent.com/pernelluvsya/atlas-proto/236f3a183108bcccc1f95fda1558be19d7486d00/lite/SkeletalSystem100.glb"
+    },
+    {
+      "file": "MuscularSystem100.glb",
+      "bytes": 5241848,
+      "sha256": "52903970445c1978886d1c2aae32182f8659b01623b02d4875f4ef3c8bdcddf7",
+      "source_url": "https://raw.githubusercontent.com/pernelluvsya/atlas-proto/236f3a183108bcccc1f95fda1558be19d7486d00/lite/MuscularSystem100.glb"
+    },
+    {
+      "file": "CardioVascular41.glb",
+      "bytes": 5234824,
+      "sha256": "4dda8325e52121707a2a15c197388aa67e6553095b93b87769b4ddd03c4fc561",
+      "source_url": "https://raw.githubusercontent.com/pernelluvsya/atlas-proto/236f3a183108bcccc1f95fda1558be19d7486d00/lite/CardioVascular41.glb"
+    },
+    {
+      "file": "VisceralSystem100.glb",
+      "bytes": 4448992,
+      "sha256": "14f81ec6ac81b6b012e6bf9f3a39d4e82b5286da4f3bb509c7c7c091b392d6dc",
+      "source_url": "https://raw.githubusercontent.com/pernelluvsya/atlas-proto/236f3a183108bcccc1f95fda1558be19d7486d00/lite/VisceralSystem100.glb"
+    },
+    {
+      "file": "NervousSystem100.glb",
+      "bytes": 6155192,
+      "sha256": "cee2241f74c4e789b478027113444d9e02e0900f7603988531e1792df7795ad6",
+      "source_url": "https://raw.githubusercontent.com/pernelluvsya/atlas-proto/236f3a183108bcccc1f95fda1558be19d7486d00/lite/NervousSystem100.glb"
+    }
+  ]
+}

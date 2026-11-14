@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   alarmFor,
   clamp,
@@ -20,6 +20,7 @@ import { ENGINE_HTTP_URL, useTelemetry, type RecordedHistoryPoint } from './lib/
 import { AlarmBadge, TriPhaseHeader, type Phase } from './modules/header-triphase/TriPhaseHeader';
 import { MriGauge, PredicateBars, StlChart } from './modules/mri-and-stl/MriAndStl';
 import { BodyHeatmap } from './modules/body-3d-heatmap/BodyHeatmap';
+import type { InjuryMarker } from './types/injury';
 import { WhatIfConsole } from './modules/whatif-console/WhatIfConsole';
 import { PlaybookRunner } from './modules/playbook-runner/PlaybookRunner';
 import { EcgStrip, OcularOnsd, PocusIjv } from './modules/analysis-imaging/Imaging';
@@ -253,6 +254,28 @@ export default function App() {
   const [evalTab, setEvalTab] = useState<EvalTab>('BODY_3D');
   const [whatIfOverlayActive, setWhatIfOverlayActive] = useState<boolean>(false);
   const [paletteOpen, setPaletteOpen] = useState<boolean>(false);
+  const [injuries, setInjuries] = useState<InjuryMarker[]>([]);
+  const injuryPhotoUrls = useRef(new Set<string>());
+  useEffect(() => {
+    const urls = injuryPhotoUrls.current;
+    return () => { urls.forEach(url => URL.revokeObjectURL(url)); urls.clear(); };
+  }, []);
+
+  const releaseInjuryPhoto = (injury: InjuryMarker) => {
+    if (injury.photoUrl) {
+      URL.revokeObjectURL(injury.photoUrl);
+      injuryPhotoUrls.current.delete(injury.photoUrl);
+    }
+  };
+  const addInjury = (injury: InjuryMarker) => {
+    injuries.filter(current => current.region === injury.region).forEach(releaseInjuryPhoto);
+    if (injury.photoUrl) injuryPhotoUrls.current.add(injury.photoUrl);
+    setInjuries(current => [...current.filter(note => note.region !== injury.region), injury]);
+  };
+  const resolveInjury = (id: string) => {
+    injuries.filter(current => current.id === id).forEach(releaseInjuryPhoto);
+    setInjuries(current => current.filter(note => note.id !== id));
+  };
 
   const {
     packet,
@@ -530,8 +553,8 @@ export default function App() {
 
                 {evalTab === 'BODY_3D' && (
                   <Card
-                    title="Your 3D Body Scan"
-                    tag="Click any point to inspect, drag to rotate"
+                    title="Interactive Body Map"
+                    tag="Generic anatomy · click a region to inspect"
                     origin={hasHemodynamics || hasMusculoskeletal ? (packet.is_local_simulation ? 'SIMULATED_SCENARIO_INPUT' : 'DERIVED_FROM_HYBRID_SCENARIO') : 'UNAVAILABLE'}
                     className="min-h-0 flex-1"
                   >
@@ -546,6 +569,9 @@ export default function App() {
                       <BodyHeatmap
                         s={s}
                         sex={whatIf.sex}
+                        injuries={injuries}
+                        onAddInjury={addInjury}
+                        onResolveInjury={resolveInjury}
                         onChangeSex={(sex) => handleWhatIfChange({ ...whatIf, sex })}
                         onOpenTab={setEvalTab}
                       />
