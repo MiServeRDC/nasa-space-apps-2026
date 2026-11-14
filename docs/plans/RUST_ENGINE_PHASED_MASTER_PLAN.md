@@ -1,7 +1,7 @@
 # Piano Progettuale Master a Fasi e Blocchi — Motore & Backend Rust di ARES-Health
 
 - **Tag di Tracciabilita**: `[FABIO, IMPLEMENTATION]` | `[ARES-HEALTH, RUST-CORE-ENGINE]`
-- **Stato**: ALL 28 PHASES / 11 BLOCKS (A-K) `COMPLETED (TESTED)` (`126/126` Workspace Tests Passing across `28` Suites & `8` Crates, `0` Clippy Warnings, `--release` 1-Tick Pipeline `p99.9=5.58 µs`, `SeqlockTelemetryRing` `p50=42 ns` / `p99.9=84 ns`, `ares-cockpit` Dual-Transport & `NASA-STD-3001` Verified)
+- **Stato**: ALL 28 PHASES / 11 BLOCKS (A-K) `COMPLETED (TESTED)` (`126/126` Workspace Tests Passing across `28` Suites & `8` Crates, `0` Clippy Warnings, `--release` 1-Tick Pipeline `p99.9=5.58 µs`, `SeqlockTelemetryRing` `p50=42 ns` / `p99.9=84 ns`, `ares-cockpit` Dual-Transport & `NASA-STD-3001` Verified) | **Blocco L (Fasi 29–34)** `[ ] PLANNED (READY FOR EXECUTION)` ([`BLOCK_L_GAP_CLOSURE_ARCHITECTURE.md`](BLOCK_L_GAP_CLOSURE_ARCHITECTURE.md))
 - **Ispirazione Metodologica**: Gold Standard di `spatiotemporal-mcp-engine` (`memory-bank/progress.md`, `docs/architecture/IMPLEMENTATION_STACK.md`, `docs/plans/phase_*.md`, `scripts/agent_probe.sh`)
 - **Budget Latenza Hot-Path (Valutazione Completa Grafo ADHG + ODE RK4 + NQS-STL + Playbook DAG)**: $< 150\,\mu\text{s}$ (`P99` in-memory per tick)
 - **Budget Latenza IPC `ARES-MedOS` (Blocco J)**: `< 0.05 ms` (`Tauri v2` `Channel<ArrayBuffer>` `128 B`) / `< 100 ns` (`SeqlockTelemetryRing` & `iceoryx2` SHM) | `< 1.0 ms` fallback WebSocket (`127.0.0.1:8080`)
@@ -81,6 +81,14 @@ flowchart TD
         F27["Fase 27 (K3): Full-Stack Contract (Rust <-> TS DataView), 1Hz/20Hz Dual-Clock & FastMCP POST /api/mcp E2E"]
         F28["Fase 28 (K4): NASA-STD-3001 Vol. 1 & 2 Normative Traceability Matrix & Hard Real-Time Latency/RAM Harness"]
     end
+    subgraph Blocco_L["BLOCCO L [PLANNED]: Gap Closure, Operational Deployment, Edge AI Copilot, Calibration & NASA Submission"]
+        F29["Fase 29 (L1): Cockpit Live Playbook/Safety Gates, Multi-Horizon Timestral Cones & 3D UBERON/GLB Binding"]
+        F30["Fase 30 (L2): Native Tauri v2 Window (Metal/Vulkan), Channel<Response> 128B & Real iceoryx2/Zenoh SHM"]
+        F31["Fase 31 (L3): Pure-Rust Level-1 GATHER DSP (60GHz/5.2GHz Radar, YIN Vocal & 125-500Hz Pan-Tompkins R-R)"]
+        F32["Fase 32 (L4): Air-Gapped Edge LLM Copilot, Offline Voice (whisper-rs/WebSpeech) & SafeTensors Loader"]
+        F33["Fase 33 (L5): Subject-Disjoint Clinical Calibration (CQR/Clopper-Pearson/ECE), Parquet Adapters & Issue #12"]
+        F34["Fase 34 (L6): Deterministic NASA 2026 Submission Bundle (7-Slide Typst PDF, 30s/180s SRT & Issue #12 Guard)"]
+    end
 
     F1 --> F2
     F2 --> F3
@@ -114,6 +122,20 @@ flowchart TD
     F25 --> F28
     F26 --> F28
     F27 --> F28
+    F28 --> F29
+    F28 --> F30
+    F28 --> F31
+    F29 --> F30
+    F30 --> F32
+    F14 --> F32
+    F17 --> F32
+    F31 --> F33
+    F20 --> F33
+    F16 --> F33
+    F29 --> F34
+    F30 --> F34
+    F32 --> F34
+    F33 --> F34
 ```
 
 ---
@@ -475,7 +497,53 @@ flowchart TD
 
 ---
 
-## 3. Matrice Riassuntiva di Tracciamento degli 11 Blocchi / 28 Fasi e Link ai Piani Implementativi (`docs/plans/phase_*.md`)
+### BLOCCO L — Gap Closure, Operational Deployment, Edge AI Copilot, Clinical Calibration & NASA Space Apps 2026 Submission (`Fasi 29–34`)
+* **Architettura Master & Matrice Cross-Crate:** [`docs/plans/BLOCK_L_GAP_CLOSURE_ARCHITECTURE.md`](BLOCK_L_GAP_CLOSURE_ARCHITECTURE.md)
+* **Crate / Target:** Workspace completo (`ares-core-types`, `ares-telemetry-ingest`, `ares-causal-graph`, `ares-nqs-stl`, `ares-server-cli`, `crates/ares-desktop-os`), `ares-cockpit/`, `assets/models/`, `docs/submission/`, `scripts/`
+* **Owner Principale:** `@fabiomalagutti27-droid` (coordinato con `@carolina2910`, `@fertech02`, `@LelloXV`, `@MiServeRDC`)
+
+#### Fase 29 (`L1`): Authoritative Cockpit Live-Engine Bindings, Multi-Horizon `Timestral` Quantile Cones & 3D `UBERON:` / Air-Gapped `.glb` Visualization (`ares-cockpit/`)
+* **Stato:** `[ ] PLANNED` (Piano: [`docs/plans/phase_29_L1_cockpit_live_bindings_3d_cones.md`](phase_29_L1_cockpit_live_bindings_3d_cones.md))
+* **Specifica Tecnica:**
+  * Collega `PlaybookRunner.tsx` direttamente a `WireActivePlaybook` (`PLAYBOOK_01..05` + Gate 1/2/3 + conferma POCUS bidirezionale via `POST /api/stress-test` / `apply_what_if_patch`, touch target `>= 44x44 pt` su `#000000` OLED per `MIL-STD-1472H`).
+  * Collega `StlChart` (`MriAndStl.tsx`) a `NqsQuantileForecastSnapshot` (`+15m / +1h / +6h / +24h` log-scaled non-crossing $q_{0.05} \le q_{0.50} \le q_{0.95}$ + `ConformalAbstentionGate`, guardia Issue `#11` `rmssd_ms_cone: null` -> `BEAT_INTERVALS_NOT_AVAILABLE`, etichette Issue `#12` `ILLUSTRATIVE_UNVALIDATED` / `ILLUSTRATIVE_SCENARIO_RANGE`).
+  * Collega `BodyHeatmap.tsx` & `AnatomicalLayers.tsx` a `hypergraph_spatial.cells` (`UBERON:0000970/0001586/0000948/0001389/0000955`, distinzione `observed: false` su `UBERON:0000948`, 6 archi di conduzione) + `NasaGlbAssetLayer.tsx` locale air-gapped (`GLTFLoader` + guardia magic `0x46546C67` anti-HTML fallback, CSP `'self'`).
+
+#### Fase 30 (`L2`): Native `Tauri v2` Workstation Window (`WKWebView`/Metal & `WebKitGTK`/Vulkan), Real POSIX SHM `iceoryx2` + `Zenoh` DSN IPC & macOS `.app` Bundle
+* **Stato:** `[ ] PLANNED` (Piano: [`docs/plans/phase_30_L2_tauri_native_window_iceoryx2_ipc.md`](phase_30_L2_tauri_native_window_iceoryx2_ipc.md))
+* **Specifica Tecnica:**
+  * Completa `crates/ares-desktop-os` (`default=[]`, `tauri-runtime` headless CI, `tauri-native` GUI con `build.rs`, `capabilities/default.json`, `icons/`, Thread-0 AppKit/GTK isolato da Tokio, `ipc_bridge.rs` con `Channel<Response>` `InvokeResponseBody::Raw` `128 B` `< 50 us` e `resolve_medos_data_dir` per `ARES-MedOS.app`).
+  * Implementa `crates/ares-server-cli/src/shm_bus.rs` (`--features shm-ipc`) con `Iox2TelemetryFrame` (`iceoryx2::ZeroCopySend` `loan_uninit()` `< 100 ns`), `ZenohDsnAdapter` air-gapped con `OwltMarsCommState` (`852 s` + blackout outbox) e `NonBlockingShmDsnDispatcher::try_dispatch` (`< 150 ns` `ARINC 653`) in `ws_server.rs`, piu estensione `scripts/launch_ares_medos.sh` (`--native`, `--bundle-macos`, `--bundle-linux`, `--verify`).
+
+#### Fase 31 (`L3`): Pure-Rust Level-1 `GATHER` DSP Modules (`radar_csi_dsp`, `vocal_acoustic_dsp` & `waveform_rr_extractor` `125–500 Hz`)
+* **Stato:** `[ ] PLANNED` (Piano: [`docs/plans/phase_31_L3_gather_radar_vocal_waveform_dsp.md`](phase_31_L3_gather_radar_vocal_waveform_dsp.md))
+* **Specifica Tecnica:**
+  * Implementa in `crates/ares-telemetry-ingest/src/` senza allocazioni heap nel loop (`< 15 us`, `< 28 KB`/astronauta): `radar_csi_dsp.rs` (`60 GHz`/`5.2 GHz` $\Delta\phi = 4\pi d/\lambda$, clutter EMA, banco SOS biquad DF2T notch `60/120 Hz` con verifica di Jury e guardia Nyquist, `SQI >= 0.70`), `vocal_acoustic_dsp.rs` (`YIN` $F_0$ + interpolazione parabolica, jitter, shimmer, `HNR`, spectral tilt, VAD `pause_ratio`, rigoroso `None` su silenzio/non vocalizzato), e `waveform_rr_extractor.rs` (`125–500 Hz` Pan-Tompkins + filtro ectopia di Malik $\pm 20\%$).
+  * Integra `GatherDspOverlay` in `scenario_overlay.rs` rispettando in modo assoluto Issue `#11`: `BidmcReplayer` (`1 Hz` numerico) resta sempre `rmssd_ms: None` + `BEAT_INTERVALS_NOT_AVAILABLE`, mentre solo stream waveform reali `125–500 Hz` possono popolare `Some(rmssd_ms)` via `SqiFilter::evaluate_row_with_rmssd`.
+
+#### Fase 32 (`L4`): Local Conversational Edge LLM + Voice-First Copilot & Cryptographically Verified `Timestral` `SafeTensors` Loader
+* **Stato:** `[ ] PLANNED` (Piano: [`docs/plans/phase_32_L4_edge_llm_voice_copilot_safetensors.md`](phase_32_L4_edge_llm_voice_copilot_safetensors.md))
+* **Specifica Tecnica:**
+  * `crates/ares-nqs-stl/src/timestral_safetensors.rs`: deserializzazione zero-copy `SafeTensors` (`F32`/`BF16` $\to$ `f64`, backend opzionale `--features candle-safetensors`) con verifica `SHA-256` contro `assets/models/MANIFEST.json` (`< 5 ms`) e fallback automatico pulito a `new_deterministic`, preservando `ModelValidationStatus::IllustrativeUnvalidated`.
+  * `crates/ares-server-cli/src/edge_llm_bridge.rs`: bridge HTTP/1.1 asincrono su loopback `127.0.0.1` / `MACMINI_LLM_URL` RFC1918 (`<= 2500 ms` timeout, max `2` round tool-calling sui soli `8` tool `FastMCP` `<= 600 B` filtrati da `StrictMcpSanitizer`, verificatore post-generazione dei Safety Gates 1–3 in stile `DO-178C` DAL-E + fallback Type-1 `OfflineTemplateCopilot` `< 400 us`), esposto su `POST /api/copilot/ask` & `/stream` (`0 ns` impatto sul tick `20 Hz`).
+  * `crates/ares-desktop-os/src/voice_whisper.rs` (`--features offline-voice`, `whisper-rs` GGML `~31–57 MB`, `< 350 ms` su `3 s` PCM16) + `ares-cockpit/src/lib/voiceIntentRouter.ts` & `OsVoiceCopilot.tsx` (Push-To-Talk `Space`/`Alt+V`, wake-word `"ARES"`, interlock `[V2 10027]`, target `>= 44x44 pt` `[V2 10001]`).
+
+#### Fase 33 (`L5`): Subject-Disjoint Clinical Calibration, Conformal Coverage Audit & Multi-Agency Parquet Dataset Adapters (Issue `#12` Closure)
+* **Stato:** `[ ] PLANNED` (Piano: [`docs/plans/phase_33_L5_clinical_calibration_24dataset_parquet.md`](phase_33_L5_clinical_calibration_24dataset_parquet.md))
+* **Specifica Tecnica:**
+  * `crates/ares-causal-graph/src/parquet_adapters.rs` (`--features parquet-ingest` con `arrow-array`/`parquet` pure-Rust + fallback CSV/TSV/WFDB): adapter per `BIDMC`, `PhysioNet Fantasia/CEBS/PPG-DaLiA`, `NASA OSDR` e `DLR AGBRESA/SANS-CM` con stato `AdapterStatus::ExternalDatasetNotBundled` se assenti su disco (`0` nodi sintetici).
+  * `crates/ares-nqs-stl/src/calibration_harness.rs` & `crates/ares-server-cli/src/bin/ares_calibrate.rs`: partizionamento `SubjectDisjointSplit` con 4 guardie anti-leakage, calibrazione split-conformal `CQR`, baseline `Persistence` & `RollingMedianIqr`, intervalli esatti di Clopper-Pearson, Winkler/Pinball/Brier/ECE su `10` bin, sensibilita RK4 oltre `60` giorni (`mechanotransduction.rs`) e audit gap `(0.45, 0.92)` (`bayesian_pocus.rs`).
+  * Macchina a stati `ModelValidationStatus` (`IllustrativeUnvalidated` default -> `InternallyBenchmarkedTerrestrial` -> `ClinicallyCalibratedSubjectToReview`) e flag `FLAG_TERRESTRIAL_BENCHMARKED_ONLY` in `ares-core-types`: vieta rigorosamente l'upgrade su dati sintetici.
+
+#### Fase 34 (`L6`): Deterministic NASA Space Apps 2026 Submission Package (7-Slide OLED Typst PDF, 30s/180s Storyboards & `.srt`, Issue `#12` Guard)
+* **Stato:** `[ ] PLANNED` (Piano: [`docs/plans/phase_34_L6_nasa_submission_pitch_slides_pdf.md`](phase_34_L6_nasa_submission_pitch_slides_pdf.md))
+* **Specifica Tecnica:**
+  * Genera e verifica in modalita offline bit-riproducibile (`typst 0.15.1` + `SOURCE_DATE_EPOCH`): `docs/submission/NASA_2026_7_SLIDE_DECK.typ`/`.pdf` (esattamente `7` pagine `16:9` `#000000` OLED), `PITCH_30S_STORYBOARD.md` + `PITCH_30S_SUBTITLES_EN.srt` (`<= 00:00:30,000`), `WALKTHROUGH_180S_DEMO_SCRIPT.md` + `WALKTHROUGH_180S_SUBTITLES_EN.srt` (`<= 00:03:00,000`), `NASA_SUBMISSION_PORTAL_READY.md` (zero `file://`), e rigenera `PANORAMICA_GENERALE_PROGETTO.md`/`.pdf` sincronizzato ai Blocchi `A–L` e a `MODEL_EVIDENCE_AUDIT.md`.
+  * Introduce `scripts/build_submission_docs.sh` con `6` gate automatici CI (`L6-01..L6-06`): compilazione Typst, doppio oracolo `N_pages == 7`, validazione sintattica/temporale `.srt`, zero emoji, audit semantico Issue `#11`/`#12`, e link-checker + `agent_probe.sh --fast` (`< 2.5 s`).
+
+---
+
+## 3. Matrice Riassuntiva di Tracciamento dei 12 Blocchi / 34 Fasi e Link ai Piani Implementativi (`docs/plans/phase_*.md`)
 
 | Blocco | Fase | Piano Implementativo Dedicato (`docs/plans/`) | Crate Target | Owner | Latenza / Footprint Target | Stato |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -507,12 +575,18 @@ flowchart TD
 | **Blocco K (Testing)** | **Fase 26 (`K2`)** | [`phase_26_K2_clinical_chaos_sensor_dropout_seu_fault_injection.md`](phase_26_K2_clinical_chaos_sensor_dropout_seu_fault_injection.md) | `ares-telemetry-ingest`, `ares-nqs-stl`, `ares-security-privacy` | `@fabiomalagutti27-droid` (`impl-k1-k2-tests`) | `100%` SEU CRC-8/16/32C & ZOH/AEAD | `[x] COMPLETED (TESTED)` |
 | **Blocco K (Testing)** | **Fase 27 (`K3`)** | [`phase_27_K3_full_stack_contract_cockpit_ipc_mcp_e2e.md`](phase_27_K3_full_stack_contract_cockpit_ipc_mcp_e2e.md) | `ares-server-cli`, `ares-desktop-os`, `ares-cockpit/` | `@fabiomalagutti27-droid` (`impl-k3-k4-tests`) | `128 B` parity / `8` `FastMCP` `<= 600 B` | `[x] COMPLETED (TESTED)` |
 | **Blocco K (Testing)** | **Fase 28 (`K4`)** | [`phase_28_K4_nasa_std_3001_compliance_latency_memory_benchmark.md`](phase_28_K4_nasa_std_3001_compliance_latency_memory_benchmark.md) | Workspace (8 crates) & `NASA-STD-3001` | `@fabiomalagutti27-droid` (`impl-k3-k4-tests`) | `5.58 µs` `p99.9` / `167 KB` & `196 KB` | `[x] COMPLETED (TESTED)` |
+| **Blocco L (Gap Closure)** | **Fase 29 (`L1`)** | [`phase_29_L1_cockpit_live_bindings_3d_cones.md`](phase_29_L1_cockpit_live_bindings_3d_cones.md) | `ares-cockpit/` (`PlaybookRunner`, `MriAndStl`, `BodyHeatmap`) | `@carolina2910` & `@fabiomalagutti27-droid` | `< 16.6 ms` (`60 FPS`) / `< 1 ms` POCUS | `[ ] PLANNED` |
+| **Blocco L (Gap Closure)** | **Fase 30 (`L2`)** | [`phase_30_L2_tauri_native_window_iceoryx2_ipc.md`](phase_30_L2_tauri_native_window_iceoryx2_ipc.md) | `crates/ares-desktop-os` & `ares-server-cli` (`shm_bus.rs`) | `@fabiomalagutti27-droid` & `@fertech02` | `< 50 µs` IPC / `< 100 ns` `iceoryx2` / `< 150 ns` | `[ ] PLANNED` |
+| **Blocco L (Gap Closure)** | **Fase 31 (`L3`)** | [`phase_31_L3_gather_radar_vocal_waveform_dsp.md`](phase_31_L3_gather_radar_vocal_waveform_dsp.md) | `crates/ares-telemetry-ingest` (`radar_csi`, `vocal`, `rr`) | `@LelloXV` & `@fabiomalagutti27-droid` | `< 15 µs` DSP / `< 28 KB` per crew | `[ ] PLANNED` |
+| **Blocco L (Gap Closure)** | **Fase 32 (`L4`)** | [`phase_32_L4_edge_llm_voice_copilot_safetensors.md`](phase_32_L4_edge_llm_voice_copilot_safetensors.md) | `ares-nqs-stl`, `ares-server-cli`, `ares-desktop-os`, `ares-cockpit` | `@fabiomalagutti27-droid` & `@fertech02` | `0 ns` 20Hz / `< 2.5 s` LLM / `< 5 ms` SafeTensors | `[ ] PLANNED` |
+| **Blocco L (Gap Closure)** | **Fase 33 (`L5`)** | [`phase_33_L5_clinical_calibration_24dataset_parquet.md`](phase_33_L5_clinical_calibration_24dataset_parquet.md) | `ares-core-types`, `ares-causal-graph`, `ares-nqs-stl`, `ares-calibrate` | `@fabiomalagutti27-droid` & `@MiServeRDC` | `< 250 ms` CLI audit / `0` network | `[ ] PLANNED` |
+| **Blocco L (Gap Closure)** | **Fase 34 (`L6`)** | [`phase_34_L6_nasa_submission_pitch_slides_pdf.md`](phase_34_L6_nasa_submission_pitch_slides_pdf.md) | `docs/submission/`, `PANORAMICA_*`, `scripts/build_submission_docs.sh` | `@fabiomalagutti27-droid` (Team Review) | `< 2.5 s` Typst + 6 CI Gates | `[ ] PLANNED` |
 
 ---
 
-## 4. Budget Computazionale di Latenza (`< 150 µs` Hot-Path) e Memoria (`ARES-HyperGraph` + `Timestral` + `ARES-MedOS`)
+## 4. Budget Computazionale di Latenza (`< 150 µs` Hot-Path) e Memoria (`ARES-HyperGraph` + `Timestral` + `ARES-MedOS` + `Blocco L`)
 
-| Sottosistema / Blocco | Latenza Hot-Path (`20 Hz` Sync) | Latenza Background (`1 Hz` Async) | Footprint RAM In-Memory | Footprint Disco Locale |
+| Sottosistema / Blocco | Latenza Hot-Path (`20 Hz` Sync) | Latenza Background (`1 Hz` Async / On-Demand) | Footprint RAM In-Memory | Footprint Disco Locale |
 | :--- | :---: | :---: | :---: | :---: |
 | **Blocchi A + B (`Ingest + SQI`)** | `8.5 µs` | -- | `< 64 KB` | `36 KB` (`data/bidmc/`) |
 | **Blocco C (`ADHG + RK4 + POCUS`)** | `19.2 µs` | -- | `< 128 KB` | -- |
@@ -521,4 +595,5 @@ flowchart TD
 | **Blocco I (`ARES-HyperGraph` + `DatasetGraph`)** | `23.0 µs` (Welford + Deontic + BioKG) | -- | `< 200 KB` (900d) + `~8.4 MB` (24 DS) | `~14.2 MB` (`graphify` JSON) |
 | **Blocchi E + F (`Playbook DAG + SHA-256`)** | `11.4 µs` | -- | `< 128 KB` | -- |
 | **Blocco J (`ARES-MedOS` Zero-Copy IPC & Shell)** | **`< 100 ns` SHM Seqlock / `< 0.05 ms` Tauri IPC** | `120 FPS` Metal/Vulkan (`< 8.3 ms`) | `~30–50 MB` (`Tauri v2` native shell) | `~3–10 MB` (installer) |
-| **TOTALE PIPELINE SINCRONA (`20 Hz`)** | **`66.38 µs << 150.0 µs` (SLA OK)** | **`6.95 ms << 1000 ms` (`1 Hz` OK)** | **`~9.2 MB` Engine (+ `~38 MB` Shell)** | **`< 0.5 GB` Totali su SSD** |
+| **Blocco L (`L1–L6` Planned Extensions)** | **`0 ns` Copilot / `< 150 ns` `try_dispatch` SHM / `< 15 µs` Level-1 DSP** | `< 2.5 s` LLM (`< 400 µs` fallback) / `< 350 ms` `whisper-rs` / `< 250 ms` `ares-calibrate` | `+ < 28 KB`/crew DSP + `~31–57 MB` (`--features offline-voice`) | `~196 KB` `SafeTensors` + `~31–57 MB` GGML (opz.) |
+| **TOTALE PIPELINE SINCRONA (`20 Hz`)** | **`66.38 µs << 150.0 µs` (SLA OK, `p99.9=5.58 µs` `--release`)** | **`6.95 ms << 1000 ms` (`1 Hz` OK)** | **`~9.2 MB` Engine (+ `~38 MB` Shell)** | **`< 0.5 GB` Totali su SSD** |
