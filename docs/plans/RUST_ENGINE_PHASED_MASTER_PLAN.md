@@ -297,21 +297,21 @@ flowchart TD
 
 ---
 
-## 3. Matrice Riassuntiva di Tracciamento delle 14 Fasi (Stile `spatiotemporal-mcp-engine`)
+## 3. Matrice Riassuntiva di Tracciamento delle 14 Fasi e Link ai Piani Implementativi Dettagliati (`docs/plans/phase_*.md`)
 
-| Blocco | Fase | Crate Target | Owner | Latenza Target | Stato |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Blocco A** | **Fase 1 (`A1`)** | `crates/ares-core-types` | `@fabiomalagutti27-droid` | `< 5 µs` (serde) | `[ ] PIANIFICATA` |
-| **Blocco A** | **Fase 2 (`A2`)** | `crates/ares-core-types` | `@fabiomalagutti27-droid` | `0 ns` (`const`) | `[ ] PIANIFICATA` |
-| **Blocco B** | **Fase 3 (`B1`)** | `crates/ares-telemetry-ingest` | `@LelloXV` | `< 20 µs/riga` | `[ ] PIANIFICATA` |
-| **Blocco B** | **Fase 4 (`B2`)** | `crates/ares-telemetry-ingest` | `@LelloXV` | `< 15 µs` | `[ ] PIANIFICATA` |
-| **Blocco C (Core)** | **Fase 5 (`C1`)** | `crates/ares-causal-graph` | `@fabiomalagutti27-droid` | `< 10 µs` (RK4) | `[ ] PIANIFICATA` |
-| **Blocco C (Core)** | **Fase 6 (`C2`)** | `crates/ares-causal-graph` | `@fabiomalagutti27-droid` | `< 10 µs` | `[ ] PIANIFICATA` |
-| **Blocco C (Core)** | **Fase 7 (`C3`)** | `crates/ares-causal-graph` | `@fabiomalagutti27-droid` | `< 25 µs` (ADHG) | `[ ] PIANIFICATA` |
-| **Blocco D (Core)** | **Fase 8 (`D1`)** | `crates/ares-nqs-stl` | `@fabiomalagutti27-droid` | `< 10 µs` ($O(1)$) | `[ ] PIANIFICATA` |
-| **Blocco D (Core)** | **Fase 9 (`D2`)** | `crates/ares-nqs-stl` | `@fabiomalagutti27-droid` | `< 15 µs` | `[ ] PIANIFICATA` |
-| **Blocco E** | **Fase 10 (`E1`)** | `crates/ares-medops-playbooks` | `@fertech02` | `< 20 µs` (DAG) | `[ ] PIANIFICATA` |
-| **Blocco E** | **Fase 11 (`E2`)** | `crates/ares-medops-playbooks` | `@fertech02` | `< 5 µs` (Gates) | `[ ] PIANIFICATA` |
-| **Blocco F** | **Fase 12 (`F1`)** | `crates/ares-security-privacy` | `@MiServeRDC` | `< 30 µs` (SHA/AEAD)| `[ ] PIANIFICATA` |
-| **Blocco G** | **Fase 13 (`G1`)** | `crates/ares-server-cli` | `@fertech02` | `< 1 ms` (WS 20Hz) | `[ ] PIANIFICATA` |
-| **Blocco G** | **Fase 14 (`G2`)** | `crates/ares-server-cli` | `@fertech02` | `< 500 µs` (MCP) | `[ ] PIANIFICATA` |
+| Blocco | Fase | Piano Implementativo Dedicato (`docs/plans/`) | Crate Target | Owner | Latenza Target | Stato |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Blocco A** | **Fase 01 (`A1`)** | [`phase_01_A1_core_telemetry_contracts_and_provenance_plan.md`](phase_01_A1_core_telemetry_contracts_and_provenance_plan.md) | `crates/ares-core-types` | `@fabiomalagutti27-droid` | `< 5 µs` (serde) | `[x] COMPLETATA` |
+| **Blocco A** | **Fase 02 (`A2`)** | [`phase_02_A2_nasa_std_3001_constants_errors_and_security_traits_plan.md`](phase_02_A2_nasa_std_3001_constants_errors_and_security_traits_plan.md) | `crates/ares-core-types` | `@fabiomalagutti27-droid` | `0 ns` (`const`) | `[x] COMPLETATA` |
+| **Blocco B** | **Fase 03 (`B1`)** | [`phase_03_B1_bidmc_reproducible_csv_replayer_and_null_handling_plan.md`](phase_03_B1_bidmc_reproducible_csv_replayer_and_null_handling_plan.md) | `crates/ares-telemetry-ingest` | `@LelloXV` | `< 20 µs/riga` | `[x] COMPLETATA` |
+| **Blocco B** | **Fase 04 (`B2`)** | [`phase_04_B2_shannon_spectral_entropy_sqi_and_scenario_overlay_plan.md`](phase_04_B2_shannon_spectral_entropy_sqi_and_scenario_overlay_plan.md) | `crates/ares-telemetry-ingest` | `@LelloXV` | `< 15 µs` | `[x] COMPLETATA` |
+| **Blocco C (Core)** | **Fase 05 (`C1`)** | [`phase_05_C1_frost_hargens_rk4_sclerostin_mqi_and_gai_plan.md`](phase_05_C1_frost_hargens_rk4_sclerostin_mqi_and_gai_plan.md) | `crates/ares-causal-graph` | `@fabiomalagutti27-droid` | `< 10 µs` (RK4) | `[x] COMPLETATA` |
+| **Blocco C (Core)** | **Fase 06 (`C2`)** | [`phase_06_C2_jugular_shear_stress_lbnp_dose_response_and_sans_plan.md`](phase_06_C2_jugular_shear_stress_lbnp_dose_response_and_sans_plan.md) | `crates/ares-causal-graph` | `@fabiomalagutti27-droid` | `< 10 µs` | `[x] COMPLETATA` |
+| **Blocco C (Core)** | **Fase 07 (`C3`)** | [`phase_07_C3_adhg_causal_petgraph_and_two_stage_bayesian_pocus_plan.md`](phase_07_C3_adhg_causal_petgraph_and_two_stage_bayesian_pocus_plan.md) | `crates/ares-causal-graph` | `@fabiomalagutti27-droid` | `< 25 µs` (ADHG) | `[x] COMPLETATA` |
+| **Blocco D (Core)** | **Fase 08 (`D1`)** | [`phase_08_D1_nqs_stl_normalizer_and_lemire_o1_sliding_window_plan.md`](phase_08_D1_nqs_stl_normalizer_and_lemire_o1_sliding_window_plan.md) | `crates/ares-nqs-stl` | `@fabiomalagutti27-droid` | `< 10 µs` ($O(1)$) | `[x] COMPLETATA` |
+| **Blocco D (Core)** | **Fase 09 (`D2`)** | [`phase_09_D2_ewma_ols_ttv_predictor_and_mission_readiness_index_plan.md`](phase_09_D2_ewma_ols_ttv_predictor_and_mission_readiness_index_plan.md) | `crates/ares-nqs-stl` | `@fabiomalagutti27-droid` | `< 15 µs` | `[x] COMPLETATA` |
+| **Blocco E** | **Fase 10 (`E1`)** | [`phase_10_E1_type1_crystallized_medops_playbooks_dag_plan.md`](phase_10_E1_type1_crystallized_medops_playbooks_dag_plan.md) | `crates/ares-medops-playbooks` | `@fertech02` | `< 20 µs` (DAG) | `[x] COMPLETATA` |
+| **Blocco E** | **Fase 11 (`E2`)** | [`phase_11_E2_three_hard_clinical_safety_gates_state_machine_plan.md`](phase_11_E2_three_hard_clinical_safety_gates_state_machine_plan.md) | `crates/ares-medops-playbooks` | `@fertech02` | `< 5 µs` (Gates) | `[x] COMPLETATA` |
+| **Blocco F** | **Fase 12 (`F1`)** | [`phase_12_F1_role_based_crew_privacy_sha256_audit_and_aead_plan.md`](phase_12_F1_role_based_crew_privacy_sha256_audit_and_aead_plan.md) | `crates/ares-security-privacy` | `@MiServeRDC` | `< 30 µs` (SHA/AEAD)| `[x] COMPLETATA` |
+| **Blocco G** | **Fase 13 (`G1`)** | [`phase_13_G1_axum_20hz_websocket_and_sub_ms_stress_test_api_plan.md`](phase_13_G1_axum_20hz_websocket_and_sub_ms_stress_test_api_plan.md) | `crates/ares-server-cli` | `@fertech02` | `< 1 ms` (WS 20Hz) | `[x] COMPLETATA` |
+| **Blocco G** | **Fase 14 (`G2`)** | [`phase_14_G2_fastmcp_stdio_jsonrpc_context_mode_server_plan.md`](phase_14_G2_fastmcp_stdio_jsonrpc_context_mode_server_plan.md) | `crates/ares-server-cli` | `@fertech02` | `< 500 µs` (MCP) | `[x] COMPLETATA` |
