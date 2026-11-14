@@ -1,10 +1,10 @@
 # Piano Progettuale Master a Fasi e Blocchi — Motore & Backend Rust di ARES-Health
 
 - **Tag di Tracciabilita**: `[FABIO, IMPLEMENTATION]` | `[ARES-HEALTH, RUST-CORE-ENGINE]`
-- **Stato**: ALL 20 PHASES (PHASES 01-20 ACROSS BLOCKS A-I) `COMPLETED (TESTED)` — 77/77 Workspace Tests Passing, 0 Clippy Warnings, Physical 24-Dataset Graph Verified (`110` nodes, `326` edges, `24` datasets, `27` BIDMC slices, `158,675` bytes JSON)
+- **Stato**: PHASES 01-20 (BLOCKS A-I) `COMPLETED (TESTED)` (77/77 Workspace Tests Passing, 0 Clippy Warnings, Physical 24-Dataset Graph Verified) | **BLOCCO J (`ARES-MedOS`, Fasi 21-24): `PLANNED (READY FOR IMPLEMENTATION)`**
 - **Ispirazione Metodologica**: Gold Standard di `spatiotemporal-mcp-engine` (`memory-bank/progress.md`, `docs/architecture/IMPLEMENTATION_STACK.md`, `docs/plans/phase_*.md`, `scripts/agent_probe.sh`)
 - **Budget Latenza Hot-Path (Valutazione Completa Grafo ADHG + ODE RK4 + NQS-STL + Playbook DAG)**: $< 150\,\mu\text{s}$ (`P99` in-memory per tick)
-- **Budget Latenza Endpoint Stress-Test (`POST /api/stress-test` -> Broadcast WebSocket)**: $< 1.0\text{ ms}$
+- **Budget Latenza IPC `ARES-MedOS` (Blocco J)**: `< 0.05 ms` (`Tauri v2` `Channel<ArrayBuffer>` `128 B`) / `< 100 ns` (`SeqlockTelemetryRing` & `iceoryx2` SHM) | `< 1.0 ms` fallback WebSocket (`127.0.0.1:8080`)
 - **Budget Token Context-Mode (`FastMCP stdio`)**: $< 150\text{ token}$ ($\le 600\text{ byte}$ JSON serializzato per risposta)
 - **Politica Rust 2024 Strict Mode**: Zero `.unwrap()`, zero `.expect()` nel codice di produzione (`crates/*/src/`), `thiserror` per tutti i crate di libreria (`1..6`), `anyhow` esclusivamente nel binario `crates/ares-server-cli`.
 
@@ -69,6 +69,13 @@ flowchart TD
         F20["Fase 20 (I3): Unified 24-Dataset Knowledge Graph Builder, graphify JSON Exporter & FastMCP Tools"]
     end
 
+    subgraph Blocco_J["BLOCCO J: ARES-MedOS Pure-Rust Workstation Shell, Zero-Copy IPC & Multi-Tier Space OS Targets"]
+        F21["Fase 21 (J1): 128B #[repr(C, align(64))] BinaryTelemetryFrame, Validity Mask & Seqlock/iceoryx2 SHM (< 100 ns)"]
+        F22["Fase 22 (J2): crates/ares-desktop-os Tauri v2 Native Shell (Metal/Vulkan, In-Process 8-Crate + 127.0.0.1:8080)"]
+        F23["Fase 23 (J3): OsSystemStatusBar (#000000 OLED), Alt+Space/Cmd+K FastMCP Palette & Dual-Transport DataView"]
+        F24["Fase 24 (J4): Tier B/C Targets (Asterinas 14% TCB, COSMIC Wayland Kiosk, Hubris/Embassy 32B CRC-16 Wearable)"]
+    end
+
     F1 --> F2
     F2 --> F3
     F2 --> F5
@@ -84,6 +91,13 @@ flowchart TD
     F7 --> F18 --> F19 --> F20
     F17 --> F13
     F20 --> F14
+    F1 --> F21
+    F13 --> F21
+    F21 --> F22 --> F23
+    F14 --> F22
+    F20 --> F23
+    F3 --> F24
+    F21 --> F24
 ```
 
 ---
@@ -378,7 +392,47 @@ flowchart TD
 
 ---
 
-## 3. Matrice Riassuntiva di Tracciamento dei 9 Blocchi / 20 Fasi e Link ai Piani Implementativi (`docs/plans/phase_*.md`)
+### BLOCCO J — `ARES-MedOS`: Pure-Rust Mission Workstation OS Shell, Zero-Copy IPC & Multi-Tier Space OS Partitioning (`1. GATHER` -> `3. ACT` UX & OS Layer)
+* **Crate / Target:** `crates/ares-core-types`, `crates/ares-telemetry-ingest`, `crates/ares-server-cli`, `crates/ares-desktop-os` *(NEW — 8o crate)*, `ares-cockpit/`, `deploy/medos/`
+* **Owner Principale:** `@fabiomalagutti27-droid` (con integrazione `@fertech02`, `@carolina2910`, `@LelloXV`, `@MiServeRDC`)
+* **Studio Architetturale di Riferimento:** [`docs/architecture/RUST_OS_AND_SHELL_FEASIBILITY_STUDY.md`](../architecture/RUST_OS_AND_SHELL_FEASIBILITY_STUDY.md)
+
+#### Fase 21 (`J1`): Zero-Copy Binary Telemetry Protocol (`#[repr(C, align(64))]` `BinaryTelemetryFrame`), Validity Bitmask (`BEAT_INTERVALS_NOT_AVAILABLE`), and Shared-Memory Ring Buffer (`iceoryx2` / Lock-Free SPMC Seqlock Pattern)
+* **Stato:** `[ ] PLANNED (READY FOR IMPLEMENTATION)` (Piano: [`docs/plans/phase_21_J1_zero_copy_binary_ipc_shm_protocol.md`](phase_21_J1_zero_copy_binary_ipc_shm_protocol.md))
+* **File Target:**
+  * `crates/ares-core-types/src/binary_ipc.rs` *(NEW)*
+  * `crates/ares-server-cli/src/shm_bus.rs` *(NEW, `--features shm-ipc`)*
+* **Specifica Tecnica:**
+  * Definisce il frame binario fisso da `128` byte (`#[repr(C, align(64))] BinaryTelemetryFrame`) con `validity_mask: u32` e `flags: u16` che preservano la nullabilita `Option<f64>::None` (`BEAT_INTERVALS_NOT_AVAILABLE` Issue `#11` e `ILLUSTRATIVE_UNVALIDATED` Issue `#12`), piu `SeqlockTelemetryRing<N>` lock-free SPMC (`< 100 ns`) e adattatore opzionale `eclipse-iceoryx/iceoryx2` `ZeroCopySend` + `eclipse-zenoh/zenoh`.
+
+#### Fase 22 (`J2`): Pure-Rust Native Mission Workstation Shell (`crates/ares-desktop-os` on `Tauri v2` + Apple Silicon Metal / Linux Vulkan + In-Process 8-Crate Runtime)
+* **Stato:** `[ ] PLANNED (READY FOR IMPLEMENTATION)` (Piano: [`docs/plans/phase_22_J2_ares_desktop_os_tauri_native_shell.md`](phase_22_J2_ares_desktop_os_tauri_native_shell.md))
+* **File Target:**
+  * `crates/ares-desktop-os/Cargo.toml`, `tauri.conf.json`, `build.rs`, `src/lib.rs`, `src/ipc_bridge.rs`, `src/main.rs` *(NEW)*
+* **Specifica Tecnica:**
+  * Singolo eseguibile nativo (`~30–50 MB` RAM idle, `WKWebView` Metal / `WebKitGTK` / `WebView2`) con `SharedMissionState` in-process, `tauri::ipc::Channel<Response>` (`InvokeResponseBody::Raw` `< 0.05 ms`), server parallelo opzionale `127.0.0.1:8080`, CSP zero-cloud `default-src 'self'` e feature gate `tauri-runtime` per compilazione CI headless.
+
+#### Fase 23 (`J3`): `ARES-MedOS` System Chrome Status Bar, `Alt+Space` (`Cmd+K`) Native FastMCP Command Palette, and Dual-Transport Frontend Bridge (`ares-cockpit/`)
+* **Stato:** `[ ] PLANNED (READY FOR IMPLEMENTATION)` (Piano: [`docs/plans/phase_23_J3_os_chrome_fastmcp_palette_dual_transport.md`](phase_23_J3_os_chrome_fastmcp_palette_dual_transport.md))
+* **File Target:**
+  * `ares-cockpit/src/lib/binaryTelemetryDecoder.ts` *(NEW)*
+  * `ares-cockpit/src/lib/useTelemetry.ts` *(UPDATE)*
+  * `ares-cockpit/src/modules/os-chrome/OsSystemStatusBar.tsx` & `OsCommandPalette.tsx` *(NEW)*
+* **Specifica Tecnica:**
+  * Auto-rileva `TAURI_NATIVE_IPC` (decoder `DataView` `< 10 µs` su `ArrayBuffer` 128 B) vs `BROWSER_WEBSOCKET` (`ws://127.0.0.1:8080`), aggiunge la barra sistema `#000000` OLED (Sol clock, OWLT Marte `4–24 min`, partizioni `ARINC 653`, zona deontica habitat, radiazione `CANS`) e la palette `Alt+Space`/`Cmd+K` per tutti gli 8 tool `FastMCP`.
+
+#### Fase 24 (`J4`): Tier B & Tier C Aerospace OS Deployment Target Descriptors (`Asterinas` Framekernel Kiosk Container, `System76 COSMIC` Wayland Kiosk Policy, and `Oxide Hubris` / `Embassy` Wearable Sensor Node Framing)
+* **Stato:** `[ ] PLANNED (READY FOR IMPLEMENTATION)` (Piano: [`docs/plans/phase_24_J4_asterinas_framekernel_hubris_wearable_targets.md`](phase_24_J4_asterinas_framekernel_hubris_wearable_targets.md))
+* **File Target:**
+  * `crates/ares-telemetry-ingest/src/wearable_frame.rs` *(NEW)*
+  * `deploy/medos/asterinas_framekernel_kiosk.toml`, `cosmic_wayland_kiosk.ron`, `hubris_wearable_app.toml` *(NEW)*
+  * `scripts/launch_ares_medos.sh` *(NEW)*
+* **Specifica Tecnica:**
+  * Framing `WearableSensorPacket` (`32` byte `#[repr(C)]`, CRC-16-CCITT, `supervisor_restart_count` SEU da `Oxide Hubris`), manifesti dichiarativi Tier B (`Asterinas` `14.0%` TCB + `cosmic-comp` kiosk `120 Hz` `wgpu`) e launcher unificato a 1 comando.
+
+---
+
+## 3. Matrice Riassuntiva di Tracciamento dei 10 Blocchi / 24 Fasi e Link ai Piani Implementativi (`docs/plans/phase_*.md`)
 
 | Blocco | Fase | Piano Implementativo Dedicato (`docs/plans/`) | Crate Target | Owner | Latenza / Footprint Target | Stato |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -402,10 +456,14 @@ flowchart TD
 | **Blocco I (Core)** | **Fase 18 (`I1`)** | [`phase_18_I1_welford_longitudinal_compaction_spatial_deontic.md`](phase_18_I1_welford_longitudinal_compaction_spatial_deontic.md) | `crates/ares-causal-graph` | `@fabiomalagutti27-droid` | `< 18 µs` / `< 200 KB` (900d) | `[x] COMPLETED (TESTED)` |
 | **Blocco I (Core)** | **Fase 19 (`I2`)** | [`phase_19_I2_biokg_16byte_descriptor_epistemic_reasoner.md`](phase_19_I2_biokg_16byte_descriptor_epistemic_reasoner.md) | `crates/ares-causal-graph` & `ares-medops-playbooks` | `@fabiomalagutti27-droid` | `< 5 µs` (`16 B #[repr(C)]`) | `[x] COMPLETED (TESTED)` |
 | **Blocco I (Core)** | **Fase 20 (`I3`)** | [`phase_20_I3_unified_dataset_graph_builder_graphify_mcp.md`](phase_20_I3_unified_dataset_graph_builder_graphify_mcp.md) | `crates/ares-causal-graph` & `ares-server-cli` | `@fabiomalagutti27-droid` & `@fertech02` | `< 12 µs` / `158,675 B` JSON | `[x] COMPLETED (TESTED)` |
+| **Blocco J (`ARES-MedOS`)** | **Fase 21 (`J1`)** | [`phase_21_J1_zero_copy_binary_ipc_shm_protocol.md`](phase_21_J1_zero_copy_binary_ipc_shm_protocol.md) | `crates/ares-core-types` & `ares-server-cli` | `@fabiomalagutti27-droid` & `@fertech02` | `< 100 ns` (`128 B` Seqlock/`iceoryx2`) | `[ ] PLANNED (READY FOR IMPLEMENTATION)` |
+| **Blocco J (`ARES-MedOS`)** | **Fase 22 (`J2`)** | [`phase_22_J2_ares_desktop_os_tauri_native_shell.md`](phase_22_J2_ares_desktop_os_tauri_native_shell.md) | `crates/ares-desktop-os` | `@fabiomalagutti27-droid` & `@fertech02` | `< 0.05 ms` IPC / `~30–50 MB` RAM | `[ ] PLANNED (READY FOR IMPLEMENTATION)` |
+| **Blocco J (`ARES-MedOS`)** | **Fase 23 (`J3`)** | [`phase_23_J3_os_chrome_fastmcp_palette_dual_transport.md`](phase_23_J3_os_chrome_fastmcp_palette_dual_transport.md) | `ares-cockpit/` | `@fabiomalagutti27-droid` & `@carolina2910` | `< 10 µs` `DataView` / `< 150` tok MCP | `[ ] PLANNED (READY FOR IMPLEMENTATION)` |
+| **Blocco J (`ARES-MedOS`)** | **Fase 24 (`J4`)** | [`phase_24_J4_asterinas_framekernel_hubris_wearable_targets.md`](phase_24_J4_asterinas_framekernel_hubris_wearable_targets.md) | `crates/ares-telemetry-ingest` & `deploy/medos/` | `@fabiomalagutti27-droid` & `@LelloXV` | `< 150 ns` CRC-16 (`32 B`) / `14%` TCB | `[ ] PLANNED (READY FOR IMPLEMENTATION)` |
 
 ---
 
-## 4. Budget Computazionale di Latenza (`< 150 µs` Hot-Path) e Memoria (`ARES-HyperGraph` + `Timestral`)
+## 4. Budget Computazionale di Latenza (`< 150 µs` Hot-Path) e Memoria (`ARES-HyperGraph` + `Timestral` + `ARES-MedOS`)
 
 | Sottosistema / Blocco | Latenza Hot-Path (`20 Hz` Sync) | Latenza Background (`1 Hz` Async) | Footprint RAM In-Memory | Footprint Disco Locale |
 | :--- | :---: | :---: | :---: | :---: |
@@ -415,4 +473,5 @@ flowchart TD
 | **Blocco H (`Timestral Grey-Box Bridge`)** | **`0.18 µs` (`180 ns`)** | `~6.95 ms` (CPU) / `2.1 ms` (Metal) | `< 256 KB` (ring buffer + coni) | `21 MB` (opzionale pesi) |
 | **Blocco I (`ARES-HyperGraph` + `DatasetGraph`)** | `23.0 µs` (Welford + Deontic + BioKG) | -- | `< 200 KB` (900d) + `~8.4 MB` (24 DS) | `~14.2 MB` (`graphify` JSON) |
 | **Blocchi E + F (`Playbook DAG + SHA-256`)** | `11.4 µs` | -- | `< 128 KB` | -- |
-| **TOTALE PIPELINE SINCRONA (`20 Hz`)** | **`66.38 µs << 150.0 µs` (SLA OK)** | **`6.95 ms << 1000 ms` (`1 Hz` OK)** | **`~9.2 MB` Totali in RAM** | **`< 0.5 GB` Totali su SSD** |
+| **Blocco J (`ARES-MedOS` Zero-Copy IPC & Shell)** | **`< 100 ns` SHM Seqlock / `< 0.05 ms` Tauri IPC** | `120 FPS` Metal/Vulkan (`< 8.3 ms`) | `~30–50 MB` (`Tauri v2` native shell) | `~3–10 MB` (installer) |
+| **TOTALE PIPELINE SINCRONA (`20 Hz`)** | **`66.38 µs << 150.0 µs` (SLA OK)** | **`6.95 ms << 1000 ms` (`1 Hz` OK)** | **`~9.2 MB` Engine (+ `~38 MB` Shell)** | **`< 0.5 GB` Totali su SSD** |

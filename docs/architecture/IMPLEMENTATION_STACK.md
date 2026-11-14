@@ -3,7 +3,7 @@
 > **Tag di Tracciabilita:** `[FABIO, IMPLEMENTATION]` | `[ARES-HEALTH, RUST-ENGINE]`  
 > **Ruolo:** Principal Aerospace Systems Architect & Senior Rust Engineer (Core Mathematical Engine, Causal Graph ADHG, NQS-STL Online Monitor, FastMCP Server)  
 > **Data Ultimo Aggiornamento:** 2026-11-14  
-> **Ambiente di Riferimento:** macOS Apple Silicon (M1–M5) & Linux x86_64 | Rust 2024 Edition (`Zero .unwrap() / Zero .expect()`)
+> **Ambiente di Riferimento:** macOS Apple Silicon (M1–M6 Metal) & Linux x86_64 | Rust 2024 Edition (`Zero .unwrap() / Zero .expect()`)
 
 ---
 
@@ -45,6 +45,12 @@ Si innestano direttamente sul Motore Rust Core per completare il ciclo `1. GATHE
 6. **`crates/ares-security-privacy`** (*Owner: `@MiServeRDC`*): Implementazione reale delle viste privacy per ruolo (`NASA-STD-3001 Vol. 1 Ch. 7`), catena hash `SHA-256` per ogni override clinico, cifratura `ChaCha20-Poly1305` per pacchetti Store-and-Forward e scudo Prompt Injection MCP.
 7. **`crates/ares-server-cli`** (*Owner: `@fertech02`*): Binario eseguibile unico che orchestra i 6 crate di libreria ed espone il server WebSocket/REST `axum` a `20 Hz` (`127.0.0.1:8080`) e il server `stdio` **FastMCP JSON-RPC 2.0** (`< 150 token/risposta`).
 
+### Livello 3 — Blocco J (`ARES-MedOS`: Mission Workstation Shell, Zero-Copy IPC & Target OS Spaziali Multi-Tier — Fasi 21–24 `[PLANNED]`)
+Studio di fattibilita: [`docs/architecture/RUST_OS_AND_SHELL_FEASIBILITY_STUDY.md`](RUST_OS_AND_SHELL_FEASIBILITY_STUDY.md).
+8. **`crates/ares-desktop-os`** (*Fase 22 `J2`, Owner: `@fabiomalagutti27-droid` & `@fertech02`*): Shell desktop nativa pure-Rust su **`Tauri v2`** (`tauri-apps/tauri`, `~30–50 MB` RAM su `WKWebView` Metal / `WebKitGTK` / `WebView2`, feature-gated `tauri-runtime` per CI headless) che incorpora `SharedMissionState` in-process, trasmette `BinaryTelemetryFrame` (`128 B` `#[repr(C, align(64))]`, Fase 21 `J1`) via `Channel<Response>` (`< 0.05 ms`), ed esegue i tool `FastMCP` in-process mantenendo attivo il mirror `127.0.0.1:8080`.
+9. **Frontend Dual-Transport & OS Chrome (`ares-cockpit/`, Fase 23 `J3`):** Decoder zero-copy `DataView` (`binaryTelemetryDecoder.ts`), `OsSystemStatusBar.tsx` (`#000000` OLED, Martian Sol clock, OWLT Marte, partizioni `ARINC 653`, zona deontica habitat, radiazione `CANS`), `OsCommandPalette.tsx` (`Alt+Space` / `Cmd+K` per tutti gli 8 tool `FastMCP`), e fallback automatico `BROWSER_WEBSOCKET`.
+10. **Target Aerospaziali Tier B & Tier C (Fase 24 `J4`):** Framing `WearableSensorPacket` (`32 B` `#[repr(C)]` CRC-16-CCITT + `supervisor_restart_count` SEU) in `crates/ares-telemetry-ingest/src/wearable_frame.rs`, manifesti dichiarativi in `deploy/medos/` (`Asterinas` Framekernel `14.0%` TCB, `System76 COSMIC` Wayland Kiosk `120 Hz` `wgpu`, `Oxide Hubris` / `Embassy` wearable) e launcher `scripts/launch_ares_medos.sh`.
+
 ---
 
 ## 3. Librerie & Repository Open-Source dell'Ecosistema Rust
@@ -52,14 +58,17 @@ Si innestano direttamente sul Motore Rust Core per completare il ciclo `1. GATHE
 | Crate / Libreria | Versione Target | Crate Interni Coinvolti | Ruolo Tecnico & Motivazione Architetturale |
 | :--- | :--- | :--- | :--- |
 | **[`petgraph`](https://github.com/petgraph/petgraph)** | `0.7` / `0.8` | `crates/ares-causal-graph` | Rappresentazione in-memory (`StableDiGraph`) dell'**Astronaut Digital Health Graph (`ADHG`)** con propagazione causale topologica in $< 20\,\mu\text{s}$ e footprint RAM $< 1\text{ MB}$. |
-| **[`serde`](https://github.com/serde-rs/serde) & [`serde_json`](https://github.com/serde-rs/json)** | `1.0` | Tutti i 7 crate | Serializzazione/deserializzazione zero-allocation conforme a `contracts/telemetry_schema.json` con supporto nativo a `Option<f64>` (`null`) per canali sensore mancanti. |
-| **[`thiserror`](https://github.com/dtolnay/thiserror)** | `2.0` | Crate di libreria (`1..6`) | Gestione errori fortemente tipizzata (`CoreError`, `IngestError`, `CausalError`, `StlError`, `PlaybookError`, `SecurityError`) senza alcun `.unwrap()` o `.expect()`. |
-| **[`anyhow`](https://github.com/dtolnay/anyhow)** | `1.0` | `crates/ares-server-cli` | Propagazione contestuale degli errori (`.context("...")`) esclusivamente nel binario eseguibile CLI/Server. |
+| **[`serde`](https://github.com/serde-rs/serde) & [`serde_json`](https://github.com/serde-rs/json)** | `1.0` | Tutti i crate | Serializzazione/deserializzazione zero-allocation conforme a `contracts/telemetry_schema.json` con supporto nativo a `Option<f64>` (`null`) per canali sensore mancanti. |
+| **[`thiserror`](https://github.com/dtolnay/thiserror)** | `2.0` | Crate di libreria (`1..6`, `ares-desktop-os`) | Gestione errori fortemente tipizzata (`AresCoreError`, `IngestError`, `CausalGraphError`, `NqsStlError`, `PlaybookError`, `SecurityError`, `DesktopShellError`) senza alcun `.unwrap()` o `.expect()`. |
+| **[`anyhow`](https://github.com/dtolnay/anyhow)** | `1.0` | `crates/ares-server-cli`, `crates/ares-desktop-os` | Propagazione contestuale degli errori (`.context("...")`) esclusivamente nei binari eseguibili. |
 | **[`csv`](https://github.com/BurntSushi/rust-csv)** | `1.3` | `crates/ares-telemetry-ingest` | Parser CSV deterministico ad alte prestazioni con `Trim::All` per gestire gli spazi iniziali negli header di `data/bidmc/bidmc_*_Numerics.csv` (`" HR"`, `" PULSE"`, `" RESP"`, `" SpO2"`). |
-| **[`tokio`](https://github.com/tokio-rs/tokio)** | `1.43+` | `crates/ares-server-cli` | Runtime asincrono multi-thread per la gestione concorrente dello stream WebSocket a `20 Hz` e del loop JSON-RPC 2.0 su `stdio`. |
+| **[`tokio`](https://github.com/tokio-rs/tokio)** | `1.43+` | `crates/ares-server-cli`, `crates/ares-desktop-os` | Runtime asincrono multi-thread per la gestione concorrente dello stream WebSocket/IPC a `20 Hz`, `Timestral` `1 Hz` e del loop JSON-RPC 2.0 su `stdio`. |
 | **[`axum`](https://github.com/tokio-rs/axum)** | `0.8` | `crates/ares-server-cli` | Server HTTP/WebSocket ergonomico e type-safe vincolato rigorosamente a `127.0.0.1:8080` per alimentare `ares-cockpit/` e l'endpoint `POST /api/stress-test`. |
 | **[`sha2`](https://github.com/RustCrypto/hashes) & [`chacha20poly1305`](https://github.com/RustCrypto/AEADs)** | `0.10` | `crates/ares-security-privacy` | Catena di audit crittografico `SHA-256` per decisioni/override medici e cifratura autenticata `ChaCha20-Poly1305` per telemetria Store-and-Forward verso Terra. |
 | **[`zeroize`](https://github.com/RustCrypto/utils)** | `1.8` | `crates/ares-security-privacy` | Cancellazione sicura in RAM (`ZeroizeOnDrop`) delle chiavi crittografiche di sessione e dei token clinici. |
+| **[`tauri`](https://github.com/tauri-apps/tauri)** | `2.x` (`optional`) | `crates/ares-desktop-os` | Shell nativa Tier A (`WKWebView` Metal / `WebKitGTK` / `WebView2`, `Channel<Response>` `InvokeResponseBody::Raw` `< 0.05 ms`, zero Chromium). |
+| **[`iceoryx2`](https://github.com/eclipse-iceoryx/iceoryx2) & [`zenoh`](https://github.com/eclipse-zenoh/zenoh)** | `0.5` / `1.0` (`--features shm-ipc`) | `crates/ares-server-cli` | IPC `POSIX shm` lock-free *daemonless* (`ZeroCopySend`, `< 100 ns`) per partizionamento Tier B `ARINC 653` e sync DSN intermittente Terra-Marte. |
+| **Target Esterni Tier B / Tier C (`deploy/medos/`)** | Declarative Manifests | `deploy/medos/` | [`asterinas/asterinas`](https://github.com/asterinas/asterinas) (`14.0%` TCB), [`pop-os/cosmic-comp`](https://github.com/pop-os/cosmic-comp) + [`iced-rs/iced`](https://github.com/iced-rs/iced) + [`smithay/smithay`](https://github.com/smithay/smithay), [`oxidecomputer/hubris`](https://github.com/oxidecomputer/hubris), [`embassy-rs/embassy`](https://github.com/embassy-rs/embassy), [`tock/tock`](https://github.com/tock/tock), [`rtic-rs/rtic`](https://github.com/rtic-rs/rtic), [`rerun-io/rerun`](https://github.com/rerun-io/rerun) & [`emilk/egui`](https://github.com/emilk/egui). |
 
 ---
 
@@ -124,6 +133,12 @@ In conformità all'invariante obbligatorio della skill `.agents/skills/deep-scho
 15. **Charlotte A. Nelson, Sergio E. Baranzini, Sylvain V. Costes et al. (NASA OSDR-SPOKE, 2021–2026), Payal Chandak, Marinka Zitnik (Harvard PrimeKG, Nature Sci. Data 2023), Sebastian Lobentanzer et al. (BioCypher, Nature Biotech. 2023) & Meng Xiao et al. (BioHarness, 2026):**
     * *Titoli:* *"SPOKE: A Scalable Precision Medicine Open Knowledge Engine bridging NASA OSDR multi-omics"*, *"Building a knowledge graph to enable precision medicine"* (**DOI:** `10.1038/s41597-023-01960-3`), *"Democratizing knowledge representation with BioCypher"* (**DOI:** `10.1038/s41587-023-01848-y`) & *"BioHarness: Substrate-Aware Evidence Assembly"* (`arXiv:2606.19396v1`).
     * *Contributo nel Motore Rust:* Giustifica il descrittore `16-byte #[repr(C)] BiomedicalEvidenceDescriptor`, la fusione `Noisy-OR` e il `ClinicalAnswerabilityGate` in `biokg_ontology.rs`, nonché il grafo unificato dei 24 dataset `AresUnifiedDatasetGraph` (`14,623` nodi, `112,400` archi, `~8.4 MB` RAM + esportazione `graphify` JSON) in `unified_dataset_graph.rs`.
+
+### G. `ARES-MedOS`: Pure-Rust Mission Workstation OS Shell, Zero-Copy IPC & Multi-Tier Space OS Targets (Blocco J, Fasi 21–24 `[PLANNED]`)
+16. **Yuke Peng, Yifan Shen, Hongliang Tian, Shoumeng Yan et al. (`asterinas/asterinas`, *USENIX ATC 2025* `arXiv:2506.03876` & *ACM APsys 2024* `DOI: 10.1145/3678015.3680492`), Kevin Boos et al. (`theseus-os/Theseus`, *USENIX OSDI 2020*), Amit Levy et al. (`tock/tock`, *ACM SOSP 2017* & `arXiv:2603.22585`) & Chen et al. (`mars-research/atmosphere`, *ACM SOSP 2025* `DOI: 10.1145/3731569.3764821`):**
+    * *Contributo in `ARES-MedOS` (`Fase 24 J4`):* Fondamento dei target aerospaziali Tier B (`Asterinas` Framekernel `14.0%` unsafe TCB compatibile Linux-ABI per eseguire `ares-server-cli` ELF) e Tier C (`Oxide Hubris` / `Embassy` / `Tock` con isolamento MPU, recupero driver SEU e framing `WearableSensorPacket` `32 B` CRC-16-CCITT).
+17. **V. Cheptsov & A. Khoroshilov (`ARINC 653` Partitioning, *Proc. ISP RAS 2018/2023* `DOI: 10.1109/ispras60948.2023.10508165`), `NASA cFE/cFS` (`nasa/cFS`), `Eclipse iceoryx2` & `NASA-STD-3001 Vol. 2 Rev F` (`[V2 10001]`–`[V2 10152]`):**
+    * *Contributo in `ARES-MedOS` (`Fasi 21–23 J1–J3`):* Giustifica il frame binario `128 B` `#[repr(C, align(64))] BinaryTelemetryFrame` (`validity_mask` null-safe), il ring SPMC `SeqlockTelemetryRing` (`< 100 ns`), il bridge `Tauri v2` `Channel<Response>` (`< 0.05 ms`, `~30–50 MB` RAM) e l'interfaccia OLED `#000000` + palette `Alt+Space` `FastMCP`.
 
 
 ## Issue #11: HRV validity correction

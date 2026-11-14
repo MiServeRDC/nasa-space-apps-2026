@@ -1,6 +1,6 @@
 # Progress Tracking: ARES-Health (Autonomous Resilient Edge-native System for Astronaut Health)
 
-> **Ruolo di questo file (ispirato a `spatiotemporal-mcp-engine`):** scaletta sequenziale ordinata dei Blocchi Architetturali (`Blocco 0` – `Blocco J`) e delle Fasi (`Fase 0` – `Fase 22`), con stato netto:
+> **Ruolo di questo file (ispirato a `spatiotemporal-mcp-engine`):** scaletta sequenziale ordinata dei Blocchi Architetturali (`Blocco 0` – `Blocco J`) e delle Fasi (`Fase 0` – `Fase 24`), con stato netto:
 > - `[x]` Completata, verificata con `./scripts/agent_probe.sh` e integrata su `main`
 > - `[/]` In corso di implementazione / PR aperta
 > - `[ ]` Pianificata (piano approvato in [`docs/plans/RUST_ENGINE_PHASED_MASTER_PLAN.md`](../docs/plans/RUST_ENGINE_PHASED_MASTER_PLAN.md))
@@ -73,9 +73,19 @@
 
 ---
 
-## Blocco J: Frontend Astronaut Cockpit & Multi-Branch Unification (`ares-cockpit/`, `contracts/fixtures/`, `crates/` — Full Team) [COMPLETATO]
-- [x] **Fase 21 (`J1`):** Unified `ares-cockpit/` React 19 UI (`@carolina2910` `2da0989` + Fixes #8/#13/#22) wired to `ws://127.0.0.1:8080/ws/telemetry`, `GET /api/snapshot`, `POST /api/stress-test` with strict runtime schema validation, pure replay vs What-If separation, provenance/freshness inspector, null-safe TTV/RMSSD/SpO2 rendering, 3D Anatomical Heatmap, `NQS-STL` quantile cone, and `contracts/fixtures/` (`telemetry_bidmc_replay.json`, `telemetry_whatif_overlay.json`, `nominal_frame.json`, `missing_channel_frame.json`, `sans_alert_frame.json`, `what_if_request.json`).
-- [x] **Fase 22 (`J2`):** Integrated `@MiServeRDC` (`BEAT_INTERVALS_NOT_AVAILABLE` / `rmssd_ms: None` propagation + Issue #12 evidence audit `ModelValidationStatus::IllustrativeUnvalidated` & `TtvIntervalKind::IllustrativeScenarioRange`), `@LelloXV` (`1 Hz` BIDMC CSV replay cadence decoupled from `20 Hz` WebSocket broadcast + cursor-invariant `POST /api/stress-test`), and `@fertech02` (`WireTelemetryPacket` + `StressTestPatchRequest` schema validation and fixture integration tests) onto `main`, verified with `./scripts/agent_probe.sh --all`, `cargo run -p ares-server-cli -- --mode smoke-test`, and cockpit `npm run lint` + `npm run build`.
+## Unificazione Frontend Astronaut Cockpit & Multi-Branch (`ares-cockpit/`, `contracts/fixtures/`, `crates/` — Full Team) [COMPLETATO]
+- [x] **Cockpit UI (`@carolina2910` `2da0989` + Fixes #8/#13/#22):** Unified `ares-cockpit/` React 19 UI wired to `ws://127.0.0.1:8080/ws/telemetry`, `GET /api/snapshot`, `POST /api/stress-test` with strict runtime schema validation, pure replay vs What-If separation, provenance/freshness inspector, null-safe TTV/RMSSD/SpO2 rendering, 3D Anatomical Heatmap, `NQS-STL` quantile cone, and `contracts/fixtures/`.
+- [x] **Multi-Branch Backend Sync (`@MiServeRDC`, `@LelloXV`, `@fertech02`):** Integrated `BEAT_INTERVALS_NOT_AVAILABLE` / `rmssd_ms: None` propagation, Issue #12 evidence audit (`IllustrativeUnvalidated` / `IllustrativeScenarioRange`), `1 Hz` BIDMC CSV replay cadence decoupled from `20 Hz` WebSocket broadcast + cursor-invariant `POST /api/stress-test`, and `WireTelemetryPacket` + `StressTestPatchRequest` verified with `./scripts/agent_probe.sh --all`, `--mode smoke-test`, and cockpit `npm run lint` + `npm run build`.
+
+---
+
+## Blocco J: `ARES-MedOS` Pure-Rust Mission Workstation OS Shell, Zero-Copy IPC & Multi-Tier Space OS Partitioning (Fasi 21–24) [PLANNED — READY FOR IMPLEMENTATION]
+> **Studio di Fattibilita:** [`docs/architecture/RUST_OS_AND_SHELL_FEASIBILITY_STUDY.md`](../docs/architecture/RUST_OS_AND_SHELL_FEASIBILITY_STUDY.md)  
+> **Piano Master Aggiornato:** [`docs/plans/RUST_ENGINE_PHASED_MASTER_PLAN.md`](../docs/plans/RUST_ENGINE_PHASED_MASTER_PLAN.md) (10 Blocchi / 24 Fasi)
+- [ ] **Fase 21 (`J1` — Piano Approvato):** [`phase_21_J1_zero_copy_binary_ipc_shm_protocol.md`](../docs/plans/phase_21_J1_zero_copy_binary_ipc_shm_protocol.md) — `128`-byte `#[repr(C, align(64))] BinaryTelemetryFrame` (`validity_mask` null-safe per `BEAT_INTERVALS_NOT_AVAILABLE`), lock-free SPMC `SeqlockTelemetryRing` (`< 100 ns`), e adattatore opzionale `--features shm-ipc` (`eclipse-iceoryx/iceoryx2` `ZeroCopySend` + `eclipse-zenoh/zenoh`).
+- [ ] **Fase 22 (`J2` — Piano Approvato):** [`phase_22_J2_ares_desktop_os_tauri_native_shell.md`](../docs/plans/phase_22_J2_ares_desktop_os_tauri_native_shell.md) — `crates/ares-desktop-os` (`Tauri v2`, `~30–50 MB` RAM, Apple Silicon Metal / Linux Vulkan, `SharedMissionState` in-process + mirror `127.0.0.1:8080`, `Channel<Response>` `< 0.05 ms`, feature gate `tauri-runtime` per CI headless).
+- [ ] **Fase 23 (`J3` — Piano Approvato):** [`phase_23_J3_os_chrome_fastmcp_palette_dual_transport.md`](../docs/plans/phase_23_J3_os_chrome_fastmcp_palette_dual_transport.md) — Decoder `DataView` `binaryTelemetryDecoder.ts`, Dual-Transport `useTelemetry.ts` (`TAURI_NATIVE_IPC` vs `BROWSER_WEBSOCKET`), `OsSystemStatusBar.tsx` (`#000000` OLED, Sol clock, OWLT `4–24 min`, `ARINC 653`, zona deontica, `CANS`) e `OsCommandPalette.tsx` (`Alt+Space` / `Cmd+K` per tutti gli 8 tool `FastMCP`).
+- [ ] **Fase 24 (`J4` — Piano Approvato):** [`phase_24_J4_asterinas_framekernel_hubris_wearable_targets.md`](../docs/plans/phase_24_J4_asterinas_framekernel_hubris_wearable_targets.md) — `WearableSensorPacket` (`32 B` `#[repr(C)]` CRC-16-CCITT + `Oxide Hubris` `supervisor_restart_count`), manifesti dichiarativi `deploy/medos/` (`Asterinas` `14.0%` TCB, `cosmic-comp` Wayland Kiosk `120 Hz`, `Hubris`/`Embassy` MCU) e `scripts/launch_ares_medos.sh`.
 
 ## Issue #11 & Issue #12: HRV Validity and Model Evidence Status (`origin/main` integrated)
 - [x] **Issue #11 / PR #20 (`187b933`):** Remove numeric-derived/default HRV; preserve unavailable full assessments (`BEAT_INTERVALS_NOT_AVAILABLE`), degraded alarm state, and known hazard routing.
