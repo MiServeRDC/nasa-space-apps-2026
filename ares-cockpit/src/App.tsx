@@ -776,7 +776,7 @@ export default function App() {
           {/* Left / Center Authoritative Workspace */}
           <main className="flex min-h-0 flex-col gap-3 overflow-hidden">
             {/* Compact status banner */}
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line bg-panel px-4 py-2">
+            <div className="hud-glass hud-glass-interactive flex flex-wrap items-center justify-between gap-2 rounded-xl px-4 py-2.5">
               <div className="text-sm text-gray-200">
                 <span className="mr-2 font-mono text-xs text-gray-500">
                   {packet.mission_elapsed_days != null
@@ -1226,10 +1226,10 @@ export default function App() {
 
           {/* Right Sticky Control Sidebar */}
           <aside className="flex min-h-0 flex-col gap-3 overflow-y-auto">
-            <div className="rounded-lg border border-line bg-panel p-4">
+            <div className="hud-glass hud-glass-interactive rounded-xl p-4">
               <div className="mb-1 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-mono text-xs tracking-widest text-gray-500">YOUR READINESS</span>
+                  <span className="font-mono text-xs tracking-widest text-gray-400">YOUR READINESS</span>
                   <OriginBadge origin={sm.provenance} />
                 </div>
                 <AlarmBadge level={sm.alarm_level} />
@@ -1239,9 +1239,9 @@ export default function App() {
 
             <details
               open={whatIfOverlayActive || undefined}
-              className="min-h-0 rounded-lg border border-line bg-panel p-4"
+              className="hud-glass hud-glass-interactive min-h-0 rounded-xl p-4"
             >
-              <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-2 font-mono text-xs tracking-widest text-gray-300">
+              <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-2 font-mono text-xs tracking-widest text-gray-200">
                 <span>ADJUST CONDITIONS (WHAT-IF)</span>
                 <OriginBadge origin="SIMULATED_SCENARIO_INPUT" />
               </summary>
