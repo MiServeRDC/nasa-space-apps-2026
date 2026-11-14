@@ -138,39 +138,17 @@ function Card({
   className?: string;
 }) {
   return (
-    <div className={`hud-glass hud-glass-interactive relative flex flex-col overflow-hidden rounded-xl p-4.5 ${className}`}>
-      {/* Precision Avionics Corner Brackets */}
-      <span aria-hidden="true" className="pointer-events-none absolute top-0 left-0 h-3 w-3 rounded-tl-xl border-t-2 border-l-2 border-cyan-400/70" />
-      <span aria-hidden="true" className="pointer-events-none absolute top-0 right-0 h-3 w-3 rounded-tr-xl border-t-2 border-r-2 border-cyan-400/70" />
-      <span aria-hidden="true" className="pointer-events-none absolute bottom-0 left-0 h-3 w-3 rounded-bl-xl border-b-2 border-l-2 border-cyan-400/50" />
-      <span aria-hidden="true" className="pointer-events-none absolute bottom-0 right-0 h-3 w-3 rounded-br-xl border-b-2 border-r-2 border-cyan-400/50" />
-
-      {/* Top Specular Telemetry Hairline */}
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-cyan-400/60 to-transparent"
-      />
-
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-cyan-500/15 pb-2.5">
-        <div className="flex items-center gap-2.5">
-          <span
-            aria-hidden="true"
-            className="h-2 w-2 rounded-xs bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.85)]"
-          />
-          <h3 className="font-mono text-xs font-bold tracking-[0.14em] text-slate-100 uppercase">
-            {title}
-          </h3>
+    <section className={`clinical-panel flex flex-col ${className}`}>
+      <div className="clinical-panel-heading flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <h3 className="text-base font-semibold text-gray-100">{title}</h3>
           {origin && <OriginBadge origin={origin} />}
           {freshness && <FreshnessBadge freshness={freshness} />}
         </div>
-        {tag && (
-          <span className="rounded border border-cyan-400/30 bg-cyan-950/40 px-2.5 py-0.5 font-mono text-[11px] font-semibold tracking-wider text-cyan-300 uppercase shadow-[inset_0_0_10px_rgba(6,182,212,0.12)]">
-            {tag}
-          </span>
-        )}
+        {tag && <span className="font-mono text-xs text-gray-500">{tag}</span>}
       </div>
-      <div className="min-h-0 flex-1">{children}</div>
-    </div>
+      <div className="clinical-panel-content min-h-0 flex-1">{children}</div>
+    </section>
   );
 }
 
@@ -474,7 +452,7 @@ export default function App() {
   const [activePhase, setActivePhase] = useState<Phase>(() => {
     const p = getInitialParam('phase');
     if (p === 'GATHER' || p === 'EVALUATE' || p === 'ACT') return p;
-    return 'GATHER';
+    return 'EVALUATE';
   });
   const [evalTab, setEvalTab] = useState<EvalTab>(() => {
     const t = getInitialParam('tab');
@@ -734,18 +712,7 @@ export default function App() {
         });
 
   return (
-    <div className="ares-atmosphere flex h-screen flex-col overflow-hidden text-gray-200">
-      <OsSystemStatusBar
-        packet={packet}
-        whatIf={whatIf}
-        transportMode={transportMode}
-        ipcLatencyUs={ipcLatencyUs}
-        binaryFrameCount={binaryFrameCount}
-        lastBinaryFrame={lastBinaryFrame}
-        osStatus={osStatus}
-        paletteOpen={paletteOpen}
-        onTogglePalette={() => setPaletteOpen((v) => !v)}
-      />
+    <div className="ares-workspace flex flex-col bg-black">
       <TriPhaseHeader
         astronautId={packet.astronaut_id}
         alarm={sm.alarm_level}
@@ -761,8 +728,8 @@ export default function App() {
         onTogglePalette={() => setPaletteOpen((v) => !v)}
       />
 
-      <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col gap-3 overflow-hidden p-4">
-        <ProvenanceBanner packet={packet} status={status} />
+      <div className="workspace-content mx-auto flex min-h-0 w-full flex-1 flex-col">
+        <div className="provenance-strip"><ProvenanceBanner packet={packet} status={status} /></div>
         <OsVoiceCopilot
           packet={packet}
           whatIf={whatIf}
@@ -772,11 +739,11 @@ export default function App() {
           onExecuteIntent={handleVoiceIntent}
         />
 
-        <div className="grid min-h-0 flex-1 gap-4 overflow-hidden lg:grid-cols-[1fr_340px]">
+        <div className="workspace-columns grid min-h-0 flex-1 lg:grid-cols-[1fr_330px]">
           {/* Left / Center Authoritative Workspace */}
-          <main className="flex min-h-0 flex-col gap-3 overflow-hidden">
+          <main id="main-workspace" tabIndex={-1} className="clinical-main flex min-h-0 flex-col gap-4">
             {/* Compact status banner */}
-            <div className="hud-glass hud-glass-interactive flex flex-wrap items-center justify-between gap-2 rounded-xl px-4 py-2.5">
+            <div className="assessment-summary flex flex-wrap items-center justify-between gap-2">
               <div className="text-sm text-gray-200">
                 <span className="mr-2 font-mono text-xs text-gray-500">
                   {packet.mission_elapsed_days != null
@@ -917,7 +884,7 @@ export default function App() {
             {/* PAGE 2: EVALUATE */}
             {activePhase === 'EVALUATE' && (
               <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
-                <div className="flex flex-wrap gap-2 font-mono text-xs">
+                <div className="assessment-tabs flex flex-wrap gap-2 text-xs">
                   {([
                     ['BODY_3D', '3D Body Layers'],
                     ['POCUS', 'Ultrasound (Neck & Eye)'],
@@ -928,6 +895,7 @@ export default function App() {
                       key={id}
                       type="button"
                       onClick={() => setEvalTab(id)}
+                      aria-pressed={evalTab === id}
                       className={`min-h-12 cursor-pointer rounded border px-3 py-1.5 ${
                         evalTab === id ? 'border-nominal bg-nominal/15 font-bold text-nominal' : 'border-line text-gray-400 hover:text-white'
                       }`}
@@ -939,10 +907,10 @@ export default function App() {
 
                 {evalTab === 'BODY_3D' && (
                   <Card
-                    title="Your 3D Body Scan & Atlas"
+                    title="Anatomical explorer"
                     tag={`MESH: ${whatIf.sex} // ORBIT 360 DEG`}
                     origin={hasHemodynamics || hasMusculoskeletal ? (packet.is_local_simulation ? 'SIMULATED_SCENARIO_INPUT' : 'DERIVED_FROM_HYBRID_SCENARIO') : 'UNAVAILABLE'}
-                    className="min-h-0 flex-1"
+                    className="anatomy-panel min-h-0 flex-1"
                   >
                     <div className="flex h-full min-h-0 flex-col gap-2">
                       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-cyan-500/15 pb-2">
@@ -1225,11 +1193,11 @@ export default function App() {
           </main>
 
           {/* Right Sticky Control Sidebar */}
-          <aside className="flex min-h-0 flex-col gap-3 overflow-y-auto">
-            <div className="hud-glass hud-glass-interactive rounded-xl p-4">
+          <aside className="clinical-sidebar flex min-h-0 flex-col gap-4" aria-label="Readiness and scenario controls">
+            <div className="readiness-panel">
               <div className="mb-1 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-mono text-xs tracking-widest text-gray-400">YOUR READINESS</span>
+                  <span className="sidebar-heading">Mission readiness</span>
                   <OriginBadge origin={sm.provenance} />
                 </div>
                 <AlarmBadge level={sm.alarm_level} />
@@ -1238,11 +1206,11 @@ export default function App() {
             </div>
 
             <details
-              open={whatIfOverlayActive || undefined}
-              className="hud-glass hud-glass-interactive min-h-0 rounded-xl p-4"
+              open
+              className="scenario-panel min-h-0"
             >
               <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-2 font-mono text-xs tracking-widest text-gray-200">
-                <span>ADJUST CONDITIONS (WHAT-IF)</span>
+                <span className="sidebar-heading">Scenario lab</span>
                 <OriginBadge origin="SIMULATED_SCENARIO_INPUT" />
               </summary>
               <div className="mt-3">
@@ -1276,6 +1244,23 @@ export default function App() {
           </aside>
         </div>
       </div>
+
+      <details className="system-disclosure">
+        <summary>System &amp; connection details
+          <span>{lastBinaryFrame?.storm_shelter_mandatory || osStatus?.storm_shelter_mandatory ? 'Storm shelter mandatory' : lastBinaryFrame?.eva_airlock_forbidden || osStatus?.eva_airlock_forbidden ? 'EVA airlock restricted' : 'Onboard tools and runtime diagnostics'}</span>
+        </summary>
+      <OsSystemStatusBar
+        packet={packet}
+        whatIf={whatIf}
+        transportMode={transportMode}
+        ipcLatencyUs={ipcLatencyUs}
+        binaryFrameCount={binaryFrameCount}
+        lastBinaryFrame={lastBinaryFrame}
+        osStatus={osStatus}
+        paletteOpen={paletteOpen}
+        onTogglePalette={() => setPaletteOpen((v) => !v)}
+      />
+      </details>
 
       {/* Ground Control Telemedicine & 24-Dataset Scientific Atlas Modal */}
       {activeView === 'VIEW_PORTAL' && (

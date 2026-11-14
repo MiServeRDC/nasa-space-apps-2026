@@ -1,5 +1,25 @@
 # Active Context: ARES-Health (NASA Space Apps Challenge 2026)
 
+## User-approved medical-blue cockpit integration (2026-11-14)
+
+The user requested the local medical-blue redesign on main. Integration starts
+from main `e8c2927`, rather than merging the outdated preview branch. Ported its
+header, Overview/Assessment/Care plan navigation, OLED palette, panel hierarchy,
+anatomy preferences disclosure and scenario sidebar. Kept current main's detector,
+bedside monitor, voice copilot, ground portal, studio, audit, shortcuts, twin modal,
+UBERON/GLB behavior and all current handlers. Assessment is the initial page;
+explicit `phase` query parameters still take precedence. System diagnostics remain
+available in a disclosure with a summary for reported habitat restrictions.
+
+Local verification on the integrated tree: frontend lint/build, 21 Node tests in
+7 suites and `bash scripts/agent_probe.sh --fast` passed. Browser checks confirmed
+three-phase navigation and portal/studio/audit/shortcut overlays, with zero page
+errors and no horizontal page overflow at 1440px or 390px. Production build retains
+the existing large-chunk warning. No backend or contract changes, hosted Actions,
+remote fonts or runtime cloud dependencies were added. See
+`docs/plans/COCKPIT_DESIGN_REFRESH.md`. User authorized PR merge to main; this note
+records the verified integration before publication.
+
 **Last Updated:** 2026-11-14  
 **Current Phase:** ALL 41 PHASES / 14 BLOCKS (A–N) `COMPLETED (TESTED)` — Block N (`Phases 38–41` / `N1–N4`: Multisystem Exploration Medicine, Wearable Suite V2, Tiselius RSR Lithiasis, Orthostatic Fluid-Shift Hemodynamics, Mars Circadian & Neuro-Immune Dynamics, Multi-Organ POCUS & Playbooks #10–#15, and Hard Clinical Safety Gate 4) fully implemented and verified alongside Blocks A–M with **all workspace Rust crates passing tests & Clippy with 0 warnings**, **`21/21` cockpit Node tests passing across `7` suites**, `0` Clippy warnings, `0` `.unwrap()`/`.expect()` in production `crates/*/src/`, `0` Unicode emojis, `ares-calibrate --verify-only` clean across all `53` PhysioNet BIDMC subjects, `./scripts/launch_ares_medos.sh --verify` clean, `./scripts/build_submission_docs.sh` (`6/6` gates passing), and `ares-cockpit` passing. See [`docs/architecture/MODEL_EVIDENCE_AUDIT.md`](../docs/architecture/MODEL_EVIDENCE_AUDIT.md).  
 **Active Repository:** `https://github.com/MiServeRDC/nasa-space-apps-2026` (`main` synchronized).

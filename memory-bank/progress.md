@@ -1,5 +1,15 @@
 # Progress Tracking: ARES-Health (Autonomous Resilient Edge-native System for Astronaut Health)
 
+## Approved medical-blue cockpit refresh (2026-11-14)
+
+- [x] Ported the user's local redesign onto main `e8c2927` using an isolated integration worktree.
+- [x] Preserved the updated detector, bedside monitor, voice copilot, mission portal,
+  studio, audit, shortcuts, anatomy/UBERON callbacks and fullscreen twin.
+- [x] Frontend lint/build, 21 Node tests and local fast repository probe passed.
+- [x] Desktop/mobile browser review: phase navigation and mission application
+  overlays work; no page errors or horizontal page overflow at 1440px/390px.
+- User authorized publication through a PR and merge; no hosted Actions are used.
+
 > **Ruolo di questo file (ispirato a `spatiotemporal-mcp-engine`):** scaletta sequenziale ordinata dei Blocchi Architetturali (`Blocco 0` – `Blocco L`) e delle Fasi (`Fase 0` – `Fase 34`), con stato netto:
 > - `[x]` Completata, verificata con `./scripts/agent_probe.sh` e integrata su `main`
 > - `[/]` In corso di implementazione / PR aperta
