@@ -20,12 +20,16 @@
 //!   `stderr`, otherwise the MCP pipe is corrupted.
 //! * Every telemetry field and every MCP answer carries explicit provenance.
 //!   Values the engine cannot compute yet stay `null` and are never invented.
+//! * Recorded channels are owned by [`replay`]: a What-If console input can
+//!   never overwrite a BIDMC sample, and never advances the replay clock.
 //! * No `unwrap`, `expect` or `panic` in `src/` (enforced by crate lints).
 
 pub mod mcp_stdio;
 pub mod mission;
+pub mod replay;
 pub mod telemetry;
 pub mod ws_server;
 
 pub use mission::{MissionState, ScenarioOverlay, StressTestRequest};
-pub use telemetry::TelemetryPacket;
+pub use replay::{BidmcRecord, BidmcSample, ReplayError};
+pub use telemetry::{SourceMode, TelemetryPacket};

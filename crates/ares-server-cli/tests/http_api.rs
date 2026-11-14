@@ -75,7 +75,7 @@ async fn health_reports_the_stream_rate() {
 
 #[tokio::test]
 async fn snapshot_carries_every_field_the_contract_requires() {
-    let (status, packet) = send(&app(), "GET", "/api/telemetry", None).await;
+    let (status, packet) = send(&app(), "GET", "/api/snapshot", None).await;
     assert_eq!(status, StatusCode::OK);
 
     for field in [
@@ -206,7 +206,7 @@ async fn out_of_range_slider_is_rejected_and_changes_nothing() {
     assert_eq!(status, StatusCode::BAD_REQUEST);
     assert_eq!(body["field"], "cabin_ppco2_mmhg");
 
-    let (_, packet) = send(&app, "GET", "/api/telemetry", None).await;
+    let (_, packet) = send(&app, "GET", "/api/snapshot", None).await;
     assert_eq!(packet["environment"]["cabin_ppco2_mmhg"], 2.3);
 }
 
@@ -238,7 +238,7 @@ async fn playbook_activation_then_steps_advance_in_dag_order() {
     assert_eq!(view["total_steps"], 5);
 
     // The frame now carries the active run for the cockpit.
-    let (_, packet) = send(&app, "GET", "/api/telemetry", None).await;
+    let (_, packet) = send(&app, "GET", "/api/snapshot", None).await;
     assert_eq!(packet["active_playbook"]["current_step"], 1);
 
     let (status, view) = send(

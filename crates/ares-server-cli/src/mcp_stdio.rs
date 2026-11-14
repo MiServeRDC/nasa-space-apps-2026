@@ -253,7 +253,7 @@ fn organ_robustness(mission: &MissionState, args: &Value) -> Result<String, RpcE
     }
 
     let report = mission.evaluate();
-    let margins = organ_margins(organ, mission.clinical(), mission.thresholds());
+    let margins = organ_margins(organ, &mission.clinical(), mission.thresholds());
     let relevant: Vec<&str> = report
         .triggered_ids()
         .into_iter()

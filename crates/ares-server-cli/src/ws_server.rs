@@ -6,7 +6,7 @@
 //! * `POST /api/stress-test`         - console patch, recomputes and broadcasts.
 //! * `POST /api/playbook/activate`   - gate and arm a playbook.
 //! * `POST /api/playbook/execute-step` - the `[EXECUTE STEP]` button.
-//! * `GET  /api/telemetry`           - one frame (cockpit cold start, probes).
+//! * `GET  /api/snapshot`            - one frame (cockpit cold start, probes).
 //! * `GET  /api/health`              - liveness.
 //!
 //! One serialization per tick is shared by every client through a broadcast
@@ -74,7 +74,7 @@ pub fn router(state: AppState) -> Router {
         .route("/api/stress-test", post(stress_test))
         .route("/api/playbook/activate", post(activate_playbook))
         .route("/api/playbook/execute-step", post(execute_step))
-        .route("/api/telemetry", get(snapshot))
+        .route("/api/snapshot", get(snapshot))
         .route("/api/health", get(health))
         .with_state(state)
 }

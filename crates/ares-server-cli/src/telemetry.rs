@@ -17,8 +17,67 @@ use ares_medops_playbooks::{
 };
 use serde::Serialize;
 
+use crate::replay::{BidmcSample, NATIVE_RATE_HZ, RECORDED_CHANNELS};
+
 /// Cockpit stream tick rate. Phase 13 target: 20 Hz on `/ws/telemetry`.
 pub const UI_REFRESH_RATE_HZ: f64 = 20.0;
+
+/// What the frame is, which decides every provenance tag in it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SourceMode {
+    /// A verified BIDMC record and nothing else. The simulated blocks are
+    /// `null` and no deep-space indicator the record cannot support is emitted.
+    PureReplay,
+    /// Recorded BIDMC channels with What-If scenario inputs alongside them.
+    /// The recorded channels are still recorded: the console cannot write them.
+    RecordedWithWhatIf,
+    /// No recording loaded: the scenario generator is the only source.
+    SimulatedOnly,
+}
+
+impl SourceMode {
+    /// `provenance_manifest.biometrics_source`.
+    fn biometrics_source(self) -> &'static str {
+        match self {
+            Self::PureReplay | Self::RecordedWithWhatIf => "RECORDED_TERRESTRIAL_BIDMC_CSV",
+            Self::SimulatedOnly => "SIMULATED_SCENARIO_INPUT",
+        }
+    }
+
+    /// `provenance_manifest.biometrics_native_rate_hz`: the true acquisition
+    /// rate of the biometrics, never the UI tick rate of a 1 Hz source.
+    fn native_rate_hz(self) -> f64 {
+        match self {
+            Self::PureReplay | Self::RecordedWithWhatIf => NATIVE_RATE_HZ,
+            // The console is a generator evaluated once per tick, so for it the
+            // tick rate is the native rate.
+            Self::SimulatedOnly => UI_REFRESH_RATE_HZ,
+        }
+    }
+
+    /// `provenance_manifest.scenario_overlay_mode`.
+    fn overlay_mode(self) -> &'static str {
+        match self {
+            Self::PureReplay => "NONE_PURE_REPLAY",
+            Self::RecordedWithWhatIf | Self::SimulatedOnly => "SIMULATED_WHATIF_SCENARIO",
+        }
+    }
+
+    /// `safety_margins.provenance`.
+    fn margins_provenance(self) -> &'static str {
+        match self {
+            Self::PureReplay => "DERIVED_FROM_RECORDED_BIDMC",
+            Self::RecordedWithWhatIf | Self::SimulatedOnly => "DERIVED_FROM_HYBRID_SCENARIO",
+        }
+    }
+
+    /// True while the frame may carry `hemodynamics`, `musculoskeletal` and
+    /// `environment`. In pure replay they are `null`: BIDMC has four channels
+    /// and none of them is a jugular, a soleus or a cabin.
+    fn carries_simulated_blocks(self) -> bool {
+        !matches!(self, Self::PureReplay)
+    }
+}
 
 /// Total cabin pressure assumed when converting cabin ppCO2 (mmHg) to the
 /// contract's `cabin_co2_ppm`: 1 atm = 760 mmHg (ISS / Orion sea-level cabin).
@@ -60,7 +119,8 @@ pub struct ProvenanceManifest {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Biometrics {
     pub heart_rate_bpm: Option<f64>,
-    /// Always `null` in scenario mode: the console does not model PPG.
+    /// Recorded PPG pulse rate. Always `null` in simulated-only mode: the
+    /// console does not model PPG and will not invent one.
     pub pulse_rate_bpm: Option<f64>,
     pub respiration_rate_brpm: Option<f64>,
     pub spo2_percent: Option<f64>,
@@ -152,15 +212,24 @@ pub struct InterventionView {
     pub reason: String,
 }
 
-/// Channels the contract requires in `biometrics`.
-const REQUIRED_CHANNELS: [&str; 4] = [
-    "heart_rate_bpm",
-    "pulse_rate_bpm",
-    "respiration_rate_brpm",
-    "spo2_percent",
-];
-
 impl Biometrics {
+    /// Recorded mode: the four contract channels are exactly the CSV columns,
+    /// `None` where the record has `NaN`. Nothing is derived or filled in.
+    fn from_recorded(sample: &BidmcSample) -> Self {
+        Self {
+            heart_rate_bpm: sample.heart_rate_bpm,
+            pulse_rate_bpm: sample.pulse_rate_bpm,
+            respiration_rate_brpm: sample.respiration_rate_brpm,
+            spo2_percent: sample.spo2_percent,
+            // 1 Hz numerics carry no beat-to-beat information: deriving an R-R
+            // interval or an RMSSD from them would be an invention.
+            rr_interval_ms: None,
+            hrv_rmssd_ms: None,
+            core_temp_celsius: None,
+            missing_channels: sample.missing_channels.clone(),
+        }
+    }
+
     fn from_state(state: &ClinicalState) -> Self {
         let heart_rate_bpm = finite(state.vitals.heart_rate_bpm);
         let respiration_rate_brpm = finite(state.vitals.respiration_rate_brpm);
@@ -172,7 +241,7 @@ impl Biometrics {
             respiration_rate_brpm.is_some(),
             spo2_percent.is_some(),
         ];
-        let missing_channels = REQUIRED_CHANNELS
+        let missing_channels = RECORDED_CHANNELS
             .iter()
             .zip(present)
             .filter(|(_, ok)| !ok)
@@ -193,9 +262,11 @@ impl Biometrics {
 
     /// True when a channel the engine actually consumes is missing.
     ///
-    /// `pulse_rate_bpm` is excluded on purpose: it is permanently absent in
-    /// scenario mode and feeds no playbook trigger and no safety gate, so it is
-    /// reported in `missing_channels` without degrading the alarm tier.
+    /// `pulse_rate_bpm` is excluded on purpose: the engine reads HR, not the
+    /// PPG pulse rate, so a missing `PULSE` feeds no playbook trigger and no
+    /// safety gate. It is still reported in `missing_channels`, and the cockpit
+    /// must show it as unavailable; it just does not by itself degrade the tier.
+    /// In `bidmc_01` seconds 111-123 `SpO2` is missing too, which does.
     fn engine_inputs_degraded(&self) -> bool {
         self.heart_rate_bpm.is_none()
             || self.respiration_rate_brpm.is_none()
@@ -253,13 +324,28 @@ fn alarm_level(report: &MedOpsReport, gates: &GateStatus, degraded: bool) -> &'s
     }
 }
 
-/// Builds one frame. `clock` carries the two timestamps the contract separates.
+/// EXTENSION: why the three margins are `null`, so the cockpit can label them
+/// instead of drawing a zero.
+fn pending_sources(mode: SourceMode) -> Vec<&'static str> {
+    let mut sources = vec!["PENDING_ARES_NQS_STL"];
+    if mode == SourceMode::PureReplay {
+        sources.push("UNSUPPORTED_BY_TERRESTRIAL_RECORD");
+    }
+    sources
+}
+
+/// Builds one frame. The two timestamps the contract separates are both here:
+/// `timestamp_ms` is when the engine emitted the frame, and
+/// `relative_recording_time_s` is where the recording is.
 pub(crate) struct PacketInputs<'a> {
     pub timestamp_ms: u64,
     pub relative_recording_time_s: f64,
     pub source_record_id: &'a str,
     pub astronaut_id: &'a str,
     pub mission_elapsed_days: Option<f64>,
+    pub mode: SourceMode,
+    /// The recorded second this frame shows, `None` in simulated-only mode.
+    pub recorded: Option<&'a BidmcSample>,
     pub state: &'a ClinicalState,
     pub thresholds: &'a ClinicalThresholds,
     pub report: &'a MedOpsReport,
@@ -269,7 +355,11 @@ pub(crate) struct PacketInputs<'a> {
 impl TelemetryPacket {
     pub(crate) fn build(input: PacketInputs<'_>) -> Self {
         let state = input.state;
-        let biometrics = Biometrics::from_state(state);
+        let mode = input.mode;
+        let biometrics = match input.recorded {
+            Some(sample) => Biometrics::from_recorded(sample),
+            None => Biometrics::from_state(state),
+        };
         let gates = GateStatus::from_report(input.report, input.thresholds);
         let degraded = biometrics.engine_inputs_degraded();
 
@@ -300,16 +390,21 @@ impl TelemetryPacket {
             timestamp_ms: input.timestamp_ms,
             relative_recording_time_s: input.relative_recording_time_s,
             source_record_id: input.source_record_id.to_string(),
-            mission_elapsed_days: input.mission_elapsed_days,
+            // A terrestrial 8-minute recording has no mission day. Claiming one
+            // would turn an ICU patient into a deep-space crew member.
+            mission_elapsed_days: match mode {
+                SourceMode::PureReplay => None,
+                _ => input.mission_elapsed_days,
+            },
             astronaut_id: input.astronaut_id.to_string(),
             provenance_manifest: ProvenanceManifest {
-                biometrics_source: "SIMULATED_SCENARIO_INPUT",
-                biometrics_native_rate_hz: UI_REFRESH_RATE_HZ,
+                biometrics_source: mode.biometrics_source(),
+                biometrics_native_rate_hz: mode.native_rate_hz(),
                 ui_refresh_rate_hz: UI_REFRESH_RATE_HZ,
-                scenario_overlay_mode: "SIMULATED_WHATIF_SCENARIO",
+                scenario_overlay_mode: mode.overlay_mode(),
             },
             biometrics,
-            hemodynamics: Some(Hemodynamics {
+            hemodynamics: mode.carries_simulated_blocks().then(|| Hemodynamics {
                 provenance: "SIMULATED_SCENARIO_INPUT",
                 ijv_csa_cm2: finite(j.ijv_csa_cm2),
                 ijv_velocity_max_cm_s: finite(j.ijv_velocity_max_cm_s),
@@ -317,14 +412,14 @@ impl TelemetryPacket {
                 pocus_thrombus_confirmed: j.pocus_thrombus_confirmed,
                 thrombosis_risk_score: None,
             }),
-            musculoskeletal: Some(Musculoskeletal {
+            musculoskeletal: mode.carries_simulated_blocks().then(|| Musculoskeletal {
                 provenance: "SIMULATED_SCENARIO_INPUT",
                 soleus_volume_loss_pct: finite(m.soleus_volume_loss_pct),
                 bmd_loss_pct_per_month: finite(m.bmd_loss_pct_per_month),
                 gait_asymmetry_index_pct: finite(m.gait_asymmetry_index_pct),
                 post_landing: m.post_landing,
             }),
-            environment: Some(EnvironmentBlock {
+            environment: mode.carries_simulated_blocks().then(|| EnvironmentBlock {
                 provenance: "SIMULATED_SCENARIO_INPUT",
                 cabin_co2_ppm: finite(e.cabin_ppco2_mmhg)
                     .map(|mmhg| mmhg / CABIN_TOTAL_PRESSURE_MMHG * 1.0e6),
@@ -333,12 +428,14 @@ impl TelemetryPacket {
                 cumulative_radiation_mgy: finite(e.cumulative_radiation_mgy),
             }),
             safety_margins: SafetyMargins {
-                provenance: "DERIVED_FROM_HYBRID_SCENARIO",
+                provenance: mode.margins_provenance(),
                 med_stl_rho_robustness: None,
+                // An 8-minute terrestrial recording cannot support a horizon in
+                // days, so the predictor stays unavailable rather than guessing.
                 time_to_violation_days: None,
                 mission_readiness_index: None,
                 alarm_level: alarm_level(input.report, &gates, degraded),
-                pending_sources: vec!["PENDING_ARES_NQS_STL"],
+                pending_sources: pending_sources(mode),
             },
             active_playbook: input.active_playbook,
             medops: MedOpsSummary {
