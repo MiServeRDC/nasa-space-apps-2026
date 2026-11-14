@@ -28,7 +28,19 @@ export function AlarmBadge({ level }: { level: AlarmLevel }) {
   return <span className={`rounded border px-2 py-1 font-bold ${cls[level]}`}>{level}</span>;
 }
 
-export function TriPhaseHeader({ alarm, link, phase }: { alarm: AlarmLevel; link: LinkState; phase: Phase }) {
+export function TriPhaseHeader({
+  alarm,
+  link,
+  activePhase,
+  recommendedPhase,
+  onSelectPhase,
+}: {
+  alarm: AlarmLevel;
+  link: LinkState;
+  activePhase: Phase;
+  recommendedPhase: Phase;
+  onSelectPhase: (p: Phase) => void;
+}) {
   const [profile, setProfile] = useState<Profile>(LATENCY_PROFILES[1]);
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -40,27 +52,41 @@ export function TriPhaseHeader({ alarm, link, phase }: { alarm: AlarmLevel; link
   const phases: Phase[] = ['GATHER', 'EVALUATE', 'ACT'];
 
   return (
-    <header className="flex flex-wrap items-center justify-between gap-4 border-b border-line px-4 py-2 font-mono text-sm">
+    <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-black px-4 py-2 font-mono text-sm">
       <div className="flex items-center gap-3">
         <span className="text-lg font-bold tracking-widest text-nominal">ARES-HEALTH</span>
         <span className="text-gray-500">ASTRO-01</span>
       </div>
 
-      <ol className="flex items-center gap-2" aria-label="Closed-loop phase">
-        {phases.map((p, i) => (
-          <li key={p} className="flex items-center gap-2">
-            <span className={`rounded border px-3 py-1 ${p === phase ? 'border-nominal bg-nominal font-bold text-black' : 'border-line text-gray-500'}`}>
-              [{i + 1}. {p}]
-            </span>
-            {i < 2 && <span className="text-gray-600">-&gt;</span>}
-          </li>
-        ))}
-      </ol>
+      <nav className="flex items-center gap-2" aria-label="Cockpit pages">
+        {phases.map((p, i) => {
+          const isActive = p === activePhase;
+          const isAlert = p === 'ACT' && recommendedPhase === 'ACT' && !isActive;
+          return (
+            <div key={p} className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => onSelectPhase(p)}
+                className={`cursor-pointer rounded border px-3 py-1 transition-colors ${
+                  isActive
+                    ? 'border-nominal bg-nominal font-bold text-black'
+                    : isAlert
+                      ? 'border-warning text-warning hover:bg-warning/15'
+                      : 'border-line text-gray-400 hover:border-gray-500 hover:text-white'
+                }`}
+              >
+                {i + 1}. {p}
+              </button>
+              {i < 2 && <span className="text-gray-600">-&gt;</span>}
+            </div>
+          );
+        })}
+      </nav>
 
       <div className="flex flex-wrap items-center gap-3">
         <select
           aria-label="Earth link profile"
-          className="rounded border border-line bg-black px-2 py-1"
+          className="rounded border border-line bg-black px-2 py-1 text-gray-200"
           value={profile.id}
           onChange={(e) => setProfile(LATENCY_PROFILES.find((p) => p.id === e.target.value) ?? LATENCY_PROFILES[1])}
         >
@@ -69,8 +95,8 @@ export function TriPhaseHeader({ alarm, link, phase }: { alarm: AlarmLevel; link
           ))}
         </select>
         <span className={Number.isFinite(profile.oneWayS) ? 'text-gray-300' : 'font-bold text-critical'}>OWLT {fmt(profile.oneWayS)}</span>
-        <span className={autonomous ? 'text-advisory' : 'text-ok'}>{autonomous ? 'EDGE AUTONOMY' : 'GROUND LOOP'}</span>
-        <span className={link === 'ENGINE_LIVE' ? 'text-ok' : 'text-advisory'}>{link === 'ENGINE_LIVE' ? 'ENGINE 127.0.0.1:8080' : 'LOCAL SIM'}</span>
+        <span className={autonomous ? 'text-advisory' : 'text-ok'}>{autonomous ? 'ON-BOARD AUTONOMY' : 'GROUND LINK'}</span>
+        <span className={link === 'ENGINE_LIVE' ? 'text-ok' : 'text-gray-500'}>{link === 'ENGINE_LIVE' ? 'ENGINE LIVE' : 'SIMULATION'}</span>
         <AlarmBadge level={alarm} />
         <span className="text-gray-500">{now.toISOString().slice(11, 19)}Z</span>
       </div>

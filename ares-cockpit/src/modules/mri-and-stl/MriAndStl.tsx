@@ -41,7 +41,7 @@ export function MriGauge({ mri, ttv }: { mri: number | null; ttv: number | null 
 interface Pt { day: number; rho: number; sigma: number }
 
 /** rho_hat_min vs mission day: past trajectory, 14-day forecast, +/- 1.96 sigma Bayesian band. */
-export function StlChart({ whatIf }: { whatIf: WhatIf }) {
+export function StlChart({ whatIf, lastScanDay }: { whatIf: WhatIf; lastScanDay: number }) {
   const W = 520, H = 190, PAD = 30;
   const { past, future, dayMin, dayMax } = useMemo(() => {
     const d = Math.round(whatIf.mission_day);
@@ -49,13 +49,13 @@ export function StlChart({ whatIf }: { whatIf: WhatIf }) {
     const pts = (from: number, to: number): Pt[] => {
       const out: Pt[] = [];
       for (let x = from; x <= to; x += 1) {
-        const s = evaluate({ ...whatIf, mission_day: x });
+        const s = evaluate({ ...whatIf, mission_day: x }, lastScanDay);
         out.push({ day: x, rho: s.rhoMin, sigma: s.sigma });
       }
       return out;
     };
     return { past: pts(start, d), future: pts(d, d + 14), dayMin: start, dayMax: d + 14 };
-  }, [whatIf]);
+  }, [whatIf, lastScanDay]);
 
   const yMin = -0.6, yMax = 1.0;
   const sx = (day: number) => PAD + ((day - dayMin) / Math.max(1, dayMax - dayMin)) * (W - 2 * PAD);
@@ -89,7 +89,7 @@ export function PredicateBars({ rho }: { rho: Record<string, number> }) {
     <div className="grid grid-cols-2 gap-x-4 gap-y-1 font-mono text-xs">
       {Object.entries(rho).map(([k, v]) => (
         <div key={k} className="flex items-center gap-2">
-          <span className="w-14 text-gray-400">{k}</span>
+          <span className="w-20 text-gray-400">{k}</span>
           <div className="h-2 flex-1 rounded bg-line">
             <div className="h-2 rounded" style={{ width: `${Math.max(0, Math.min(1, v)) * 100}%`, background: riskColor(v) }} />
           </div>

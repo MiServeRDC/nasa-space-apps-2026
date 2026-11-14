@@ -10,12 +10,12 @@ export type LinkState = 'ENGINE_LIVE' | 'LOCAL_SIMULATION';
  * Connects to the loopback ares-server-cli WebSocket (20 Hz). When the engine is not running,
  * falls back to the local deterministic scenario model so the cockpit stays usable offline.
  */
-export function useTelemetry(whatIf: WhatIf, thrombusConfirmed: boolean | null) {
-  const [packet, setPacket] = useState<TelemetryPacket>(() => buildPacket(whatIf, 0, thrombusConfirmed));
+export function useTelemetry(whatIf: WhatIf, thrombusConfirmed: boolean | null, lastScanDay: number) {
+  const [packet, setPacket] = useState<TelemetryPacket>(() => buildPacket(whatIf, 0, thrombusConfirmed, lastScanDay));
   const [link, setLink] = useState<LinkState>('LOCAL_SIMULATION');
   const wsRef = useRef<WebSocket | null>(null);
-  const inputs = useRef({ whatIf, thrombusConfirmed });
-  inputs.current = { whatIf, thrombusConfirmed };
+  const inputs = useRef({ whatIf, thrombusConfirmed, lastScanDay });
+  inputs.current = { whatIf, thrombusConfirmed, lastScanDay };
 
   // Engine link with periodic reconnect.
   useEffect(() => {
@@ -61,7 +61,7 @@ export function useTelemetry(whatIf: WhatIf, thrombusConfirmed: boolean | null) 
     let tick = 0;
     const id = window.setInterval(() => {
       tick += 1;
-      setPacket(buildPacket(inputs.current.whatIf, tick, inputs.current.thrombusConfirmed));
+      setPacket(buildPacket(inputs.current.whatIf, tick, inputs.current.thrombusConfirmed, inputs.current.lastScanDay));
     }, 50);
     return () => window.clearInterval(id);
   }, [link]);
