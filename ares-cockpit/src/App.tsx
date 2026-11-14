@@ -39,6 +39,7 @@ import {
 import { MissionPortal } from './modules/portal/MissionPortal';
 import { OpenScreenStudio } from './modules/studio/OpenScreenStudio';
 import { KeyboardShortcutsModal } from './modules/ui-primitives/KeyboardShortcutsModal';
+import { AuditChainModal } from './modules/audit-chain/AuditChainModal';
 import type { VoiceIntentClassification } from './lib/voiceIntentRouter';
 import type { InjuryMarker } from './types/injury';
 import type { DataOrigin, FreshnessStatus, TelemetryPacket } from './types/telemetry';
@@ -361,6 +362,7 @@ function VitalsTrend({ history }: { history: RecordedHistoryPoint[] }) {
 export default function App() {
   const [activeView, setActiveView] = useState<MissionViewMode>('VIEW_COCKPIT');
   const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false);
+  const [auditModalOpen, setAuditModalOpen] = useState(false);
   const [whatIf, setWhatIf] = useState<WhatIf>(DEFAULT_WHATIF);
   const [thrombus, setThrombus] = useState<boolean | null>(null);
   const [lastScanDay, setLastScanDay] = useState<number>(DEFAULT_WHATIF.mission_day - 5);
@@ -700,6 +702,7 @@ export default function App() {
         activePhase={activePhase}
         recommendedPhase={recommendedPhase}
         onSelectPhase={setActivePhase}
+        onOpenAudit={() => setAuditModalOpen(true)}
       />
 
       <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col gap-3 overflow-hidden p-4">
@@ -1000,10 +1003,17 @@ export default function App() {
                           <Metric label="Irisin hormone" value={s.irisin.toFixed(2)} unit="ng/mL" />
                           <Metric label="Sclerostin (bone brake)" value={s.sclerostin.toFixed(0)} unit="pmol/L" limit={`> ${P.sclerostinCritical} risk`} bad={s.sclerostin > P.sclerostinCritical} />
                           <Metric label="Heel bone loss (BMD)" value={s.bmdLossPct.toFixed(1)} unit="%" />
+                          <Metric
+                            label="Urinary calcium (stone risk)"
+                            value={`${s.urinaryCalciumMgD.toFixed(0)} [${s.nephrolithiasisRisk}]`}
+                            unit="mg/d"
+                            limit="> 250 risk"
+                            bad={s.urinaryCalciumMgD > 250}
+                          />
                           <Metric label="Expected Mars gait asymmetry" value={s.gaiPct.toFixed(1)} unit="%" limit={`> ${P.gaiCritical} risk`} bad={s.gaiPct > P.gaiCritical} />
                         </div>
                         <p className="text-sm text-gray-300">
-                          Without daily resistive exercise on ARED, your calf muscle thins and signals your bones to lose density. Keeping your ARED load near 100% protects your skeleton for landing on Mars.
+                          Without daily resistive exercise on ARED, your calf muscle thins and signals bones to resorb minerals. Excess calcium is filtered into urine, elevating nephrolithiasis (kidney stone) risk above 250 mg/d. Keeping your ARED load near 100% protects your skeleton, prevents renal crystallization, and preserves landing readiness on Mars.
                         </p>
                       </div>
                     )}
@@ -1180,6 +1190,11 @@ export default function App() {
       <KeyboardShortcutsModal
         open={shortcutsModalOpen}
         onClose={() => setShortcutsModalOpen(false)}
+      />
+
+      <AuditChainModal
+        isOpen={auditModalOpen}
+        onClose={() => setAuditModalOpen(false)}
       />
 
       <OsCommandPalette

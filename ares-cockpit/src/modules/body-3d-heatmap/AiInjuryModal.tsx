@@ -103,6 +103,8 @@ export function AiInjuryModal({
         contrastIndex: existingInjury.contrastIndex ?? 0.3,
         darkPixelRatio: existingInjury.darkPixelRatio ?? 0.05,
         tissueDisruptionPct: 30,
+        dynamicRange: 120,
+        qualityIndexPct: 75,
         recommendedPlaybookId:
           existingInjury.recommendedPlaybookId ??
           INJURY_REGIONS[existingInjury.region].recommendedPlaybookId,
@@ -291,6 +293,12 @@ export function AiInjuryModal({
                     </span>
                     <span>
                       darkPixelRatio: <b className="text-white">{result.darkPixelRatio.toFixed(2)}</b>
+                    </span>
+                    <span>
+                      qualityIndex: <b className="text-lime-300">{result.qualityIndexPct}%</b>
+                    </span>
+                    <span>
+                      dynamicRange: <b className="text-white">{result.dynamicRange}</b>
                     </span>
                   </div>
                 )}

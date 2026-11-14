@@ -24,6 +24,8 @@ export interface OpticalAnalysisResult {
   contrastIndex: number;
   darkPixelRatio: number;
   tissueDisruptionPct: number;
+  dynamicRange: number;
+  qualityIndexPct: number;
   recommendedPlaybookId: CrystallizedPlaybookId;
   detectedAt: string;
 }
@@ -71,6 +73,8 @@ export async function analyzeImageOffline(
         let lumaSqSum = 0;
         let edgeDisruptions = 0;
         let darkPixels = 0;
+        let minLum = 255;
+        let maxLum = 0;
         const totalPixels = w * h;
 
         for (let i = 0; i < data.length; i += 4) {
@@ -82,7 +86,11 @@ export async function analyzeImageOffline(
           totalGreen += g;
           totalBlue += b;
 
-          const luma = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+          const lum = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+          if (lum < minLum) minLum = lum;
+          if (lum > maxLum) maxLum = lum;
+
+          const luma = lum / 255;
           lumaSum += luma;
           lumaSqSum += luma * luma;
 
@@ -108,12 +116,24 @@ export async function analyzeImageOffline(
         const contrastIndex = Number(Math.min(1.0, Math.sqrt(varianceLuma) * 2.5).toFixed(2));
         const darkPixelRatio = Number((darkPixels / totalPixels).toFixed(2));
         const disruptionPct = Math.round((edgeDisruptions / totalPixels) * 100);
+        const dynamicRange = totalPixels > 0 ? Math.max(0, maxLum - minLum) : 0;
+        const qualityIndexPct = Math.round(
+          Math.min(100, Math.max(10, (dynamicRange / 255) * 80 + (1 - darkPixelRatio) * 20)),
+        );
 
         resolve(
-          buildOpticalReport(region, erythemaIndex, contrastIndex, darkPixelRatio, disruptionPct),
+          buildOpticalReport(
+            region,
+            erythemaIndex,
+            contrastIndex,
+            darkPixelRatio,
+            disruptionPct,
+            dynamicRange,
+            qualityIndexPct,
+          ),
         );
       } catch {
-        resolve(buildOpticalReport(region, 0.5, 0.25, 0.05, 40));
+        resolve(buildOpticalReport(region, 0.5, 0.25, 0.05, 40, 120, 75));
       } finally {
         cleanupObjectUrl();
       }
@@ -121,7 +141,7 @@ export async function analyzeImageOffline(
 
     img.onerror = () => {
       cleanupObjectUrl();
-      resolve(buildOpticalReport(region, 0.5, 0.25, 0.05, 40));
+      resolve(buildOpticalReport(region, 0.5, 0.25, 0.05, 40, 120, 75));
     };
 
     img.src = createdObjectUrl ?? (imageSource as string);
@@ -134,6 +154,8 @@ function buildOpticalReport(
   contrastIndex: number,
   darkPixelRatio: number,
   disruptionPct: number,
+  dynamicRange: number = 120,
+  qualityIndexPct: number = 75,
 ): OpticalAnalysisResult {
   const meta = INJURY_REGIONS[region];
   const now = new Date().toISOString().slice(11, 19) + 'Z';
@@ -231,6 +253,8 @@ function buildOpticalReport(
     contrastIndex,
     darkPixelRatio,
     tissueDisruptionPct: disruptionPct,
+    dynamicRange,
+    qualityIndexPct,
     recommendedPlaybookId: meta.recommendedPlaybookId,
     detectedAt: now,
   };

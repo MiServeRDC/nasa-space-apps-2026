@@ -29,7 +29,7 @@ use ares_core_types::binary_ipc::{
     DEONTIC_EVA_FORBIDDEN, DEONTIC_SHELTER_MANDATORY, DEONTIC_VIOLATES_POLICY,
     PARTITION_ALL_NOMINAL, SeqlockTelemetryRing,
 };
-use ares_core_types::security::{CrewRole, MedOpsAuditLogger};
+use ares_core_types::security::{AuditChainRecord, CrewRole, MedOpsAuditLogger};
 use ares_core_types::telemetry::{
     AlertSeverity, Biometrics, BiometricsSource, ProvenanceManifest, ScenarioOverlayMode,
     StressTestScenarioInput, SystemPhase, TelemetryPacket,
@@ -1349,6 +1349,7 @@ pub fn build_axum_router(state: Arc<SharedMissionState>) -> Router {
         .route("/api/snapshot", get(get_snapshot_handler))
         .route("/api/os-status", get(get_os_status_handler))
         .route("/api/binary-frame", get(get_binary_frame_handler))
+        .route("/api/audit-log", get(get_audit_log_handler))
         .route(
             "/api/mcp",
             post(post_mcp_handler).options(cors_preflight_handler),
@@ -1409,6 +1410,16 @@ async fn get_binary_frame_handler(
         HeaderValue::from_static("application/octet-stream"),
     );
     Ok(response)
+}
+
+async fn get_audit_log_handler(
+    State(state): State<Arc<SharedMissionState>>,
+) -> Result<Json<Vec<AuditChainRecord>>, StatusCode> {
+    state
+        .audit_logger
+        .records()
+        .map(Json)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
 }
 
 async fn post_mcp_handler(
@@ -1985,5 +1996,19 @@ mod tests {
         // Crossing the restart re-learns the baseline and leaves no event behind.
         state.advance_tick(Duration::from_secs(10)).expect("wrap");
         assert!(!state.latest_vitals_anomaly().expect("report").baseline_ready);
+    }
+
+    #[tokio::test]
+    async fn audit_log_handler_exposes_verified_sha256_chain() {
+        let state = SharedMissionState::from_data_dir(&workspace_bidmc_dir()).expect("state");
+        let res = get_audit_log_handler(State(state.clone()))
+            .await
+            .expect("audit log handler must return 200 OK");
+        let records = res.0;
+        assert!(!records.is_empty(), "genesis audit record must exist");
+        assert_eq!(records[0].sequence_index, 0);
+        assert_eq!(records[0].prev_hash_hex, "0".repeat(64));
+        let valid = state.audit_logger.verify_chain_integrity().expect("verify");
+        assert!(valid, "chain integrity must be valid");
     }
 }

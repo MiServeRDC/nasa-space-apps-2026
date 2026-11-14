@@ -45,6 +45,7 @@ export function TriPhaseHeader({
   activePhase,
   recommendedPhase,
   onSelectPhase,
+  onOpenAudit,
 }: {
   astronautId: string;
   alarm: AlarmLevel;
@@ -53,6 +54,7 @@ export function TriPhaseHeader({
   activePhase: Phase;
   recommendedPhase: Phase;
   onSelectPhase: (p: Phase) => void;
+  onOpenAudit?: () => void;
 }) {
   const [profile, setProfile] = useState<Profile>(LATENCY_PROFILES[1]);
   const [now, setNow] = useState(() => new Date());
@@ -113,6 +115,15 @@ export function TriPhaseHeader({
         <span className={link === 'ENGINE_LIVE' ? 'text-ok' : 'text-warning'}>
           {link === 'ENGINE_LIVE' ? (wsConnected ? 'ENGINE WS LIVE' : 'ENGINE SNAPSHOT') : 'LOCAL SIMULATION'}
         </span>
+        {onOpenAudit && (
+          <button
+            type="button"
+            onClick={onOpenAudit}
+            className="min-h-12 cursor-pointer rounded border border-cyan-400 bg-cyan-950/40 px-3 py-1 font-bold text-cyan-300 hover:bg-cyan-400 hover:text-black transition-colors"
+          >
+            AUDIT CHAIN
+          </button>
+        )}
         <AlarmBadge level={alarm} />
         <span className="text-gray-500">{now.toISOString().slice(11, 19)}Z</span>
       </div>
