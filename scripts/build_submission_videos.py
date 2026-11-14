@@ -297,10 +297,10 @@ def main():
         (os.path.join(SCREENSHOTS_DIR, '06_evaluate_3d.png'), 4.0),
         (os.path.join(SCREENSHOTS_DIR, '07_evaluate_forecast.png'), 4.0),
         (os.path.join(SCREENSHOTS_DIR, '08_act_playbooks.png'), 3.0),
-        (os.path.join(SCREENSHOTS_DIR, '10_end_card.png'), 3.0),
+        (os.path.join(SCREENSHOTS_DIR, '10_end_card.png'), 2.8),
     ]
     pitch_mp4 = os.path.join(SUBMISSION_DIR, 'ARES_HEALTH_30S_PITCH.mp4')
-    compile_video(pitch_scenes, pitch_wav, pitch_srt, pitch_mp4, 30.0)
+    compile_video(pitch_scenes, pitch_wav, pitch_srt, pitch_mp4, 29.8)
 
     # 5. Compile 180s Technical Walkthrough Video (5 Acts)
     # Act I (00:00 - 00:38, 38s): Title card (8s) + Gather Replay (20s) + Ground Portal (10s)
