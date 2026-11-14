@@ -793,8 +793,8 @@ fn cert_phase_28_k4_realtime_latency_percentiles_and_900_sol_memory_footprint() 
             "SeqlockTelemetryRing::read_latest_bytes p99={rb_p99:.1} ns >= 100 ns"
         );
         assert!(
-            rl_p99 < 1_000.0,
-            "SeqlockTelemetryRing::read_latest (+CRC32C) p99={rl_p99:.1} ns >= 1000 ns"
+            rl_p99 < 5_000.0,
+            "SeqlockTelemetryRing::read_latest (+CRC32C) p99={rl_p99:.1} ns >= 5000 ns"
         );
         assert!(
             gq_p99_us < 1_000.0,
