@@ -11,7 +11,6 @@ import type { InjuryMarker } from './types/injury';
 import { WhatIfConsole } from './modules/whatif-console/WhatIfConsole';
 import { PlaybookRunner } from './modules/playbook-runner/PlaybookRunner';
 import { EcgStrip, OcularOnsd, PocusIjv } from './modules/analysis-imaging/Imaging';
-import { UniversalBleHeartRateManager, type BleHeartRateMeasurement, type BleStatus } from './lib/bleHeartRate';
 import { buildOpenMHealthJson, buildHl7FhirJson, downloadJsonFile } from './lib/exportStandard';
 import { AuditChainModal } from './modules/audit-chain/AuditChainModal';
 
@@ -64,22 +63,6 @@ export default function App() {
   const [evalTab, setEvalTab] = useState<EvalTab>('BODY_3D');
   const [injuries, setInjuries] = useState<InjuryMarker[]>([]);
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
-  const [bleStatus, setBleStatus] = useState<BleStatus>('IDLE');
-  const [bleError, setBleError] = useState<string | null>(null);
-  const [bleData, setBleData] = useState<BleHeartRateMeasurement | null>(null);
-
-  const bleManager = useMemo(() => new UniversalBleHeartRateManager(), []);
-
-  useEffect(() => {
-    bleManager.setCallbacks(
-      (m) => setBleData(m),
-      (status, err) => {
-        setBleStatus(status);
-        if (err) setBleError(err);
-        else if (status === 'CONNECTED') setBleError(null);
-      }
-    );
-  }, [bleManager]);
 
   const { packet, link, status } = useTelemetry(whatIf, thrombus, lastScanDay, true);
   const recomputeLatencyUs = status.lastSyncLatencyUs;
@@ -157,7 +140,7 @@ export default function App() {
             <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
               <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
                 {[
-                  ['Heart Rate (ECG)', fmt(bleData?.heartRateBpm ?? b.heart_rate_bpm), 'bpm'],
+                  ['Heart Rate (ECG)', fmt(b.heart_rate_bpm), 'bpm'],
                   ['Pulse Rate (PPG)', fmt(b.pulse_rate_bpm), 'bpm'],
                   ['Blood Oxygen', fmt(b.spo2_percent, 1), '%'],
                   ['Breathing Rate', fmt(b.respiration_rate_brpm, 1), 'br/min'],
@@ -174,7 +157,7 @@ export default function App() {
 
               <Card title="Live ECG & Signal Quality Check" tag={packet.provenance_manifest.biometrics_source} className="min-h-0 flex-1">
                 <div className="flex h-full flex-col justify-between gap-3">
-                  <EcgStrip hr={bleData?.heartRateBpm ?? b.heart_rate_bpm ?? s.hr} artifact={isPureReplay ? 0 : whatIf.artifact_level} sqi={isPureReplay ? 1 : s.sqi} />
+                  <EcgStrip hr={b.heart_rate_bpm ?? s.hr} artifact={isPureReplay ? 0 : whatIf.artifact_level} sqi={isPureReplay ? 1 : s.sqi} />
                   {b.missing_channels && b.missing_channels.length > 0 ? (
                     <p className="font-mono text-xs text-advisory">
                       MISSING CHANNELS: {b.missing_channels.join(', ')} (preserved as null / UNAVAILABLE, never coerced to 0).
@@ -189,108 +172,36 @@ export default function App() {
                 </div>
               </Card>
 
-              {/* Universal Hardware-Agnostic Wearables & Clinical Standards Export */}
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                {/* BLE GATT Ingestion */}
-                <div className="rounded-lg border border-line bg-panel p-4 font-mono text-xs">
-                  <div className="flex items-center justify-between border-b border-line pb-2">
-                    <span className="font-bold text-gray-200">UNIVERSAL WEARABLE (BLE GATT)</span>
-                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
-                      bleStatus === 'CONNECTED' ? 'bg-ok/20 text-ok border border-ok' :
-                      bleStatus === 'CONNECTING' ? 'bg-advisory/20 text-advisory border border-advisory' :
-                      'border border-line text-gray-500'
-                    }`}>
-                      {bleStatus}
-                    </span>
-                  </div>
-
-                  <p className="mt-2 text-gray-400 font-sans text-xs">
-                    Standard Bluetooth SIG Heart Rate Profile (0x180D). Pairs with Polar H10, Garmin, Movesense, Wahoo, or any BLE chest strap to stream real-time RR intervals.
-                  </p>
-
-                  {bleError && (
-                    <div className="mt-2 rounded border border-red-500/40 bg-red-950/30 p-2 text-[11px] text-red-300">
-                      {bleError}
-                    </div>
-                  )}
-
-                  {bleStatus === 'CONNECTED' && bleData && (
-                    <div className="mt-2 grid grid-cols-2 gap-2 rounded border border-line bg-black/60 p-2.5">
-                      <div>
-                        <div className="text-[10px] text-gray-500">DEVICE</div>
-                        <div className="truncate text-white font-bold">{bleData.deviceName}</div>
-                      </div>
-                      <div>
-                        <div className="text-[10px] text-gray-500">LIVE HR</div>
-                        <div className="text-ok font-bold">{bleData.heartRateBpm} bpm</div>
-                      </div>
-                      <div>
-                        <div className="text-[10px] text-gray-500">RMSSD (HRV)</div>
-                        <div className="text-cyan-300 font-bold">
-                          {bleData.rmssdMs ? `${bleData.rmssdMs.toFixed(1)} ms` : 'BUFFERING...'}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-[10px] text-gray-500">SDNN (HRV)</div>
-                        <div className="text-cyan-300 font-bold">
-                          {bleData.sdnnMs ? `${bleData.sdnnMs.toFixed(1)} ms` : 'BUFFERING...'}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="mt-3 flex gap-2">
-                    {bleStatus === 'CONNECTED' ? (
-                      <button
-                        type="button"
-                        onClick={() => bleManager.disconnect()}
-                        className="cursor-pointer rounded border border-red-500/60 bg-red-950/30 px-3 py-1 text-red-300 hover:bg-red-500 hover:text-black"
-                      >
-                        DISCONNECT SENSOR
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => bleManager.connect()}
-                        disabled={bleStatus === 'CONNECTING'}
-                        className="cursor-pointer rounded border border-cyan-400 bg-cyan-950/30 px-3 py-1 font-bold text-cyan-300 hover:bg-cyan-400 hover:text-black disabled:opacity-50"
-                      >
-                        + PAIR BLUETOOTH SENSOR
-                      </button>
-                    )}
-                  </div>
+              {/* Clinical Interoperability Standards Export */}
+              <div className="rounded-lg border border-line bg-panel p-4 font-mono text-xs">
+                <div className="flex items-center justify-between border-b border-line pb-2 font-bold text-gray-200">
+                  <span>CLINICAL INTEROPERABILITY EXPORT (NASA-STD-3001)</span>
+                  <span className="text-[10px] font-normal text-gray-500">AIR-GAPPED TELEMETRY SYNC</span>
                 </div>
-
-                {/* Open Health Clinical Export */}
-                <div className="rounded-lg border border-line bg-panel p-4 font-mono text-xs">
-                  <div className="border-b border-line pb-2 font-bold text-gray-200">
-                    CLINICAL INTEROPERABILITY EXPORT
-                  </div>
-                  <p className="mt-2 text-gray-400 font-sans text-xs">
-                    Deterministic edge export for Earth synchronization. Compliant with Open mHealth (OMH v1.0) and HL7 FHIR R4 Vital Signs Profile with LOINC bindings.
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const omh = buildOpenMHealthJson(packet, s);
-                        downloadJsonFile(`ares_open_mhealth_day${whatIf.mission_day}.json`, omh);
-                      }}
-                      className="cursor-pointer rounded border border-line bg-black/60 px-3 py-1.5 text-gray-200 hover:border-cyan-400 hover:text-cyan-300"
-                    >
-                      EXPORT OPEN mHEALTH (JSON)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const fhir = buildHl7FhirJson(packet, s);
-                        downloadJsonFile(`ares_fhir_vitals_day${whatIf.mission_day}.json`, fhir);
-                      }}
-                      className="cursor-pointer rounded border border-line bg-black/60 px-3 py-1.5 text-gray-200 hover:border-lime-400 hover:text-lime-300"
-                    >
-                      EXPORT HL7 FHIR R4 (JSON)
-                    </button>
-                  </div>
+                <p className="mt-2 text-gray-400 font-sans text-xs">
+                  Deterministic edge export for Earth synchronization. Compliant with Open mHealth (OMH v1.0) and HL7 FHIR R4 Vital Signs Profile with LOINC bindings (8867-4, 2708-6, 9279-1, 8480-6, 8310-5, 2062-8).
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const omh = buildOpenMHealthJson(packet, s);
+                      downloadJsonFile(`ares_open_mhealth_day${whatIf.mission_day}.json`, omh);
+                    }}
+                    className="cursor-pointer rounded border border-line bg-black/60 px-3 py-1.5 text-gray-200 hover:border-cyan-400 hover:text-cyan-300"
+                  >
+                    EXPORT OPEN mHEALTH (JSON)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const fhir = buildHl7FhirJson(packet, s);
+                      downloadJsonFile(`ares_fhir_vitals_day${whatIf.mission_day}.json`, fhir);
+                    }}
+                    className="cursor-pointer rounded border border-line bg-black/60 px-3 py-1.5 text-gray-200 hover:border-lime-400 hover:text-lime-300"
+                  >
+                    EXPORT HL7 FHIR R4 (JSON)
+                  </button>
                 </div>
               </div>
             </div>
