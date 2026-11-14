@@ -72,6 +72,8 @@ export const FLAG_CHANNEL_NAN_DROPOUT = 1 << 8;
 export const FLAG_CONFORMAL_ABSTAINED = 1 << 9;
 export const FLAG_SEU_RECOVERY_ACTIVE = 1 << 10;
 export const FLAG_TERRESTRIAL_BENCHMARKED_ONLY = 1 << 11;
+export const FLAG_GATE4A_DECOMPRESSION_LOCK = 1 << 12;
+export const FLAG_GATE4B_EVA_NO_GO = 1 << 13;
 
 export const PLAYBOOK_ID_BY_CODE: Record<number, string> = {
   0: 'NONE',
@@ -84,6 +86,12 @@ export const PLAYBOOK_ID_BY_CODE: Record<number, string> = {
   7: 'PLAYBOOK_07_TACHYCARDIA_AUTONOMIC_STRESS',
   8: 'PLAYBOOK_08_SIGNAL_QUALITY_SENSOR_CHECK',
   9: 'PLAYBOOK_09_MULTIPARAMETER_DETERIORATION',
+  10: 'PLAYBOOK_10_RENAL_LITHIASIS',
+  11: 'PLAYBOOK_11_MARS_ENTRY_FLUID_LOADING',
+  12: 'PLAYBOOK_12_CIRCADIAN_LIGHT_HYGIENE',
+  13: 'PLAYBOOK_13_VIRAL_IMMUNE_VALACYCLOVIR',
+  14: 'PLAYBOOK_14_CO2_SCRUBBER_SANS',
+  15: 'PLAYBOOK_15_EFAST_TRAUMA_TRIAGE',
 };
 
 interface BinaryPlaybookDefaultMeta {
@@ -139,9 +147,9 @@ export const BINARY_PLAYBOOK_DEFAULTS: Record<number, BinaryPlaybookDefaultMeta>
         delta_rho_per_hour: 0.01,
       },
       {
-        action_id: 'ENOXAPARIN_THERAPEUTIC_GUARD',
+        action_id: 'ACT_ANTICOAG_ENOXAPARIN',
         label: 'Enoxaparin 1 mg/kg SC (Gate 1 Locked)',
-        category: 'ANTICOAGULANT_PHARMACOTHERAPY',
+        category: 'PHARMACOLOGICAL_ANTICOAGULANT',
         delta_rho_per_hour: 0.18,
       },
     ],
@@ -738,6 +746,10 @@ export function mergeBinaryFrameIntoPacket(
       (frame.quality_flags_mask & FLAG_GATE2_LBNP_VENT) !== 0,
     eva_suit_damping_active:
       (frame.quality_flags_mask & FLAG_GATE3_EVA_DAMPING) !== 0,
+    gate4_invasive_decompression_locked:
+      (frame.quality_flags_mask & FLAG_GATE4A_DECOMPRESSION_LOCK) !== 0,
+    gate4_eva_fitness_no_go:
+      (frame.quality_flags_mask & FLAG_GATE4B_EVA_NO_GO) !== 0,
   };
 
   const binaryDefault = BINARY_PLAYBOOK_DEFAULTS[frame.active_playbook_id];

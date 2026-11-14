@@ -38,7 +38,7 @@ pub use calibration_harness::{
     run_sost_rk4_sensitivity_audit, verify_anti_leakage_invariants, winkler_score,
 };
 pub use error::{LeakageViolationError, NqsStlError, SplitRole};
-pub use mri_index::evaluate_nqs_stl_and_mri;
+pub use mri_index::{evaluate_nqs_stl_and_mri, evaluate_nqs_stl_and_mri_ext};
 pub use sliding_window::LemireMinWedge;
 pub use timestral_backbone::{
     ARES_TIMESTRAL_CHANNELS, CausalScaler, ChannelCausalStats, CircularTelemetryBuffer,
@@ -61,7 +61,8 @@ pub use timestral_safetensors::{
 };
 
 use ares_core_types::telemetry::{
-    AlertSeverity, Biometrics, JugularHemodynamics, Musculoskeletal, NqsStlMargins, SansOcular,
+    AlertSeverity, Biometrics, JugularHemodynamics, MarsCircadianSleep, Musculoskeletal,
+    NeuroImmuneViral, NqsStlMargins, OrthostaticFluid, RenalNephrolithiasis, SansOcular,
 };
 use std::sync::Arc;
 
@@ -130,7 +131,43 @@ impl NqsEngine {
         jugular: &JugularHemodynamics,
         sans: &SansOcular,
     ) -> NqsEngineEvaluation {
-        let (mut margins, severity) = evaluate_nqs_stl_and_mri(biometrics, musculo, jugular, sans);
+        self.evaluate_tick_ext(
+            recording_time_s,
+            biometrics,
+            musculo,
+            jugular,
+            sans,
+            None,
+            None,
+            None,
+            None,
+        )
+    }
+
+    /// Synchronous 20 Hz hot-path evaluation including Block N multi-organ margins.
+    #[allow(clippy::too_many_arguments)]
+    pub fn evaluate_tick_ext(
+        &mut self,
+        recording_time_s: f64,
+        biometrics: &Biometrics,
+        musculo: &Musculoskeletal,
+        jugular: &JugularHemodynamics,
+        sans: &SansOcular,
+        renal: Option<&RenalNephrolithiasis>,
+        orthostatic: Option<&OrthostaticFluid>,
+        circadian: Option<&MarsCircadianSleep>,
+        immune: Option<&NeuroImmuneViral>,
+    ) -> NqsEngineEvaluation {
+        let (mut margins, severity) = evaluate_nqs_stl_and_mri_ext(
+            biometrics,
+            musculo,
+            jugular,
+            sans,
+            renal,
+            orthostatic,
+            circadian,
+            immune,
+        );
         let sliding_min_rho_global = if let Some(rho) = margins.rho_global {
             Some(self.lemire_wedge.push_and_evaluate(recording_time_s, rho))
         } else {

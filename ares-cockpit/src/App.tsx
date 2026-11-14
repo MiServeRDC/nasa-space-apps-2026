@@ -1126,6 +1126,44 @@ export default function App() {
                         When Gait Asymmetry Index exceeds 12.0%, Martian EVA ankle damping engages and high-impact plyometric loading is locked out.
                       </p>
                     </div>
+                    <div className="rounded border border-line p-3">
+                      <div className="flex justify-between font-mono text-xs">
+                        <span className="font-bold text-white">GATE 4A: THORACIC DECOMPRESSION LOCK</span>
+                        <span
+                          className={
+                            packet.active_playbook?.safety_gates?.gate4_invasive_decompression_locked === false
+                              ? 'text-ok'
+                              : 'text-critical'
+                          }
+                        >
+                          {packet.active_playbook?.safety_gates?.gate4_invasive_decompression_locked === false
+                            ? 'UNLOCKED'
+                            : 'LOCKED'}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-gray-400">
+                        Invasive thoracic needle decompression is locked out until lung sliding absence / barcode sign is confirmed by lung ultrasound or severe hemodynamic collapse.
+                      </p>
+                    </div>
+                    <div className="rounded border border-line p-3">
+                      <div className="flex justify-between font-mono text-xs">
+                        <span className="font-bold text-white">GATE 4B: EVA FITNESS NO-GO INTERLOCK</span>
+                        <span
+                          className={
+                            packet.active_playbook?.safety_gates?.gate4_eva_fitness_no_go
+                              ? 'text-critical'
+                              : 'text-ok'
+                          }
+                        >
+                          {packet.active_playbook?.safety_gates?.gate4_eva_fitness_no_go
+                            ? 'NO-GO LOCKED'
+                            : 'GO / NOMINAL'}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-gray-400">
+                        Blocks EVA airlock egress whenever Gait Asymmetry exceeds 12.0%, cognitive fatigue reaches 0.75, or Shock Index reaches 0.85.
+                      </p>
+                    </div>
                   </div>
                 </Card>
               </div>
