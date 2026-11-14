@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { TelemetryPacket } from '../types/telemetry';
 import { buildPacket, type WhatIf } from './scenario';
-import { isValidTelemetryPacket } from './validateTelemetry';
+import { parseTelemetryPacket } from './validateTelemetry';
 
 export const ENGINE_HTTP_URL = 'http://127.0.0.1:8080';
 export const ENGINE_WS_URL = 'ws://127.0.0.1:8080/ws/telemetry';
@@ -69,8 +69,9 @@ export function useTelemetry(whatIf: WhatIf, thrombusConfirmed: boolean | null, 
     fetch(`${ENGINE_HTTP_URL}/api/snapshot`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (!closed && isValidTelemetryPacket(data)) {
-          setPacket(data);
+        const parsed = parseTelemetryPacket(data);
+        if (!closed && parsed) {
+          setPacket(parsed);
         }
       })
       .catch(() => {
@@ -90,8 +91,8 @@ export function useTelemetry(whatIf: WhatIf, thrombusConfirmed: boolean | null, 
       };
       ws.onmessage = (ev) => {
         try {
-          const parsed: unknown = JSON.parse(String(ev.data));
-          if (isValidTelemetryPacket(parsed)) {
+          const parsed = parseTelemetryPacket(JSON.parse(String(ev.data)));
+          if (parsed) {
             setPacket(parsed);
           }
         } catch {
