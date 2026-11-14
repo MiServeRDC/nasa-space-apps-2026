@@ -71,3 +71,11 @@ existing bounded coalescing policy, visible in `warm_coalesced_frames`. Recordin
 does not imply zero loss during power failure or unlimited disk retention; automatic
 Cold sealing/quotas were not introduced by this optimization. Graceful shutdown
 reports an error rather than claiming successful persistence when a write fails.
+
+## Authorized release integration
+
+Before the user-authorized main merge, concurrent main `d1d6227` added only
+Phase 37 scenario tests and memory records. Its 6 Rust scenario tests pass on
+the combined branch, and all 32 current frontend tests pass. The earlier full
+workspace run had 212 tests; the additional suite brings the inventory to 218.
+Production source and the measured bundle are unchanged by this integration.
