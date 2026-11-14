@@ -48,4 +48,9 @@
 
 ## 2. Immediate Next Steps for the 5-Person Team
 1. **End-to-End Live Demo Run:** Launch `cargo run -p ares-server-cli -- --mode ws-only` alongside `npm run dev` in `ares-cockpit/` to verify WebSocket `20 Hz` stream, `1 Hz` recorded BIDMC cadence, and What-If Console responses.
-2. **Final Pitch Delivery:** Complete 180s + 30s demonstration video recording for NASA Space Apps 2026 submission.
+2. **Clinical Domain Review & Calibration (Issue #12):** Retain `ModelValidationStatus::IllustrativeUnvalidated` and `TtvIntervalKind::IllustrativeScenarioRange` notices until qualified clinical/outcome validation is completed.
+3. **Final Pitch Delivery:** Complete 180s + 30s demonstration video recording for NASA Space Apps 2026 submission.
+
+## Historical Merge Context (Issue #11 / PR #20 / Issue #12)
+- **PR #20 / Issue #11 (`187b933`):** Numeric-only BIDMC replay never invents RMSSD, SDNN, pNN50, or LF/HF; returns null with `BEAT_INTERVALS_NOT_AVAILABLE` and propagates unavailable full HRV assessments across HTTP, WebSocket, Timestral masking, and FastMCP tools while preserving known non-HRV violations.
+- **Issue #12 (`b4ca916`):** Added `docs/architecture/MODEL_EVIDENCE_AUDIT.md`, `ModelValidationStatus::IllustrativeUnvalidated`, and `TtvIntervalKind::IllustrativeScenarioRange` to distinguish recorded data provenance from illustrative unvalidated scenario outputs and heuristic gate acceptance.

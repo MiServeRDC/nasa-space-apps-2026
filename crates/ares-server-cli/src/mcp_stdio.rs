@@ -44,10 +44,10 @@ pub fn handle_mcp_jsonrpc_request<S: McpInputSanitizer>(
     });
     let quantile_snapshot = Arc::new(NqsQuantileForecastSnapshot::initial_deterministic(
         latest_packet.relative_recording_time_s,
-        latest_packet.nqs_stl.rho_global.unwrap_or(0.0),
-        latest_packet.nqs_stl.ttv_hours.unwrap_or(120.0),
-        latest_packet.nqs_stl.ttv_ci95_low_hours.unwrap_or(80.0),
-        latest_packet.nqs_stl.ttv_ci95_high_hours.unwrap_or(180.0),
+        latest_packet.nqs_stl.rho_global,
+        latest_packet.nqs_stl.ttv_hours,
+        latest_packet.nqs_stl.ttv_ci95_low_hours,
+        latest_packet.nqs_stl.ttv_ci95_high_hours,
     ));
     let ctx = FastMcpRuntimeContext {
         latest_packet: latest_packet.clone(),
@@ -173,7 +173,6 @@ mod tests {
             assert!(s.ends_with("</untrusted_telemetry_observation>"));
         }
     }
-
     #[test]
     fn mcp_summary_and_projection_preserve_unavailable_assessment() {
         let packet = sample_state().latest_snapshot().expect("snapshot");
@@ -182,13 +181,11 @@ mod tests {
                 jsonrpc: "2.0".into(),
                 id: Some(json!(1)),
                 method: "tools/call".into(),
-                params: json!({ "name": tool }),
+                params: json!({"name": tool}),
             };
             let response = handle_mcp_jsonrpc_request(&request, &packet, &StrictMcpSanitizer);
             let result = response.result.expect("tool result");
-            let text = result["content"][0]["text"]
-                .as_str()
-                .expect("text payload");
+            let text = result["content"][0]["text"].as_str().expect("text payload");
             let payload: Value = serde_json::from_str(text).expect("valid payload");
             if tool == "get_crew_health_summary" {
                 assert_eq!(payload.get("mri_pct"), Some(&Value::Null));

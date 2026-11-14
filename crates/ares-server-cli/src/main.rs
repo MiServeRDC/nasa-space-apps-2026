@@ -62,10 +62,7 @@ fn resolve_repo_root(explicit: Option<&Path>, data_dir: &Path) -> PathBuf {
     PathBuf::from(".")
 }
 
-fn export_and_verify_graph_bundle(
-    graph: &AresUnifiedDatasetGraph,
-    repo_root: &Path,
-) -> Result<()> {
+fn export_and_verify_graph_bundle(graph: &AresUnifiedDatasetGraph, repo_root: &Path) -> Result<()> {
     let stats = graph
         .export_graphify_bundle(repo_root)
         .context("impossibile esportare il knowledge graph su disco")?;
@@ -85,9 +82,14 @@ fn export_and_verify_graph_bundle(
 
     let mut sizes = Vec::with_capacity(expected_paths.len());
     for path in &expected_paths {
-        let meta = std::fs::metadata(path)
-            .with_context(|| format!("file grafo atteso non trovato su disco: {}", path.display()))?;
-        ensure!(meta.len() > 0, "file grafo vuoto su disco: {}", path.display());
+        let meta = std::fs::metadata(path).with_context(|| {
+            format!("file grafo atteso non trovato su disco: {}", path.display())
+        })?;
+        ensure!(
+            meta.len() > 0,
+            "file grafo vuoto su disco: {}",
+            path.display()
+        );
         sizes.push((path.display().to_string(), meta.len()));
     }
 
@@ -154,19 +156,17 @@ async fn main() -> Result<()> {
                 mri_pct = ?pkt.nqs_stl.mri_pct,
                 playbook_id = %pkt.active_playbook.playbook_id,
                 timestral_gate = ?q_snap.confidence_state,
-                pessimistic_ttv_q05_h = q_snap.pessimistic_ttv_q05_hours,
+                pessimistic_ttv_q05_h = ?q_snap.pessimistic_ttv_q05_hours,
                 hottest_uberon = %ctx.heatmap.hottest_region.uberon_curie(),
                 biokg_clause = %ctx.grounding.normative_clause.official_code(),
                 "ARES-Health smoke test completo (7 crate + Timestral + ARES-HyperGraph + ARES-DatasetGraph) completato con successo"
             );
             Ok(())
         }
-        ServerMode::McpOnly => {
-            tokio::task::spawn_blocking(move || run_mcp_stdio_loop(state))
-                .await
-                .context("join error sul task stdio FastMCP")?
-                .context("errore I/O nel loop stdio FastMCP")
-        }
+        ServerMode::McpOnly => tokio::task::spawn_blocking(move || run_mcp_stdio_loop(state))
+            .await
+            .context("join error sul task stdio FastMCP")?
+            .context("errore I/O nel loop stdio FastMCP"),
         ServerMode::WsOnly | ServerMode::WsAndMcp => {
             let ticker_state = state.clone();
             tokio::spawn(async move {

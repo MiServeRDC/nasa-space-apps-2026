@@ -30,13 +30,17 @@ pub fn select_candidate_playbook(
             actions: vec![
                 CountermeasureAction {
                     action_id: "ACT_ANTICOAG_ENOXAPARIN".to_string(),
-                    label: "Initiate weight-adjusted Enoxaparin / Apixaban (POCUS thrombus verified)".to_string(),
+                    label:
+                        "Initiate weight-adjusted Enoxaparin / Apixaban (POCUS thrombus verified)"
+                            .to_string(),
                     category: "PHARMACOLOGICAL_UNLOCKED".to_string(),
                     delta_rho_per_hour: 0.22,
                 },
                 CountermeasureAction {
                     action_id: "ACT_SUSPEND_VALSALVA_ARED".to_string(),
-                    label: "Suspend high-Valsalva heavy ARED squats to prevent thrombus embolization".to_string(),
+                    label:
+                        "Suspend high-Valsalva heavy ARED squats to prevent thrombus embolization"
+                            .to_string(),
                     category: "MECHANICAL_RESTRICTION".to_string(),
                     delta_rho_per_hour: 0.15,
                 },
@@ -54,13 +58,16 @@ pub fn select_candidate_playbook(
             actions: vec![
                 CountermeasureAction {
                     action_id: "ACT_STORM_SHELTER_INGRESS".to_string(),
-                    label: "Relocate crew to polyethylene/water-shielded habitat core immediately".to_string(),
+                    label: "Relocate crew to polyethylene/water-shielded habitat core immediately"
+                        .to_string(),
                     category: "RADIATION_ALARA".to_string(),
                     delta_rho_per_hour: 0.28,
                 },
                 CountermeasureAction {
                     action_id: "ACT_ENDOTHELIAL_ANTIOXIDANT".to_string(),
-                    label: "Administer endothelial antioxidant & B-Complex radioprotective protocol".to_string(),
+                    label:
+                        "Administer endothelial antioxidant & B-Complex radioprotective protocol"
+                            .to_string(),
                     category: "METABOLIC_COUNTERMEASURE".to_string(),
                     delta_rho_per_hour: 0.09,
                 },
@@ -96,12 +103,15 @@ pub fn select_candidate_playbook(
     if nqs.rho_sans < 0.20 {
         return ActivePlaybook {
             playbook_id: "PLAYBOOK_04_SANS_TRANSLAMINAR_MITIGATION".to_string(),
-            title: "Playbook #04: SANS Translaminar Pressure & Venous Decongestion Protocol".to_string(),
+            title: "Playbook #04: SANS Translaminar Pressure & Venous Decongestion Protocol"
+                .to_string(),
             causal_chain_summary,
             safety_gates: default_gates,
             actions: vec![CountermeasureAction {
                 action_id: "ACT_VENOUS_THIGH_CUFFS".to_string(),
-                label: "Apply calibrated lower-extremity Venous Thigh Cuffs (50 mmHg) + nocturnal LBNP".to_string(),
+                label:
+                    "Apply calibrated lower-extremity Venous Thigh Cuffs (50 mmHg) + nocturnal LBNP"
+                        .to_string(),
                 category: "PHYSICAL_HEMODYNAMIC".to_string(),
                 delta_rho_per_hour: 0.14,
             }],
@@ -152,7 +162,6 @@ mod tests {
             radiation_dose_rate_msv_d: rad_msv_d,
             sqi_score: 0.92,
             missing_channels: vec![],
-            quality_flags: vec![],
         }
     }
 
@@ -196,6 +205,9 @@ mod tests {
             ttv_ci95_low_hours: Some(90.0),
             ttv_ci95_high_hours: Some(150.0),
             mri_pct: Some(72.0),
+            ttv_interval_kind: Some(
+                ares_core_types::telemetry::TtvIntervalKind::IllustrativeScenarioRange,
+            ),
         }
     }
 
@@ -209,7 +221,11 @@ mod tests {
         let pb = select_candidate_playbook(&bio, &musc, &jug, &nqs, vec!["stasis".to_string()]);
         assert_eq!(pb.playbook_id, "PLAYBOOK_01_VENOUS_STASIS_LBNP");
         assert!(pb.safety_gates.anticoagulant_lock_active);
-        assert!(pb.actions.iter().any(|a| a.action_id == "ACT_LBNP_MINUS_30_MMHG"));
+        assert!(
+            pb.actions
+                .iter()
+                .any(|a| a.action_id == "ACT_LBNP_MINUS_30_MMHG")
+        );
     }
 
     #[test]

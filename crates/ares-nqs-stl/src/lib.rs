@@ -43,9 +43,9 @@ use std::sync::Arc;
 pub struct NqsEngineEvaluation {
     pub margins: NqsStlMargins,
     pub severity: AlertSeverity,
-    pub sliding_min_rho_global: f64,
+    pub sliding_min_rho_global: Option<f64>,
     pub quantile_snapshot: Arc<NqsQuantileForecastSnapshot>,
-    pub pessimistic_ttv_q05_hours: f64,
+    pub pessimistic_ttv_q05_hours: Option<f64>,
 }
 
 /// Unified NQS-STL + Timestral Grey-Box Engine combining:
@@ -68,7 +68,7 @@ impl NqsEngine {
     /// Creates an `NqsEngine` with a standalone deterministic initial forecaster handle.
     pub fn new(sliding_window_s: f64) -> Self {
         let initial =
-            NqsQuantileForecastSnapshot::initial_deterministic(0.0, 0.5, 120.0, 80.0, 180.0);
+            NqsQuantileForecastSnapshot::initial_deterministic(0.0, None, None, None, None);
         Self {
             lemire_wedge: LemireMinWedge::new(sliding_window_s),
             forecaster_handle: AresTemporalForecasterHandle::new(initial),
@@ -103,28 +103,24 @@ impl NqsEngine {
         jugular: &JugularHemodynamics,
         sans: &SansOcular,
     ) -> NqsEngineEvaluation {
-        let (mut margins, severity) =
-            evaluate_nqs_stl_and_mri(biometrics, musculo, jugular, sans);
-        let effective_rho = margins
-            .rho_global
-            .unwrap_or_else(|| margins.min_known_margin());
-        let sliding_min_rho_global = self
-            .lemire_wedge
-            .push_and_evaluate(recording_time_s, effective_rho);
-
-        let quantile_snapshot = self.forecaster_handle.read_latest_snapshot();
-        let pessimistic_ttv_q05_hours = match (
-            margins.ttv_ci95_low_hours,
-            quantile_snapshot.confidence_state,
-        ) {
-            (Some(low), ConformalGateStatus::CalibratedQuantileCone) => {
-                let merged = low.min(quantile_snapshot.ttv_hours_cone.q05);
-                margins.ttv_ci95_low_hours = Some(merged);
-                merged
-            }
-            (Some(low), ConformalGateStatus::AbstainedFallbackDeterministic) => low,
-            (None, _) => quantile_snapshot.ttv_hours_cone.q05,
+        let (mut margins, severity) = evaluate_nqs_stl_and_mri(biometrics, musculo, jugular, sans);
+        let sliding_min_rho_global = if let Some(rho) = margins.rho_global {
+            Some(self.lemire_wedge.push_and_evaluate(recording_time_s, rho))
+        } else {
+            self.lemire_wedge.clear();
+            None
         };
+        let quantile_snapshot = self.forecaster_handle.read_latest_snapshot();
+        let pessimistic_ttv_q05_hours = margins.ttv_ci95_low_hours.map(|low| {
+            if quantile_snapshot.confidence_state == ConformalGateStatus::HeuristicGateAccepted {
+                quantile_snapshot
+                    .ttv_hours_cone
+                    .map_or(low, |cone| low.min(cone.q05))
+            } else {
+                low
+            }
+        });
+        margins.ttv_ci95_low_hours = pessimistic_ttv_q05_hours;
 
         NqsEngineEvaluation {
             margins,
@@ -170,7 +166,6 @@ mod tests {
             radiation_dose_rate_msv_d: 0.4,
             sqi_score: 0.92,
             missing_channels: vec!["pulse_rate_bpm".to_string(), "spo2_pct".to_string()],
-            quality_flags: Vec::new(),
         };
         let musculo = Musculoskeletal {
             ared_daily_load_kgf: 128.0,
@@ -199,7 +194,7 @@ mod tests {
         let cov = KnownFutureCovariates::default();
         for t in 0..8 {
             let sample = AresMultivariateSample::from_telemetry_components(
-                t as f64, &bio, &musculo, &jugular, &sans, Some(0.45),
+                t as f64, &bio, &musculo, &jugular, &sans, 0.45,
             );
             forecaster
                 .ingest_sample_1hz(&sample, &cov, -0.005)
@@ -210,10 +205,7 @@ mod tests {
         eval.quantile_snapshot
             .assert_monotone()
             .expect("snapshot monotone");
-        assert!(eval.pessimistic_ttv_q05_hours >= 0.0);
-        assert!(
-            eval.sliding_min_rho_global
-                <= eval.margins.rho_global.unwrap_or(f64::INFINITY) + 1e-12
-        );
+        assert!(eval.pessimistic_ttv_q05_hours.is_some_and(|v| v >= 0.0));
+        assert!(eval.sliding_min_rho_global.unwrap() <= eval.margins.rho_global.unwrap() + 1e-12);
     }
 }

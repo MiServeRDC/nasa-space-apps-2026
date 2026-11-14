@@ -46,7 +46,11 @@ fn test_integration_fastmcp_8_tools_budget_and_provenance() {
             params: json!({ "name": tool, "arguments": args }),
         };
         let resp = handle_fastmcp_jsonrpc_request(&req, &ctx, &sanitizer);
-        assert!(resp.error.is_none(), "Tool {tool} returned error: {:?}", resp.error);
+        assert!(
+            resp.error.is_none(),
+            "Tool {tool} returned error: {:?}",
+            resp.error
+        );
         let text = resp.result.expect("result")["content"][0]["text"]
             .as_str()
             .expect("text payload")
@@ -58,6 +62,7 @@ fn test_integration_fastmcp_8_tools_budget_and_provenance() {
         );
         let parsed: Value = serde_json::from_str(&text).expect("valid JSON");
         assert!(parsed.is_object(), "Tool {tool} must return JSON object");
+        assert_eq!(parsed["model_status"], "ILLUSTRATIVE_UNVALIDATED", "{tool}");
     }
 }
 
@@ -120,7 +125,10 @@ fn test_integration_physical_knowledge_graph_files_exist_with_all_24_datasets() 
             "Expected non-empty god_nodes"
         );
         assert!(
-            !doc["communities"].as_object().expect("communities").is_empty(),
+            !doc["communities"]
+                .as_object()
+                .expect("communities")
+                .is_empty(),
             "Expected non-empty communities"
         );
     }

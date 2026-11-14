@@ -1,6 +1,4 @@
-//! Fase 09 (D2): Calcolo del Mission Readiness Index (MRI %) e sintesi `NqsStlMargins`.
-//! Invariante Issue #11 (@MiServeRDC): valutazioni composite complete richiedono HRV valido;
-//! i pericoli noti non-HRV restano sempre visibili e azionabili.
+//! Full assessments require valid HRV; known non-HRV hazards remain visible.
 
 use crate::normalizer::compute_atomic_nqs_margins;
 use crate::ttv_predictor::estimate_ttv_with_ci95;
@@ -8,10 +6,7 @@ use ares_core_types::telemetry::{
     AlertSeverity, Biometrics, JugularHemodynamics, Musculoskeletal, NqsStlMargins, SansOcular,
 };
 
-/// Calcola l'intera struttura `NqsStlMargins` e la severita clinica `AlertSeverity`.
-/// Quando `biometrics.rmssd_ms` e `None` (o non valido), `rho_rmssd`, `rho_global`,
-/// `ttv_*` e `mri_pct` restano `None` invece di usare un fallback fittizio `40.0` ms.
-#[inline]
+/// Missing/invalid RMSSD cannot yield a complete composite or forecast.
 pub fn evaluate_nqs_stl_and_mri(
     biometrics: &Biometrics,
     musculo: &Musculoskeletal,
@@ -25,31 +20,30 @@ pub fn evaluate_nqs_stl_and_mri(
         biometrics.rmssd_ms,
         sans.sans_risk_index,
     );
-
     let known_min = rho_tau_w.min(rho_ared).min(rho_sost).min(rho_sans);
     let rho_global = rho_rmssd.map(|rho| known_min.min(rho));
 
+    // Existing scenario model; its uncertainty is not clinically calibrated (#12).
     let load_deficit = ((125.0 - musculo.ared_daily_load_kgf) / 125.0).clamp(0.0, 1.0);
     let rad_stress = (biometrics.radiation_dose_rate_msv_d / 5.0).clamp(0.0, 1.0);
     let degradation_rate_per_hour = 0.002 + 0.018 * load_deficit + 0.012 * rad_stress;
-
     let forecast = rho_global.map(|rho| estimate_ttv_with_ci95(rho, degradation_rate_per_hour));
     let ttv_hours = forecast.map(|(mean, _, _)| mean);
     let ttv_ci95_low_hours = forecast.map(|(_, low, _)| low);
     let ttv_ci95_high_hours = forecast.map(|(_, _, high)| high);
-
     let mri_pct = rho_rmssd.map(|rho| {
         let weighted =
             0.30 * rho_tau_w + 0.25 * rho_ared + 0.15 * rho_sost + 0.15 * rho + 0.15 * rho_sans;
         ((weighted + 1.0) * 50.0).clamp(5.0, 100.0)
     });
 
+    // A partial assessment must not hide a known warning or emergency.
     let evaluated_min = rho_rmssd.map_or(known_min, |rho| known_min.min(rho));
     let severity = if jugular.pocus_thrombus_confirmed || evaluated_min <= -0.35 {
         AlertSeverity::CriticalEmergency
     } else if evaluated_min < 0.0 {
         AlertSeverity::Warning
-    } else if rho_rmssd.is_none() || !biometrics.missing_channels.is_empty() {
+    } else if rho_rmssd.is_none() {
         AlertSeverity::DataDegradedMissingChannels
     } else if evaluated_min < 0.25 || ttv_hours.is_some_and(|hours| hours < 48.0) {
         AlertSeverity::Caution
@@ -69,6 +63,8 @@ pub fn evaluate_nqs_stl_and_mri(
             ttv_ci95_low_hours,
             ttv_ci95_high_hours,
             mri_pct,
+            ttv_interval_kind: forecast
+                .map(|_| ares_core_types::telemetry::TtvIntervalKind::IllustrativeScenarioRange),
         },
         severity,
     )
@@ -97,7 +93,6 @@ mod tests {
             radiation_dose_rate_msv_d: rad_msv_d,
             sqi_score: 0.94,
             missing_channels: Vec::new(),
-            quality_flags: Vec::new(),
         }
     }
 
@@ -144,7 +139,6 @@ mod tests {
         assert_eq!(margins_crit.ttv_hours, Some(0.0));
         assert_eq!(sev_crit, AlertSeverity::CriticalEmergency);
     }
-
     fn evaluate_hrv_input(
         rmssd: Option<f64>,
         tau: f64,

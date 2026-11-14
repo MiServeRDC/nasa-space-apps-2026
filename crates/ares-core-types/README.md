@@ -1,5 +1,7 @@
 # `ares-core-types` — Shared Telemetry Contracts, Physical Units & Privacy Traits
 
+> Evidence status (#12): model outputs are illustrative/unvalidated. Historical calibrated-confidence, clinical-probability, certification and readiness claims are superseded by [the evidence audit](../../docs/architecture/MODEL_EVIDENCE_AUDIT.md). Numerical gate acceptance is heuristic.
+
 **Assigned Owner:** `@fabiomalagutti27-droid` & `@MiServeRDC` (`work/fabiomalagutti27-droid`)  
 
 ## Scope

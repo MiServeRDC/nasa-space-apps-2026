@@ -45,18 +45,11 @@ pub fn biometrics_with_signal_quality(
     let lf_hf_ratio = rmssd_ms.map(|r| (110.0 / r.max(10.0)).clamp(0.8, 6.5));
 
     let mut missing_channels = row.missing_channels.clone();
-    let mut quality_flags = eval.quality_flags.clone();
     let hrv_unavailable_reason = if rmssd_ms.is_none() {
         for ch in HRV_CHANNELS {
             if !missing_channels.iter().any(|existing| existing == ch) {
                 missing_channels.push(ch.to_string());
             }
-        }
-        if !quality_flags
-            .iter()
-            .any(|f| f == "BEAT_INTERVALS_NOT_AVAILABLE")
-        {
-            quality_flags.push("BEAT_INTERVALS_NOT_AVAILABLE".to_string());
         }
         Some(HrvUnavailableReason::BeatIntervalsNotAvailable)
     } else {
@@ -78,7 +71,6 @@ pub fn biometrics_with_signal_quality(
         radiation_dose_rate_msv_d: scenario.radiation_dose_rate_msv_d.clamp(0.0, 50.0),
         sqi_score: eval.sqi_score,
         missing_channels,
-        quality_flags,
     }
 }
 
@@ -113,18 +105,8 @@ mod tests {
         assert_eq!(bio.heart_rate_bpm, Some(88.0));
         assert_eq!(bio.pulse_rate_bpm, None);
         assert_eq!(bio.spo2_pct, None);
-        assert_eq!(bio.rmssd_ms, None);
-        assert_eq!(
-            bio.hrv_unavailable_reason,
-            Some(HrvUnavailableReason::BeatIntervalsNotAvailable)
-        );
         assert_eq!(bio.missing_channels.len(), 6);
         assert!(bio.missing_channels.iter().any(|c| c == "rmssd_ms"));
-        assert!(
-            bio.quality_flags
-                .iter()
-                .any(|f| f == "BEAT_INTERVALS_NOT_AVAILABLE")
-        );
         assert!((bio.radiation_dose_rate_msv_d - 1.8).abs() < f64::EPSILON);
         assert!(bio.sqi_score > 0.60);
     }

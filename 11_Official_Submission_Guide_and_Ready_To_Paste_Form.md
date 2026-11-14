@@ -1,4 +1,6 @@
 # 11. Official NASA Space Apps Challenge 2026 Submission Guide & Ready-to-Paste Project Form
+
+> Evidence status (issue #12): scenario-derived physiology, risk/readiness scores and forecast ranges are illustrative and clinically unvalidated. Historical calibration, certification, universal-threshold and outcome claims below are not established. Use [the current evidence audit](docs/architecture/MODEL_EVIDENCE_AUDIT.md) for source applicability, parameters and permitted wording. Recorded terrestrial measurements remain distinct from simulation.
 ## Complete Compliance Manual, Mandatory Space Agency Data Traceability & Submission Templates
 
 **Project Title:** ARES-Health (Autonomous Resilient Edge-native System for Astronaut Health)  

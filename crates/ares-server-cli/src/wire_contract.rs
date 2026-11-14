@@ -4,8 +4,8 @@
 
 use ares_core_types::telemetry::{
     ActivePlaybook, AlertSeverity, BiometricsSource, CountermeasureAction, HrvUnavailableReason,
-    JugularFlowGrade, ProvenanceManifest, SafetyGates, ScenarioOverlayMode,
-    StressTestScenarioInput, SystemPhase, TelemetryPacket,
+    JugularFlowGrade, ModelValidationStatus, ProvenanceManifest, SafetyGates, ScenarioOverlayMode,
+    StressTestScenarioInput, SystemPhase, TelemetryPacket, TtvIntervalKind,
 };
 use serde::{Deserialize, Serialize};
 
@@ -250,6 +250,7 @@ pub struct WireNqsStlStatus {
     pub ttv_hours: Option<f64>,
     pub ttv_ci95_low_hours: Option<f64>,
     pub ttv_ci95_high_hours: Option<f64>,
+    pub ttv_interval_kind: Option<TtvIntervalKind>,
     pub alarm_level: String,
 }
 
@@ -275,6 +276,7 @@ pub struct WireTelemetryPacket {
     pub astronaut_id: String,
     pub system_phase: SystemPhase,
     pub alert_severity: AlertSeverity,
+    pub model_validation_status: ModelValidationStatus,
     pub provenance_manifest: ProvenanceManifest,
     pub biometrics: WireBiometrics,
     pub biometrics_1hz: WireBiometrics1Hz,
@@ -370,6 +372,14 @@ impl WireTelemetryPacket {
         provenance_manifest.biometrics_source = BiometricsSource::RecordedTerrestrialBidmcCsv;
         provenance_manifest.scenario_overlay_mode = scenario_overlay_mode;
 
+        let mut quality_flags = Vec::new();
+        if p.biometrics.rmssd_ms.is_none() {
+            quality_flags.push("BEAT_INTERVALS_NOT_AVAILABLE".to_string());
+        }
+        if !p.biometrics.missing_channels.is_empty() {
+            quality_flags.push("CHANNEL_NAN_DROPOUT".to_string());
+        }
+
         let biometrics = WireBiometrics {
             heart_rate_bpm: p.biometrics.heart_rate_bpm,
             pulse_rate_bpm: p.biometrics.pulse_rate_bpm,
@@ -390,7 +400,7 @@ impl WireTelemetryPacket {
             radiation_dose_rate_msv_d: p.biometrics.radiation_dose_rate_msv_d,
             sqi_score: p.biometrics.sqi_score,
             missing_channels: p.biometrics.missing_channels.clone(),
-            quality_flags: p.biometrics.quality_flags.clone(),
+            quality_flags: quality_flags.clone(),
         };
 
         let biometrics_1hz = WireBiometrics1Hz {
@@ -404,7 +414,7 @@ impl WireTelemetryPacket {
             hrv_unavailable_reason: p.biometrics.hrv_unavailable_reason,
             sqi_score: p.biometrics.sqi_score,
             missing_channels: p.biometrics.missing_channels.clone(),
-            quality_flags: p.biometrics.quality_flags.clone(),
+            quality_flags,
         };
 
         let (hemodynamics, musculoskeletal, environment, sans_ocular, mission_elapsed_days) =
@@ -533,6 +543,7 @@ impl WireTelemetryPacket {
             ttv_hours: p.nqs_stl.ttv_hours,
             ttv_ci95_low_hours: p.nqs_stl.ttv_ci95_low_hours,
             ttv_ci95_high_hours: p.nqs_stl.ttv_ci95_high_hours,
+            ttv_interval_kind: p.nqs_stl.ttv_interval_kind,
             alarm_level,
         };
 
@@ -553,6 +564,7 @@ impl WireTelemetryPacket {
             astronaut_id: schema_astronaut_id(&p.source_record_id),
             system_phase: p.system_phase,
             alert_severity: p.alert_severity,
+            model_validation_status: p.model_validation_status,
             provenance_manifest,
             biometrics,
             biometrics_1hz,

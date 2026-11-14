@@ -1,0 +1,74 @@
+# Model evidence audit: current implementation
+
+Audit date: 2026-11-14. Code baseline: `187b933`, including phases 15-20 and the HRV correction. This register describes what the code implements and what the checked sources support. It is not a clinical review or a claim that no additional evidence exists elsewhere.
+
+## Product interpretation
+
+Recorded BIDMC monitor summaries are terrestrial observations. The musculoskeletal, jugular, ocular, readiness and forecast outputs are **illustrative, unvalidated scenario models**. Passing Rust tests establishes numerical/software behavior. Correct units, monotone quantiles, a successful gate, a CRC, an evidence grade or a standards link do not establish clinical accuracy, calibrated probability, certification or fitness for duty.
+
+Machine-readable status: `ILLUSTRATIVE_UNVALIDATED`. This applies to model outputs, not the authenticity of recorded source files. An unavailable result remains null. No estimate should be presented as a measured astronaut biomarker.
+
+## Sources and exact scope
+
+| ID | Primary source and locator | Population / support | Does not establish |
+| --- | --- | --- | --- |
+| S1 | [PhysioNet BIDMC v1.0.0](https://physionet.org/content/bidmc/1.0.0/), dataset description and data files | 53 terrestrial ICU recordings, monitor numerics and waveforms; three numeric records are bundled | Astronaut baselines, longitudinal outcomes, SANS/thrombosis risk, drug or equipment policy |
+| S2 | [Marshall-Goebel et al., JAMA Network Open 2019](https://jamanetwork.com/journals/jamanetworkopen/fullarticle/2755307), Methods: participants/ultrasound/LBNP; Results and limitations; DOI 10.1001/jamanetworkopen.2019.15011 | Observational study of 11 spaceflight participants; supports concern about jugular flow changes and investigation using ultrasound | The application's exact weighted score, LR+=24, 0.45/0.92 probability limits, musculoskeletal-to-thrombus equations or prospective discrimination |
+| S3 | [NASA-STD-3001 Volume 1 landing page](https://www.nasa.gov/reference/nasa-std-3001v1/), scope and applicability | Human-system requirements and their application to programs | Certification of this prototype, fitted model parameters or validation of a causal probability |
+| S4 | [NASA crew interfaces](https://www.nasa.gov/reference/10-0-crew-interfaces-vol-2/), section 10.6.4, V2 10164 | Clear allocation of human/automation responsibility | Medical thresholds or proof that a black theme satisfies interface requirements |
+| S5 | [NASA Autonomous Medical Operations](https://www.nasa.gov/directorates/stmd/game-changing-development-program/autonomous-medical-operations-amo/), project objective and intended role | Research motivation for onboard decision support supporting the medical officer | Validity of ARES treatment instructions or autonomy without qualified review |
+| S6 | [NeuroKit HRV documentation](https://neuropsychology.github.io/NeuroKit/functions/hrv.html), hrv input parameters | Beat peaks or RRI/RRI_Time as HRV inputs | RMSSD reconstructed from 1 Hz HR/respiration summaries |
+
+NASA OSD-51/195 gene-expression studies and OSD-818 ex vivo ocular experiments are biological context, as recorded in data/bidmc/README.md and issue #4. They are not continuous astronaut telemetry or calibration datasets for these equations. Existing dossier references to these sources do not establish a measured-data-to-output mapping. Exact threshold/parameter support remains unverified unless explicitly demonstrated below.
+
+## Output-to-implementation register
+
+All scenario rows below have **no fitted calibration dataset, held-out outcome report or prospective clinical validation artifact identified in this repository**. Source support is contextual rather than parameter-level. Permitted product wording must retain “illustrative” or “scenario”.
+
+| Output family / units | Exact code locator, formula and required inputs | Parameter origin / evidence and allowed wording |
+| --- | --- | --- |
+| Recorded HR/PULSE/RESP/SpO2; bpm, breaths/min, % | `ares-telemetry-ingest/src/bidmc_replayer.rs`, CSV parsing with original relative time | S1 recorded terrestrial monitor values; call these recorded replay measurements, not astronaut readings |
+| RMSSD/SDNN/pNN50/LF-HF; ms/ms/%/ratio | `sqi_filter.rs` and `scenario_overlay.rs`: null for numeric-only replay | S6 requires appropriate beat data. No HRV algorithm is added; do not impute a healthy default |
+| Numeric quality; dimensionless | `sqi_filter.rs::evaluate_row`: HR-difference energy entropy in a 16-element ring, `0.96 - 0.14*h_norm - 0.18*f_miss` | Hand-configured heuristic. It is not a DFT spectral-quality calculation or validated motion-artifact detector. “Numeric quality heuristic” |
+| Soleus CSA and echo intensity; % and AU | `mechanotransduction.rs::compute_musculoskeletal_state`: load deficit and `1-exp(-day/45)` drive `100-28*d*e` and `48+46*d*e`, then clipping | Scenario coefficients; no ultrasound images supplied. “Simulated muscle area/echo indicator” |
+| MQI and irisin proxy; dimensionless | Same module, `1 - 0.35*echo_penalty - 0.65*csa_penalty`; irisin factor clips MQI | Unfitted composite, not a measured myokine or a verified named clinical index. “Illustrative muscle-quality score” |
+| SOST; pmol/L | `sost_ode_rhs`, `step_sclerostin_rk4`: `18.5/(1+(11.2*load/1000)^2) - 0.28*SOST`; 12 RK4 steps, initial 22.5 | Scenario ODE; attribution to the general mechanostat concept does not validate this exact SOST equation or its coefficients |
+| Urinary calcium and GAI; mg/day and % | Same module: `175+4.2*max(SOST-22.5,0)` and `3.5+16.5*(1-MQI)`, clipped | No urine collection or gait IMU observations. “Scenario calcium/gait indicators”, not measured renal or landing performance |
+| Jugular CSA/vmax/grade; mm², cm/s, category | `hemodynamics.rs::compute_jugular_and_sans_state`: weighted MQI/LBNP/radiation equations and fixed category cutoffs | S2 supports studying flow, not these coefficients or direction inferred from positive speed. “Simulated jugular state” |
+| Wall shear stress; dyn/cm² | `compute_tau_w_dyn_cm2`: `2*mu*vmax*sqrt(pi/(CSA_mm2/100))`, mu=0.035 Poise | Dimensionally consistent circular-tube approximation. Geometry/profile/viscosity assumptions and input validity require review; a numerical identity is not patient-specific measurement validation |
+| ONSD/choroid/SANS score; mm, µm, dimensionless | Same module: clipped congestion proxy drives `5.05+1.35*c`, `12+58*c` and weights 0.45/0.35/0.20 | No ocular measurements or SANS outcome labels supplied. “Illustrative ocular scenario index”, not probability of SANS |
+| Stasis and thrombus scores; dimensionless | `bayesian_pocus.rs::evaluate_two_stage_bayesian_pocus`: weighted deficits 0.55/0.30/0.15; prior 0.42*score, cap 0.45; flag-positive odds use prior floor 0.35, LR=24 and clamp 0.92..0.995 | Exact priors/LR/clamps are unverified scenario assumptions. The bool is scenario input, not an acquired ultrasound diagnosis. Legacy probability field names do not make these calibrated probabilities |
+| Atomic/global NQS margins; dimensionless | `normalizer.rs`: signed distance divided by nominal-critical distance, clipped -2..1; global min only when HRV available | Formal arithmetic is implemented. Clinical nominal/critical points remain provisional; logic does not validate them |
+| MRI; 0..100 score | `mri_index.rs`: weights 0.30/0.25/0.15/0.15/0.15 over margins, `(weighted+1)*50`, clipped 5..100; null without HRV | “Illustrative scenario readiness score”; not an MRI scan, validated readiness scale or flight clearance |
+| Fixed-rate TTV/range; hours | `mri_index.rs` rate=`0.002+0.018*load_deficit+0.012*rad_stress`; `ttv_predictor.rs::estimate_ttv_with_ci95`: rho/rate with fixed 14% spread and 1.96 multiplier | No 7-day EWMA/OLS is fitted by this function. Historical `ci95` names are compatibility only. “Illustrative TTV sensitivity range”, not 95% confidence/prediction interval |
+| Timestral channel/global/TTV cones; channel units, dimensionless, hours | `timestral_backbone.rs`, `timestral_quantiles.rs`, `timestral_bridge.rs`, grey-box TTV function | Deterministically initialized weights and monotone softplus head; no trained checkpoint/out-of-sample clinical coverage demonstrated. q05/q50/q95 are nominal model coordinates, not verified quantiles or worst-case guarantees |
+| Heuristic gate and residual diagnostics | `ConformalAbstentionGate::evaluate_with_certificate`: SQI, missingness, width and EMA error checks; online update uses prior cone and next observed global value | Passing checks may occur before any update. Repeated warm-up copies are not independent calibration observations. Observation/horizon alignment needs an experiment. “Heuristic accepted / abstained”; no clinical calibration certificate |
+| Body heatmap, habitat rules and Markov anomaly score | `hypergraph_spatial.rs`: configured anatomy weights, deontic thresholds, transition counts and KL divergence | Visualization/policy simulation. Not measured organ injury or validated behavioral diagnosis |
+| Welford summaries and dataset graph | `hypergraph_spatial.rs` compactor; `dataset_graph.rs` catalog/slice builder | Numerical summaries and source/catalog links can be technically verified. A catalog node is not downloaded/integrated clinical data; do not mix subjects into one patient |
+| BioKG descriptor/effect-size/evidence grade/Noisy-OR | `biokg_reasoner.rs`: packed metadata, CRC, fixed mappings and `1-prod(1-c_i*w_i)` | Exact mapping/source/sample/effect provenance and independence are unverified. CRC verifies bytes, not scientific truth; standards are not independent observations. “Unverified evidence mapping / illustrative evidence score” |
+| Playbook choices, gates and countermeasure deltas | `ares-medops-playbooks/src/playbooks.rs`, `safety_gates.rs`, MCP projection | Existing scenario policy and fixed impact numbers, not efficacy estimates. Treatment policy is unchanged by this audit and requires qualified clinical/operational review before any use |
+
+## Parameter and boundary findings
+
+- `core-types/src/constants.rs`: mu=0.035 is an assumed physical parameter; Frost=1000, Hill exponent=2, shear 2.80/1.20, velocity=5, ARED=125/55, SOST=24/55, RMSSD=48/20, SANS=0.15/0.70 and SQI=0.70 are not established as universal clinical limits by the sources checked here. Mark them provisional scenario settings. Likewise the 0.45 prior cap, LBNP 15 mmHg/115 bpm and GAI 12% need exact source applicability review. No numerical value is changed by this task.
+- `compute_musculoskeletal_state`: day is clipped to 1..1000; 12 integration steps each capped at 5 days means no more than 60 integration days, even at mission day 1000. This is not a demonstrated long-duration trajectory. Load/CSA/echo/MQI/calcium/gait clips can conceal extrapolation.
+- `compute_tau_w_dyn_cm2`: mm² to cm² conversion is explicit; invalid inputs use defaults and CSA is floored. Those paths must not be represented as measured-valid geometry. Viscosity and circular fully developed flow are assumptions requiring domain review.
+- Fixed-rate TTV: nonpositive rho returns zero; rate floor is 0.0012/h; point range is 0.5..720 h, lower range 0.2..point, upper point..720. Zero/nonpositive degradation is forced positive rather than representing no crossing. Clipping at 720 h means capped model horizon, not “safe for 30 days”. Increasing an assumed positive rate reduces uncapped TTV by construction, not by clinical evidence.
+- Grey-box TTV floors are 0.0020/0.0012/0.0006 per hour and its horizon argument is floored at 0.25 h. Quantile ordering does not validate horizon accuracy, tail calibration or coverage after nonlinear transformation/clipping.
+- Gate settings SQI>=0.70, missing ratio<=0.40, width<=1.25 and EMA drift<=0.35 are configured heuristics. The nominal q05..q95 interval targets 90%, whereas the old fixed-rate “ci95” wording suggests 95%; neither is empirically established here. This audit does not replace either with a different claimed coverage.
+- S2 Methods uses 25 mmHg LBNP, while the application scenario uses 30 mmHg. S2 Discussion says optimal exposure time/frequency remain unknown. It does not establish the application's exact dose, guard thresholds or efficacy deltas.
+- POCUS posterior changes abruptly with the scenario bool and prior floors/clamps. A high returned score is partly enforced by code and cannot be reported as independent evidence of a positive diagnosis.
+
+## Validation work required before stronger claims
+
+1. Obtain qualified clinical/domain review of intended use, source mappings, units, thresholds and contraindications. Distinguish standards text, a paper's observations and the team's design choices. Record exact revisions/sections and unresolved mappings.
+2. For each measured task, obtain appropriate paired reference signals/labels in the target context. HRV needs beat intervals; ocular/jugular outputs need independently reviewed images/measurements; outcomes need adjudication and time alignment. BIDMC alone cannot supply these.
+3. Predefine subject-disjoint development/calibration/test splits and chronological validation. Avoid copied warm-up rows, mixed patients, overlapping-window leakage and evaluating future horizons against the next tick.
+4. Report error/discrimination, calibration, coverage and interval width by horizon, sensor, missingness and population; compare persistence/simple models. Assess false alarms and missed/delayed events. A threshold change requires its own reviewed plan.
+5. Independently evaluate prospective utility and human workflow before clinical outcome or operational-readiness claims. Record uncertainty, abstention, external validation and subgroup limitations. See #15, #17 and #19 for experiments, not assumed guarantees.
+
+## Frontend and compatibility contract
+
+The current main has no executable cockpit. Its integration must show a persistent “Illustrative model / not clinically validated” indicator for scenario-derived displays, preserve nulls and use “scenario range”, not “95% CI”, “calibrated” or “worst case”. NASA source attribution is separate from validation status. Legacy TTV/function and probability names remain for compatibility but are explicitly superseded by this register and metadata. The emitted accepted gate is `HEURISTIC_GATE_ACCEPTED` (`HEURISTIC_ACCEPTED` in compact MCP); old `CALIBRATED_QUANTILE_CONE` is deserialize-only compatibility.
+
+Existing PDF exports and historical diagrams are not regenerated or qualified by this task; the updated Markdown register is authoritative for current evidence status. Do not submit historical exports as current validation evidence without updating them. Frontend/wire acceptance remains #8.

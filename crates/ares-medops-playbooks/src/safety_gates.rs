@@ -117,7 +117,6 @@ mod tests {
             radiation_dose_rate_msv_d: 0.5,
             sqi_score: 0.90,
             missing_channels: vec![],
-            quality_flags: vec![],
         }
     }
 
@@ -172,7 +171,8 @@ mod tests {
             enforced
                 .actions
                 .iter()
-                .all(|a| !a.action_id.contains("ANTICOAG") && !a.category.contains("PHARMACOLOGICAL"))
+                .all(|a| !a.action_id.contains("ANTICOAG")
+                    && !a.category.contains("PHARMACOLOGICAL"))
         );
         assert_eq!(enforced.actions.len(), 1);
         assert_eq!(enforced.actions[0].action_id, "ACT_LBNP_MINUS_30_MMHG");

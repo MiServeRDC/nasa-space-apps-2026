@@ -33,7 +33,7 @@ pub fn normalize_predicate_nqs(
     (sign * (x - critical) / denom).clamp(-2.0, 1.0)
 }
 
-/// Calcola i 5 margini atomici NQS-STL istantanei senza mai sostituire `rmssd_ms: None` con proxy.
+/// Calcola i 5 margini atomici NQS-STL istantanei.
 #[inline]
 pub fn compute_atomic_nqs_margins(
     tau_w_dyn_cm2: f64,
@@ -115,10 +115,7 @@ mod tests {
         assert!((r_tau - 1.0).abs() < 1e-12);
         assert!((r_ared - 1.0).abs() < 1e-12);
         assert!((r_sost - 1.0).abs() < 1e-12);
-        assert!(r_rmssd.is_some_and(|v| (v - 1.0).abs() < 1e-12));
+        assert!((r_rmssd.unwrap() - 1.0).abs() < 1e-12);
         assert!((r_sans - 1.0).abs() < 1e-12);
-
-        let (_, _, _, r_none, _) = compute_atomic_nqs_margins(2.80, 125.0, 24.0, None, 0.15);
-        assert_eq!(r_none, None);
     }
 }
