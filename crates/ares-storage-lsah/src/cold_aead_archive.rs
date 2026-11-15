@@ -1,4 +1,7 @@
-use crate::config::{atomic_write_bytes, compute_crc32c, validate_airgapped_lsah_dir};
+use crate::config::{
+    atomic_write_bytes, compute_crc32c, validate_airgapped_lsah_dir,
+    verify_crc32c_with_v1_ieee_fallback,
+};
 use crate::error::LsahStorageError;
 use ares_core_types::security::{AuditChainRecord, CrewRole, MedOpsAuditLogger};
 use ares_security_privacy::{EphemeralDsnKey, Sha256AuditLogger};
@@ -15,7 +18,9 @@ use std::path::{Path, PathBuf};
 
 pub const COLD_HEADER_BYTES: usize = 144;
 pub const COLD_MAGIC: &[u8; 8] = b"ARESLSAH";
-pub const COLD_FORMAT_VERSION: u16 = 1;
+pub const COLD_FORMAT_VERSION_LEGACY_V1: u8 = 1;
+pub const COLD_FORMAT_VERSION_V2: u8 = 2;
+pub const COLD_FORMAT_VERSION: u16 = COLD_FORMAT_VERSION_V2 as u16;
 pub const COLD_CODEC_ARROW_IPC_ZSTD_L6: u16 = 1;
 
 /// Exact 144-byte Cold chunk header authenticated as ChaCha20-Poly1305 AAD.
@@ -84,15 +89,6 @@ impl ColdChunkHeader {
                 raw.len()
             )));
         }
-        let expected_crc = u32::from_le_bytes([raw[140], raw[141], raw[142], raw[143]]);
-        let computed_crc = compute_crc32c(&raw[0..140]);
-        if expected_crc != computed_crc {
-            return Err(LsahStorageError::CrcMismatch {
-                artifact: "ColdChunkHeader".to_string(),
-                expected: expected_crc,
-                computed: computed_crc,
-            });
-        }
 
         let mut magic = [0u8; 8];
         magic.copy_from_slice(&raw[0..8]);
@@ -103,10 +99,28 @@ impl ColdChunkHeader {
         }
 
         let format_version = u16::from_le_bytes([raw[8], raw[9]]);
-        if format_version != COLD_FORMAT_VERSION {
-            return Err(LsahStorageError::InvalidColdHeader(format!(
-                "unsupported Cold format_version {format_version}"
-            )));
+        let allow_legacy_ieee = match format_version {
+            v if v == u16::from(COLD_FORMAT_VERSION_V2) => false,
+            v if v == u16::from(COLD_FORMAT_VERSION_LEGACY_V1) => true,
+            _ => {
+                return Err(LsahStorageError::InvalidColdHeader(format!(
+                    "unsupported Cold format_version {format_version}"
+                )));
+            }
+        };
+
+        let expected_crc = u32::from_le_bytes([raw[140], raw[141], raw[142], raw[143]]);
+        if let Err(err) = verify_crc32c_with_v1_ieee_fallback(&raw[0..140], expected_crc, allow_legacy_ieee) {
+            return Err(match err {
+                LsahStorageError::CrcMismatch { expected, computed, .. } => {
+                    LsahStorageError::CrcMismatch {
+                        artifact: "ColdChunkHeader".to_string(),
+                        expected,
+                        computed,
+                    }
+                }
+                other => other,
+            });
         }
 
         let compression_codec = u16::from_le_bytes([raw[10], raw[11]]);
@@ -167,8 +181,14 @@ struct ColdWatermarkPayload {
     highest_sealed_chunk_seq: u64,
 }
 
+fn default_cold_watermark_v1() -> u8 {
+    COLD_FORMAT_VERSION_LEGACY_V1
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct SignedColdWatermark {
+    #[serde(default = "default_cold_watermark_v1")]
+    version: u8,
     payload: ColdWatermarkPayload,
     crc32c: u32,
 }
@@ -214,13 +234,28 @@ impl ColdTierArchiver {
         let highest_sealed_chunk_seq = if watermark_path.exists() {
             let raw = fs::read(&watermark_path)?;
             let signed: SignedColdWatermark = serde_json::from_slice(&raw)?;
+            let allow_legacy_ieee = match signed.version {
+                COLD_FORMAT_VERSION_V2 => false,
+                COLD_FORMAT_VERSION_LEGACY_V1 => true,
+                other => {
+                    return Err(LsahStorageError::InvalidColdHeader(format!(
+                        "unsupported cold_watermark version {other}"
+                    )));
+                }
+            };
             let payload_bytes = serde_json::to_vec(&signed.payload)?;
-            let computed = compute_crc32c(&payload_bytes);
-            if computed != signed.crc32c {
-                return Err(LsahStorageError::CrcMismatch {
-                    artifact: watermark_path.display().to_string(),
-                    expected: signed.crc32c,
-                    computed,
+            if let Err(err) =
+                verify_crc32c_with_v1_ieee_fallback(&payload_bytes, signed.crc32c, allow_legacy_ieee)
+            {
+                return Err(match err {
+                    LsahStorageError::CrcMismatch { expected, computed, .. } => {
+                        LsahStorageError::CrcMismatch {
+                            artifact: watermark_path.display().to_string(),
+                            expected,
+                            computed,
+                        }
+                    }
+                    other => other,
                 });
             }
             if signed.payload.key_epoch_id == key_epoch_id {
@@ -264,7 +299,11 @@ impl ColdTierArchiver {
         };
         let payload_bytes = serde_json::to_vec(&payload)?;
         let crc32c = compute_crc32c(&payload_bytes);
-        let signed = SignedColdWatermark { payload, crc32c };
+        let signed = SignedColdWatermark {
+            version: COLD_FORMAT_VERSION_V2,
+            payload,
+            crc32c,
+        };
         let encoded = serde_json::to_vec_pretty(&signed)?;
         atomic_write_bytes(&self.watermark_path, &encoded)?;
         self.highest_sealed_chunk_seq = new_seq;
