@@ -1,5 +1,7 @@
 # ARES-Health
 
+---
+
 ## Abstract
 
 Long-duration exploration missions expose crews to space radiation, isolation and confinement, altered gravity, and a hostile closed environment, producing immune, musculoskeletal, cardiovascular, and behavioral deconditioning. Beyond lunar distance, the speed-of-light barrier makes real-time ground support impossible: Earth–Mars one-way latency is 4–24 minutes (an 8–48 minute round trip), and solar conjunction imposes communication blackouts of up to two weeks every ~26 months. Any architecture that depends on cloud APIs or Internet-hosted models is therefore invalid for deep space.
