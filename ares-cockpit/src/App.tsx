@@ -10,6 +10,7 @@ import { announceAssertive } from './stores/a11yAnnouncer';
 // - `<CommandPaletteOverlay>`, `<ShortcutsOverlay>`, and `<AiInjuryModal>`
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { SmoothScrollProvider, StoryShell } from './scrollytelling';
 import {
   DEFAULT_WHATIF,
   evaluate,
@@ -42,6 +43,7 @@ const AVAILABLE_CREW_SUBJECTS: readonly string[] = [
 ];
 
 export default function App() {
+  const [viewMode, setViewMode] = useState<'NARRATIVE' | 'OPERATIONAL'>('NARRATIVE');
   const [whatIf, setWhatIf] = useState<WhatIf>(DEFAULT_WHATIF);
   const [thrombusConfirmed, setThrombusConfirmed] = useState<boolean | null>(null);
   const [lastScanDay, setLastScanDay] = useState<number>(DEFAULT_WHATIF.mission_day);
@@ -62,6 +64,7 @@ export default function App() {
   const setPhase = useWorkbenchStore((s) => s.setPhase);
   const selectPlaybook = useWorkbenchStore((s) => s.selectPlaybook);
   const openDrawer = useWorkbenchStore((s) => s.openDrawer);
+  const openCommandPalette = useWorkbenchStore((s) => s.openCommandPalette);
   const setStudioBarOpen = useWorkbenchStore((s) => s.setStudioBarOpen);
   const setSimulationMode = useWorkbenchStore((s) => s.setSimulationMode);
 
@@ -99,6 +102,10 @@ export default function App() {
       openDrawer('MISSION_PORTAL');
     } else if (qView === 'VIEW_STUDIO') {
       setStudioBarOpen(true);
+    } else if (qView === 'OPERATIONAL' || qView === 'BENTO') {
+      setViewMode('OPERATIONAL');
+    } else if (qView === 'NARRATIVE' || qView === 'SCROLL') {
+      setViewMode('NARRATIVE');
     }
     const qDrawer = params.get('drawer')?.toUpperCase();
     if (qDrawer === 'AUDIT') {
@@ -161,6 +168,85 @@ export default function App() {
     },
     [selectPlaybook, setPhase],
   );
+
+  if (viewMode === 'NARRATIVE') {
+    return (
+      <SmoothScrollProvider>
+        <StoryShell
+          packet={packet}
+          telemetryStatus={telemetryStatus}
+          transportMode={transportMode}
+          whatIf={whatIf}
+          scenario={scenario}
+          thrombusConfirmed={thrombusConfirmed}
+          onChangeThrombusConfirmed={handleChangeThrombusConfirmed}
+          onChangeWhatIf={handleChangeWhatIf}
+          onResetWhatIf={handleResetWhatIf}
+          onOpenOpticalScanner={() => setOpticalScannerOpen(true)}
+          onExecuteAction={handleExecutePlaybookAction}
+          onToggleViewMode={() => setViewMode('OPERATIONAL')}
+          onOpenDrawer={(kind) => openDrawer(kind)}
+          onOpenCommandPalette={() => openCommandPalette('COMMANDS')}
+        />
+
+        {/* Global Drawers & Modals accessible from Narrative Scrollytelling View */}
+        <MissionPortalDrawer
+          open={drawer === 'MISSION_PORTAL'}
+          onClose={() => closeDrawer()}
+          packet={packet}
+          scenario={scenario}
+          thrombusConfirmed={thrombusConfirmed}
+          invokerElementId={invokerElementId}
+        />
+
+        <AuditAndProvenanceDrawer
+          open={drawer === 'AUDIT_PROVENANCE'}
+          onClose={() => closeDrawer()}
+          packet={packet}
+          telemetryStatus={telemetryStatus}
+          httpBaseUrl={ENGINE_HTTP_URL}
+          extraLocalAuditEntries={localAuditEntries}
+          invokerElementId={invokerElementId}
+        />
+
+        <SlideOverDrawerShell
+          open={drawer === 'PLAYBOOK_SHEET'}
+          onClose={() => closeDrawer()}
+          eyebrow="03 ACT // FULL MEDOPS PLAYBOOK SHEET [P]"
+          title="Aerospace 360 Playbooks #01-#30 & Gates 1..7 Interlocks"
+          subtitle="Press & Hold 1.5s to record permitted actions; inhibited actions require diagnostic verification"
+          invokerElementId={invokerElementId}
+        >
+          <BranchedPlaybookDagLens
+            packet={packet}
+            scenario={scenario}
+            whatIf={whatIf}
+            thrombusConfirmed={thrombusConfirmed}
+            onChangeWhatIf={handleChangeWhatIf}
+            onExecuteAction={handleExecutePlaybookAction}
+            expandedView
+          />
+        </SlideOverDrawerShell>
+
+        <CommandPaletteOverlay
+          packet={packet}
+          whatIf={whatIf}
+          transportMode={transportMode}
+          httpBaseUrl={ENGINE_HTTP_URL}
+          onChangeSex={handleChangeSex}
+        />
+
+        <ShortcutsOverlay />
+
+        <AiInjuryModal
+          open={opticalScannerOpen}
+          onClose={() => setOpticalScannerOpen(false)}
+          onAddMarker={(marker) => setInjuryMarkers((prev) => [marker, ...prev])}
+          onSelectPlaybook={handleSelectPlaybookFromOptical}
+        />
+      </SmoothScrollProvider>
+    );
+  }
 
   return (
     <WorkbenchShell
