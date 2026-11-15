@@ -20,25 +20,25 @@ const CARD_MAX_HZ: f64 = 2.50;
 /// Deterministic configuration and processing errors for the Level-1 GATHER DSP modules.
 #[derive(Debug, Error, Clone, PartialEq)]
 pub enum DspError {
-    #[error("frequenza di campionamento radar non valida: {sample_rate_hz} Hz (atteso [50.0, 2000.0] Hz)")]
+    #[error("invalid radar sample rate: {sample_rate_hz} Hz (expected [50.0, 2000.0] Hz)")]
     InvalidRadarSampleRate { sample_rate_hz: f64 },
 
-    #[error("frequenza portante RF non valida: {carrier_hz} Hz (atteso valore finito > 1.0e6 Hz)")]
+    #[error("invalid RF carrier frequency: {carrier_hz} Hz (expected finite value > 1.0e6 Hz)")]
     InvalidCarrierFrequency { carrier_hz: f64 },
 
-    #[error("fattore di merito Q del filtro biquad non valido: {q_factor} (atteso valore finito > 0.1)")]
+    #[error("invalid biquad filter Q factor: {q_factor} (expected finite value > 0.1)")]
     InvalidFilterQualityFactor { q_factor: f64 },
 
-    #[error("sezione IIR biquad instabile secondo Jury (a1={a1}, a2={a2}): poli fuori dal cerchio unitario")]
+    #[error("unstable IIR biquad section under Jury criterion (a1={a1}, a2={a2}): poles outside the unit circle")]
     UnstableBiquadPoles { a1: f64, a2: f64 },
 
-    #[error("frequenza di campionamento audio PCM non supportata: {sample_rate_hz} Hz (atteso 16000 o 48000 Hz)")]
+    #[error("unsupported PCM audio sample rate: {sample_rate_hz} Hz (expected 16000 or 48000 Hz)")]
     UnsupportedAudioSampleRate { sample_rate_hz: u32 },
 
-    #[error("dimensione frame audio PCM insufficiente: ricevuti {len} campioni, richiesti almeno {min_required}")]
+    #[error("PCM audio frame too short: received {len} samples, at least {min_required} required")]
     AudioFrameTooShort { len: usize, min_required: usize },
 
-    #[error("frequenza di campionamento waveform non valida per Pan-Tompkins: {sample_rate_hz} Hz (consentito [125.0, 500.0] Hz)")]
+    #[error("unsupported waveform sample rate for Pan-Tompkins: {sample_rate_hz} Hz (allowed [125.0, 500.0] Hz)")]
     UnsupportedWaveformSampleRate { sample_rate_hz: f64 },
 }
 

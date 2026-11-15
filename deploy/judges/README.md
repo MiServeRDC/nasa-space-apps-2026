@@ -1,5 +1,9 @@
 # Judging deployment
 
+**Receiving the GitHub repository?** Start with the [README launch commands](../../README.md#run-the-demo)
+and [judge walkthrough](../../docs/submission/JUDGES_START_HERE.md). Packaging
+and public hosting below are optional alternatives, not source-demo requirements.
+
 This is a recorded-data/scenario sandbox, not a live medical service. The default
 local release needs no external inference API. The team has deferred its video;
 no slides are prepared. Hosting and final portal submission are separate steps.

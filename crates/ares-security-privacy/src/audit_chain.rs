@@ -40,7 +40,7 @@ impl Sha256AuditLogger {
             .records
             .lock()
             .map_err(|_| AresCoreError::SecurityViolation {
-                reason: "mutex della catena di audit avvelenato".to_string(),
+                reason: "audit chain mutex poisoned".to_string(),
             })?;
         Ok(guard.clone())
     }
@@ -78,7 +78,7 @@ impl MedOpsAuditLogger for Sha256AuditLogger {
             .records
             .lock()
             .map_err(|_| AresCoreError::SecurityViolation {
-                reason: "mutex della catena di audit avvelenato".to_string(),
+                reason: "audit chain mutex poisoned".to_string(),
             })?;
         let seq = guard.len() as u64;
         let prev_hash = guard
@@ -106,7 +106,7 @@ impl MedOpsAuditLogger for Sha256AuditLogger {
             .records
             .lock()
             .map_err(|_| AresCoreError::SecurityViolation {
-                reason: "mutex della catena di audit avvelenato".to_string(),
+                reason: "audit chain mutex poisoned".to_string(),
             })?;
         Ok(Self::verify_external_slice(&guard))
     }

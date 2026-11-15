@@ -12,28 +12,28 @@ use thiserror::Error;
 
 #[derive(Debug, Error, Clone, PartialEq)]
 pub enum IngestError {
-    #[error("impossibile leggere il file CSV BIDMC '{path}': {reason}")]
+    #[error("cannot read BIDMC CSV file '{path}': {reason}")]
     CsvIoError { path: String, reason: String },
 
-    #[error("header CSV BIDMC non valido in '{path}': trovato '{found}'")]
+    #[error("invalid BIDMC CSV header in '{path}': found '{found}'")]
     InvalidCsvHeader { path: String, found: String },
 
-    #[error("il dataset BIDMC '{record_id}' non contiene alcuna riga valida")]
+    #[error("BIDMC dataset '{record_id}' contains no valid rows")]
     EmptyDataset { record_id: String },
 
-    #[error("valore timestamp 'Time [s]' non valido alla riga {line}: '{raw}'")]
+    #[error("invalid 'Time [s]' timestamp at line {line}: '{raw}'")]
     InvalidTimestamp { line: usize, raw: String },
 
-    #[error("lunghezza pacchetto wearable non valida: attesi {expected} byte, trovati {actual}")]
+    #[error("invalid wearable packet length: expected {expected} bytes, found {actual}")]
     InvalidWearablePacketLength { expected: usize, actual: usize },
 
-    #[error("sync word wearable non valida: trovata 0x{found:04X}")]
+    #[error("invalid wearable sync word: found 0x{found:04X}")]
     InvalidWearableSyncWord { found: u16 },
 
-    #[error("CRC-16-CCITT wearable non valido: atteso 0x{expected:04X}, trovato 0x{found:04X}")]
+    #[error("invalid wearable CRC-16-CCITT: expected 0x{expected:04X}, found 0x{found:04X}")]
     InvalidWearableCrc { expected: u16, found: u16 },
 
-    #[error("errore modulo DSP GATHER: {0}")]
+    #[error("GATHER DSP module error: {0}")]
     Dsp(#[from] crate::radar_csi_dsp::DspError),
 }
 

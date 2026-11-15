@@ -20,11 +20,15 @@ is unchanged. System diagnostics are in the expandable system details section.
 See [optimization operations](../docs/operations/PROJECT_OPTIMIZATION.md) for local
 recording, browser regression checks and measurement limits.
 
-Requires Node.js 20+.
+For judging, use the [repository launch instructions](../README.md#run-the-demo)
+to start the backend and cockpit together. The commands below are the developer
+frontend workflow; a frontend alone is not a connected replay demo.
+
+The locally qualified toolchain uses Node.js 26/npm (the tests use native TypeScript stripping).
 
 ```bash
 cd ares-cockpit
-npm install
+npm ci --ignore-scripts --no-audit --no-fund
 npm run dev      # http://127.0.0.1:5173
 npm run lint     # TypeScript strict type-check
 npm run build

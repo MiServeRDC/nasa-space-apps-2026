@@ -17,7 +17,7 @@ use std::time::Duration;
 pub enum ServerMode {
     /// Starts both the Axum HTTP/WebSocket server (20 Hz) + Timestral 1 Hz worker and the FastMCP loop on `stdio`.
     WsAndMcp,
-    /// Avvia solo il server Axum HTTP/WebSocket su `127.0.0.1:8080` + worker Timestral 1 Hz.
+    /// Starts only the Axum HTTP/WebSocket server (loopback by default) and the 1 Hz forecasting worker.
     WsOnly,
     /// Starts only the FastMCP JSON-RPC 2.0 server on `stdio`.
     McpOnly,
@@ -116,7 +116,7 @@ async fn wait_for_shutdown() -> std::io::Result<()> {
 fn export_and_verify_graph_bundle(graph: &AresUnifiedDatasetGraph, repo_root: &Path) -> Result<()> {
     let stats = graph
         .export_graphify_bundle(repo_root)
-        .context("impossibile esportare il knowledge graph su disco")?;
+        .context("cannot export the knowledge graph to disk")?;
 
     let expected_paths = [
         repo_root
@@ -134,11 +134,11 @@ fn export_and_verify_graph_bundle(graph: &AresUnifiedDatasetGraph, repo_root: &P
     let mut sizes = Vec::with_capacity(expected_paths.len());
     for path in &expected_paths {
         let meta = std::fs::metadata(path).with_context(|| {
-            format!("file grafo atteso non trovato su disco: {}", path.display())
+            format!("expected graph file not found on disk: {}", path.display())
         })?;
         ensure!(
             meta.len() > 0,
-            "file grafo vuoto su disco: {}",
+            "empty graph file on disk: {}",
             path.display()
         );
         sizes.push((path.display().to_string(), meta.len()));
@@ -152,7 +152,7 @@ fn export_and_verify_graph_bundle(graph: &AresUnifiedDatasetGraph, repo_root: &P
         slices = stats.time_window_slice_count,
         god_nodes = ?stats.god_node_ids,
         files = ?sizes,
-        "ARES-DatasetGraph esportato e verificato su disco"
+        "ARES-DatasetGraph exported and verified on disk"
     );
     Ok(())
 }
@@ -176,15 +176,15 @@ async fn main() -> Result<()> {
     if args.mode == ServerMode::BuildGraph {
         let bidmc_opt = args.data_dir.is_dir().then_some(args.data_dir.as_path());
         let graph = AresUnifiedDatasetGraph::build_with_bidmc_dir(bidmc_opt)
-            .context("errore durante la costruzione di AresUnifiedDatasetGraph")?;
+            .context("failed building AresUnifiedDatasetGraph")?;
         export_and_verify_graph_bundle(&graph, &repo_root)?;
         return Ok(());
     }
 
     if args.mode == ServerMode::EvalAnomaly {
         let records = load_records(&[args.data_dir.as_path(), args.eval_dir.as_path()])
-            .context("impossibile caricare i record BIDMC per la valutazione")?;
-        ensure!(!records.is_empty(), "nessun record BIDMC trovato");
+            .context("cannot load BIDMC records for evaluation")?;
+        ensure!(!records.is_empty(), "no BIDMC records found");
         let splits: &[Split] = match args.eval_split {
             EvalSplitArg::Dev => &[Split::Development],
             EvalSplitArg::HeldOut => &[Split::HeldOut],
@@ -196,10 +196,10 @@ async fn main() -> Result<()> {
             Some(path) => {
                 if let Some(parent) = path.parent() {
                     std::fs::create_dir_all(parent)
-                        .with_context(|| format!("impossibile creare {parent:?}"))?;
+                        .with_context(|| format!("cannot create {parent:?}"))?;
                 }
                 std::fs::write(path, &markdown)
-                    .with_context(|| format!("impossibile scrivere {path:?}"))?;
+                    .with_context(|| format!("cannot write {path:?}"))?;
             }
             None => print!("{markdown}"),
         }
@@ -207,7 +207,7 @@ async fn main() -> Result<()> {
     }
 
     let state = SharedMissionState::from_data_dir(&args.data_dir)
-        .with_context(|| format!("impossibile inizializzare i dataset da {:?}", args.data_dir))?;
+        .with_context(|| format!("cannot initialize datasets from {:?}", args.data_dir))?;
     state.set_source_mode(args.source);
 
     match args.mode {
@@ -218,16 +218,16 @@ async fn main() -> Result<()> {
                 last_pkt = Some(
                     state
                         .advance_tick(Duration::from_millis(50))
-                        .context("errore durante il tick 20 Hz di smoke-test")?,
+                        .context("failed during the 20 Hz smoke-test tick")?,
                 );
             }
             let q_snap = state
                 .run_1hz_timestral_step()
-                .context("errore durante l'inferenza Timestral 1 Hz di smoke-test")?;
-            let pkt = last_pkt.context("nessun TelemetryPacket generato nello smoke-test")?;
+                .context("failed during 1 Hz Timestral smoke-test inference")?;
+            let pkt = last_pkt.context("no TelemetryPacket generated during smoke test")?;
             let ctx = state
                 .fastmcp_context()
-                .context("contesto FastMCP non disponibile nello smoke-test")?;
+                .context("FastMCP context unavailable during smoke test")?;
 
             export_and_verify_graph_bundle(&state.dataset_graph, &repo_root)?;
 
@@ -240,14 +240,14 @@ async fn main() -> Result<()> {
                 pessimistic_ttv_q05_h = ?q_snap.pessimistic_ttv_q05_hours,
                 hottest_uberon = %ctx.heatmap.hottest_region.uberon_curie(),
                 biokg_clause = %ctx.grounding.normative_clause.official_code(),
-                "ARES-Health smoke test completo (7 crate + Timestral + ARES-HyperGraph + ARES-DatasetGraph) completato con successo"
+                "ARES-Health smoke test (7 core crates + Timestral + ARES-HyperGraph + ARES-DatasetGraph) completed successfully"
             );
             Ok(())
         }
         ServerMode::McpOnly => tokio::task::spawn_blocking(move || run_mcp_stdio_loop(state))
             .await
-            .context("join error sul task stdio FastMCP")?
-            .context("errore I/O nel loop stdio FastMCP"),
+            .context("join error in FastMCP stdio task")?
+            .context("I/O error in FastMCP stdio loop"),
         ServerMode::WsOnly | ServerMode::WsAndMcp => {
             if let Some(path) = args.storage_dir {
                 state.enable_storage(ares_storage_lsah::LsahStorageConfig::with_root_dir(path)).await
@@ -293,8 +293,8 @@ async fn main() -> Result<()> {
             };
             let listener = tokio::net::TcpListener::bind(&args.bind)
                 .await
-                .with_context(|| format!("impossibile eseguire il bind su {}", args.bind))?;
-            tracing::info!(bind = %args.bind, "Server Axum 20 Hz + Timestral 1 Hz attivo");
+                .with_context(|| format!("cannot bind to {}", args.bind))?;
+            tracing::info!(bind = %args.bind, "Axum 20 Hz server and 1 Hz forecasting worker active");
             let shutdown_state = Arc::clone(&state);
             let result = axum::serve(listener, app).with_graceful_shutdown(async move {
                 if let Err(error) = wait_for_shutdown().await {
@@ -305,7 +305,7 @@ async fn main() -> Result<()> {
             ticker.abort(); forecaster.abort();
             let _ = ticker.await; let _ = forecaster.await;
             state.shutdown_storage().await.context("failed draining local telemetry storage")?;
-            result.context("errore runtime nel server Axum")
+            result.context("Axum server runtime error")
         }
     }
 }

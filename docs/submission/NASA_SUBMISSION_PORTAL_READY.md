@@ -7,6 +7,16 @@ The repository was private at the last authenticated GitHub check: do not assume
 that sending its URL provides judge access. No visibility change is authorized or
 performed by the release-preparation scripts.
 
+## Current delivery: GitHub source repository
+
+The team has chosen a repository-first handoff. Judges should start with the
+[README run instructions](../../README.md#run-the-demo) and the
+[walkthrough](JUDGES_START_HERE.md), not assume an online demo or native archive
+is attached. Public hosting is optional for this delivery. The source link still
+needs to be accessible to judges: the repository is currently private, as
+confirmed through the authenticated GitHub API on 2026-11-15. No visibility change
+has been made.
+
 ## Project title
 
 ARES-Health: offline astronaut health monitoring and guided response
@@ -42,8 +52,8 @@ calibrated individual risk.
 The release runs one Rust HTTP/WebSocket server serving the built cockpit from
 the same origin. Native local use needs no development toolchain after packaging;
 hosted use needs a real container/server platform with TLS and WebSocket support.
-The public judging copy is a shared replay sandbox with no physical sensors and
-recording disabled. Default Arrow is the selected storage infrastructure; the
+An optional hosted judging copy would be a shared replay sandbox with no physical
+sensors and recording disabled. Default Arrow is the selected storage infrastructure; the
 optional LanceDB adapter remains experimental and is not a release dependency.
 
 ## NASA resources and other data: distinguish their roles

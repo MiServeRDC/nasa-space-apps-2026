@@ -5,6 +5,18 @@ aea748b without conflicts and repeated frontend/live checks. Branch release/judg
 **Status: native software preparation verified; public online delivery is not yet
 qualified or published.** The user declined slides and deferred the video.
 
+## Repository-first handoff update
+
+The team subsequently chose GitHub source delivery. Public hosting is not a
+prerequisite for running the source demo. README now provides the complete launch
+path before architecture; the walkthrough distinguishes checkout and optional
+archive paths. Reverified the documented npm install/build and Cargo launch,
+329 default Rust tests, real-browser connected replay (30 WS frames, no page
+errors), ready endpoint and English CLI diagnostics. Remaining Italian is listed
+in [the language audit](REPOSITORY_LANGUAGE_AUDIT.md). The repository is still
+private (authenticated API check, 2026-11-15), so judge access must be resolved
+before submitting that URL. No public deployment or visibility change is implied.
+
 ## Completed
 
 - Optional `--frontend-dir` serves built cockpit, APIs and WS from one Rust process.
