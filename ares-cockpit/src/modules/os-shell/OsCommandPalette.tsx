@@ -27,71 +27,63 @@ export const FASTMCP_TOOLS: FastMcpToolDef[] = [
   {
     index: 1,
     rpcName: 'query_dataset_graph',
-    title: 'Query 24-Dataset BioKG',
-    description:
-      'Search across 24 cataloged datasets (OSD-51, OSD-195, OSD-818, NASA-0000100, CSA CANS, BIDMC v1.0.0), SPOKE DEGs, UBERON anatomy, LOINC biomarkers.',
+    title: 'Search research sources',
+    description: 'Find a study or dataset used by ARES. Try BIDMC or an identifier such as OSD-818.',
     normativeClauses: ['NASA-STD-3001 [V1 3002]', '[V1 3003]', '[V1 4001]'],
     hasQueryArg: true,
   },
   {
     index: 2,
     rpcName: 'explain_biomarker_path',
-    title: 'Explain Biomarker Path',
-    description:
-      'Shortest Biolink semantic/causal path across datasets (e.g. OSD-818 -> bm_hr or OSD-51 -> pheno_osteopenia).',
+    title: 'Trace a research link',
+    description: 'Enter two references to see how the research catalog links them.',
     normativeClauses: ['NASA-STD-3001 [V1 3003]', 'Biolink v4 / SPOKE'],
     hasPathArgs: true,
   },
   {
     index: 3,
     rpcName: 'get_timestral_quantile_cones',
-    title: 'Timestral Quantile Cones',
-    description:
-      'DHF non-crossing quantiles [q0.05, q0.50, q0.95] and ConformalAbstentionGate certificate.',
+    title: 'Review forecast ranges',
+    description: 'See the prediction bands available for the current session and which estimates are unavailable.',
     normativeClauses: ['NASA-STD-3001 [V1 3006]', '[V2 10022]'],
   },
   {
     index: 4,
     rpcName: 'get_hypergraph_spatial_status',
-    title: 'HyperGraph Spatial & Deontic',
-    description:
-      '3D UBERON Body Heatmap, HabitatZoneDeonticPolicy, and 16-byte ARES-BioKG descriptor.',
+    title: 'Inspect body and habitat status',
+    description: 'See the flagged body region, current habitat zone and any operating restrictions in the model.',
     normativeClauses: ['NASA-STD-3001 [V1 4001]', '[V2 10005]'],
   },
   {
     index: 5,
     rpcName: 'get_crew_health_summary',
     displayAlias: 'get_astronaut_health_summary',
-    title: 'Astronaut Health Summary',
-    description:
-      'Compact crew telemetry, NQS robustness, MRI readiness, and explicit missing/null channels.',
+    title: 'Summarize crew readings',
+    description: 'See the current measurements, readiness and any missing readings together.',
     normativeClauses: ['NASA-STD-3001 [V1 3001]', '[V1 3003]'],
   },
   {
     index: 6,
     rpcName: 'explain_causal_anomaly',
     displayAlias: 'query_causal_biomarker_state',
-    title: 'Causal Biomarker State (ADHG)',
-    description:
-      '4-hop ADHG causal biomarker chain and per-predicate NQS robustness margins.',
+    title: 'Explain a flagged reading',
+    description: 'See the measurements and modeled relationships behind the current alert.',
     normativeClauses: ['NASA-STD-3001 [V1 3003]', 'OCHMO-MTB-007'],
   },
   {
     index: 7,
     rpcName: 'simulate_countermeasure_impact',
     displayAlias: 'evaluate_stl_safety_margins',
-    title: 'Evaluate STL Safety Margins',
-    description:
-      'Deterministic delta-rho and TTV gain projection for LBNP (-30 mmHg) and ARED countermeasures.',
+    title: 'Compare scenario responses',
+    description: 'Preview how changes to the selected countermeasure could affect the modeled safety margins.',
     normativeClauses: ['NASA-STD-3001 [V1 3002]', '[V2 10022]'],
   },
   {
     index: 8,
     rpcName: 'get_medops_playbook',
     displayAlias: 'get_active_medops_playbook',
-    title: 'Active MedOps Playbook',
-    description:
-      'Active Type-1 MedOps Playbook (#01-#05) and 3 Hard Clinical Safety Gates.',
+    title: 'Show the active procedure',
+    description: 'See which procedure the system has selected and the state of its safety checks.',
     normativeClauses: ['NASA-STD-3001 [V2 10023]', '[V2 10027]'],
   },
 ];
@@ -586,7 +578,7 @@ export function OsCommandPalette({
                   : 'border-line bg-black text-gray-400 hover:text-white'
               }`}
             >
-              FASTMCP TOOLS (8)
+              Tools
             </button>
             <button
               type="button"
@@ -597,7 +589,7 @@ export function OsCommandPalette({
                   : 'border-line bg-black text-gray-400 hover:text-white'
               }`}
             >
-              COPILOT ASK
+              Ask Copilot
             </button>
           </div>
 
@@ -611,8 +603,8 @@ export function OsCommandPalette({
                   setFilterText(e.target.value);
                   setSelectedIndex(0);
                 }}
-                placeholder="Filter 8 Context-Mode FastMCP tools or 24-dataset BioKG queries..."
-                aria-label="Filter FastMCP tools"
+                placeholder="Find a tool…"
+                aria-label="Find a tool"
                 className="w-full bg-transparent text-sm text-white outline-none placeholder:text-gray-500"
               />
             </div>
@@ -701,7 +693,7 @@ export function OsCommandPalette({
               </div>
             ) : (
               <div className="rounded border border-line/60 bg-black p-4 text-gray-500">
-                Ask about jugular shear stress, Timestral multi-horizon quantile cones, OSD datasets, or active Playbooks (#01-#05). Zero external network calls (`connect-src &apos;self&apos;`); falls back to local deterministic Type-1 synthesis when Edge LLM is offline.
+                Ask for a written explanation of the current readings, a forecast or an active procedure.
               </div>
             )}
           </div>
@@ -711,7 +703,7 @@ export function OsCommandPalette({
             <div className="grid min-h-0 flex-1 md:grid-cols-[340px_1fr]">
           <div className="overflow-y-auto border-r border-line bg-black p-2">
             <div className="mb-1.5 px-2 text-[10px] tracking-wider text-gray-500">
-              CONTEXT-MODE TOOLS (8/8 | CAP &lt;150 TOKENS / 600B)
+              Choose a tool, then run it.
             </div>
             <div className="space-y-1">
               {filteredTools.map((tool, idx) => {
@@ -720,30 +712,15 @@ export function OsCommandPalette({
                   <button
                     key={tool.rpcName}
                     type="button"
-                    onClick={() => {
-                      setSelectedIndex(idx);
-                      void executeTool(tool);
-                    }}
+                    onClick={() => setSelectedIndex(idx)}
+                    aria-pressed={isSelected}
                     className={`w-full cursor-pointer rounded border px-2.5 py-2 text-left transition-colors ${
                       isSelected
                         ? 'border-nominal bg-nominal/10 text-white'
                         : 'border-transparent text-gray-300 hover:border-line hover:bg-panel'
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-bold text-nominal">
-                        [{tool.index}] {tool.rpcName}
-                      </span>
-                      <span className="text-[10px] text-gray-500">RUN</span>
-                    </div>
-                    {tool.displayAlias && (
-                      <div className="text-[10px] text-gray-500">
-                        alias: {tool.displayAlias}
-                      </div>
-                    )}
-                    <div className="mt-0.5 text-[11px] text-gray-400">
-                      {tool.title}
-                    </div>
+                    <span className="font-semibold">{tool.title}</span>
                   </button>
                 );
               })}
@@ -756,7 +733,7 @@ export function OsCommandPalette({
                 <div className="flex flex-wrap items-start justify-between gap-2 border-b border-line pb-2">
                   <div>
                     <div className="text-sm font-bold text-white">
-                      {activeTool.rpcName}
+                      {activeTool.title}
                     </div>
                     <p className="mt-1 text-[11px] text-gray-400">
                       {activeTool.description}
@@ -768,7 +745,7 @@ export function OsCommandPalette({
                     onClick={() => void executeTool(activeTool)}
                     className="cursor-pointer rounded border border-nominal bg-nominal px-3 py-1 text-[11px] font-bold text-black hover:opacity-90 disabled:opacity-50"
                   >
-                    {running ? 'EXECUTING...' : 'EXECUTE TOOL'}
+                    {running ? 'Running…' : 'Run tool'}
                   </button>
                 </div>
 
@@ -843,7 +820,7 @@ export function OsCommandPalette({
                   <div className="flex flex-col gap-2 rounded border border-line bg-black p-3">
                     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-2 text-[10px]">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-bold text-nominal">{result.toolName}</span>
+                        <span className="font-bold text-nominal">{FASTMCP_TOOLS.find(tool => tool.rpcName === result.toolName)?.title ?? result.toolName}</span>
                         <span
                           className={`rounded border px-1.5 py-0.5 ${
                             result.source === 'TAURI_NATIVE_IPC'

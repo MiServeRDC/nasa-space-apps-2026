@@ -1,3 +1,4 @@
+import { displayLabel } from '../../lib/displayLabel';
 import { useEffect, useMemo, useState } from 'react';
 import { evaluate, type WhatIf } from '../../lib/scenario';
 import {
@@ -291,7 +292,7 @@ export function TimestralQuantileConePanel({
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-semibold text-nominal">TIMESTRAL QUANTILE CONES (q05-q50-q95)</span>
           <span className="rounded border border-gray-700 px-1.5 py-0.5 text-[10px] text-gray-300">
-            {validationLabel} | {intervalKindLabel}
+            {displayLabel(validationLabel)} · {displayLabel(intervalKindLabel)}
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -302,7 +303,7 @@ export function TimestralQuantileConePanel({
                 : 'border-ok text-ok'
             }`}
           >
-            CONFORMAL GATE: {gateStatus}
+            Prediction status: {displayLabel(gateStatus)}
           </span>
           {typeof tq?.inference_latency_us === 'number' && Number.isFinite(tq.inference_latency_us) && (
             <span className="text-[10px] text-gray-500">
@@ -315,14 +316,14 @@ export function TimestralQuantileConePanel({
       {/* Issue #11 Strict Nullability Banner */}
       {hrvUnavailable && (
         <div className="rounded border border-caution/60 bg-black px-2.5 py-1.5 text-[11px] text-caution">
-          BEAT_INTERVALS_NOT_AVAILABLE: R-R intervals absent (`hrv_rmssd_ms === null`). HRV/STL cones (`rmssd_ms`, `rho_global`, `ttv_hours_cone`) remain suppressed (not coerced to zero).
+          Beat intervals are unavailable. HRV, global safety margin and time-to-limit forecasts are unavailable for this input.
         </div>
       )}
 
       {/* Conformal Abstention Certificate Banner */}
       {tq?.abstention_certificate && isAbstained && (
         <div className="rounded border border-caution/50 bg-black px-2.5 py-1.5 text-[11px] text-gray-300">
-          ABSTENTION CERTIFICATE: {tq.abstention_certificate.reason}
+          Forecast availability: {displayLabel(tq.abstention_certificate.reason)}
           {tq.abstention_certificate.abstained
             ? ` [DETERMINISTIC FALLBACK ACTIVE | cov_err=${tq.abstention_certificate.empirical_coverage_error.toFixed(3)}]`
             : ''}
@@ -515,12 +516,10 @@ export function StlChart({
   whatIf,
   lastScanDay,
   isPureReplay,
-  packet,
 }: {
   whatIf: WhatIf;
   lastScanDay: number;
   isPureReplay?: boolean;
-  packet?: TelemetryPacket | null;
 }) {
   const W = 520;
   const H = 190;
@@ -554,8 +553,6 @@ export function StlChart({
 
   return (
     <div className="space-y-3">
-      <TimestralQuantileConePanel packet={packet} />
-
       {isPureReplay ? (
         <div className="flex flex-col items-center justify-center rounded border border-line bg-black p-4 text-center font-mono text-xs">
           <div className="font-bold text-advisory">
@@ -568,8 +565,8 @@ export function StlChart({
       ) : (
         <div className="space-y-1">
           <div className="flex items-center justify-between font-mono text-[10px] text-gray-500">
-            <span>ILLUSTRATIVE SCENARIO ROBUSTNESS TRAJECTORY (+14d)</span>
-            <span>ILLUSTRATIVE_SCENARIO_RANGE (NOMINAL BAND)</span>
+            <span>Scenario margin</span>
+            <span>Illustrative range</span>
           </div>
           <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="NQS-STL robustness chart">
             <path d={band} fill="#22d3ee" fillOpacity="0.12" />
@@ -611,7 +608,7 @@ export function PredicateBars({ rho }: { rho: Record<string, number | null> }) {
         const isNull = v === null || !Number.isFinite(v);
         return (
           <div key={k} className="flex items-center gap-2">
-            <span className="w-24 truncate text-gray-400">{k}</span>
+            <span className="w-24 truncate text-gray-400">{displayLabel(k)}</span>
             <div className="h-2 flex-1 rounded bg-line">
               {!isNull && (
                 <div

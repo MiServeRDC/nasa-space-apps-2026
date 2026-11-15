@@ -1,3 +1,4 @@
+import { CockpitSelect } from '../ui-primitives/CockpitControls';
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -234,7 +235,7 @@ export function AiInjuryModal({
             <div className="flex flex-wrap items-center justify-between gap-2 font-mono text-xs">
               <label className="flex flex-1 items-center gap-2 text-gray-400">
                 <span>REGION:</span>
-                <select
+                <CockpitSelect
                   aria-label="Anatomical injury region"
                   value={region}
                   onChange={(e) => {
@@ -251,7 +252,7 @@ export function AiInjuryModal({
                       {INJURY_REGIONS[key].label}
                     </option>
                   ))}
-                </select>
+                </CockpitSelect>
               </label>
 
               <label className="inline-flex min-h-[44px] cursor-pointer items-center rounded border border-line bg-panel px-3 py-1.5 text-gray-200 hover:border-lime-400 hover:text-white">

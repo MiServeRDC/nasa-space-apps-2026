@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { CockpitSelect } from '../ui-primitives/CockpitControls';
+import { useEffect, useState, type ReactNode } from 'react';
 import type { AlarmLevel } from '../../types/telemetry';
 import type { LinkState } from '../../lib/useTelemetry';
 
@@ -41,9 +42,8 @@ export function TriPhaseHeader({
   recommendedPhase,
   onSelectPhase,
   onTogglePalette,
+  provenance,
   onOpenAudit,
-  onOpenPortal,
-  onOpenStudio,
   onOpenShortcuts,
 }: {
   astronautId: string;
@@ -54,9 +54,8 @@ export function TriPhaseHeader({
   recommendedPhase: Phase;
   onSelectPhase: (p: Phase) => void;
   onTogglePalette?: () => void;
+  provenance?: ReactNode;
   onOpenAudit?: () => void;
-  onOpenPortal?: () => void;
-  onOpenStudio?: () => void;
   onOpenShortcuts?: () => void;
 }) {
   const [profile, setProfile] = useState<Profile>(LATENCY_PROFILES[1]);
@@ -68,7 +67,7 @@ export function TriPhaseHeader({
 
   const autonomous = profile.oneWayS > 60;
   const phases: Phase[] = ['GATHER', 'EVALUATE', 'ACT'];
-  const labels: Record<Phase, string> = { GATHER: 'Overview', EVALUATE: 'Assessment', ACT: 'Care plan' };
+  const labels: Record<Phase, string> = { GATHER: 'Gather', EVALUATE: 'Evaluate', ACT: 'Act' };
   const titles: Record<Phase, string> = {
     GATHER: 'Health overview', EVALUATE: 'Anatomical assessment', ACT: 'Care & countermeasures',
   };
@@ -87,7 +86,7 @@ export function TriPhaseHeader({
         </a>
 
       <nav className="phase-navigation" aria-label="Cockpit pages">
-        {phases.map((p, i) => {
+        {phases.map((p) => {
           const isActive = p === activePhase;
           const isAlert = p === 'ACT' && recommendedPhase === 'ACT' && !isActive;
           return (
@@ -98,8 +97,7 @@ export function TriPhaseHeader({
                 aria-current={isActive ? 'page' : undefined}
                 className={`phase-button ${isActive ? 'is-active' : ''} ${isAlert ? 'needs-attention' : ''}`}
               >
-                <span className="phase-step">{String(i + 1).padStart(2, '0')}</span>
-                <span>{labels[p]}<small>{p.charAt(0) + p.slice(1).toLowerCase()}</small></span>
+                {labels[p]}
               </button>
             </div>
           );
@@ -109,17 +107,15 @@ export function TriPhaseHeader({
         <div className="mission-identity"><span className="crew-avatar" aria-hidden="true">{astronautId.slice(-2)}</span><span>Crew member<strong>{astronautId}</strong></span><button type="button" className="tools-button" onClick={onTogglePalette} aria-label="Open onboard tools">Tools <span aria-hidden="true">⌘ K</span></button></div>
       </div>
       <div className="mission-masthead">
-        <div><div className="mission-context">Onboard health workspace <span className="context-divider" /> Earth-independent operations</div><h1>{titles[activePhase]}</h1><p>{descriptions[activePhase]}</p></div>
+        <div><h1>{titles[activePhase]}</h1><p>{descriptions[activePhase]}</p></div>
         <div className="mission-link-block">
           <div className="mission-actions" aria-label="Mission applications">
-            {onOpenPortal && <button type="button" onClick={onOpenPortal}>Ground portal</button>}
-            {onOpenStudio && <button type="button" onClick={onOpenStudio}>Studio</button>}
             {onOpenAudit && <button type="button" onClick={onOpenAudit}>Audit chain</button>}
             {onOpenShortcuts && <button type="button" aria-label="Keyboard shortcuts" onClick={onOpenShortcuts}>?</button>}
           </div>
           <div className="mission-connection"><span className={`connection-dot ${link === 'ENGINE_LIVE' ? 'is-live' : ''}`} /><span>{link === 'ENGINE_LIVE' ? (wsConnected ? 'Engine connected' : 'Engine snapshot') : 'Local simulation'}</span><span className="utc-clock">{now.toISOString().slice(11, 19)} UTC</span></div>
           <div className="mission-profile-row">
-        <select
+        <CockpitSelect
           aria-label="Earth link profile"
           className="earth-profile-select"
           value={profile.id}
@@ -128,13 +124,14 @@ export function TriPhaseHeader({
           {LATENCY_PROFILES.map((p) => (
             <option key={p.id} value={p.id}>{p.label}</option>
           ))}
-        </select>
+        </CockpitSelect>
         <span className={Number.isFinite(profile.oneWayS) ? 'text-gray-300' : 'font-bold text-critical'} title="Demonstration Earth-link profile; not measured network latency">{fmt(profile.oneWayS)} one way <small className="profile-demo-label">demo profile</small></span>
         <AlarmBadge level={alarm} />
           </div>
           <span className="autonomy-label">{autonomous ? 'Onboard autonomy' : 'Ground link'}</span>
         </div>
       </div>
+      {provenance}
     </header>
   );
 }

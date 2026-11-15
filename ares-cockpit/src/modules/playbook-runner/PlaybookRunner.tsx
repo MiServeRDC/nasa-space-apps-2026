@@ -1,3 +1,5 @@
+import { CockpitSelect, CockpitSummary } from '../ui-primitives/CockpitControls';
+import { displayLabel } from '../../lib/displayLabel';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ALL_CRYSTALLIZED_PLAYBOOK_LIST,
@@ -17,6 +19,7 @@ import type {
 export interface PlaybookRunnerProps {
   activePlaybook: ActivePlaybook | null | undefined;
   isLiveEngine: boolean;
+  monitoringStatus: 'urgent' | 'watch' | 'normal' | 'unavailable';
   thrombusConfirmed: boolean | null;
   ventEvent?: string | null;
   syncLatencyUs?: number | null;
@@ -53,6 +56,7 @@ function getEffectiveSafetyGates(
 export function PlaybookRunner({
   activePlaybook,
   isLiveEngine,
+  monitoringStatus,
   thrombusConfirmed,
   ventEvent,
   syncLatencyUs,
@@ -137,101 +141,34 @@ export function PlaybookRunner({
       : currentStep?.text ?? 'Execution complete — monitor NQS-STL recovery';
   const validationTag = modelValidationStatus ?? 'ILLUSTRATIVE_UNVALIDATED';
 
-  return (
-    <div className="space-y-3 bg-black font-mono text-sm text-gray-200">
-      {/* Engine Binding & Validation Header */}
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded border border-line bg-black px-3 py-2 text-xs">
-        <div className="flex flex-wrap items-center gap-2">
-          <span
-            className={`rounded border px-2 py-0.5 font-semibold ${
-              followingLive
-                ? isLiveEngine
-                  ? 'border-ok text-ok'
-                  : 'border-nominal text-nominal'
-                : 'border-caution text-caution'
-            }`}
-          >
-            {followingLive
-              ? isLiveEngine
-                ? 'LIVE ENGINE BINDING'
-                : 'SIMULATOR PLAYBOOK BINDING'
-              : 'MANUAL INSPECT MODE'}
-          </span>
-          <span className="text-gray-400">
-            ID: <span className="text-gray-200">{selectedEntry.short_code}</span>
-          </span>
-          {typeof syncLatencyUs === 'number' && Number.isFinite(syncLatencyUs) && (
-            <span className="text-gray-500">IPC {syncLatencyUs} us</span>
-          )}
-          <span className="rounded border border-gray-700 px-1.5 py-0.5 text-[10px] text-gray-400">
-            {validationTag}
-          </span>
-        </div>
+  const completed = steps.length > 0 && activeStepIdx >= steps.length;
+  const showUltrasoundFinding = isAnticoagulantStep || selectedEntry.short_code === '#01' || selectedEntry.short_code === '#02';
+  const statusText = {
+    urgent: 'Alarm still active',
+    watch: 'Readings still under observation',
+    normal: 'Readings within configured limits',
+    unavailable: 'Current readings cannot be verified',
+  }[monitoringStatus];
 
-        <button
-          type="button"
-          onClick={() => {
+  const reviewStep = (index: number) => {
+    setManualPlaybookId(selectedEntry.playbook_id);
+    setFollowLiveEngine(false);
+    setManualStepIdx(index);
+  };
+
+  return (
+    <div className="act-procedure space-y-4 text-sm text-gray-200">
+      <div className="act-procedure-meta">
+        <span>{followingLive ? (isLiveEngine ? 'Selected by the engine' : 'Selected by the simulation') : 'Manual review'} · {displayLabel(validationTag)}</span>
+
+        {!followLiveEngine && liveCatalogMatch && (
+          <button type="button" onClick={() => {
             setFollowLiveEngine(true);
             setManualStepIdx(0);
-          }}
-          className={`min-h-12 min-w-[44px] rounded border px-3 py-2 text-xs font-semibold transition-colors ${
-            followLiveEngine
-              ? 'border-nominal bg-nominal/10 text-nominal'
-              : 'border-line bg-black text-gray-300 hover:border-gray-500'
-          }`}
-        >
-          FOLLOW LIVE ENGINE
-        </button>
+          }} className="act-secondary-button">Follow suggested procedure</button>
+        )}
       </div>
-
-      {/* Playbook Tabs (#01 .. #09) */}
-      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Crystallized MedOps Playbooks">
-        {ALL_CRYSTALLIZED_PLAYBOOK_LIST.map((pb) => {
-          const isSelected = pb.playbook_id === selectedEntry.playbook_id;
-          const isEngineRecommended = liveCatalogMatch?.playbook_id === pb.playbook_id;
-          return (
-            <button
-              key={pb.playbook_id}
-              type="button"
-              role="tab"
-              aria-selected={isSelected}
-              onClick={() => {
-                setFollowLiveEngine(false);
-                setManualPlaybookId(pb.playbook_id);
-                setManualStepIdx(0);
-              }}
-              className={`min-h-12 min-w-[44px] rounded border px-3 py-2 text-xs transition-colors ${
-                isSelected
-                  ? 'border-nominal bg-nominal/10 text-nominal'
-                  : 'border-line bg-black text-gray-400 hover:border-gray-600'
-              }`}
-            >
-              <span>PB {pb.short_code}</span>
-              {isEngineRecommended && (
-                <span className="ml-1.5 text-[10px] text-ok">[ACTIVE]</span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Active Playbook Summary & Step Instruction */}
-      <div className="act-current space-y-2">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <div className="text-sm font-semibold text-gray-100">{displayTitle}</div>
-          <div className="text-xs text-gray-400">
-            STEP {Math.min(activeStepIdx + 1, steps.length)} /{' '}
-            {followingLive && activePlaybook?.total_steps ? activePlaybook.total_steps : steps.length}
-          </div>
-        </div>
-        <div className="mt-1 text-xs text-gray-400">
-          NORMATIVE CLAUSE: {selectedEntry.normative_clause}
-        </div>
-        <div className="mt-2 rounded border border-nominal/40 bg-black px-2.5 py-2 text-xs text-nominal">
-          NEXT ACTION: {displayStepInstruction}
-        </div>
-      </div>
-
+      <h3 className="act-procedure-title">{displayLabel(displayTitle.replace(/^Playbook #\d+:\s*/i, ''))}</h3>
       {/* LBNP Pre-Syncope Emergency Vent Alert */}
       {ventEvent && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded border border-critical bg-black px-3 py-2 text-xs text-critical">
@@ -248,8 +185,120 @@ export function PlaybookRunner({
         </div>
       )}
 
+      <p className="act-monitor-state" data-status={monitoringStatus} role="status">
+        <strong>{statusText}.</strong> Status updates from the readings, independently of the checklist.
+      </p>
+      <section className="act-next-step" aria-labelledby="act-next-title">
+        <h4 id="act-next-title">
+          {completed ? 'Checklist complete' : currentStep ? `Do this now · Step ${activeStepIdx + 1} of ${steps.length}` : 'No steps available'}
+        </h4>
+        {currentStep && <p>{displayLabel(displayStepInstruction)}</p>}
+        {completed && <p>Keep monitoring the readings and any active alert.</p>}
+        {showUltrasoundFinding && (
+      <div className="flex flex-wrap items-center gap-2 rounded border border-line bg-black px-3 py-2 text-xs">
+        <span className="text-gray-400">
+          Ultrasound finding{isAnticoagulantStep ? ' · Gate 1' : ''}
+        </span>
+        {([
+          ['Unscanned', null],
+          ['Absent', false],
+          ['Confirmed', true],
+        ] as const).map(([lbl, v]) => (
+          <button
+            key={lbl}
+            type="button"
+            onClick={() => onConfirmPocusThrombus(v)}
+            className={`min-h-12 min-w-[44px] rounded border px-3 py-2 text-xs font-semibold transition-colors ${
+              thrombusConfirmed === v
+                ? v === true
+                  ? 'border-critical bg-critical/10 text-critical'
+                  : 'border-nominal bg-nominal/10 text-nominal'
+                : 'border-line bg-black text-gray-400 hover:border-gray-600'
+            }`}
+          >
+            {lbl}
+          </button>
+        ))}
+      </div>
+
+        )}
+      {/* Stepper Controls (>= 48 px touch targets) */}
+      <div className="act-step-actions flex flex-wrap gap-2 text-sm">
+        <button
+          type="button"
+          disabled={activeStepIdx === 0}
+          onClick={() => reviewStep(Math.max(0, activeStepIdx - 1))}
+          className="min-h-12 min-w-[44px] rounded border border-line bg-black px-4 py-2 text-gray-200 disabled:opacity-30"
+        >
+          Back
+        </button>
+        <button
+          type="button"
+          disabled={stepLocked || activeStepIdx >= steps.length}
+          onClick={() => reviewStep(Math.min(steps.length, activeStepIdx + 1))}
+          className="min-h-12 min-w-[44px] rounded border border-nominal bg-nominal px-4 py-2 font-semibold text-black disabled:border-line disabled:bg-black disabled:text-gray-400"
+        >
+          {stepLocked
+            ? 'Step locked · POCUS required'
+            : activeStepIdx >= steps.length
+              ? 'Procedure complete'
+              : 'Confirm step'}
+        </button>
+        {stepLocked && (
+          <button
+            type="button"
+            onClick={() => reviewStep(Math.min(steps.length, activeStepIdx + 1))}
+            className="min-h-12 min-w-[44px] rounded border border-line bg-black px-4 py-2 text-gray-300"
+          >
+            Skip locked step
+          </button>
+        )}
+      </div>
+      </section>
+      <section aria-label="Procedure steps">
+        <h4 className="act-steps-heading">Steps to follow</h4>
+        <ol className="act-steps">
+          {steps.map((step, index) => {
+            const current = index === activeStepIdx;
+            const blocked = Boolean(step.requires_anticoagulant_unlock) &&
+              (gates.anticoagulant_lock_active || thrombusConfirmed !== true);
+            return (
+              <li key={index} aria-current={current ? 'step' : undefined}>
+                <span>{displayLabel(current ? displayStepInstruction : step.text)}</span>
+                {current && <small>Current step</small>}
+                {blocked && <small className="text-critical">Safety lock active</small>}
+              </li>
+            );
+          })}
+        </ol>
+      </section>
+
+      <details className="scenario-disclosure">
+        <CockpitSummary>Browse other procedures</CockpitSummary>
+      <label className="act-procedure-picker">
+        Browse procedures
+        <CockpitSelect value={selectedEntry.playbook_id} onChange={event => {
+          const entry = ALL_CRYSTALLIZED_PLAYBOOK_LIST.find(item => item.playbook_id === event.target.value);
+          if (!entry) return;
+          setFollowLiveEngine(false);
+          setManualPlaybookId(entry.playbook_id);
+          setManualStepIdx(0);
+        }}>
+          {ALL_CRYSTALLIZED_PLAYBOOK_LIST.map(entry => (
+            <option key={entry.playbook_id} value={entry.playbook_id}>
+              {entry.title.replace(/^Playbook #\d+:\s*/i, '')}
+            </option>
+          ))}
+        </CockpitSelect>
+      </label>
+      </details>
+      <details className="scenario-disclosure">
+        <CockpitSummary>Procedure details and sources</CockpitSummary>
+        <p className="mb-3 text-xs text-gray-400">{displayLabel(validationTag)} · {selectedEntry.normative_clause}
+          {typeof syncLatencyUs === 'number' && Number.isFinite(syncLatencyUs) && ` · Engine response: ${syncLatencyUs} µs`}
+        </p>
       {/* 4 Hard Clinical Safety Gates Strip (1, 2, 3, 4A, 4B) */}
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5 text-xs">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 text-xs">
         <div
           className={`rounded border px-2.5 py-2 bg-black ${
             gates.anticoagulant_lock_active ? 'border-critical text-critical' : 'border-ok text-ok'
@@ -296,11 +345,11 @@ export function PlaybookRunner({
       {/* Causal Chain & Ranked Countermeasure Actions */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <div className="rounded border border-line bg-black p-3 text-xs">
-          <div className="mb-1.5 font-semibold text-gray-400">CAUSAL CHAIN SUMMARY</div>
-          <ul className="space-y-1 text-gray-300">
+          <div className="mb-1.5 font-semibold text-gray-400">Why this procedure was selected</div>
+          <ul className="list-disc space-y-1 pl-5 text-gray-300">
             {causalChain.map((clause, idx) => (
               <li key={idx}>
-                [{idx + 1}] {clause}
+                {displayLabel(clause)}
               </li>
             ))}
           </ul>
@@ -308,7 +357,7 @@ export function PlaybookRunner({
 
         <div className="rounded border border-line bg-black p-3 text-xs">
           <div className="mb-1.5 font-semibold text-gray-400">
-            GATED COUNTERMEASURE ACTIONS ({resolvedActions.length})
+            Modeled actions ({resolvedActions.length})
           </div>
           <ul className="space-y-1.5">
             {resolvedActions.map((act) => {
@@ -338,108 +387,7 @@ export function PlaybookRunner({
         </div>
       </div>
 
-      {/* Checklist Steps */}
-      <ol className="space-y-1.5 text-xs">
-        {steps.map((s, i) => {
-          const isStepLocked =
-            Boolean(s.requires_anticoagulant_unlock) &&
-            (gates.anticoagulant_lock_active || thrombusConfirmed !== true);
-          return (
-            <li
-              key={i}
-              aria-current={i === activeStepIdx ? 'step' : undefined}
-              className={`flex items-center gap-2 rounded border px-2.5 py-1.5 bg-black ${
-                i === activeStepIdx
-                  ? 'border-nominal text-white'
-                  : i < activeStepIdx
-                    ? 'border-ok/40 text-ok'
-                    : 'border-line/50 text-gray-500'
-              }`}
-            >
-              <span>{i < activeStepIdx ? '[x]' : i === activeStepIdx ? '[>]' : '[ ]'}</span>
-              <span className="flex-1">{s.text}</span>
-              {s.requires_anticoagulant_unlock && (
-                <span
-                  className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] ${
-                    isStepLocked ? 'border-critical text-critical' : 'border-ok text-ok'
-                  }`}
-                >
-                  {isStepLocked ? 'GATE 1 LOCKED' : 'GATE 1 OPEN'}
-                </span>
-              )}
-            </li>
-          );
-        })}
-      </ol>
-
-      {/* POCUS IJV Thrombus Verification Controls (always reachable for Gate 1) */}
-      <div className="flex flex-wrap items-center gap-2 rounded border border-line bg-black px-3 py-2 text-xs">
-        <span className="text-gray-400">
-          POCUS IJV THROMBUS VERIFICATION{isAnticoagulantStep ? ' (GATE 1)' : ''}:
-        </span>
-        {([
-          ['UNSCANNED', null],
-          ['ABSENT', false],
-          ['CONFIRMED', true],
-        ] as const).map(([lbl, v]) => (
-          <button
-            key={lbl}
-            type="button"
-            onClick={() => onConfirmPocusThrombus(v)}
-            className={`min-h-12 min-w-[44px] rounded border px-3 py-2 text-xs font-semibold transition-colors ${
-              thrombusConfirmed === v
-                ? v === true
-                  ? 'border-critical bg-critical/10 text-critical'
-                  : 'border-nominal bg-nominal/10 text-nominal'
-                : 'border-line bg-black text-gray-400 hover:border-gray-600'
-            }`}
-          >
-            {lbl}
-          </button>
-        ))}
-      </div>
-
-      {/* Stepper Controls (>= 48 px touch targets) */}
-      <div className="flex flex-wrap gap-2 text-xs">
-        <button
-          type="button"
-          disabled={activeStepIdx === 0}
-          onClick={() => {
-            setFollowLiveEngine(false);
-            setManualStepIdx(Math.max(0, activeStepIdx - 1));
-          }}
-          className="min-h-12 min-w-[44px] rounded border border-line bg-black px-4 py-2 text-gray-200 disabled:opacity-30"
-        >
-          BACK
-        </button>
-        <button
-          type="button"
-          disabled={stepLocked || activeStepIdx >= steps.length}
-          onClick={() => {
-            setFollowLiveEngine(false);
-            setManualStepIdx(Math.min(steps.length, activeStepIdx + 1));
-          }}
-          className="min-h-12 min-w-[44px] rounded border border-nominal bg-black px-4 py-2 font-semibold text-nominal disabled:border-line disabled:text-gray-600"
-        >
-          {stepLocked
-            ? 'LOCKED: POCUS THROMBUS CONFIRMATION REQUIRED'
-            : activeStepIdx >= steps.length
-              ? 'PLAYBOOK COMPLETE'
-              : 'CONFIRM STEP'}
-        </button>
-        {stepLocked && (
-          <button
-            type="button"
-            onClick={() => {
-              setFollowLiveEngine(false);
-              setManualStepIdx(Math.min(steps.length, activeStepIdx + 1));
-            }}
-            className="min-h-12 min-w-[44px] rounded border border-line bg-black px-4 py-2 text-gray-300"
-          >
-            SKIP LOCKED STEP
-          </button>
-        )}
-      </div>
+      </details>
     </div>
   );
 }

@@ -18,8 +18,6 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
     items: [
       { keys: ['1'], description: 'Tactical 20 Hz Flight HUD with GATHER, EVALUATE, ACT pages', actionLabel: 'View: Cockpit' },
       { keys: ['2'], description: 'Ground Control Telemedicine, Latency Simulator & 24-Dataset Atlas', actionLabel: 'View: Ground Portal' },
-      { keys: ['3'], description: 'Full-viewport 3D Biodigital Twin with multi-layer coronal slice', actionLabel: 'View: 3D Twin' },
-      { keys: ['4'], description: 'OpenScreen Telemetry Studio with spring zoom & timeline scrubber', actionLabel: 'View: Studio' },
     ],
   },
   {
@@ -27,7 +25,6 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
     items: [
       { keys: ['M'], description: 'Switch astronaut biological profile to MALE (78kg, 12.8mm soleus baseline)', actionLabel: 'Profile: Male' },
       { keys: ['F'], description: 'Switch astronaut biological profile to FEMALE (62kg, 11.2mm soleus baseline)', actionLabel: 'Profile: Female' },
-      { keys: ['Space'], description: 'Toggle Telemetry Replay playback / pause (OpenScreen Studio)', actionLabel: 'Play / Pause' },
       { keys: ['R'], description: 'Reset 3D camera pan, tilt, zoom and orbit target to default', actionLabel: 'Reset Camera' },
     ],
   },

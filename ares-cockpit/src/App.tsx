@@ -1,4 +1,9 @@
+import { ArrowRightIcon, WarningCircleIcon } from '@phosphor-icons/react';
+import { CockpitSummary } from './modules/ui-primitives/CockpitControls';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { useGSAP } from '@gsap/react';
 import {
   alarmFor,
   clamp,
@@ -18,7 +23,9 @@ import {
 } from './lib/telemetryValidation';
 import { ENGINE_HTTP_URL, useTelemetry, type RecordedHistoryPoint } from './lib/useTelemetry';
 import { AlarmBadge, TriPhaseHeader, type Phase } from './modules/header-triphase/TriPhaseHeader';
-import { MriGauge, PredicateBars, StlChart } from './modules/mri-and-stl/MriAndStl';
+import { MriGauge, PredicateBars, StlChart, TimestralQuantileConePanel } from './modules/mri-and-stl/MriAndStl';
+import { MeasurementContext, RecentRange } from './modules/crew-vitals/MeasurementContext';
+import { displayLabel } from './lib/displayLabel';
 import type { BodyHeatmapProps } from './modules/body-3d-heatmap/BodyHeatmap';
 import { WhatIfConsole } from './modules/whatif-console/WhatIfConsole';
 import { PlaybookRunner } from './modules/playbook-runner/PlaybookRunner';
@@ -28,15 +35,10 @@ import {
   isAcuteVitalsPlaybook,
   VitalsAnomalyPanel,
 } from './modules/vitals-anomaly/VitalsAnomalyPanel';
-import { FreshnessBadge, OriginBadge, ProvenanceBanner } from './modules/provenance/ProvenanceInspector';
+import { FreshnessBadge, OriginBadge, ProvenanceMenu } from './modules/provenance/ProvenanceInspector';
 import { OsSystemStatusBar } from './modules/os-shell/OsSystemStatusBar';
 import { OsCommandPalette } from './modules/os-shell/OsCommandPalette';
-import { OsVoiceCopilot } from './modules/os-shell/OsVoiceCopilot';
-import {
-  MissionSuiteNavbar,
-  type MissionViewMode,
-} from './modules/navigation/MissionSuiteNavbar';
-import type { VoiceIntentClassification } from './lib/voiceIntentRouter';
+import type { MissionViewMode } from './modules/navigation/MissionSuiteNavbar';
 import type { InjuryMarker } from './types/injury';
 import type { DataOrigin, FreshnessStatus, TelemetryPacket } from './types/telemetry';
 
@@ -44,7 +46,6 @@ import { DeferredPanel } from './modules/ui-primitives/DeferredPanel';
 
 const BodyHeatmap = lazy(() => import('./modules/body-3d-heatmap/BodyHeatmap').then(m => ({default:m.BodyHeatmap})));
 const MissionPortal = lazy(() => import('./modules/portal/MissionPortal').then(m => ({default:m.MissionPortal})));
-const OpenScreenStudio = lazy(() => import('./modules/studio/OpenScreenStudio').then(m => ({default:m.OpenScreenStudio})));
 const KeyboardShortcutsModal = lazy(() => import('./modules/ui-primitives/KeyboardShortcutsModal').then(m => ({default:m.KeyboardShortcutsModal})));
 const AuditChainModal = lazy(() => import('./modules/audit-chain/AuditChainModal').then(m => ({default:m.AuditChainModal})));
 
@@ -60,71 +61,6 @@ const RISK_LABEL: Record<PredicateKey, string> = {
   hr: 'Elevated heart rate',
   spo2: 'Low blood oxygen',
 };
-
-function TwinHudViewport({
-  sex,
-  mri,
-  rhoMin,
-  children,
-}: {
-  sex: 'MALE' | 'FEMALE';
-  mri: number | null;
-  rhoMin: number;
-  children: ReactNode;
-}) {
-  const statusTone =
-    rhoMin < 0
-      ? 'border-rose-500/60 text-rose-400'
-      : rhoMin < 0.4
-        ? 'border-amber-500/60 text-amber-400'
-        : 'border-emerald-500/60 text-emerald-400';
-
-  return (
-    <div className="hud-stage-3d relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-cyan-500/25">
-      {/* Outer Reticle Target Brackets */}
-      <div aria-hidden="true" className="pointer-events-none absolute inset-2.5 z-10">
-        <span className="absolute top-0 left-0 h-4 w-4 border-t-2 border-l-2 border-cyan-400/80" />
-        <span className="absolute top-0 right-0 h-4 w-4 border-t-2 border-r-2 border-cyan-400/80" />
-        <span className="absolute bottom-0 left-0 h-4 w-4 border-b-2 border-l-2 border-cyan-400/80" />
-        <span className="absolute bottom-0 right-0 h-4 w-4 border-b-2 border-r-2 border-cyan-400/80" />
-
-        {/* Subtle Center Optical Crosshair */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-25">
-          <div className="h-12 w-12 rounded-full border border-dashed border-cyan-400" />
-          <div className="absolute top-1/2 -left-3 h-px w-3 bg-cyan-400" />
-          <div className="absolute top-1/2 -right-3 h-px w-3 bg-cyan-400" />
-          <div className="absolute -top-3 left-1/2 h-3 w-px bg-cyan-400" />
-          <div className="absolute -bottom-3 left-1/2 h-3 w-px bg-cyan-400" />
-        </div>
-
-        {/* Left Elevation Coordinate Ticks */}
-        <div className="absolute top-1/2 left-1 hidden -translate-y-1/2 flex-col gap-2.5 sm:flex">
-          {['+60', '+30', '000', '-30', '-60'].map((tick) => (
-            <div key={tick} className="flex items-center gap-1 font-mono text-[9px] text-cyan-400/55">
-              <span className="h-px w-2 bg-cyan-400/60" />
-              <span>{tick}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Top Telemetry Readout Strip */}
-        <div className="flex flex-wrap items-center justify-between gap-2 px-3 pt-1 font-mono text-[10px] tracking-widest uppercase">
-          <div className="flex items-center gap-2 rounded border border-cyan-500/30 bg-black/70 px-2 py-0.5 text-cyan-300 backdrop-blur-md">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#10b981]" />
-            <span>BIO-MESH // {sex}</span>
-            <span className="text-slate-600">|</span>
-            <span className="text-slate-300">AZM 360 DEG</span>
-          </div>
-          <div className={`rounded border bg-black/75 px-2 py-0.5 backdrop-blur-md ${statusTone}`}>
-            MRI {mri !== null ? mri.toFixed(0) : 'N/A'} // RHO {rhoMin.toFixed(2)}
-          </div>
-        </div>
-      </div>
-
-      <div className="relative z-0 flex min-h-0 flex-1 flex-col">{children}</div>
-    </div>
-  );
-}
 
 function Card({
   title,
@@ -214,42 +150,7 @@ function UnavailableSubsystemPanel({
   );
 }
 
-function RecordedHistoryStrip({ history }: { history: RecordedHistoryPoint[] }) {
-  if (history.length === 0) {
-    return (
-      <div className="rounded border border-line bg-black px-3 py-2 font-mono text-[11px] text-gray-500">
-        Waiting for 1 Hz recorded BIDMC samples...
-      </div>
-    );
-  }
-  const latest = history[history.length - 1];
-  const recent = history.slice(-8);
-  return (
-    <div className="rounded border border-line bg-black px-3 py-2 font-mono text-[11px]">
-      <div className="mb-1 flex items-center justify-between text-gray-400">
-        <span>RECORDED 1 HZ HISTORY (IMMUTABLE UNDER WHAT-IF SLIDERS)</span>
-        <span>
-          {history.length} samples | latest t = {latest.relativeTimeS.toFixed(0)} s
-        </span>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {recent.map((pt) => {
-          const hasGap = pt.pulse === null || pt.spo2 === null || pt.hr === null;
-          return (
-            <div
-              key={pt.relativeTimeS}
-              className={`rounded border px-2 py-0.5 text-[10px] ${
-                hasGap ? 'border-advisory/60 bg-advisory/10 text-advisory' : 'border-line text-gray-300'
-              }`}
-            >
-              t={pt.relativeTimeS.toFixed(0)}s: HR {pt.hr ?? 'MISSING'} | SpO2 {pt.spo2 ?? 'MISSING'}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
+
 
 /** Builds a ScenarioState from an authoritative backend packet that includes simulated/derived blocks. */
 function deriveStateFromPacket(
@@ -330,7 +231,7 @@ function deriveStateFromPacket(
 }
 
 /** SVG vital trend sparkline with explicit pen-lifts across null BIDMC intervals. */
-function VitalsTrend({ history }: { history: RecordedHistoryPoint[] }) {
+function VitalsTrend({ history, recording }: { history: RecordedHistoryPoint[]; recording: boolean }) {
   const [metric, setMetric] = useState<'hr' | 'spo2' | 'resp' | 'pulse'>('hr');
   const signals = {
     hr: ['Heart rate', 'bpm'],
@@ -367,7 +268,7 @@ function VitalsTrend({ history }: { history: RecordedHistoryPoint[] }) {
   return (
     <section className="health-trend" aria-label="Recorded vital trends">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <h2>Recorded trends (pen-lift on null gaps)</h2>
+        <h2>Recorded trends</h2>
         <div className="flex flex-wrap gap-1.5" role="group" aria-label="Choose trend signal">
           {(Object.keys(signals) as (keyof typeof signals)[]).map((key) => (
             <button
@@ -421,14 +322,33 @@ function VitalsTrend({ history }: { history: RecordedHistoryPoint[] }) {
         </>
       ) : (
         <p className="py-6 font-mono text-xs text-gray-400">
-          Waiting for recorded samples for {signals[metric][0].toLowerCase()}.
+          {recording ? `Waiting for recorded samples for ${signals[metric][0].toLowerCase()}.` : 'Connect the BIDMC replay to see recorded trends.'}
         </p>
       )}
     </section>
   );
 }
 
+gsap.registerPlugin(useGSAP, ScrollTrigger);
+
 export default function App() {
+  const workspaceRef = useRef<HTMLDivElement>(null);
+
+  useGSAP(() => {
+    const motion = gsap.matchMedia();
+    motion.add('(prefers-reduced-motion: no-preference)', () => {
+      gsap.from('.mission-masthead h1, .mission-masthead p', {
+        y: 9, opacity: 0, duration: 0.42, stagger: 0.08, ease: 'power2.out',
+      });
+      gsap.fromTo('.mission-masthead', { '--masthead-glow': 1 }, {
+        '--masthead-glow': 0,
+        ease: 'none',
+        scrollTrigger: { trigger: '.mission-masthead', start: 'top top', end: 'bottom top', scrub: true },
+      });
+    });
+    return () => motion.revert();
+  }, { scope: workspaceRef });
+
   const getInitialParam = (key: string): string | null => {
     if (typeof window === 'undefined') return null;
     try {
@@ -440,7 +360,7 @@ export default function App() {
 
   const [activeView, setActiveView] = useState<MissionViewMode>(() => {
     const v = getInitialParam('view');
-    if (v === 'VIEW_PORTAL' || v === 'VIEW_TWIN' || v === 'VIEW_STUDIO' || v === 'VIEW_COCKPIT') return v;
+    if (v === 'VIEW_PORTAL' || v === 'VIEW_COCKPIT') return v;
     return 'VIEW_COCKPIT';
   });
   const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false);
@@ -456,12 +376,15 @@ export default function App() {
   const [activePhase, setActivePhase] = useState<Phase>(() => {
     const p = getInitialParam('phase');
     if (p === 'GATHER' || p === 'EVALUATE' || p === 'ACT') return p;
-    return 'EVALUATE';
+    const tab = getInitialParam('tab');
+    return tab === 'BODY_3D' || tab === 'POCUS' || tab === 'MUSCLE_BONE' || tab === 'FORECAST'
+      ? 'EVALUATE'
+      : 'GATHER';
   });
   const [evalTab, setEvalTab] = useState<EvalTab>(() => {
     const t = getInitialParam('tab');
     if (t === 'BODY_3D' || t === 'MUSCLE_BONE' || t === 'POCUS' || t === 'FORECAST') return t;
-    return 'BODY_3D';
+    return 'FORECAST';
   });
   const [whatIfOverlayActive, setWhatIfOverlayActive] = useState<boolean>(() => {
     return getInitialParam('overlay') === '1' || getInitialParam('overlay') === 'true';
@@ -469,7 +392,6 @@ export default function App() {
   const [paletteOpen, setPaletteOpen] = useState<boolean>(() => {
     return getInitialParam('palette') === '1';
   });
-  const [paletteInitialMode, setPaletteInitialMode] = useState<'TOOLS' | 'COPILOT'>('TOOLS');
   const [requestedPlaybook, setRequestedPlaybook] = useState<{ id: string; seq: number } | null>(null);
   const [injuries, setInjuries] = useState<InjuryMarker[]>([]);
   const injuryPhotoUrls = useRef(new Set<string>());
@@ -567,8 +489,11 @@ export default function App() {
 
   const sm = packet.safety_margins;
   const b = packet.biometrics;
+  const criticalMargin = sm.alarm_level === 'CRITICAL';
+  const vitalsAlarm = packet.vitals_anomaly?.overall === 'ALARM';
+  const showUrgentStatus = criticalMargin || vitalsAlarm;
   const recommendedPhase: Phase =
-    sm.alarm_level === 'CRITICAL' || sm.alarm_level === 'WARNING'
+    showUrgentStatus || sm.alarm_level === 'WARNING'
       ? 'ACT'
       : sm.alarm_level === 'ADVISORY' || sm.alarm_level === 'DATA_DEGRADED_MISSING_CHANNELS'
         ? 'EVALUATE'
@@ -627,7 +552,14 @@ export default function App() {
     if (link === 'ENGINE_LIVE') setWhatIfOverlayActive(true);
   }, [link]);
   const handleBodyTab = useCallback((tab: EvalTab) => {
-    setEvalTab(tab); setActivePhase('EVALUATE'); setActiveView('VIEW_COCKPIT');
+    setEvalTab(tab);
+    setActivePhase('EVALUATE');
+    setActiveView('VIEW_COCKPIT');
+    if (tab !== 'BODY_3D') {
+      window.requestAnimationFrame(() => {
+        document.getElementById(tab === 'MUSCLE_BONE' ? 'evaluate-muscle' : tab === 'POCUS' ? 'evaluate-ultrasound' : 'evaluate-results')?.scrollIntoView({ block: 'start' });
+      });
+    }
   }, []);
   const handleBodyPlaybook = useCallback<NonNullable<BodyHeatmapProps['onOpenPlaybook']>>((id) => {
     setActivePhase('ACT'); setActiveView('VIEW_COCKPIT');
@@ -640,42 +572,6 @@ export default function App() {
       setWhatIfOverlayActive(true);
     }
   };
-
-  const handleVoiceIntent = useCallback(
-    (intent: Exclude<VoiceIntentClassification, { kind: 'CONVERSATIONAL_COPILOT_ASK' }>) => {
-      switch (intent.kind) {
-        case 'SAFETY_INTERLOCK_BLOCKED':
-          // NASA-STD-3001 [V2 10027]: strictly refuse vocal Gate 1 / POCUS mutations
-          return;
-        case 'NAVIGATE_PHASE':
-          setActivePhase(intent.phase);
-          return;
-        case 'NAVIGATE_EVAL_TAB':
-          setActivePhase('EVALUATE');
-          setEvalTab(intent.tab);
-          return;
-        case 'SHOW_QUANTILE_CONES':
-          setActivePhase('EVALUATE');
-          setEvalTab('FORECAST');
-          return;
-        case 'OPEN_PLAYBOOK':
-          setActivePhase('ACT');
-          setRequestedPlaybook((prev) => ({ id: intent.playbook_id, seq: (prev?.seq ?? 0) + 1 }));
-          return;
-        case 'RUN_WHAT_IF_LBNP':
-          setWhatIf((prev) => ({ ...prev, lbnp_mmhg: intent.lbnp_mmhg }));
-          if (link === 'ENGINE_LIVE') {
-            setWhatIfOverlayActive(true);
-          }
-          return;
-        case 'OPEN_COMMAND_PALETTE':
-          setPaletteInitialMode(intent.initial_tab);
-          setPaletteOpen(true);
-          return;
-      }
-    },
-    [link],
-  );
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -695,10 +591,6 @@ export default function App() {
         setActiveView('VIEW_COCKPIT');
       } else if (e.key === '2' && !e.ctrlKey && !e.metaKey) {
         setActiveView('VIEW_PORTAL');
-      } else if (e.key === '3' && !e.ctrlKey && !e.metaKey) {
-        setActiveView('VIEW_TWIN');
-      } else if (e.key === '4' && !e.ctrlKey && !e.metaKey) {
-        setActiveView('VIEW_STUDIO');
       } else if (e.key.toLowerCase() === 'm' && !e.ctrlKey && !e.metaKey) {
         handleWhatIfChange({ ...whatIf, sex: 'MALE' });
       } else if (e.key.toLowerCase() === 'f' && !e.ctrlKey && !e.metaKey) {
@@ -728,7 +620,7 @@ export default function App() {
         });
 
   return (
-    <div className="ares-workspace flex flex-col bg-black">
+    <div ref={workspaceRef} className="ares-workspace flex flex-col">
       <TriPhaseHeader
         astronautId={packet.astronaut_id}
         alarm={sm.alarm_level}
@@ -737,25 +629,37 @@ export default function App() {
         activePhase={activePhase}
         recommendedPhase={recommendedPhase}
         onSelectPhase={setActivePhase}
+        provenance={<ProvenanceMenu packet={packet} status={status} />}
         onOpenAudit={() => setAuditModalOpen(true)}
-        onOpenPortal={() => setActiveView('VIEW_PORTAL')}
-        onOpenStudio={() => setActiveView('VIEW_STUDIO')}
         onOpenShortcuts={() => setShortcutsModalOpen(true)}
         onTogglePalette={() => setPaletteOpen((v) => !v)}
       />
 
-      <div className="workspace-content mx-auto flex min-h-0 w-full flex-1 flex-col">
-        <div className="provenance-strip"><ProvenanceBanner packet={packet} status={status} /></div>
-        <OsVoiceCopilot
-          packet={packet}
-          whatIf={whatIf}
-          whatIfOverlayActive={whatIfOverlayActive}
-          transportMode={transportMode}
-          httpBaseUrl={ENGINE_HTTP_URL}
-          onExecuteIntent={handleVoiceIntent}
-        />
+      {showUrgentStatus && (
+        <section className="urgent-status" aria-label="Urgent status">
+          <WarningCircleIcon aria-hidden="true" size={27} weight="fill" />
+          <div role="alert" className="urgent-status-message">
+            <strong>{criticalMargin ? 'Critical alert' : 'Vitals alarm'}</strong>
+            <span>
+              {packet.is_local_simulation ? 'Local simulation' : status.isStale ? 'Last received readings' : 'Engine telemetry'}
+              {criticalMargin && !isPureReplay ? ` · ${RISK_LABEL[s.worst]}` : ''}
+            </span>
+          </div>
+          {activePhase !== 'ACT' && (
+            <button type="button" onClick={() => {
+              setActivePhase('ACT');
+              window.scrollTo({ top: 0, behavior: 'instant' });
+            }}>
+              View Act <ArrowRightIcon aria-hidden="true" size={16} />
+            </button>
+          )}
+        </section>
+      )}
 
-        <div className="workspace-columns grid min-h-0 flex-1 lg:grid-cols-[1fr_330px]">
+      <div className="workspace-content mx-auto flex min-h-0 w-full flex-1 flex-col">
+
+
+        <div className={`workspace-columns grid grid-flow-dense min-h-0 flex-1 ${activePhase === 'EVALUATE' ? 'evaluate-wide' : 'lg:grid-cols-[minmax(0,1fr)_330px]'}`}>
           {/* Left / Center Authoritative Workspace */}
           <main id="main-workspace" tabIndex={-1} className="clinical-main flex min-h-0 flex-col gap-4">
             {/* Compact status banner */}
@@ -814,36 +718,37 @@ export default function App() {
                       />
                     </div>
                     <span className="text-gray-400">
-                      {packet.provenance_manifest.biometrics_source} | SQI {(b.sqi_score ?? (isRecordedBiometrics ? 1.0 : localSim.sqi)).toFixed(2)}
+                      {displayLabel(packet.provenance_manifest.biometrics_source)} · SQI {(b.sqi_score ?? (isRecordedBiometrics ? 1.0 : localSim.sqi)).toFixed(2)}
                     </span>
                   </div>
 
                   <div className="monitor-cardiac">
                     <div>
                       <div className="monitor-trace-label font-mono">
-                        Lead II Synthetic ECG Visualizer (driven by recorded/simulated HR)
+                        Illustrative ECG waveform
                       </div>
                       <EcgStrip
-                        hr={b.heart_rate_bpm}
+                        hr={status.isStale ? null : b.heart_rate_bpm}
                         artifact={isRecordedBiometrics ? 0 : whatIf.artifact_level}
                         sqi={b.sqi_score ?? (isRecordedBiometrics ? 1.0 : localSim.sqi)}
                         isRecorded={isRecordedBiometrics}
                       />
                     </div>
                     <div className="monitor-vital monitor-heart">
-                      <span>Heart Rate (ECG)</span>
+                      <span>Heart rate</span>
                       <strong className={hrFmt.unavailable ? 'vital-unavailable' : ''}>
-                        {hrFmt.text}
+                        {hrFmt.unavailable ? '—' : hrFmt.text}
                       </strong>
                       {!hrFmt.unavailable && <small>bpm</small>}
+                      {isRecordedBiometrics && <RecentRange history={recordedHistory} signal="hr" unit="bpm" />}
                     </div>
                   </div>
 
                   <dl className="monitor-secondary">
                     {[
-                      { cls: 'monitor-oxygen', label: 'Blood Oxygen (SpO2)', fmt: spo2Fmt, unit: '%' },
-                      { cls: 'monitor-breathing', label: 'Breathing Rate', fmt: respFmt, unit: 'br/min' },
-                      { cls: 'monitor-pulse', label: 'Pulse Rate (PPG)', fmt: pulseFmt, unit: 'bpm' },
+                      { cls: 'monitor-oxygen', label: 'Blood oxygen', fmt: spo2Fmt, unit: '%', signal: 'spo2' as const },
+                      { cls: 'monitor-breathing', label: 'Breathing rate', fmt: respFmt, unit: 'br/min', signal: 'resp' as const },
+                      { cls: 'monitor-pulse', label: 'Pulse rate', fmt: pulseFmt, unit: 'bpm', signal: 'pulse' as const },
                     ].map((item) => (
                       <div key={item.label} className={`monitor-vital ${item.cls}`}>
                         <dt className="flex flex-wrap items-center gap-1.5">
@@ -856,262 +761,235 @@ export default function App() {
                         </dt>
                         <dd>
                           <strong className={item.fmt.unavailable ? 'vital-unavailable' : ''}>
-                            {item.fmt.text}
+                            {item.fmt.unavailable ? '—' : item.fmt.text}
                           </strong>
                           {!item.fmt.unavailable && <small>{item.unit}</small>}
+                          {isRecordedBiometrics && <RecentRange history={recordedHistory} signal={item.signal} unit={item.unit} />}
                         </dd>
                       </div>
                     ))}
                   </dl>
                 </section>
 
-                <div className="grid gap-3 md:grid-cols-[1fr_280px]">
-                  <VitalsTrend history={recordedHistory} />
-
-                  <div className="flex flex-col justify-between rounded-lg border border-line bg-panel p-4">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs font-semibold text-gray-300">HRV (RMSSD)</span>
-                      <OriginBadge origin={hrvFmt.unavailable ? 'UNAVAILABLE' : bioOrigin} />
-                    </div>
-                    <div
-                      className={`my-2 font-mono ${
-                        hrvFmt.unavailable ? 'text-xs font-bold leading-snug text-advisory' : 'text-2xl text-white'
-                      }`}
-                    >
-                      {hrvFmt.text}
-                      {!hrvFmt.unavailable && <span className="ml-1 text-xs text-gray-500">ms</span>}
-                    </div>
-                    <div className="flex flex-wrap items-center justify-between gap-1">
-                      <FreshnessBadge
-                        freshness={bioFreshness(hrvFmt.unavailable)}
-                        ageMs={status.heldSample ? status.heldAgeMs : null}
-                      />
-                      <span className="font-mono text-[10px] text-gray-500">
-                        Never coerced to 0
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <RecordedHistoryStrip history={recordedHistory} />
+                <VitalsTrend history={recordedHistory} recording={link === 'ENGINE_LIVE' && isRecordedBiometrics} />
               </div>
             )}
 
             {/* PAGE 2: EVALUATE */}
             {activePhase === 'EVALUATE' && (
-              <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
-                <div className="assessment-tabs flex flex-wrap gap-2 text-xs">
-                  {([
-                    ['BODY_3D', '3D Body Layers'],
-                    ['POCUS', 'Ultrasound (Neck & Eye)'],
-                    ['MUSCLE_BONE', 'Muscle, Bone & Mars Gait'],
-                    ['FORECAST', '14-Day Safety Forecast'],
-                  ] as const).map(([id, label]) => (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => setEvalTab(id)}
-                      aria-pressed={evalTab === id}
-                      className={`min-h-12 cursor-pointer rounded border px-3 py-1.5 ${
-                        evalTab === id ? 'border-nominal bg-nominal/15 font-bold text-nominal' : 'border-line text-gray-400 hover:text-white'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
+              <div className="evaluate-workbench">
+                <section className="scenario-panel scenario-inline" aria-label="Scenario conditions">
+                  <header className="flex items-center justify-between gap-2">
+                    <h2 className="sidebar-heading">Scenario conditions</h2>
+                    <OriginBadge origin="SIMULATED_SCENARIO_INPUT" />
+                  </header>
+                  <div className="mt-3">
+                    <WhatIfConsole
+                      value={whatIf}
+                      onChange={handleWhatIfChange}
+                      ventEvent={ventEvent}
+                      onRearm={() => setVentEvent(null)}
+                      link={link}
+                      overlayActive={whatIfOverlayActive}
+                      onToggleOverlay={setWhatIfOverlayActive}
+                      onSyncNow={() => {
+                        setWhatIfOverlayActive(true);
+                        void syncWhatIfNow();
+                      }}
+                    />
 
-                {evalTab === 'BODY_3D' && (
-                  <Card
-                    title="Anatomical explorer"
-                    tag={`MESH: ${whatIf.sex} // ORBIT 360 DEG`}
-                    origin={hasHemodynamics || hasMusculoskeletal ? (packet.is_local_simulation ? 'SIMULATED_SCENARIO_INPUT' : 'DERIVED_FROM_HYBRID_SCENARIO') : 'UNAVAILABLE'}
-                    className="anatomy-panel min-h-0 flex-1"
-                  >
-                    <div className="flex h-full min-h-0 flex-col gap-2">
-                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-cyan-500/15 pb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-[11px] text-zinc-400">BIODIGITAL MESH:</span>
-                          <div className="flex rounded border border-zinc-700 bg-black/60 p-0.5 font-mono text-xs">
-                            <button
-                              type="button"
-                              onClick={() => handleWhatIfChange({ ...whatIf, sex: 'MALE' })}
-                              className={`cursor-pointer px-2.5 py-0.5 rounded transition-all ${whatIf.sex === 'MALE' ? 'bg-cyan-500 text-black font-bold shadow-[0_0_10px_rgba(6,182,212,0.5)]' : 'text-zinc-400 hover:text-white'}`}
-                            >
-                              MALE
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleWhatIfChange({ ...whatIf, sex: 'FEMALE' })}
-                              className={`cursor-pointer px-2.5 py-0.5 rounded transition-all ${whatIf.sex === 'FEMALE' ? 'bg-cyan-500 text-black font-bold shadow-[0_0_10px_rgba(6,182,212,0.5)]' : 'text-zinc-400 hover:text-white'}`}
-                            >
-                              FEMALE
-                            </button>
-                          </div>
+                    {isPureReplay && (
+                      <div className="mt-3 rounded border border-warning/40 bg-black p-2.5 font-mono text-[11px]">
+                        <div className="flex items-center justify-between text-warning">
+                          <span>LOCAL WHAT-IF PREVIEW</span>
+                          <span>NOT LIVE TELEMETRY</span>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => setActiveView('VIEW_TWIN')}
-                          className="cursor-pointer rounded border border-cyan-500/40 bg-cyan-950/20 px-2.5 py-1 font-mono text-xs text-cyan-300 hover:border-cyan-400 hover:bg-cyan-400 hover:text-black transition-all"
-                        >
-                          FULLSCREEN HUD -&gt;
-                        </button>
-                      </div>
-                      <TwinHudViewport
-                        sex={whatIf.sex}
-                        mri={sm.mission_readiness_index ?? s.mri}
-                        rhoMin={sm.med_stl_rho_robustness ?? s.rhoMin}
-                      >
-                        <DeferredPanel name="anatomical explorer"><BodyHeatmap
-                          renderingActive={activeView==='VIEW_COCKPIT'}
-                          s={hasHemodynamics || hasMusculoskeletal ? s : null}
-                          sex={whatIf.sex}
-                          hypergraphSpatial={packet.hypergraph_spatial}
-                          isLocalSimulation={Boolean(packet.is_local_simulation)}
-                          modelValidationStatus={packet.model_validation_status}
-                          injuries={injuries}
-                          onAddInjury={addInjury}
-                          onResolveInjury={resolveInjury}
-                          onChangeSex={handleBodySex}
-                          onOpenTab={handleBodyTab}
-                          onOpenPlaybook={handleBodyPlaybook}
-                        /></DeferredPanel>
-                      </TwinHudViewport>
-                    </div>
-                  </Card>
-                )}
-
-                {evalTab === 'POCUS' && (
-                  <div className="grid min-h-0 flex-1 gap-3 md:grid-cols-2">
-                    <Card
-                      title="Neck Vein Ultrasound (IJV)"
-                      tag="SYNTHETIC B-MODE"
-                      origin={hasHemodynamics ? packet.hemodynamics!.provenance : 'UNAVAILABLE'}
-                      className="min-h-0"
-                    >
-                      {!hasHemodynamics ? (
-                        <UnavailableSubsystemPanel
-                          title="IJV HEMODYNAMICS UNAVAILABLE"
-                          reason="Pure BIDMC replay does not carry jugular ultrasound or microgravity fluid-shift inputs."
-                          linkIsLive={link === 'ENGINE_LIVE'}
-                          onEngageOverlay={() => setWhatIfOverlayActive(true)}
-                        />
-                      ) : (
-                        <>
-                          <PocusIjv
-                            csa={s.csa}
-                            vmax={s.vmax}
-                            thrombus={packet.hemodynamics?.pocus_thrombus_confirmed ?? thrombus}
-                          />
-                          <div className="mt-2">
-                            <Metric label="Vein area (CSA)" value={s.csa.toFixed(2)} unit="cm2" limit={`> ${P.ijvCriticalCsa} risk`} bad={s.csa > P.ijvCriticalCsa} />
-                            <Metric label="Flow speed (Vmax)" value={s.vmax.toFixed(1)} unit="cm/s" limit={`< ${P.vmaxCritical} risk`} bad={s.vmax < P.vmaxCritical} />
-                            <Metric label="Wall shear stress" value={s.tauW.toFixed(2)} unit="dyn/cm2" limit={`< ${P.tauWCritical} risk`} bad={s.tauW < P.tauWCritical} />
-                          </div>
-                        </>
-                      )}
-                    </Card>
-
-                    <Card
-                      title="Eye & Optic Nerve Ultrasound"
-                      tag="SYNTHETIC B-MODE"
-                      origin={hasHemodynamics ? packet.hemodynamics!.provenance : 'UNAVAILABLE'}
-                      className="min-h-0"
-                    >
-                      {!hasHemodynamics ? (
-                        <UnavailableSubsystemPanel
-                          title="OCULAR ONSD / SANS UNAVAILABLE"
-                          reason="Pure BIDMC replay does not include optic nerve sheath diameter or cabin ppCO2."
-                          linkIsLive={link === 'ENGINE_LIVE'}
-                          onEngageOverlay={() => setWhatIfOverlayActive(true)}
-                        />
-                      ) : (
-                        <>
-                          <OcularOnsd onsd={s.onsdMm} sigma={s.onsdSigmaMm} />
-                          <div className="mt-2">
-                            <Metric label="Optic nerve sheath" value={s.onsdMm.toFixed(2)} unit="mm" limit={`> ${P.onsdCritical} risk`} bad={s.onsdMm > P.onsdCritical} />
-                            <Metric label="Cabin CO2" value={whatIf.ppco2_mmhg.toFixed(1)} unit="mmHg" limit={`>= ${P.ppco2Critical} limit`} bad={whatIf.ppco2_mmhg >= P.ppco2Critical} />
-                            <Metric label="Days since last scan" value={String(s.daysSinceScan)} unit="d" bad={s.daysSinceScan > 7} />
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setLastScanDay(whatIf.mission_day)}
-                            className="mt-2 cursor-pointer rounded border border-nominal px-3 py-1 font-mono text-xs text-nominal hover:bg-nominal hover:text-black"
-                          >
-                            LOG 2-MIN EYE SCAN NOW
-                          </button>
-                        </>
-                      )}
-                    </Card>
-                  </div>
-                )}
-
-                {evalTab === 'MUSCLE_BONE' && (
-                  <Card
-                    title="Your Muscle, Bone & Mars Landing Readiness"
-                    origin={hasMusculoskeletal ? packet.musculoskeletal!.provenance : 'UNAVAILABLE'}
-                    className="min-h-0 flex-1"
-                  >
-                    {!hasMusculoskeletal ? (
-                      <UnavailableSubsystemPanel
-                        title="MUSCULOSKELETAL AXIS UNAVAILABLE"
-                        reason="Pure terrestrial BIDMC replay does not measure soleus thickness, sclerostin, or Mars gait asymmetry."
-                        linkIsLive={link === 'ENGINE_LIVE'}
-                        onEngageOverlay={() => setWhatIfOverlayActive(true)}
-                      />
-                    ) : (
-                      <div className="flex h-full flex-col justify-between gap-4">
-                        <div className="flex flex-wrap items-center gap-2 font-mono text-xs">
-                          {['Calf muscle unloads', 'Irisin drops', 'Sclerostin rises', 'Bone weakens', 'Walking on Mars (0.38 g)'].map((t, i, a) => (
-                            <span key={t} className="flex items-center gap-2">
-                              <span className="rounded border border-line px-2.5 py-1 text-gray-200">{t}</span>
-                              {i < a.length - 1 && <span className="text-gray-600">-&gt;</span>}
-                            </span>
-                          ))}
+                        <div className="mt-1 text-gray-400">
+                          Preview MRI: {localSim.mri} · Wall shear: {localSim.tauW.toFixed(2)} dyn/cm2 | SBP: {localSim.sbp.toFixed(0)} mmHg
                         </div>
-                        <div>
-                          <Metric label="Soleus calf thickness" value={`${s.soleusMm.toFixed(1)} (-${s.soleusLossPct.toFixed(1)}%)`} unit="mm" limit={`< ${P.soleusCritical} risk`} bad={s.soleusMm < P.soleusCritical} />
-                          <Metric label="Irisin hormone" value={s.irisin.toFixed(2)} unit="ng/mL" />
-                          <Metric label="Sclerostin (bone brake)" value={s.sclerostin.toFixed(0)} unit="pmol/L" limit={`> ${P.sclerostinCritical} risk`} bad={s.sclerostin > P.sclerostinCritical} />
-                          <Metric label="Heel bone loss (BMD)" value={s.bmdLossPct.toFixed(1)} unit="%" />
-                          <Metric
-                            label="Urinary calcium (stone risk)"
-                            value={`${s.urinaryCalciumMgD.toFixed(0)} [${s.nephrolithiasisRisk}]`}
-                            unit="mg/d"
-                            limit="> 250 risk"
-                            bad={s.urinaryCalciumMgD > 250}
-                          />
-                          <Metric label="Expected Mars gait asymmetry" value={s.gaiPct.toFixed(1)} unit="%" limit={`> ${P.gaiCritical} risk`} bad={s.gaiPct > P.gaiCritical} />
-                        </div>
-                        <p className="text-sm text-gray-300">
-                          Without daily resistive exercise on ARED, your calf muscle thins and signals bones to resorb minerals. Excess calcium is filtered into urine, elevating nephrolithiasis (kidney stone) risk above 250 mg/d. Keeping your ARED load near 100% protects your skeleton, prevents renal crystallization, and preserves landing readiness on Mars.
-                        </p>
                       </div>
                     )}
-                  </Card>
-                )}
-
-                {evalTab === 'FORECAST' && (
-                  <Card
-                    title="Multi-Horizon Timestral & STL Forecast"
-                    tag={sm.provenance}
-                    origin={sm.provenance}
-                    className="min-h-0 flex-1"
-                  >
-                    <div className="flex h-full flex-col justify-between gap-3">
-                      <StlChart
-                        whatIf={whatIf}
-                        lastScanDay={lastScanDay}
-                        isPureReplay={isPureReplay}
-                        packet={packet}
-                      />
-                      <PredicateBars rho={predicateBarsMap} />
-                      <p className="text-xs text-gray-400">
-                        Above 0 is within NASA safety limits; below 0 is a limit violation. Unavailable predicates remain explicitly N/A.
-                      </p>
+                  </div>
+                </section>
+                <Card
+                  title="Anatomical explorer"
+                  tag="Zoom follows cursor"
+                  origin={hasHemodynamics || hasMusculoskeletal ? (packet.is_local_simulation ? 'SIMULATED_SCENARIO_INPUT' : 'DERIVED_FROM_HYBRID_SCENARIO') : 'UNAVAILABLE'}
+                  className="anatomy-panel min-h-0"
+                >
+                  <div className="flex h-full min-h-0 flex-col gap-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-cyan-500/15 pb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-[11px] text-zinc-400">BIODIGITAL MESH:</span>
+                        <div className="flex rounded border border-zinc-700 bg-black/60 p-0.5 font-mono text-xs">
+                          <button
+                            type="button"
+                            onClick={() => handleWhatIfChange({ ...whatIf, sex: 'MALE' })}
+                            className={`cursor-pointer px-2.5 py-0.5 rounded transition-all ${whatIf.sex === 'MALE' ? 'bg-[#d8a85f] text-black font-bold' : 'text-zinc-400 hover:text-white'}`}
+                          >
+                            MALE
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleWhatIfChange({ ...whatIf, sex: 'FEMALE' })}
+                            className={`cursor-pointer px-2.5 py-0.5 rounded transition-all ${whatIf.sex === 'FEMALE' ? 'bg-[#d8a85f] text-black font-bold' : 'text-zinc-400 hover:text-white'}`}
+                          >
+                            FEMALE
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  </Card>
-                )}
+                    <DeferredPanel name="anatomical explorer"><BodyHeatmap
+                      renderingActive={activeView==='VIEW_COCKPIT'}
+                      s={hasHemodynamics || hasMusculoskeletal ? s : null}
+                      sex={whatIf.sex}
+                      hypergraphSpatial={packet.hypergraph_spatial}
+                      isLocalSimulation={Boolean(packet.is_local_simulation)}
+                      modelValidationStatus={packet.model_validation_status}
+                      injuries={injuries}
+                      onAddInjury={addInjury}
+                      onResolveInjury={resolveInjury}
+                      onChangeSex={handleBodySex}
+                      onOpenTab={handleBodyTab}
+                      onOpenPlaybook={handleBodyPlaybook}
+                    /></DeferredPanel>
+                  </div>
+                </Card>
+                <section id="evaluate-results" className="evaluate-results" aria-labelledby="evaluate-results-title">
+                  <h2 id="evaluate-results-title" className="sidebar-heading">Scenario results</h2>
+                    <Card title="14-day safety forecast" tag="Illustrative trajectory" className="scenario-forecast">
+                      <StlChart whatIf={whatIf} lastScanDay={lastScanDay} isPureReplay={isPureReplay} />
+                      <p className="mt-2 text-xs text-gray-400">The red line is the scenario threshold. The projection holds the selected conditions constant.</p>
+                      <details className="scenario-disclosure">
+                        <CockpitSummary>Current margins by indicator</CockpitSummary>
+                        <PredicateBars rho={predicateBarsMap} />
+                      </details>
+                    </Card>
+                  <a className="evaluate-scan-link" href="#evaluate-ultrasound">
+                    Go to ultrasound <ArrowRightIcon aria-hidden="true" size={15} />
+                  </a>
+                  <details className="scenario-disclosure forecast-detail">
+                    <CockpitSummary>Short-term forecast</CockpitSummary>
+                    <p className="evaluate-detail-note">Ranges for the next few seconds or hours, when the current data support a forecast.</p>
+                    <TimestralQuantileConePanel packet={packet} />
+                  </details>
+                  <details id="evaluate-muscle" className="scenario-disclosure" open={evalTab === 'MUSCLE_BONE'}>
+                    <CockpitSummary>Muscle, bone &amp; Mars gait</CockpitSummary>
+                    <p className="evaluate-detail-note">Explore how mission duration and exercise load affect the scenario estimates for muscle, bone and gait.</p>
+                    <Card
+                      title="Your Muscle, Bone & Mars Landing Readiness"
+                      origin={hasMusculoskeletal ? packet.musculoskeletal!.provenance : 'UNAVAILABLE'}
+                      className="min-h-0 flex-1"
+                    >
+                      {!hasMusculoskeletal ? (
+                        <UnavailableSubsystemPanel
+                          title="MUSCULOSKELETAL AXIS UNAVAILABLE"
+                          reason="Pure terrestrial BIDMC replay does not measure soleus thickness, sclerostin, or Mars gait asymmetry."
+                          linkIsLive={link === 'ENGINE_LIVE'}
+                          onEngageOverlay={() => setWhatIfOverlayActive(true)}
+                        />
+                      ) : (
+                        <div className="flex h-full flex-col justify-between gap-4">
+                          <div className="flex flex-wrap items-center gap-2 font-mono text-xs">
+                            {['Calf muscle unloads', 'Irisin drops', 'Sclerostin rises', 'Bone weakens', 'Walking on Mars (0.38 g)'].map((t, i, a) => (
+                              <span key={t} className="flex items-center gap-2">
+                                <span className="rounded border border-line px-2.5 py-1 text-gray-200">{t}</span>
+                                {i < a.length - 1 && <ArrowRightIcon aria-hidden="true" size={14} className="shrink-0 text-gray-400" />}
+                              </span>
+                            ))}
+                          </div>
+                          <div>
+                            <Metric label="Soleus calf thickness" value={`${s.soleusMm.toFixed(1)} (-${s.soleusLossPct.toFixed(1)}%)`} unit="mm" limit={`< ${P.soleusCritical} risk`} bad={s.soleusMm < P.soleusCritical} />
+                            <Metric label="Irisin hormone" value={s.irisin.toFixed(2)} unit="ng/mL" />
+                            <Metric label="Sclerostin (bone brake)" value={s.sclerostin.toFixed(0)} unit="pmol/L" limit={`> ${P.sclerostinCritical} risk`} bad={s.sclerostin > P.sclerostinCritical} />
+                            <Metric label="Heel bone loss (BMD)" value={s.bmdLossPct.toFixed(1)} unit="%" />
+                            <Metric
+                              label="Urinary calcium (stone risk)"
+                              value={`${s.urinaryCalciumMgD.toFixed(0)} [${s.nephrolithiasisRisk}]`}
+                              unit="mg/d"
+                              limit="> 250 risk"
+                              bad={s.urinaryCalciumMgD > 250}
+                            />
+                            <Metric label="Expected Mars gait asymmetry" value={s.gaiPct.toFixed(1)} unit="%" limit={`> ${P.gaiCritical} risk`} bad={s.gaiPct > P.gaiCritical} />
+                          </div>
+                          <p className="text-sm text-gray-300">
+                            Without daily resistive exercise on ARED, your calf muscle thins and signals bones to resorb minerals. Excess calcium is filtered into urine, elevating nephrolithiasis (kidney stone) risk above 250 mg/d. Keeping your ARED load near 100% protects your skeleton, prevents renal crystallization, and preserves landing readiness on Mars.
+                          </p>
+                        </div>
+                      )}
+                    </Card>
+                  </details>
+                </section>
+                <section id="evaluate-ultrasound" className="evaluate-ultrasound" aria-labelledby="evaluate-ultrasound-title">
+                  <h2 id="evaluate-ultrasound-title">Ultrasound</h2>
+                    <div className="scenario-scans">
+                      <Card
+                        title="Neck ultrasound"
+                        tag="Synthetic image"
+                        origin={hasHemodynamics ? packet.hemodynamics!.provenance : 'UNAVAILABLE'}
+                        className="min-h-0"
+                      >
+                        {!hasHemodynamics ? (
+                          <UnavailableSubsystemPanel
+                            title="Neck ultrasound unavailable"
+                            reason="Pure BIDMC replay does not carry jugular ultrasound or microgravity fluid-shift inputs."
+                            linkIsLive={link === 'ENGINE_LIVE'}
+                            onEngageOverlay={() => setWhatIfOverlayActive(true)}
+                          />
+                        ) : (
+                          <>
+                            <PocusIjv
+                              csa={s.csa}
+                              vmax={s.vmax}
+                              thrombus={packet.hemodynamics?.pocus_thrombus_confirmed ?? thrombus}
+                            />
+                            <div className="mt-2">
+                              <Metric label="Vein area (CSA)" value={s.csa.toFixed(2)} unit="cm2" limit={`> ${P.ijvCriticalCsa} risk`} bad={s.csa > P.ijvCriticalCsa} />
+                              <Metric label="Flow speed (Vmax)" value={s.vmax.toFixed(1)} unit="cm/s" limit={`< ${P.vmaxCritical} risk`} bad={s.vmax < P.vmaxCritical} />
+                              <Metric label="Wall shear stress" value={s.tauW.toFixed(2)} unit="dyn/cm2" limit={`< ${P.tauWCritical} risk`} bad={s.tauW < P.tauWCritical} />
+                            </div>
+                          </>
+                        )}
+                      </Card>
+
+                      <Card
+                        title="Eye ultrasound"
+                        tag="Synthetic image"
+                        origin={hasHemodynamics ? packet.hemodynamics!.provenance : 'UNAVAILABLE'}
+                        className="min-h-0"
+                      >
+                        {!hasHemodynamics ? (
+                          <UnavailableSubsystemPanel
+                            title="Eye ultrasound unavailable"
+                            reason="Pure BIDMC replay does not include optic nerve sheath diameter or cabin ppCO2."
+                            linkIsLive={link === 'ENGINE_LIVE'}
+                            onEngageOverlay={() => setWhatIfOverlayActive(true)}
+                          />
+                        ) : (
+                          <>
+                            <OcularOnsd onsd={s.onsdMm} sigma={s.onsdSigmaMm} />
+                            <div className="mt-2">
+                              <Metric label="Optic nerve sheath" value={s.onsdMm.toFixed(2)} unit="mm" limit={`> ${P.onsdCritical} risk`} bad={s.onsdMm > P.onsdCritical} />
+                              <Metric label="Cabin CO₂" value={whatIf.ppco2_mmhg.toFixed(1)} unit="mmHg" limit={`>= ${P.ppco2Critical} limit`} bad={whatIf.ppco2_mmhg >= P.ppco2Critical} />
+                              {packet.is_local_simulation && (
+                              <Metric label="Days since simulated scan" value={String(s.daysSinceScan)} unit="d" bad={s.daysSinceScan > 7} />
+                            )}
+                            </div>
+                            {packet.is_local_simulation && (
+                              <div className="mt-2 flex flex-wrap items-center gap-2">
+                                <button type="button" disabled={s.daysSinceScan === 0}
+                                  onClick={() => setLastScanDay(whatIf.mission_day)}
+                                  className="act-secondary-button disabled:opacity-50">
+                                  Reset simulated scan timer
+                                </button>
+                                {s.daysSinceScan === 0 && <span role="status" className="text-xs text-gray-300">Timer at 0 days</span>}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </Card>
+                    </div>
+                </section>
               </div>
             )}
 
@@ -1124,12 +1002,11 @@ export default function App() {
                   className="min-h-0"
                 >
                   <div className="space-y-3">
-                    {packet.active_playbook && isAcuteVitalsPlaybook(packet.active_playbook) && (
-                      <EnginePlaybookCard playbook={packet.active_playbook} />
-                    )}
                     <PlaybookRunner
                       activePlaybook={packet.active_playbook}
                       isLiveEngine={link === 'ENGINE_LIVE'}
+                      monitoringStatus={showUrgentStatus ? 'urgent' : status.isStale || sm.alarm_level === 'DATA_DEGRADED_MISSING_CHANNELS'
+                        ? 'unavailable' : sm.alarm_level === 'NOMINAL' && packet.vitals_anomaly?.overall !== 'ATTENTION' ? 'normal' : 'watch'}
                       thrombusConfirmed={thrombus}
                       ventEvent={ventEvent}
                       syncLatencyUs={ipcLatencyUs}
@@ -1138,6 +1015,9 @@ export default function App() {
                       onConfirmPocusThrombus={handleThrombusChange}
                       onRearmLbnp={() => setVentEvent(null)}
                     />
+                    {packet.active_playbook && isAcuteVitalsPlaybook(packet.active_playbook) && (
+                      <EnginePlaybookCard playbook={packet.active_playbook} />
+                    )}
                   </div>
                 </Card>
                 <Card title="Active Safety Protections" origin={packet.is_local_simulation ? 'SIMULATED_SCENARIO_INPUT' : 'DERIVED_COMPUTED'} className="min-h-0">
@@ -1242,7 +1122,7 @@ export default function App() {
           </main>
 
           {/* Right Sticky Control Sidebar */}
-          <aside className="clinical-sidebar flex min-h-0 flex-col gap-4" aria-label="Readiness and scenario controls">
+          {activePhase !== 'EVALUATE' && <aside className="clinical-sidebar flex min-h-0 flex-col gap-4" aria-label="Readiness and scenario controls">
             <div className="readiness-panel">
               <div className="mb-1 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
@@ -1253,51 +1133,25 @@ export default function App() {
               </div>
               <MriGauge safety={sm} qualityFlags={qualityFlags} />
             </div>
-
-            <details
-              open
-              className="scenario-panel min-h-0"
-            >
-              <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-2 font-mono text-xs tracking-widest text-gray-200">
-                <span className="sidebar-heading">Scenario lab</span>
-                <OriginBadge origin="SIMULATED_SCENARIO_INPUT" />
-              </summary>
-              <div className="mt-3">
-                <WhatIfConsole
-                  value={whatIf}
-                  onChange={handleWhatIfChange}
-                  ventEvent={ventEvent}
-                  onRearm={() => setVentEvent(null)}
-                  link={link}
-                  overlayActive={whatIfOverlayActive}
-                  onToggleOverlay={setWhatIfOverlayActive}
-                  onSyncNow={() => {
-                    setWhatIfOverlayActive(true);
-                    void syncWhatIfNow();
-                  }}
-                />
-
-                {isPureReplay && (
-                  <div className="mt-3 rounded border border-warning/40 bg-black p-2.5 font-mono text-[11px]">
-                    <div className="flex items-center justify-between text-warning">
-                      <span>LOCAL WHAT-IF PREVIEW</span>
-                      <span>NOT LIVE TELEMETRY</span>
-                    </div>
-                    <div className="mt-1 text-gray-400">
-                      Preview MRI: {localSim.mri} | tau_w: {localSim.tauW.toFixed(2)} dyn/cm2 | SBP: {localSim.sbp.toFixed(0)} mmHg
-                    </div>
-                  </div>
-                )}
-              </div>
-            </details>
-          </aside>
+            {activePhase === 'GATHER' && (
+              <MeasurementContext
+                source={bioOrigin}
+                sampleRate={packet.provenance_manifest.biometrics_native_rate_hz}
+                hrv={hrvFmt.unavailable ? null : `${hrvFmt.text} ms`}
+                temperature={b.core_temp_celsius ?? null}
+              />
+            )}
+          </aside>}
         </div>
       </div>
 
       <details className="system-disclosure">
-        <summary>System &amp; connection details
+        <CockpitSummary>System &amp; connection details
           <span>{lastBinaryFrame?.storm_shelter_mandatory || osStatus?.storm_shelter_mandatory ? 'Storm shelter mandatory' : lastBinaryFrame?.eva_airlock_forbidden || osStatus?.eva_airlock_forbidden ? 'EVA airlock restricted' : 'Onboard tools and runtime diagnostics'}</span>
-        </summary>
+        </CockpitSummary>
+      <div className="system-secondary-links">
+        <button type="button" onClick={() => setActiveView('VIEW_PORTAL')}>Ground review &amp; evidence atlas</button>
+      </div>
       <OsSystemStatusBar
         packet={packet}
         whatIf={whatIf}
@@ -1343,97 +1197,6 @@ export default function App() {
         </div>
       )}
 
-      {/* OpenScreen Multi-Track Studio Modal */}
-      {activeView === 'VIEW_STUDIO' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-xl p-4 md:p-8 animate-in fade-in duration-200">
-          <div className="flex h-full w-full max-w-[1700px] flex-col rounded-xl border border-cyan-500/30 bg-zinc-950 shadow-[0_0_50px_rgba(0,0,0,0.9)] overflow-hidden">
-            <div className="flex items-center justify-between border-b border-zinc-800 px-6 py-3 bg-black/60">
-              <div className="flex items-center gap-3">
-                <span className="font-mono text-xs font-bold text-cyan-400 tracking-widest uppercase">OpenScreen Multi-Track Replay Studio</span>
-                <span className="text-zinc-500 font-mono text-xs">|</span>
-                <span className="text-xs text-zinc-300 font-mono">Telemetry Scrubbing &amp; Camera Rig</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setActiveView('VIEW_COCKPIT')}
-                className="cursor-pointer rounded border border-zinc-700 px-3 py-1 font-mono text-xs text-zinc-300 hover:border-zinc-400 hover:text-white"
-              >
-                ESC CLOSE
-              </button>
-            </div>
-            <div className="flex-1 min-h-0 overflow-y-auto p-4">
-              <DeferredPanel name="studio"><OpenScreenStudio
-                packet={packet}
-                s={hasHemodynamics || hasMusculoskeletal ? s : null}
-                whatIf={whatIf}
-                sex={whatIf.sex}
-              /></DeferredPanel>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Fullscreen 3D Anatomical Twin Viewport Modal */}
-      {activeView === 'VIEW_TWIN' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-2xl p-4 md:p-6 animate-in fade-in duration-200">
-          <div className="flex h-full w-full max-w-[1800px] flex-col rounded-xl border border-cyan-500/40 bg-black shadow-[0_0_80px_rgba(6,182,212,0.15)] overflow-hidden">
-            <div className="flex items-center justify-between border-b border-zinc-800 px-6 py-3 bg-zinc-950/80">
-              <div className="flex items-center gap-3">
-                <span className="font-mono text-xs font-bold text-cyan-400 tracking-widest uppercase">ARES Biodigital Twin 3D Viewport</span>
-                <span className="text-zinc-500 font-mono text-xs">|</span>
-                <span className="text-xs text-zinc-300 font-mono">360-Degree Anatomical Mesh &bull; Sex: {whatIf.sex}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="flex rounded border border-zinc-700 bg-black p-0.5 font-mono text-xs">
-                  <button
-                    type="button"
-                    onClick={() => handleWhatIfChange({ ...whatIf, sex: 'MALE' })}
-                    className={`cursor-pointer px-2.5 py-0.5 rounded ${whatIf.sex === 'MALE' ? 'bg-cyan-500 text-black font-bold' : 'text-zinc-400 hover:text-white'}`}
-                  >
-                    MALE
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleWhatIfChange({ ...whatIf, sex: 'FEMALE' })}
-                    className={`cursor-pointer px-2.5 py-0.5 rounded ${whatIf.sex === 'FEMALE' ? 'bg-cyan-500 text-black font-bold' : 'text-zinc-400 hover:text-white'}`}
-                  >
-                    FEMALE
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setActiveView('VIEW_COCKPIT')}
-                  className="cursor-pointer rounded border border-zinc-700 px-3 py-1 font-mono text-xs text-zinc-300 hover:border-zinc-400 hover:text-white"
-                >
-                  ESC CLOSE
-                </button>
-              </div>
-            </div>
-            <div className="flex-1 min-h-0 p-2">
-              <TwinHudViewport
-                sex={whatIf.sex}
-                mri={sm.mission_readiness_index ?? s.mri}
-                rhoMin={sm.med_stl_rho_robustness ?? s.rhoMin}
-              >
-                <DeferredPanel name="anatomical explorer"><BodyHeatmap
-                  s={hasHemodynamics || hasMusculoskeletal ? s : null}
-                  sex={whatIf.sex}
-                  hypergraphSpatial={packet.hypergraph_spatial}
-                  isLocalSimulation={Boolean(packet.is_local_simulation)}
-                  modelValidationStatus={packet.model_validation_status}
-                  injuries={injuries}
-                  onAddInjury={addInjury}
-                  onResolveInjury={resolveInjury}
-                  onChangeSex={handleBodySex}
-                  onOpenTab={handleBodyTab}
-                  onOpenPlaybook={handleBodyPlaybook}
-                /></DeferredPanel>
-              </TwinHudViewport>
-            </div>
-          </div>
-        </div>
-      )}
-
       {shortcutsModalOpen && <DeferredPanel name="keyboard shortcuts"><KeyboardShortcutsModal
         open={shortcutsModalOpen}
         onClose={() => setShortcutsModalOpen(false)}
@@ -1448,7 +1211,6 @@ export default function App() {
         open={paletteOpen}
         onClose={() => {
           setPaletteOpen(false);
-          setPaletteInitialMode('TOOLS');
         }}
         onToggle={() => setPaletteOpen((v) => !v)}
         httpBaseUrl={ENGINE_HTTP_URL}
@@ -1456,7 +1218,6 @@ export default function App() {
         whatIf={whatIf}
         transportMode={transportMode}
         osStatus={osStatus}
-        initialMode={paletteInitialMode}
       />
     </div>
   );
