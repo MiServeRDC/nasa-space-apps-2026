@@ -10,7 +10,7 @@ import type { AlarmLevel, TelemetryPacket } from '../types/telemetry';
 import type { PhaseMode } from '../types/workbench';
 import type { TelemetryStatus } from '../lib/useTelemetry';
 import type { TransportMode } from '../modules/os-shell/OsSystemStatusBar';
-import { isPureRecordedReplay } from '../lib/telemetryValidation';
+import { clinicalDataMode, clinicalSourceLabel } from '../lib/clinicalViewModel';
 import { FreshnessBadge } from '../modules/provenance/ProvenanceInspector';
 import { useWorkbenchStore } from '../stores/workbenchStore';
 import { announcePolite } from '../stores/a11yAnnouncer';
@@ -52,7 +52,6 @@ export function HorizonBar({
 }: HorizonBarProps) {
   const phase = useWorkbenchStore((s) => s.phase);
   const setPhase = useWorkbenchStore((s) => s.setPhase);
-  const simulationMode = useWorkbenchStore((s) => s.simulationMode);
   const drawer = useWorkbenchStore((s) => s.drawer);
   const openDrawer = useWorkbenchStore((s) => s.openDrawer);
   const closeDrawer = useWorkbenchStore((s) => s.closeDrawer);
@@ -66,14 +65,15 @@ export function HorizonBar({
   const shortcutsModalOpen = useWorkbenchStore((s) => s.shortcutsModalOpen);
   const setShortcutsModalOpen = useWorkbenchStore((s) => s.setShortcutsModalOpen);
 
-  const pureEmpirical = isPureRecordedReplay(packet) && simulationMode === 'empirical';
+  const dataMode = clinicalDataMode(packet);
+  const pureEmpirical = dataMode === 'BACKEND_REPLAY' || dataMode === 'BACKEND_HARDWARE';
   const freshness = telemetryStatus.isStale
     ? 'HELD_STALE'
     : telemetryStatus.heldSample
       ? 'HOLD_LAST_VALID'
       : 'FRESH';
 
-  const sol = Math.max(1, Math.round(packet.mission_elapsed_days ?? 60));
+  const sol = packet.mission_elapsed_days == null ? 'N/A' : Math.max(1, Math.round(packet.mission_elapsed_days));
   const nativeHz = packet.provenance_manifest.biometrics_native_rate_hz;
   const uiHz = packet.provenance_manifest.ui_refresh_rate_hz;
   const alarm = packet.safety_margins.alarm_level;
@@ -174,7 +174,7 @@ export function HorizonBar({
       {/* Right: Epistemic Mode Badge (Issue #12) + OWLT + Drawer/Modal Triggers */}
       <div className="flex flex-wrap items-center gap-1.5 font-mono text-[10px]">
         <span
-          data-epistemic-mode={pureEmpirical ? 'empirical' : 'simulated'}
+          data-epistemic-mode={dataMode}
           className={`rounded border px-2 py-0.5 font-semibold tracking-wider ${
             pureEmpirical
               ? 'border-emerald-400/50 bg-emerald-500/10 text-emerald-300'
@@ -182,11 +182,11 @@ export function HorizonBar({
           }`}
           title={
             pureEmpirical
-              ? 'Pure recorded PhysioNet BIDMC v1.0.0 telemetry without counterfactual perturbation'
+              ? clinicalSourceLabel(packet)
               : 'Counterfactual What-If or hybrid scenario overlay active (ILLUSTRATIVE_UNVALIDATED)'
           }
         >
-          {pureEmpirical ? 'EMPIRICAL OBSERVED' : 'DELTA SIMULATED'}
+          {clinicalSourceLabel(packet)}
         </span>
 
         <span

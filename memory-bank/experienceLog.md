@@ -1,5 +1,41 @@
 # Experience Log & Anti-Recurrence Invariants: ARES-Health
 
+## Entry 010 — Persistence acknowledgement and bounded failure recovery
+
+- Never clear a staged Warm bank before the backend confirms its commit. Retain
+  failed batches for retry, release failed reservations, report incomplete shutdown
+  and flush partial banks on the deadline. Roll back in-memory manifest metadata
+  after a failed commit. Runtime writers require an exclusive root lease and resume
+  sequence IDs after reopen. In-memory pending/coalesced rows are not durable raw
+  samples; do not promise zero loss during sustained disk failure or power loss.
+- Tests: `flush_reliability`, `storage_runtime`, and the local browser/process
+  regression script. Recording is explicit; test/evaluation modes do not start it.
+
+## Entry 011 — Rendering and forecast experiments must preserve evidence boundaries
+
+- Pausing unused local simulation, lazy chunks, memoized geometry, adaptive DPR and
+  hidden-view suspension must not throttle alarm processing or change clinical
+  values. Pool materials by layer/region, retaining mesh IDs and source geometry.
+- Synthetic long-stream improvements do not establish clinical forecast quality.
+  The horizon-scaled width candidate is disabled because development coverage
+  worsened. Independent delayed scoring, interval width and coverage must all be
+  checked. Current clipped EWMA does not inherit formal ACI guarantees.
+- Sources/protocol: `docs/architecture/IMPLEMENTATION_STACK.md` optimization
+  addendum and `docs/operations/PROJECT_OPTIMIZATION.md`.
+
+## Entry 012 — Legacy Storage Manifest Serialization and Checksum Invariance
+
+- Failure mode: adding optional fields with `#[serde(default)]` without `skip_serializing_if = "Option::is_none"` causes re-serialization to insert explicit `null` fields during manifest checksum verification, causing `CrcMismatch` on valid legacy manifests. Furthermore, defaulting legacy unpartitioned segments to `mission_sol` prematurely prunes multi-sol legacy data during range queries.
+- Mandatory Invariant: always use `skip_serializing_if = "Option::is_none"` on optional metadata fields that participate in cryptographic or CRC checksum signatures. Legacy segments without explicit min/max sol bounds must be retained at the segment level and filtered row-by-row via Arrow boolean masks.
+- Storage Policy Invariant: storage files (`.arrow.zst`) and manifests (`MANIFEST.lsah.json`) strictly use IEEE 802.3 CRC-32 (`compute_storage_crc32_ieee`). Castagnoli CRC-32C is reserved strictly for 128-byte binary network frames.
+
+## Entry 013 — Telemetry Stream Monotonic Ordering and Hardware Provenance Isolation
+
+- Failure mode 1: desktop client polling full snapshots at 1 Hz without in-flight request bounding or monotonic timestamp/sequence checks allows delayed responses to arrive after newer responses, regressing UI state and overwriting newer 20 Hz binary frames.
+- Mandatory Invariant 1: enforce single-flight snapshot polling with a 1500 ms timeout race, and strictly reject any incoming snapshot payload whose `timestamp_ms` or `relative_recording_time_s` is older than the last applied state.
+- Failure mode 2: calling `apply_stress_test_patch` in `LiveWearableHardware` mode and reading `current_replay_row()` silently overwrites active hardware vitals with CSV replay data (`bidmc_01`), resetting provenance to `RecordedTerrestrialBidmcCsv`.
+- Mandatory Invariant 2: when `source_mode == LiveWearableHardware`, What-If stress test patches must update scenario-driven models (radiation, cabin CO2, bone loss, POCUS posterior) while strictly preserving hardware sensor observations, `source_record_id`, and `HardwareWearable` provenance. Switching to hardware mode before the first packet arrives must publish an explicit `awaiting_wearable_hardware` state with `None` vitals and `DataDegradedMissingChannels`.
+
 > **Purpose:** Records mathematical, clinical, and systems engineering failure modes discovered during design and peer-review so no human teammate or AI coding agent ever re-introduces them.
 
 ---
@@ -54,3 +90,38 @@
 - Invariant: current scenario models emit `ILLUSTRATIVE_UNVALIDATED`; TTV uses `ILLUSTRATIVE_SCENARIO_RANGE` when available. Gate acceptance emits `HEURISTIC_GATE_ACCEPTED`; legacy calibrated input is deserialize-only compatibility. Known input absence continues to produce nulls.
 - Evidence: [model audit](../docs/architecture/MODEL_EVIDENCE_AUDIT.md), including checked primary sources, formula/parameter register, boundaries and required target-population validation. No new clinical threshold or treatment rule is introduced.
 - Dossier Markdown now points to the audit; historical PDF exports and the absent executable cockpit are not qualified by this task.
+
+
+## Entry 012 — Reference anatomy, composite registration and empirical UI boundaries
+
+- Generic anatomy is a reference, not a patient observation. Source sex, source
+  identity, donor/adapted status, laterality, transforms and missing coverage must
+  remain visible. A procedural female morph does not establish female internal
+  reference anatomy. Do not assume HRA and another Visible Human-based package are
+  co-registered; validate transforms and independent landmarks for the exact assets.
+- Keep ARES clinical-region IDs separate from mesh/ontology identities. Preserve
+  picking and annotations when batching or changing LOD; do not equate an eye with
+  its optic sheath or the compound soleus/calcaneus region with one structure.
+- Empirical nulls cannot fall back to scenario numbers; missing cone channels
+  cannot fall back to HR under a rho label. Reduced motion cannot bypass action
+  confirmation; initial WebGL failure must leave the 2D monitor usable.
+- Current BodyParts3D CC BY terms do not relicense existing Z-Anatomy derivatives.
+  Keep large originals outside git, ship optimized assets/decoders offline and
+  preserve per-source credits. Sources and phase gates are recorded in the
+  greenfield/anatomy plan and IMPLEMENTATION_STACK.md. Planning only; no new
+  physical constants, clinical parameters or production changes.
+
+
+## Greenfield display regression invariant (2026-11-15)
+
+- Missing backend MRI/rho, habitat, imaging and HRV values cannot inherit scenario
+  values. Preserve explicit nulls and finite zero; keep unavailable provenance.
+- Forecast channel and unit must match exactly. Never borrow the first available
+  HR cone for rho, fabricate an envelope from current rho, invent a ghost or fill
+  unsupported horizons. Respect the relevant abstention certificate.
+- Source identity and scenario mode must partition waveform history. Label
+  hardware, recording, overlay and local preview using packet provenance.
+- Procedural ultrasound/anatomy is illustrative; uncertainty and acquired imaging
+  cannot be inferred from a local scenario. Absorbed dose mGy is not equivalent dose mSv.
+- Regression evidence: greenfield_clinical_view.test.ts and the local phase01 browser
+  harness. Phase 2 WebGL/confirmation/voice gaps remain explicit in the results.

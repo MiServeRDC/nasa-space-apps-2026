@@ -141,6 +141,10 @@ function buildFertechStressTestPayload(whatIf: WhatIf) {
  * - `BROWSER_WEBSOCKET`: `GET /api/snapshot`, `ws://127.0.0.1:8080/ws/telemetry` (JSON or 128B binary), `POST /api/stress-test`
  * - Strict runtime validation & Issue #11 nullability preservation (`null` never coerced to `0`)
  */
+import { evaluateFreshnessGate, type FreshnessGateState } from './freshnessGate';
+
+export { evaluateFreshnessGate, type FreshnessGateState };
+
 export function useTelemetry(
   whatIf: WhatIf,
   thrombusConfirmed: boolean | null,
@@ -178,8 +182,12 @@ export function useTelemetry(
     habitat: number;
   } | null>(null);
   const inputsRef = useRef({ whatIf, thrombusConfirmed, lastScanDay, whatIfOverlayActive });
+  const localTickRef = useRef(0);
   inputsRef.current = { whatIf, thrombusConfirmed, lastScanDay, whatIfOverlayActive };
   const activeSourceIdRef = useRef<string>('bidmc_01');
+  const lastAppliedTimestampMsRef = useRef<number | null>(null);
+  const lastAppliedRecTimeRef = useRef<number | null>(null);
+  const snapshotInFlightRef = useRef<boolean>(false);
 
   const acceptRawPayload = useCallback((raw: unknown, originLabel: string): boolean => {
     if (!isValidTelemetryPayload(raw)) {
@@ -195,6 +203,36 @@ export function useTelemetry(
       setValidationError(`Failed to normalize ${originLabel} payload`);
       return false;
     }
+
+    // Monotonic freshness guard: reject delayed, regressive, or out-of-order snapshots
+    const gate = evaluateFreshnessGate(
+      {
+        timestamp_ms: normalized.timestamp_ms,
+        relative_recording_time_s: normalized.relative_recording_time_s,
+        source_record_id: normalized.source_record_id,
+      },
+      {
+        activeSourceId: activeSourceIdRef.current,
+        lastAppliedTimestampMs: lastAppliedTimestampMsRef.current,
+        lastAppliedRecTime: lastAppliedRecTimeRef.current,
+      },
+    );
+
+    if (
+      !gate.accepted ||
+      (lastAppliedTimestampMsRef.current !== null &&
+        normalized.timestamp_ms < lastAppliedTimestampMsRef.current &&
+        normalized.source_record_id === activeSourceIdRef.current)
+    ) {
+      console.warn(
+        `[ares-cockpit] Rejected out-of-order snapshot (${normalized.timestamp_ms} < ${lastAppliedTimestampMsRef.current}) from ${originLabel}`,
+      );
+      return false;
+    }
+
+    activeSourceIdRef.current = gate.nextState.activeSourceId ?? normalized.source_record_id;
+    lastAppliedTimestampMsRef.current = gate.nextState.lastAppliedTimestampMs;
+    lastAppliedRecTimeRef.current = gate.nextState.lastAppliedRecTime;
 
     const now = Date.now();
     activeSourceIdRef.current = normalized.source_record_id;
@@ -264,6 +302,12 @@ export function useTelemetry(
       setIpcLatencyUs(measuredIpcUs);
       setBinaryFrameCount((c) => c + 1);
       setLastBinaryFrame(decoded);
+      if (decoded.timestamp_ms > 0) {
+        lastAppliedTimestampMsRef.current = Math.max(
+          lastAppliedTimestampMsRef.current ?? 0,
+          decoded.timestamp_ms,
+        );
+      }
       setLivePacket((prev) => (prev ? mergeBinaryFrameIntoPacket(prev, decoded) : prev));
       setLink('ENGINE_LIVE');
       return decoded;
@@ -417,13 +461,27 @@ export function useTelemetry(
     let disposed = false;
 
     const hydrateTauriSnapshot = async () => {
+      if (snapshotInFlightRef.current) {
+        return;
+      }
+      snapshotInFlightRef.current = true;
+      let timerId: number | null = null;
       try {
-        const snap = await tauri.invoke?.('get_full_wire_snapshot');
+        const timeoutPromise = new Promise<null>((_, reject) => {
+          timerId = window.setTimeout(() => reject(new Error('Tauri snapshot timeout')), 1500);
+        });
+        const invokePromise = tauri.invoke?.('get_full_wire_snapshot');
+        const snap = (await Promise.race([invokePromise, timeoutPromise])) as unknown;
         if (!disposed && snap) {
           acceptRawPayload(snap, 'TAURI get_full_wire_snapshot');
         }
       } catch {
-        // Fallback handled gracefully
+        // Fallback handled gracefully or timed out
+      } finally {
+        if (timerId !== null) {
+          window.clearTimeout(timerId);
+        }
+        snapshotInFlightRef.current = false;
       }
       try {
         const os = await tauri.invoke?.('get_os_status_bar_state');
@@ -464,23 +522,40 @@ export function useTelemetry(
         .invoke('subscribe_binary_telemetry', {
           onFrame: { __TAURI_CHANNEL_MARKER__: true, id: channelId },
         })
-        .catch(() => {
-          // If binary channel command is unavailable, snapshot polling still works
+        .catch((err) => {
+          console.warn(
+            '[ares-cockpit] Tauri binary subscription unavailable, active snapshot fallback engaged:',
+            err,
+          );
+          void hydrateTauriSnapshot();
         });
     }
 
+    // Periodic 1 Hz full snapshot refresh ensures extended panels (cones, anomalies, Block N)
+    // stay fresh (< 1s latency) even when binary frame header codes remain stable,
+    // and serves as an active fallback when binary streaming is unavailable.
+    const snapshotPollId = window.setInterval(() => {
+      if (!disposed) {
+        void hydrateTauriSnapshot();
+      }
+    }, 1000);
+
     const osPollId = window.setInterval(() => {
       if (!disposed) {
-        void tauri.invoke?.('get_os_status_bar_state').then((os) => {
-          if (!disposed && os && typeof os === 'object') {
-            setOsStatus(os as OsStatusBarState);
-          }
-        }).catch(() => {});
+        void tauri
+          .invoke?.('get_os_status_bar_state')
+          .then((os) => {
+            if (!disposed && os && typeof os === 'object') {
+              setOsStatus(os as OsStatusBarState);
+            }
+          })
+          .catch(() => {});
       }
     }, 1000);
 
     return () => {
       disposed = true;
+      window.clearInterval(snapshotPollId);
       window.clearInterval(osPollId);
     };
   }, [acceptBinaryBuffer, acceptRawPayload]);
@@ -636,21 +711,24 @@ export function useTelemetry(
   }, [link]);
 
   // 4. Local 20 Hz simulation loop (strictly for offline fallback & separate What-If preview).
+  const needsLocalPreview = link !== 'ENGINE_LIVE' || livePacket === null || whatIfOverlayActive;
   useEffect(() => {
-    let tick = 0;
-    const id = window.setInterval(() => {
-      tick += 1;
+    if (!needsLocalPreview) return;
+    const update = () => {
+      localTickRef.current += 1;
       setLocalPacket(
         buildPacket(
           inputsRef.current.whatIf,
-          tick,
+          localTickRef.current,
           inputsRef.current.thrombusConfirmed,
           inputsRef.current.lastScanDay,
         ),
       );
-    }, 50);
+    };
+    update();
+    const id = window.setInterval(update, 50);
     return () => window.clearInterval(id);
-  }, []);
+  }, [needsLocalPreview]);
 
   const packet = link === 'ENGINE_LIVE' && livePacket !== null ? livePacket : localPacket;
   const transportMode: TransportMode = IS_ARES_DESKTOP_SHELL
@@ -674,6 +752,7 @@ export function useTelemetry(
     packet,
     livePacket,
     localPacket,
+    localSimulationFrameCount: localTickRef.current,
     link,
     transportMode,
     ipcLatencyUs: ipcLatencyUs ?? lastSyncLatencyUs,

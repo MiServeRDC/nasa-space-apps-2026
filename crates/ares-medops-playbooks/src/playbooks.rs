@@ -33,6 +33,7 @@ pub fn select_candidate_playbook_ext(
         eva_suit_damping_active: musculo.gai_pct > 12.0,
         gate4_invasive_decompression_locked: true,
         gate4_eva_fitness_no_go: false,
+        ..SafetyGates::default()
     };
 
     // LIVELLO 1: Trauma, Barotrauma da Decompressione o Shock Severo (Playbook #15)
@@ -558,6 +559,8 @@ mod tests {
             let_quality_factor: None,
             suit_metabolic_watts: None,
             helmet_ppco2_mmhg: None,
+            cabin_ppco2_mmhg: None,
+            platelet_count_k_ul: None,
         }
     }
 
@@ -699,6 +702,7 @@ mod tests {
             eva_suit_damping_active: false,
             gate4_invasive_decompression_locked: true,
             gate4_eva_fitness_no_go: false,
+            ..SafetyGates::default()
         };
         let pick = |entries: &[(&str, AnomalyStatus, AnomalyDetectorKind)]| {
             select_vitals_anomaly_playbook(&anomaly_report(entries), gates).map(|p| p.playbook_id)

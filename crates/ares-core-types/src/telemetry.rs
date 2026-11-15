@@ -36,6 +36,7 @@ pub enum AlertSeverity {
 pub enum BiometricsSource {
     RecordedTerrestrialBidmcCsv,
     SimulatedScenarioInput,
+    HardwareWearable,
 }
 
 /// Modalita di calcolo dei sottosistemi fisiopatologici e di scenario.
@@ -282,7 +283,7 @@ pub enum HrvUnavailableReason {
 /// Segnali biometrici, autonomici ed esposizione radiologica (`1. GATHER`).
 /// I campi provenienti da sensori fisici o CSV BIDMC usano `Option<f64>` per non
 /// convertire mai campioni mancanti (`NaN`/vuoti) in falsi zeri fisiologici.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct Biometrics {
     pub heart_rate_bpm: Option<f64>,
     pub pulse_rate_bpm: Option<f64>,
@@ -321,6 +322,10 @@ pub struct Biometrics {
     pub suit_metabolic_watts: Option<f64>,
     #[serde(default)]
     pub helmet_ppco2_mmhg: Option<f64>,
+    #[serde(default)]
+    pub cabin_ppco2_mmhg: Option<f64>,
+    #[serde(default)]
+    pub platelet_count_k_ul: Option<f64>,
 }
 
 /// Risultati di diagnostica episodica Point-of-Care (POCT) e laboratorio di bordo (`ExMC`).
@@ -364,6 +369,8 @@ pub struct SpotPoctPanel {
     pub measured_at_mission_s: Option<f64>,
     #[serde(default)]
     pub staleness_hours: Option<f64>,
+    #[serde(default)]
+    pub platelet_count_k_ul: Option<f64>,
 }
 
 /// Stato del rischio litiasico renale e volume vescicale (`Gap 1`).
@@ -493,22 +500,31 @@ const fn default_true() -> bool {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SafetyGates {
     pub anticoagulant_lock_active: bool,
+    #[serde(default)]
+    pub anticoagulant_contraindicated_bleeding_risk: bool,
     pub lbnp_auto_vent_armed: bool,
+    #[serde(default)]
+    pub lbnp_auto_vent_triggered: bool,
     pub eva_suit_damping_active: bool,
     #[serde(default = "default_true")]
     pub gate4_invasive_decompression_locked: bool,
     #[serde(default)]
     pub gate4_eva_fitness_no_go: bool,
+    #[serde(default)]
+    pub eclss_environmental_co2_alert: bool,
 }
 
 impl Default for SafetyGates {
     fn default() -> Self {
         Self {
             anticoagulant_lock_active: true,
+            anticoagulant_contraindicated_bleeding_risk: false,
             lbnp_auto_vent_armed: true,
+            lbnp_auto_vent_triggered: false,
             eva_suit_damping_active: false,
             gate4_invasive_decompression_locked: true,
             gate4_eva_fitness_no_go: false,
+            eclss_environmental_co2_alert: false,
         }
     }
 }
@@ -525,10 +541,13 @@ impl SafetyGates {
     ) -> Self {
         Self {
             anticoagulant_lock_active,
+            anticoagulant_contraindicated_bleeding_risk: false,
             lbnp_auto_vent_armed,
+            lbnp_auto_vent_triggered: false,
             eva_suit_damping_active,
             gate4_invasive_decompression_locked: true,
             gate4_eva_fitness_no_go: false,
+            eclss_environmental_co2_alert: false,
         }
     }
 }

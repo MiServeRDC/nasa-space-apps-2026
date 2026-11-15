@@ -9,10 +9,11 @@ import type { TelemetryPacket } from '../types/telemetry';
 import {
   DEFAULT_WHATIF,
   evaluate,
-  type PredicateKey,
   type ScenarioState,
   type WhatIf,
 } from '../lib/scenario';
+import { buildClinicalViewModel } from '../lib/clinicalViewModel';
+import { ClinicalDataNotice } from './ClinicalDataNotice';
 import { formatTimeToViolation } from '../lib/telemetryValidation';
 import { CANONICAL_REGIONS } from '../modules/body-3d-heatmap/uberonSpatialMapping';
 import { BentoCardShell } from '../instruments/BentoCardShell';
@@ -33,28 +34,15 @@ export interface PhaseEvaluateProps {
   onSyncEngineNow?: () => Promise<void> | void;
 }
 
-const STL_PREDICATE_LABELS: ReadonlyArray<{
-  key: PredicateKey;
-  label: string;
-  unitHint: string;
-}> = [
-  { key: 'tau_w', label: 'IJV Shear tau_w', unitHint: 'dyn/cm2' },
-  { key: 'onsd', label: 'Ocular ONSD', unitHint: '<=5.8mm' },
-  { key: 'soleus', label: 'Soleus CSA', unitHint: '>=1000ue' },
-  { key: 'sclerostin', label: 'Sclerostin SOST', unitHint: 'pmol/L' },
-  { key: 'gai', label: '0.38g Gait GAI', unitHint: '<=12%' },
-  { key: 'ppco2', label: 'Cabin ppCO2', unitHint: '<=4mmHg' },
-];
-
 export function PhaseEvaluateLeftContext({
   packet,
-  scenario,
 }: Pick<PhaseEvaluateProps, 'packet' | 'scenario'>) {
   const selectedUberonRegion = useWorkbenchStore((s) => s.selectedUberonRegion);
   const selectUberonRegion = useWorkbenchStore((s) => s.selectUberonRegion);
 
-  const mri = packet.safety_margins.mission_readiness_index ?? scenario.mri;
-  const rhoMin = packet.safety_margins.med_stl_rho_robustness ?? scenario.rhoMin;
+  const view = buildClinicalViewModel(packet);
+  const mri = view.mri.value;
+  const rhoMin = view.rhoGlobal.value;
   const ttvFormatted = formatTimeToViolation(
     packet.safety_margins,
     packet.quality_flags ?? packet.biometrics.quality_flags ?? [],
@@ -69,12 +57,15 @@ export function PhaseEvaluateLeftContext({
       className="min-h-0 flex-1"
       bodyClassName="space-y-2.5"
     >
+      <ClinicalDataNotice packet={packet} />
       <div className="grid grid-cols-2 gap-2">
-        <div className="ares-inner-well p-2">
+        <div className="ares-inner-well p-2" data-clinical-field="mri" data-availability={view.mri.availability}>
           <TabularCounter
             label="Readiness (MRI)"
             sublabel="0-100"
             value={mri}
+            unavailableLabel="N/A"
+            unavailableReason={view.mri.reason}
             unit="%"
             decimals={0}
             tone={
@@ -88,11 +79,13 @@ export function PhaseEvaluateLeftContext({
           />
         </div>
 
-        <div className="ares-inner-well p-2">
+        <div className="ares-inner-well p-2" data-clinical-field="rhoGlobal" data-availability={view.rhoGlobal.availability}>
           <TabularCounter
             label="Global rho_min"
             sublabel="STL >= 0"
             value={rhoMin}
+            unavailableLabel="N/A"
+            unavailableReason={view.rhoGlobal.reason}
             decimals={2}
             alwaysShowPlus
             tone={
@@ -126,24 +119,24 @@ export function PhaseEvaluateLeftContext({
         <div className="font-mono text-[10px] font-semibold text-[var(--color-ink-meta)]">
           PREDICATE MARGINS rho_k in (-inf, +1.0]
         </div>
-        {STL_PREDICATE_LABELS.map((pred) => {
-          const val = scenario.rho[pred.key];
-          const pct = Math.max(0, Math.min(100, ((val + 0.5) / 1.5) * 100));
-          const violated = val < 0;
+        {view.predicates.map((pred) => {
+          const val = pred.metric.value;
+          const pct = val === null ? 0 : Math.max(0, Math.min(100, ((val + 0.5) / 1.5) * 100));
+          const violated = val !== null && val < 0;
           return (
-            <div key={pred.key} className="space-y-0.5 font-mono text-[10px]">
+            <div key={pred.key} data-availability={pred.metric.availability} className="space-y-0.5 font-mono text-[10px]">
               <div className="flex items-center justify-between">
                 <span className="text-[var(--color-ink-body)]">{pred.label}</span>
                 <span
                   className={`ares-tabular-metric ${
                     violated
                       ? 'text-rose-300'
-                      : val < 0.2
+                      : val !== null && val < 0.2
                         ? 'text-amber-300'
                         : 'text-cyan-200'
                   }`}
                 >
-                  {val >= 0 ? `+${val.toFixed(2)}` : val.toFixed(2)} ({pred.unitHint})
+                  {val === null ? 'N/A' : val >= 0 ? `+${val.toFixed(2)}` : val.toFixed(2)} (rho)
                 </span>
               </div>
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
@@ -151,7 +144,7 @@ export function PhaseEvaluateLeftContext({
                   className={`h-full rounded-full ${
                     violated
                       ? 'bg-rose-500'
-                      : val < 0.2
+                      : val !== null && val < 0.2
                         ? 'bg-amber-400'
                         : 'bg-cyan-400'
                   }`}

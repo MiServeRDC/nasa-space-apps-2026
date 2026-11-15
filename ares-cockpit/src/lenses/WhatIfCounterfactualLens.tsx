@@ -137,7 +137,7 @@ export function WhatIfCounterfactualLens({
   const handleResetAll = (): void => {
     setSimulationMode('empirical');
     onResetWhatIf();
-    announcePolite('Reset all counterfactual What-If sliders to live empirical baseline.');
+    announcePolite('Reset all counterfactual What-If sliders to the default local scenario.');
   };
 
   const deviated = hasWhatIfDeviation(whatIf);
@@ -364,8 +364,8 @@ export function WhatIfCounterfactualLens({
       {/* Empirical Ghost vs Simulated Delta Comparison Matrix */}
       <div className="ares-inner-well p-2.5 font-mono text-[10px]">
         <div className="mb-1.5 flex items-center justify-between font-semibold text-[var(--color-ink-meta)]">
-          <span>EMPIRICAL GHOST VS SIMULATED DELTA</span>
-          <span className="text-amber-300">LIVE -&gt; COUNTERFACTUAL</span>
+          <span>DEFAULT SCENARIO VS EDITED SCENARIO</span>
+          <span className="text-amber-300">LOCAL PREVIEW / UNVALIDATED</span>
         </div>
         <div className="space-y-1">
           {(

@@ -15,6 +15,7 @@ import type {
 } from '../lib/useTelemetry';
 import type { ScenarioState } from '../lib/scenario';
 import { VitalsAnomalyPanel } from '../modules/vitals-anomaly/VitalsAnomalyPanel';
+import { buildClinicalViewModel } from '../lib/clinicalViewModel';
 import { announcePolite } from '../stores/a11yAnnouncer';
 
 export interface AnomalyDiagnosticsLensProps {
@@ -44,7 +45,6 @@ const EXTENDED_SYNTHETIC_EVENTS: ReadonlyArray<{
 
 export function AnomalyDiagnosticsLens({
   packet,
-  scenario,
   engineLive,
   httpBaseUrl,
   onInjectAnomaly,
@@ -52,8 +52,8 @@ export function AnomalyDiagnosticsLens({
   const [injectorExpanded, setInjectorExpanded] = useState(false);
   const [injectStatusMsg, setInjectStatusMsg] = useState<string | null>(null);
 
-  const sqi = packet.biometrics.sqi_score ?? scenario.sqi;
-  const sqiAccepted = sqi >= 0.7;
+  const sqi = buildClinicalViewModel(packet).sqi.value;
+  const sqiAccepted = sqi !== null && sqi >= 0.7;
 
   const triggerExtendedInjection = async (kind: AnomalyInjectionKind) => {
     setInjectStatusMsg(null);
@@ -93,7 +93,7 @@ export function AnomalyDiagnosticsLens({
                 : 'border-amber-400/70 bg-amber-500/15 text-amber-200'
             }`}
           >
-            SQI {sqi.toFixed(2)} {sqiAccepted ? '(>= 0.70 LOCKED)' : '(< 0.70 GATED)'}
+            SQI {sqi === null ? 'UNAVAILABLE' : sqi.toFixed(2)} {sqi === null ? '' : sqiAccepted ? '(>= 0.70 LOCKED)' : '(< 0.70 GATED)'}
           </span>
         </div>
         <p className="leading-relaxed text-[var(--color-ink-meta)]">

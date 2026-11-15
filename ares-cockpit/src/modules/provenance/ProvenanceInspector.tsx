@@ -9,6 +9,8 @@ function originLabel(origin: DataOrigin): string {
       return 'RECORDED BIDMC';
     case 'RECORDED_TERRESTRIAL_WAVEFORM':
       return 'RECORDED WAVEFORM';
+    case 'HARDWARE_WEARABLE':
+      return 'HARDWARE WEARABLE';
     case 'DERIVED_FROM_RECORDED_BIDMC':
       return 'DERIVED (BIDMC)';
     case 'DERIVED_FROM_HYBRID_SCENARIO':
@@ -26,6 +28,7 @@ function originClass(origin: DataOrigin): string {
   switch (origin) {
     case 'RECORDED_TERRESTRIAL_BIDMC_CSV':
     case 'RECORDED_TERRESTRIAL_WAVEFORM':
+    case 'HARDWARE_WEARABLE':
       return 'border-ok/60 bg-ok/10 text-ok';
     case 'DERIVED_FROM_RECORDED_BIDMC':
     case 'DERIVED_FROM_HYBRID_SCENARIO':

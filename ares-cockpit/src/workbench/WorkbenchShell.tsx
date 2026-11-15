@@ -25,7 +25,7 @@ import {
   type ScenarioState,
   type WhatIf,
 } from '../lib/scenario';
-import { isPureRecordedReplay } from '../lib/telemetryValidation';
+import { clinicalDataMode, clinicalSourceLabel } from '../lib/clinicalViewModel';
 import type { TransportMode } from '../modules/os-shell/OsSystemStatusBar';
 import { SpatialCanvasRoot } from '../stage3d/SpatialCanvasRoot';
 import {
@@ -141,8 +141,14 @@ export function WorkbenchShell({
     [whatIf.sex],
   );
 
-  // Feed incoming telemetry frames directly into the zero-GC ring buffer
+  // Never connect traces belonging to different records, devices or scenario modes.
+  const historySourceRef = useRef<string | null>(null);
   useEffect(() => {
+    const key = JSON.stringify([packet.astronaut_id, packet.source_record_id,
+      packet.provenance_manifest.biometrics_source, packet.provenance_manifest.scenario_overlay_mode,
+      packet.is_local_simulation === true]);
+    if (historySourceRef.current !== key) telemetryRingBuffer.clear();
+    historySourceRef.current = key;
     telemetryRingBuffer.pushTelemetryFrame(packet);
   }, [packet]);
 
@@ -199,7 +205,8 @@ export function WorkbenchShell({
       ? 'ACT'
       : 'GATHER';
 
-  const isSimulated = !isPureRecordedReplay(packet) || simulationMode === 'simulated';
+  const dataMode = clinicalDataMode(packet);
+  const isSimulated = dataMode === 'LOCAL_PREVIEW' || dataMode === 'BACKEND_SCENARIO';
 
   const chromeInsets = useMemo(
     () => ({
@@ -292,6 +299,7 @@ export function WorkbenchShell({
             injuryMarkers={injuryMarkers}
             onOpenOpticalScanner={onOpenOpticalScanner}
             simulated={isSimulated}
+            sourceLabel={clinicalSourceLabel(packet)}
             onSexChange={handleSexChange}
           />
         </div>

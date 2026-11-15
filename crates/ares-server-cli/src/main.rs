@@ -9,6 +9,7 @@ use ares_server_cli::mcp_stdio::run_mcp_stdio_loop;
 use ares_server_cli::ws_server::{SharedMissionState, build_axum_router};
 use clap::{Parser, ValueEnum};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::Duration;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -68,6 +69,14 @@ pub struct CliArgs {
     /// File Markdown di output per `--mode eval-anomaly` (stampa su stdout se assente).
     #[arg(long)]
     pub eval_out: Option<PathBuf>,
+
+    /// Enable local telemetry recording in this directory (off when omitted).
+    #[arg(long)]
+    pub storage_dir: Option<PathBuf>,
+
+    /// Primary telemetry input source mode (recorded-replay or live-wearable-hardware).
+    #[arg(long, value_enum, default_value_t = ares_server_cli::ws_server::TelemetrySourceMode::RecordedReplay)]
+    pub source: ares_server_cli::ws_server::TelemetrySourceMode,
 }
 
 fn resolve_repo_root(explicit: Option<&Path>, data_dir: &Path) -> PathBuf {
@@ -140,6 +149,8 @@ async fn main() -> Result<()> {
         .init();
 
     let args = CliArgs::parse();
+    ensure!(args.storage_dir.is_none() || matches!(args.mode, ServerMode::WsOnly | ServerMode::WsAndMcp),
+        "--storage-dir requires ws-only or ws-and-mcp mode");
     let repo_root = resolve_repo_root(args.repo_root.as_deref(), &args.data_dir);
 
     if args.mode == ServerMode::BuildGraph {
@@ -177,6 +188,7 @@ async fn main() -> Result<()> {
 
     let state = SharedMissionState::from_data_dir(&args.data_dir)
         .with_context(|| format!("impossibile inizializzare i dataset da {:?}", args.data_dir))?;
+    state.set_source_mode(args.source);
 
     match args.mode {
         ServerMode::BuildGraph | ServerMode::EvalAnomaly => unreachable!(),
@@ -217,8 +229,12 @@ async fn main() -> Result<()> {
             .context("join error sul task stdio FastMCP")?
             .context("errore I/O nel loop stdio FastMCP"),
         ServerMode::WsOnly | ServerMode::WsAndMcp => {
+            if let Some(path) = args.storage_dir {
+                state.enable_storage(ares_storage_lsah::LsahStorageConfig::with_root_dir(path)).await
+                    .context("failed opening local telemetry storage")?;
+            }
             let ticker_state = state.clone();
-            tokio::spawn(async move {
+            let ticker = tokio::spawn(async move {
                 let frame_period = Duration::from_millis(50);
                 let mut interval = tokio::time::interval_at(
                     tokio::time::Instant::now() + frame_period,
@@ -231,7 +247,7 @@ async fn main() -> Result<()> {
             });
 
             let timestral_state = state.clone();
-            tokio::spawn(async move {
+            let forecaster = tokio::spawn(async move {
                 let mut interval = tokio::time::interval(Duration::from_secs(1));
                 loop {
                     interval.tick().await;
@@ -245,19 +261,27 @@ async fn main() -> Result<()> {
 
             if args.mode == ServerMode::WsAndMcp {
                 let mcp_state = state.clone();
-                tokio::task::spawn_blocking(move || {
+                std::thread::Builder::new().name("ares-mcp-stdio".into()).spawn(move || {
                     let _ = run_mcp_stdio_loop(mcp_state);
-                });
+                }).context("failed starting MCP stdio thread")?;
             }
 
-            let app = build_axum_router(state);
+            let app = build_axum_router(Arc::clone(&state));
             let listener = tokio::net::TcpListener::bind(&args.bind)
                 .await
                 .with_context(|| format!("impossibile eseguire il bind su {}", args.bind))?;
             tracing::info!(bind = %args.bind, "Server Axum 20 Hz + Timestral 1 Hz attivo");
-            axum::serve(listener, app)
-                .await
-                .context("errore runtime nel server Axum")
+            let shutdown_state = Arc::clone(&state);
+            let result = axum::serve(listener, app).with_graceful_shutdown(async move {
+                if let Err(error) = tokio::signal::ctrl_c().await {
+                    tracing::error!(%error, "failed waiting for shutdown signal");
+                }
+                shutdown_state.request_shutdown();
+            }).await;
+            ticker.abort(); forecaster.abort();
+            let _ = ticker.await; let _ = forecaster.await;
+            state.shutdown_storage().await.context("failed draining local telemetry storage")?;
+            result.context("errore runtime nel server Axum")
         }
     }
 }

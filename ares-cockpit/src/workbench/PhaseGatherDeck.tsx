@@ -13,6 +13,8 @@ import type {
 } from '../lib/useTelemetry';
 import type { ScenarioState } from '../lib/scenario';
 import { BentoCardShell } from '../instruments/BentoCardShell';
+import { buildClinicalViewModel } from '../lib/clinicalViewModel';
+import { ClinicalDataNotice } from './ClinicalDataNotice';
 import { TabularCounter } from '../instruments/TabularCounter';
 import { AnomalyDiagnosticsLens } from '../lenses/AnomalyDiagnosticsLens';
 import { DiagnosticImagingLens } from '../lenses/DiagnosticImagingLens';
@@ -38,19 +40,13 @@ export interface PhaseGatherProps {
 
 export function PhaseGatherLeftContext({
   packet,
-  scenario,
 }: Pick<PhaseGatherProps, 'packet' | 'scenario'>) {
-  const env = packet.environment;
+  const view = buildClinicalViewModel(packet);
   const bio = packet.biometrics;
-
-  const ppco2 = env?.cabin_ppco2_mmhg ?? null;
-  const o2Kpa = env?.cabin_o2_kpa ?? 21.3;
-  const radMsvD =
-    bio.radiation_dose_rate_msv_d ??
-    (env?.ambient_radiation_rate_ugy_h != null
-      ? (env.ambient_radiation_rate_ugy_h * 24) / 1000
-      : 0.45);
-  const cumRadMgy = env?.cumulative_radiation_mgy ?? scenario.cumulativeRadiationMsv;
+  const ppco2 = view.cabinCo2.value;
+  const o2Kpa = view.cabinO2.value;
+  const radMsvD = view.radiationDose.value;
+  const cumRadMgy = view.cumulativeRadiation.value;
   const missing = bio.missing_channels ?? [];
 
   return (
@@ -62,6 +58,8 @@ export function PhaseGatherLeftContext({
       className="min-h-0 flex-1"
       bodyClassName="space-y-2.5"
     >
+      <ClinicalDataNotice packet={packet} />
+      <p className="font-mono text-[10px] text-[var(--color-ink-meta)]">Habitat inputs: {view.cabinO2.provenance}. Dosimetry channel: {view.radiationDose.provenance}.</p>
       <div className="grid grid-cols-2 gap-2">
         <div className="ares-inner-well p-2">
           <TabularCounter
@@ -76,11 +74,12 @@ export function PhaseGatherLeftContext({
           />
         </div>
 
-        <div className="ares-inner-well p-2">
+        <div className="ares-inner-well p-2" data-clinical-field="cabinO2" data-availability={view.cabinO2.availability}>
           <TabularCounter
             label="Cabin O2"
-            sublabel="NORMOXIC"
+            sublabel="SOURCE VALUE"
             value={o2Kpa}
+            unavailableLabel="N/A"
             unit="kPa"
             decimals={1}
             tone="nominal"
@@ -93,9 +92,10 @@ export function PhaseGatherLeftContext({
             label="CSA CANS Dose"
             sublabel="SPE >1.50"
             value={radMsvD}
+            unavailableLabel="N/A"
             unit="mSv/d"
             decimals={2}
-            tone={radMsvD > 1.5 ? 'critical' : radMsvD > 0.9 ? 'caution' : 'nominal'}
+            tone={radMsvD === null ? 'caution' : radMsvD > 1.5 ? 'critical' : radMsvD > 0.9 ? 'caution' : 'nominal'}
             size="sm"
           />
         </div>
@@ -105,7 +105,8 @@ export function PhaseGatherLeftContext({
             label="Cumulative Dose"
             sublabel="TRANSIT"
             value={cumRadMgy}
-            unit="mSv"
+            unavailableLabel="N/A"
+            unit="mGy"
             decimals={1}
             tone="spatial"
             size="sm"

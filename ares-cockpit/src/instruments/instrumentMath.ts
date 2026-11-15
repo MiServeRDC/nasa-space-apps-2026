@@ -473,8 +473,8 @@ export function buildNormalizedQuantileFan(
     : resolvedStatus === 'WARMING_UP_60S_120S'
       ? 'WARMING_UP_60S_120S | Collecting empirical residual window (60-120s)'
       : abstained
-        ? 'ABSTAINED_FALLBACK_DETERMINISTIC | Reverted to deterministic ODE baseline'
-        : 'HEURISTIC_GATE_ACCEPTED | Adaptive conformal coverage within tolerance';
+        ? 'ABSTAINED_FALLBACK_DETERMINISTIC | Forecast withheld by backend gate'
+        : 'HEURISTIC_GATE_ACCEPTED | Backend heuristic gate accepted; coverage not guaranteed';
 
   if (validRaw.length === 0) {
     return {

@@ -413,7 +413,9 @@ impl WireTelemetryPacket {
         };
 
         let mut provenance_manifest = p.provenance_manifest.clone();
-        if provenance_manifest.biometrics_source != BiometricsSource::SimulatedScenarioInput {
+        if provenance_manifest.biometrics_source != BiometricsSource::SimulatedScenarioInput
+            && provenance_manifest.biometrics_source != BiometricsSource::HardwareWearable
+        {
             provenance_manifest.biometrics_source = BiometricsSource::RecordedTerrestrialBidmcCsv;
         }
         provenance_manifest.scenario_overlay_mode = scenario_overlay_mode;

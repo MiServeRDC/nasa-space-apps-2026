@@ -32,6 +32,7 @@ export interface SpatialStageHudProps {
   injuryMarkers?: readonly InjuryMarker[];
   onOpenOpticalScanner?: () => void;
   simulated?: boolean;
+  sourceLabel?: string;
   onSexChange?: (sex: 'MALE' | 'FEMALE') => void;
   className?: string;
 }
@@ -64,6 +65,7 @@ export function SpatialStageHud({
   injuryMarkers = [],
   onOpenOpticalScanner,
   simulated = false,
+  sourceLabel,
   onSexChange,
   className = '',
 }: SpatialStageHudProps) {
@@ -115,6 +117,7 @@ export function SpatialStageHud({
       <TacticalReticleSvg
         variant="STAGE_PERIMETER"
         simulated={simulated}
+        sourceLabel={sourceLabel}
         caliperPrimaryText={
           activeMeta
             ? `${activeMeta.uberonCurie} | ${activeMeta.label.toUpperCase()}`

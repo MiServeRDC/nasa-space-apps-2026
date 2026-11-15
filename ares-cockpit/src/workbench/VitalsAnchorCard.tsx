@@ -1,3 +1,4 @@
+import { biometricsDataOrigin } from '../lib/clinicalViewModel';
 // Spatially invariant Left Slot 1 Life-Support Vitals Anchor (`VitalsAnchorCard`).
 // Never unmounts or shifts position across `01 GATHER -> 02 EVALUATE -> 03 ACT`.
 // Enforces Issue #11 (`BEAT_INTERVALS_NOT_AVAILABLE` honesty, null/NaN -> `--` without 0 coercion,
@@ -51,9 +52,7 @@ export function VitalsAnchorCard({
 
   const bio = packet.biometrics;
   const pm = packet.provenance_manifest;
-  const dataOrigin = packet.is_local_simulation
-    ? 'SIMULATED_SCENARIO_INPUT'
-    : pm.biometrics_source;
+  const dataOrigin = biometricsDataOrigin(packet);
 
   const freshness = telemetryStatus.isStale
     ? 'HELD_STALE'

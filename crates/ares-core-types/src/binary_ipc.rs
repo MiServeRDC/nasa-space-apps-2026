@@ -226,8 +226,42 @@ pub fn playbook_id_to_u16(playbook_id: &str) -> u16 {
         8
     } else if playbook_id.starts_with("PLAYBOOK_09") {
         9
+    } else if playbook_id.starts_with("PLAYBOOK_10") {
+        10
+    } else if playbook_id.starts_with("PLAYBOOK_11") {
+        11
+    } else if playbook_id.starts_with("PLAYBOOK_12") {
+        12
+    } else if playbook_id.starts_with("PLAYBOOK_13") {
+        13
+    } else if playbook_id.starts_with("PLAYBOOK_14") {
+        14
+    } else if playbook_id.starts_with("PLAYBOOK_15") {
+        15
     } else {
         0
+    }
+}
+
+#[inline]
+pub fn playbook_id_from_u16(code: u16) -> Option<&'static str> {
+    match code {
+        1 => Some("PLAYBOOK_01_VENOUS_STASIS_LBNP"),
+        2 => Some("PLAYBOOK_02_CONFIRMED_IJV_THROMBUS"),
+        3 => Some("PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED"),
+        4 => Some("PLAYBOOK_04_SANS_TRANSLAMINAR_MITIGATION"),
+        5 => Some("PLAYBOOK_05_SPE_RADIATION_SHELTER_CANS"),
+        6 => Some("PLAYBOOK_06_HYPOXEMIA_DESATURATION"),
+        7 => Some("PLAYBOOK_07_HEART_RATE_ANOMALY"),
+        8 => Some("PLAYBOOK_08_SENSOR_SIGNAL_LOSS"),
+        9 => Some("PLAYBOOK_09_MULTIPARAMETER_DETERIORATION"),
+        10 => Some("PLAYBOOK_10_RENAL_LITHIASIS"),
+        11 => Some("PLAYBOOK_11_MARS_ENTRY_FLUID_LOADING"),
+        12 => Some("PLAYBOOK_12_CIRCADIAN_LIGHT_HYGIENE"),
+        13 => Some("PLAYBOOK_13_VIRAL_IMMUNE_VALACYCLOVIR"),
+        14 => Some("PLAYBOOK_14_CO2_SCRUBBER_SANS"),
+        15 => Some("PLAYBOOK_15_EFAST_TRAUMA_TRIAGE"),
+        _ => None,
     }
 }
 
@@ -859,6 +893,8 @@ mod tests {
                 let_quality_factor: Some(2.8),
                 suit_metabolic_watts: Some(220.0),
                 helmet_ppco2_mmhg: Some(2.1),
+                cabin_ppco2_mmhg: None,
+                platelet_count_k_ul: None,
             },
             musculoskeletal: Musculoskeletal {
                 ared_daily_load_kgf: 125.0,
@@ -910,6 +946,7 @@ mod tests {
                     eva_suit_damping_active: false,
                     gate4_invasive_decompression_locked: true,
                     gate4_eva_fitness_no_go: false,
+                    ..SafetyGates::default()
                 },
                 actions: vec![CountermeasureAction {
                     action_id: "ACT_ARED".to_string(),
@@ -1117,5 +1154,35 @@ mod tests {
             cal_frame.quality_flags_mask & FLAG_TERRESTRIAL_BENCHMARKED_ONLY,
             0
         );
+    }
+
+    #[test]
+    fn test_playbook_id_all_15_mapping_and_roundtrip() {
+        let expected = [
+            ("PLAYBOOK_01_VENOUS_STASIS_LBNP", 1),
+            ("PLAYBOOK_02_CONFIRMED_IJV_THROMBUS", 2),
+            ("PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED", 3),
+            ("PLAYBOOK_04_SANS_TRANSLAMINAR_MITIGATION", 4),
+            ("PLAYBOOK_05_SPE_RADIATION_SHELTER_CANS", 5),
+            ("PLAYBOOK_06_HYPOXEMIA_DESATURATION", 6),
+            ("PLAYBOOK_07_HEART_RATE_ANOMALY", 7),
+            ("PLAYBOOK_08_SENSOR_SIGNAL_LOSS", 8),
+            ("PLAYBOOK_09_MULTIPARAMETER_DETERIORATION", 9),
+            ("PLAYBOOK_10_RENAL_LITHIASIS", 10),
+            ("PLAYBOOK_11_MARS_ENTRY_FLUID_LOADING", 11),
+            ("PLAYBOOK_12_CIRCADIAN_LIGHT_HYGIENE", 12),
+            ("PLAYBOOK_13_VIRAL_IMMUNE_VALACYCLOVIR", 13),
+            ("PLAYBOOK_14_CO2_SCRUBBER_SANS", 14),
+            ("PLAYBOOK_15_EFAST_TRAUMA_TRIAGE", 15),
+        ];
+
+        for (id, code) in expected {
+            assert_eq!(playbook_id_to_u16(id), code);
+            assert_eq!(playbook_id_from_u16(code), Some(id));
+        }
+
+        assert_eq!(playbook_id_to_u16("PLAYBOOK_99_UNKNOWN"), 0);
+        assert_eq!(playbook_id_from_u16(0), None);
+        assert_eq!(playbook_id_from_u16(16), None);
     }
 }

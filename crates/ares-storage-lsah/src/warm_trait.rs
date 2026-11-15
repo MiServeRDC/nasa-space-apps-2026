@@ -8,6 +8,10 @@ use serde::{Deserialize, Serialize};
 pub struct WarmSegmentMeta {
     pub segment_id: u64,
     pub mission_sol: u16,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub min_mission_sol: Option<u16>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_mission_sol: Option<u16>,
     pub relative_path: String,
     pub row_count: usize,
     pub compressed_bytes: u64,
@@ -78,4 +82,7 @@ pub trait WarmColumnarVectorBackend: Send + Sync {
 
     /// Returns total committed Warm telemetry segments and total compressed bytes.
     fn warm_stats(&self) -> (usize, u64, usize);
+
+    /// Highest durably committed telemetry sequence, for restart-safe numbering.
+    fn max_sequence_id(&self) -> u64 { 0 }
 }

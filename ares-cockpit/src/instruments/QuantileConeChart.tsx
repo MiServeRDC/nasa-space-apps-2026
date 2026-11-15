@@ -5,16 +5,14 @@
 // and mandatory `ILLUSTRATIVE_SCENARIO_RANGE` epistemic framing (Issue #12).
 
 import React, { useId, useMemo } from 'react';
+import { selectForecastPoints, FORECAST_UNITS } from '../lib/forecastViewModel';
 import type {
   AbstentionCertificate,
-  ChannelQuantileCone,
   ConformalGateStatus,
-  ShortHorizonCone,
   TimestralQuantilesSummary,
 } from '../types/telemetry';
 import {
   normalizeConformalGateStatus,
-  parseMonotoneQuantileTriplet,
 } from '../lib/telemetryValidation';
 import {
   buildNormalizedQuantileFan,
@@ -38,118 +36,13 @@ export interface QuantileConeChartProps {
   className?: string;
 }
 
-function formatHorizonLabel(sec: number): string {
-  if (sec <= 0) return 'NOW';
-  if (sec < 60) return `+${Math.round(sec)}s`;
-  if (sec < 3600) return `+${Math.round(sec / 60)}m`;
-  return `+${Math.round(sec / 3600)}h`;
-}
-
-function extractPointsFromSummary(
-  summary: TimestralQuantilesSummary | null | undefined,
-  channelId: string,
-  currentRho: number | null | undefined,
-  empiricalBaselineRho: number | null | undefined,
-  isSimulatedOverlay: boolean,
-): HorizonQuantileInputPoint[] {
-  const merged = new Map<number, HorizonQuantileInputPoint>();
-
-  if (summary) {
-    const shortCone: ShortHorizonCone | undefined =
-      summary.short_horizon_cones?.find((c) => c.channel_name === channelId) ??
-      summary.short_horizon_cones?.[0];
-
-    if (shortCone) {
-      const shortEntries: ReadonlyArray<[number, unknown]> = [
-        [5, shortCone.horizon_5s],
-        [10, shortCone.horizon_10s],
-        [30, shortCone.horizon_30s],
-        [60, shortCone.horizon_60s],
-        [120, shortCone.horizon_120s],
-      ];
-      for (const [sec, raw] of shortEntries) {
-        const valid = parseMonotoneQuantileTriplet(raw);
-        if (valid) {
-          merged.set(sec, {
-            horizonSec: sec,
-            label: formatHorizonLabel(sec),
-            q05: valid.q05,
-            q50: valid.q50,
-            q95: valid.q95,
-          });
-        }
-      }
-    }
-
-    const longCone: ChannelQuantileCone | undefined =
-      summary.channel_cones?.find((c) => c.channel_name === channelId) ??
-      summary.channel_cones?.[0];
-
-    if (longCone) {
-      const longEntries: ReadonlyArray<[number, unknown]> = [
-        [900, longCone.horizon_15m],
-        [3600, longCone.horizon_1h],
-        [21600, longCone.horizon_6h],
-        [86400, longCone.horizon_24h],
-      ];
-      for (const [sec, raw] of longEntries) {
-        const valid = parseMonotoneQuantileTriplet(raw);
-        if (valid) {
-          merged.set(sec, {
-            horizonSec: sec,
-            label: formatHorizonLabel(sec),
-            q05: valid.q05,
-            q50: valid.q50,
-            q95: valid.q95,
-          });
-        }
-      }
-    }
-  }
-
-  if (merged.size > 0) {
-    const list = Array.from(merged.values()).sort((a, b) => a.horizonSec - b.horizonSec);
-    if (isSimulatedOverlay && typeof empiricalBaselineRho === 'number' && Number.isFinite(empiricalBaselineRho)) {
-      return list.map((pt, idx) => ({
-        ...pt,
-        empiricalGhostQ50: empiricalBaselineRho - idx * 0.015,
-      }));
-    }
-    return list;
-  }
-
-  // Deterministic cold-start / scenario envelope when engine stream is warming up
-  const anchor = typeof currentRho === 'number' && Number.isFinite(currentRho) ? currentRho : 0.42;
-  const ghostAnchor =
-    isSimulatedOverlay && typeof empiricalBaselineRho === 'number' && Number.isFinite(empiricalBaselineRho)
-      ? empiricalBaselineRho
-      : null;
-
-  const fallbackHorizons = [0, 30, 120, 900, 3600, 21600, 86400];
-  return fallbackHorizons.map((sec, idx) => {
-    const spread = 0.03 + idx * 0.035;
-    const drift = -idx * 0.028;
-    const med = anchor + drift;
-    return {
-      horizonSec: sec,
-      label: formatHorizonLabel(sec),
-      q05: med - spread,
-      q50: med,
-      q95: med + spread * 0.9,
-      empiricalGhostQ50: ghostAnchor !== null ? ghostAnchor - idx * 0.014 : null,
-    };
-  });
-}
-
 export function QuantileConeChart({
-  title = 'Hybrid EWMA + Timestral Quantile Forecast',
+  title = 'Backend quantile forecast',
   channelId = 'rho_global',
   unit = 'rho',
   points,
   timestralSummary = null,
   safetyThreshold = 0,
-  currentRho = null,
-  empiricalBaselineRho = null,
   isSimulatedOverlay = false,
   certificate,
   gateStatus,
@@ -160,27 +53,20 @@ export function QuantileConeChart({
   const fanGradId = `ares-cone-grad-${uid}`;
   const abstainHatchId = `ares-cone-abstain-${uid}`;
 
-  const effectiveCert = certificate ?? timestralSummary?.abstention_certificate ?? null;
+  const shortCertificate = timestralSummary?.short_horizon_abstention;
+  const effectiveCert = certificate ?? (channelId === 'rho_global' ? timestralSummary?.abstention_certificate
+    : typeof shortCertificate === 'object' ? shortCertificate : null) ?? null;
   const effectiveStatus =
     gateStatus ??
-    timestralSummary?.confidence_state ??
-    normalizeConformalGateStatus(timestralSummary?.conformal_status) ??
+    (channelId === 'rho_global' ? timestralSummary?.confidence_state : undefined) ??
+    (channelId === 'rho_global' ? normalizeConformalGateStatus(timestralSummary?.conformal_status) : undefined) ??
     effectiveCert?.status ??
-    (timestralSummary ? 'HEURISTIC_GATE_ACCEPTED' : 'WARMING_UP_60S_120S');
+    'WARMING_UP_60S_120S';
 
-  const resolvedPoints = useMemo(
-    () =>
-      points && points.length > 0
-        ? points
-        : extractPointsFromSummary(
-            timestralSummary,
-            channelId,
-            currentRho,
-            empiricalBaselineRho,
-            isSimulatedOverlay,
-          ),
-    [channelId, currentRho, empiricalBaselineRho, isSimulatedOverlay, points, timestralSummary],
-  );
+  const selected = useMemo(() => selectForecastPoints(timestralSummary, channelId, unit),
+    [timestralSummary, channelId, unit]);
+  const compatible = Object.hasOwn(FORECAST_UNITS, channelId) && FORECAST_UNITS[channelId] === unit;
+  const resolvedPoints = compatible ? (points ?? selected.points) : [];
 
   const model = useMemo(
     () =>
@@ -233,15 +119,25 @@ export function QuantileConeChart({
     ? 'border-amber-400/50 bg-amber-500/10 text-amber-300'
     : 'border-emerald-400/50 bg-emerald-500/10 text-emerald-300';
 
+  if (resolvedPoints.length === 0 || (effectiveCert?.abstained || effectiveStatus === 'ABSTAINED_FALLBACK_DETERMINISTIC')) {
+    return <div className={`ares-inner-well p-3 ${className}`.trim()} data-forecast-availability="UNAVAILABLE" role="status">
+      <h3 className="font-sans text-xs font-semibold">{title}</h3>
+      <p className="mt-2 text-sm text-amber-300">Forecast unavailable</p>
+      <p className="font-mono text-[10px]">{compatible ? (effectiveCert?.reason ?? selected.reason) : 'Forecast channel and unit are incompatible'}</p>
+      <p className="font-mono text-[10px]">{channelId} ({unit}) · {model.gateStatus}</p>
+    </div>;
+  }
+
   return (
     <div
       className={`ares-inner-well p-3 ${className}`.trim()}
       data-conformal-gate={model.gateStatus}
+      data-forecast-availability="AVAILABLE"
     >
       <div className="mb-2 flex flex-wrap items-center justify-between gap-1.5">
         <div>
           <div className="font-sans text-xs font-semibold tracking-tight text-[var(--color-ink-display)]">
-            {title}
+            {title}{isSimulatedOverlay ? ' · SCENARIO PROJECTION' : ''}
           </div>
           <div className="font-mono text-[10px] text-[var(--color-ink-meta)]">
             CHANNEL: {channelId.toUpperCase()} ({unit}) | MONOTONE q05 &lt;= q50 &lt;= q95

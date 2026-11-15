@@ -92,27 +92,26 @@ export function resolvePlaybookSafetyDag(
     }
   }
 
-  const sbpDrop = Math.max(0, scenario.sbpBaseline - scenario.sbp);
-  const hrBpm = packet.biometrics.heart_rate_bpm ?? scenario.hr;
-  const gaiPct =
-    packet.musculoskeletal?.gait_asymmetry_index_pct ??
-    packet.musculoskeletal?.gai_pct ??
-    scenario.gaiPct;
-  const radDose = packet.biometrics.radiation_dose_rate_msv_d ?? 0.45;
+  // Scenario calculations belong only to the explicitly local packet.
+  const preview = packet.is_local_simulation === true;
+  const sbpDrop = preview ? Math.max(0, scenario.sbpBaseline - scenario.sbp) : null;
+  const hrBpm = packet.biometrics.heart_rate_bpm;
+  const gaiPct = packet.musculoskeletal?.gait_asymmetry_index_pct ?? packet.musculoskeletal?.gai_pct ?? null;
+  const radDose = packet.biometrics.radiation_dose_rate_msv_d ?? null;
 
   const dag = partitionPlaybookActionsWithSafetyGates(
     Array.from(candidateMap.values()),
     packet.active_playbook?.safety_gates ?? {
       anticoagulant_lock_active: thrombusConfirmed !== true,
       lbnp_auto_vent_armed: true,
-      eva_suit_damping_active: gaiPct > 12,
+      eva_suit_damping_active: gaiPct !== null && gaiPct > 12,
       gate4_invasive_decompression_locked: true,
-      gate4_eva_fitness_no_go: scenario.mri < 45,
+      gate4_eva_fitness_no_go: packet.safety_margins.mission_readiness_index == null || packet.safety_margins.mission_readiness_index < 45,
     },
     {
       pocusThrombusConfirmed: thrombusConfirmed,
-      lbnpActive: whatIf.lbnp_mmhg < 0 || packet.hemodynamics?.lbnp_active === true,
-      lbnpMmhg: whatIf.lbnp_mmhg,
+      lbnpActive: (preview && whatIf.lbnp_mmhg < 0) || packet.hemodynamics?.lbnp_active === true,
+      lbnpMmhg: preview ? whatIf.lbnp_mmhg : null,
       sbpDropMmhg: sbpDrop,
       hrBpm,
       gaiPct,

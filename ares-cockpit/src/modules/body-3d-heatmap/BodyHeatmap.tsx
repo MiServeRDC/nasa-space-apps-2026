@@ -1,6 +1,10 @@
-import { Suspense, useCallback, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { equalTelemetryValue } from '../../lib/equalTelemetryValue';
+import { DeferredPanel } from '../ui-primitives/DeferredPanel';
 import { Canvas } from '@react-three/fiber';
-import { Html, OrbitControls, QuadraticBezierLine } from '@react-three/drei';
+import { Html, OrbitControls, PerformanceMonitor, QuadraticBezierLine } from '@react-three/drei';
+import {useRenderQuality} from './useRenderQuality';
+import type {RenderProfile} from '../../lib/renderQuality';
 import type { CrewSex, ScenarioState } from '../../lib/scenario';
 import {
   INJURY_REGIONS,
@@ -14,7 +18,7 @@ import type {
   HypergraphSpatialSummary,
   ModelValidationStatus,
 } from '../../types/telemetry';
-import { AiInjuryModal } from './AiInjuryModal';
+const AiInjuryModal = lazy(() => import('./AiInjuryModal').then(m => ({default:m.AiInjuryModal})));
 import {
   CephaladFluidShift,
   MusclesLayer,
@@ -23,7 +27,8 @@ import {
   VascularNeuroLayer,
   type V3,
 } from './AnatomicalLayers';
-import { AtlasBody, type AtlasAnchors } from './AtlasBody';
+import type { AtlasAnchors } from './AtlasBody';
+const AtlasBody = lazy(() => import('./AtlasBody').then(m => ({default:m.AtlasBody})));
 import { GlbAssetErrorBoundary, NasaGlbAssetLayer, type GlbLoadStatus } from './NasaGlbAssetLayer';
 import {
   projectHypergraphTo3D,
@@ -315,14 +320,18 @@ function AtlasLoading() {
   );
 }
 
-function Body2DFallbackSvg({
+import { WebGlErrorBoundary } from './webglErrorBoundary';
+
+export function Body2DFallbackSvg({
   nodes,
   hottestRegion,
   onSelect,
+  reason,
 }: {
   nodes: ProjectedAnatomicalNode[];
   hottestRegion: AnatomicalRegionWireId | null;
   onSelect: (region: AnatomicalRegionWireId) => void;
+  reason?: string;
 }) {
   const posMap: Record<AnatomicalRegionWireId, { x: number; y: number }> = {
     BrainVestibularCns: { x: 110, y: 34 },
@@ -332,9 +341,16 @@ function Body2DFallbackSvg({
     SoleusCalcaneus: { x: 92, y: 270 },
   };
   return (
-    <div className="flex h-full flex-col items-center justify-center p-4 font-mono text-xs text-gray-300">
-      <div className="mb-2 text-advisory">
-        WebGL unavailable: displaying 2D UBERON anatomical schematic fallback
+    <div
+      data-testid="body-2d-fallback-container"
+      role="region"
+      aria-label="2D Anatomical Clinical Telemetry Fallback"
+      className="flex h-full flex-col items-center justify-center p-4 font-mono text-xs text-gray-300"
+    >
+      <div data-testid="webgl-degraded-banner" className="mb-2 text-advisory">
+        {reason
+          ? `2D DETERMINISTIC VECTOR MODE ACTIVE (${reason})`
+          : 'WebGL unavailable: displaying 2D UBERON anatomical schematic fallback'}
       </div>
       <svg viewBox="0 0 220 340" className="h-72 w-48" role="img" aria-label="2D anatomical organ fallback">
         <circle cx="110" cy="44" r="24" fill="#0a0a0a" stroke="#1f2937" strokeWidth="2" />
@@ -358,6 +374,7 @@ function Body2DFallbackSvg({
 }
 
 export interface BodyHeatmapProps {
+  renderingActive?: boolean;
   s: ScenarioState | null;
   sex: CrewSex;
   hypergraphSpatial?: HypergraphSpatialSummary | null;
@@ -371,7 +388,8 @@ export interface BodyHeatmapProps {
   onOpenPlaybook?: (playbookId?: CrystallizedPlaybookId) => void;
 }
 
-export function BodyHeatmap({
+function BodyHeatmapView({
+  renderingActive=true,
   s,
   sex,
   hypergraphSpatial,
@@ -384,6 +402,7 @@ export function BodyHeatmap({
   onOpenTab,
   onOpenPlaybook,
 }: BodyHeatmapProps) {
+  const quality=useRenderQuality(renderingActive);
   const [cfg, setCfg] = useState<LayerConfig>(PRESETS.ALL.cfg);
   const [selected, setSelected] = useState<NodeId | null>(null);
   const [atlasMode, setAtlasMode] = useState(false);
@@ -392,6 +411,43 @@ export function BodyHeatmap({
   const [glbEnabled, setGlbEnabled] = useState(false);
   const [glbStatus, setGlbStatus] = useState<GlbLoadStatus>('OFF');
   const [glbDetail, setGlbDetail] = useState('Procedural anatomical mesh active');
+
+  const [contextLost, setContextLost] = useState<boolean>(false);
+  const canvasDomRef = useRef<HTMLCanvasElement | null>(null);
+
+  const handleContextLost = useCallback((event: Event) => {
+    event.preventDefault();
+    setContextLost(true);
+  }, []);
+
+  const handleContextRestored = useCallback(() => {
+    setContextLost(false);
+  }, []);
+
+  const detachCanvasListeners = useCallback(() => {
+    if (canvasDomRef.current) {
+      canvasDomRef.current.removeEventListener('webglcontextlost', handleContextLost);
+      canvasDomRef.current.removeEventListener('webglcontextrestored', handleContextRestored);
+      canvasDomRef.current = null;
+    }
+  }, [handleContextLost, handleContextRestored]);
+
+  useEffect(() => {
+    return () => {
+      detachCanvasListeners();
+    };
+  }, [detachCanvasListeners]);
+
+  const handleCanvasCreated = useCallback(
+    (rootState: { gl: { domElement: HTMLCanvasElement } }) => {
+      detachCanvasListeners();
+      const domElement = rootState.gl.domElement;
+      canvasDomRef.current = domElement;
+      domElement.addEventListener('webglcontextlost', handleContextLost, false);
+      domElement.addEventListener('webglcontextrestored', handleContextRestored, false);
+    },
+    [detachCanvasListeners, handleContextLost, handleContextRestored]
+  );
 
   // Injury modal & manual marker state
   const [modalOpen, setModalOpen] = useState(false);
@@ -493,6 +549,13 @@ export function BodyHeatmap({
 
   return (
     <div className="anatomical-explorer flex h-full flex-col gap-2 bg-black">
+      <label className="flex flex-wrap items-center gap-2 text-xs text-gray-300">
+        Render quality
+        <select aria-label="Render quality" value={quality.profile} onChange={e=>quality.setProfile(e.target.value as RenderProfile)} className="rounded border border-line bg-black p-2">
+          <option value="AUTO">Auto</option><option value="LITE">Lite</option><option value="STANDARD">Standard</option><option value="HIGH">High</option>
+        </select>
+        <span className="text-gray-400">{quality.dpr.toFixed(2)}× resolution{quality.profile==='LITE' || quality.reducedMotion ? ' · static anatomy; measurements stay live' : ' · adaptive display only'}</span>
+      </label>
       <details className="atlas-preferences">
         <summary>Layers &amp; annotations <span>Display presets, body profile and injury tools</span></summary>
         <div className="atlas-preferences-content">
@@ -723,19 +786,44 @@ export function BodyHeatmap({
       </div>
 
       {/* 3D Layered Viewport */}
-      <div className="relative min-h-0 flex-1 rounded border border-line bg-black">
-        <Canvas
-          camera={{ position: [0, 0.45, 3.3], fov: 45 }}
-          style={{ background: '#000000' }}
-          onPointerMissed={() => setSelected(null)}
-          fallback={
-            <Body2DFallbackSvg
-              nodes={scene.nodes}
-              hottestRegion={scene.hottestRegion}
-              onSelect={(r) => setSelected(r)}
-            />
-          }
-        >
+      <div ref={quality.viewportRef} data-render-loop={quality.frameloop} data-render-dpr={quality.dpr} className="relative min-h-0 flex-1 rounded border border-line bg-black">
+        {contextLost ? (
+          <Body2DFallbackSvg
+            nodes={scene.nodes}
+            hottestRegion={scene.hottestRegion}
+            onSelect={(r) => setSelected(r)}
+            reason="GPU WebGL Context Lost"
+          />
+        ) : (
+          <WebGlErrorBoundary
+            fallback={(errorMsg) => (
+              <Body2DFallbackSvg
+                nodes={scene.nodes}
+                hottestRegion={scene.hottestRegion}
+                onSelect={(r) => setSelected(r)}
+                reason={errorMsg}
+              />
+            )}
+          >
+            <Canvas
+              dpr={quality.dpr}
+              frameloop={quality.frameloop}
+              camera={{ position: [0, 0.45, 3.3], fov: 45 }}
+              style={{ background: '#000000' }}
+              onPointerMissed={() => setSelected(null)}
+              onCreated={handleCanvasCreated}
+              fallback={
+                <Body2DFallbackSvg
+                  nodes={scene.nodes}
+                  hottestRegion={scene.hottestRegion}
+                  onSelect={(r) => setSelected(r)}
+                />
+              }
+            >
+          {quality.profile==='AUTO' && quality.active && !quality.reducedMotion && <PerformanceMonitor
+            bounds={()=>[30,55]} flipflops={3}
+            onChange={api=>quality.setFactor(api.factor)} onFallback={()=>quality.setFactor(0)}
+          />}
           <ambientLight intensity={0.55} />
           <pointLight position={[2.5, 3, 3]} intensity={28} />
           <pointLight position={[-2.5, 1.5, 2]} intensity={14} color="#e2e8f0" />
@@ -852,6 +940,8 @@ export function BodyHeatmap({
             maxDistance={6.5}
           />
         </Canvas>
+          </WebGlErrorBoundary>
+        )}
 
         {/* Selected UBERON node details */}
         {selectedNode && selectedMetrics && (
@@ -902,8 +992,8 @@ export function BodyHeatmap({
         )}
       </div>
 
-      {onAddInjury && (
-        <AiInjuryModal
+      {onAddInjury && modalOpen && (
+        <DeferredPanel name="injury annotation"><AiInjuryModal
           isOpen={modalOpen}
           initialRegion={modalRegion}
           initialImage={modalInitialImage}
@@ -916,8 +1006,17 @@ export function BodyHeatmap({
           onSaveInjury={onAddInjury}
           onResolveInjury={onResolveInjury}
           onOpenPlaybook={onOpenPlaybook}
-        />
+        /></DeferredPanel>
       )}
     </div>
   );
 }
+
+export const BodyHeatmap = memo(BodyHeatmapView, (a, b) =>
+  a.renderingActive === b.renderingActive &&
+  a.sex === b.sex && a.isLocalSimulation === b.isLocalSimulation &&
+  a.modelValidationStatus === b.modelValidationStatus && a.injuries === b.injuries &&
+  a.onAddInjury === b.onAddInjury && a.onResolveInjury === b.onResolveInjury &&
+  a.onChangeSex === b.onChangeSex && a.onOpenTab === b.onOpenTab &&
+  a.onOpenPlaybook === b.onOpenPlaybook && equalTelemetryValue(a.s, b.s) &&
+  equalTelemetryValue(a.hypergraphSpatial, b.hypergraphSpatial));

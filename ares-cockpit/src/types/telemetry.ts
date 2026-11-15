@@ -5,7 +5,8 @@
 export type BiometricsSource =
   | 'RECORDED_TERRESTRIAL_BIDMC_CSV'
   | 'RECORDED_TERRESTRIAL_WAVEFORM'
-  | 'SIMULATED_SCENARIO_INPUT';
+  | 'SIMULATED_SCENARIO_INPUT'
+  | 'HARDWARE_WEARABLE';
 
 export type ScenarioOverlayMode =
   | 'NONE_PURE_REPLAY'
@@ -21,6 +22,7 @@ export type DataOrigin =
   | 'DERIVED_FROM_HYBRID_SCENARIO'
   | 'DERIVED_COMPUTED'
   | 'SIMULATED_SCENARIO_INPUT'
+  | 'HARDWARE_WEARABLE'
   | 'UNAVAILABLE';
 
 export type FreshnessStatus =
@@ -131,6 +133,9 @@ export interface SafetyGatesState {
   eva_suit_damping_active: boolean;
   gate4_invasive_decompression_locked?: boolean;
   gate4_eva_fitness_no_go?: boolean;
+  anticoagulant_contraindicated_bleeding_risk?: boolean;
+  lbnp_auto_vent_triggered?: boolean;
+  eclss_environmental_co2_alert?: boolean;
 }
 
 export interface CountermeasureAction {
@@ -161,6 +166,8 @@ export interface Biometrics {
   core_temp_celsius?: number | null;
   sqi_score?: number | null;
   radiation_dose_rate_msv_d?: number | null;
+  cabin_ppco2_mmhg?: number | null;
+  platelet_count_k_ul?: number | null;
   missing_channels?: string[];
   quality_flags?: string[];
 }
@@ -193,6 +200,7 @@ export interface Musculoskeletal {
   soleus_csa_pct?: number | null;
   mqi_index?: number | null;
   sclerostin_pmol_l?: number | null;
+  urinary_calcium_mg_d?: number | null;
   gai_pct?: number | null;
 }
 
@@ -347,6 +355,7 @@ export interface TelemetryPacket {
   hypergraph_spatial?: HypergraphSpatialSummary | null;
   timestral_quantiles?: TimestralQuantilesSummary | null;
   vitals_anomaly?: VitalsAnomalyReport | null;
+  renal_nephrolithiasis?: { rsr_calcium_oxalate: number | null; renal_colic_risk_index: number | null } | null;
   is_local_simulation?: boolean;
 }
 

@@ -12,6 +12,7 @@ export type TacticalReticleVariant = 'STAGE_PERIMETER' | 'POCUS_IJV' | 'OCULAR_O
 export interface TacticalReticleSvgProps {
   variant?: TacticalReticleVariant;
   simulated?: boolean;
+  sourceLabel?: string;
   caliperPrimaryText?: string;
   caliperSecondaryText?: string;
   warningActive?: boolean;
@@ -21,6 +22,7 @@ export interface TacticalReticleSvgProps {
 export function TacticalReticleSvg({
   variant = 'STAGE_PERIMETER',
   simulated = false,
+  sourceLabel,
   caliperPrimaryText,
   caliperSecondaryText,
   warningActive = false,
@@ -43,9 +45,7 @@ export function TacticalReticleSvg({
   const midX = snapHalfPixel(w * 0.5);
   const midY = snapHalfPixel(h * 0.5);
 
-  const epistemicBanner = simulated
-    ? '[DELTA SIMULATED - UNVALIDATED]'
-    : '[EMPIRICAL - BIDMC CSV]';
+  const epistemicBanner = `[${sourceLabel ?? (simulated ? 'SCENARIO PREVIEW - UNVALIDATED' : 'ANATOMICAL REFERENCE')}]`;
 
   const isStagePerimeter = variant === 'STAGE_PERIMETER';
 

@@ -1,5 +1,21 @@
 # Active Context: ARES-Health (NASA Space Apps Challenge 2026)
 
+## Greenfield remediation phases 0-1 completed locally (2026-11-15)
+
+User authorized phases 0 and 1 only. Dedicated worktree /tmp/ares-greenfield-phase01,
+branch work/MiServeRDC-greenfield-phase01, integrating main 2314b5a into Fabio's
+frontend e4e7531. Entry/memory conflicts resolved, current shared runtime retained.
+Nullable clinical adapter, exact forecast channels/units, explicit data sources,
+imaging illustration labels and source-separated waveform history implemented.
+Local verification: 94 frontend tests, lint/build, 242 Rust tests plus check/Clippy,
+asset SHA/decoded-buffer inventory and browser contract scenarios passed.
+Full evidence: docs/evaluation/GREENFIELD_PHASE01_RESULTS.md.
+No main merge/push or hosted Actions. Next: phase 2 DOM/WebGL resilience, deliberate
+confirmation, local voice and execution/audit semantics. Phases 2-10 remain open.
+
+> Historical author report below; compliance and completion claims are superseded by
+> the phase 0-1 results and the remaining phase 2-10 gates documented above.
+
 ## Greenfield ("Terra Rasa") Awwwards SOTD/SOTY Spatial Workbench Redesign — Phases 1-6 Completed & Verified (2026-11-15)
 
 The full 6-phase greenfield `ares-cockpit` spatial biomedical workbench architecture (`8.790/10` SOTY Contender blueprint) has been implemented end-to-end and verified with 100% contract, clinical safety gate, and air-gap compliance:
@@ -32,6 +48,205 @@ The full 6-phase greenfield `ares-cockpit` spatial biomedical workbench architec
      - Rust workspace: `./scripts/agent_probe.sh --fast` (`4/4` probes passing) and `cargo test --workspace` (`205/205` tests passing across `9` crates / `30` test binaries, `0` failures, `0` ignored).
 
 ---
+
+## Gemini 4 Carbon P0 Flight Safety & Clinical Correctness Implementation (2026-11-15)
+
+Google DeepMind's frontier reasoning model **Gemini 4 Carbon** (`gemini-4-carbon`, 17,135 tokens processed) identified and generated flight-hardened code solutions for the four P0 clinical safety and flight blockers across ARES-Health:
+
+1. **Gate 1 Hemorrhagic Contraindication Lock (Radiation & Thrombocytopenia):**
+   - Added `platelet_count_k_ul: Option<f64>` to `Biometrics` and `SpotPoctPanel`.
+   - Added `anticoagulant_contraindicated_bleeding_risk: bool` to `SafetyGates`.
+   - In `crates/ares-medops-playbooks/src/safety_gates.rs`, enforced composite hemorrhagic contraindication:
+     If `platelet_count_k_ul` is `< 75.0 k/uL` or acute radiation dose rate exceeds `10.0 mSv/d` with platelets `< 100.0 k/uL` (or unconfirmed), systemic anticoagulation remains strictly LOCKED even if POCUS ultrasound confirms an occlusive internal jugular vein thrombus.
+   - When locked due to thrombocytopenia/bleeding risk despite confirmed thrombus, pharmacological anticoagulants are stripped, and `ACT_ANTICOAG_CONTRAINDICATED_THROMBOCYTOPENIA_RISK` is prepended to alert the flight surgeon against fatal traumatic intracranial hemorrhage in microgravity.
+   - Verified via `gate1_thrombocytopenia_blocks_anticoagulation_despite_confirmed_thrombus` and `gate1_acute_radiation_with_borderline_platelets_blocks_anticoagulation`.
+
+2. **Gate 2 Anti-Syncope LBNP Guardrail Hardening (Pulse Pressure & Telemetry Blackout Fail-Safe):**
+   - In `crates/ares-medops-playbooks/src/safety_gates.rs`:
+     * Pulse pressure narrowing: if `(sbp - dbp) < 25.0 mmHg` during active LBNP (`jugular.lbnp_active`), immediately triggers emergency auto-vent to prevent cardiovascular collapse from compensatory vasoconstrictive failure.
+     * Sensor dropout fail-safe: if critical hemodynamic telemetry is lost (both SBP and HR missing, or `"wearable_sensor_loss"` / `"sensor_dropout"` in `missing_channels`) during active LBNP, fail-safe auto-vents chamber to 0 mmHg immediately.
+     * Injected `ACT_EMERGENCY_LBNP_AUTO_VENT_0_MMHG` with descriptive diagnostic labels and set `lbnp_auto_vent_triggered = true`.
+   - Verified via `gate2_pulse_pressure_narrowing_triggers_lbnp_auto_vent` and `gate2_sensor_blackout_during_active_lbnp_triggers_failsafe_vent`.
+
+3. **Coupled Habitat-Crew Differential Diagnosis (ECLSS vs. Individual Pathology):**
+   - Created `crates/ares-causal-graph/src/eclss_differential.rs` exporting `evaluate_coupled_habitat_crew_co2`:
+     * Detects cabin $P_{\text{CO}_2} > 4.0\text{ mmHg}$ (NASA-STD-3001 action ceiling) and classifies the root cause as `EnvironmentalEclssScrubberSaturation`.
+     * Distinguishes mechanical ECLSS CDRA/amine bed breakthrough from idiosyncratic individual crew hypercapnia/tachycardia, attributing multi-crew tachycardia to exogenous CO2 retention and recommending LiOH secondary scrubber bed deployment (`ACT_ECLSS_SWITCH_BACKUP_LIOH_OR_AMINE_BED`).
+     * Distinguishes local suit/helmet fan washout failure from cabin-wide scrubber saturation when single astronaut exhibits elevated helmet $P_{\text{CO}_2}$.
+   - Verified via `coupled_eclss_scrubber_saturation_distinguished_from_crew_pathology` and unit tests in `eclss_differential.rs`.
+
+4. **Isolate 2D Clinical Safety Controls from WebGL Failure (`ares-cockpit`):**
+   - Extracted `WebGlErrorBoundary` (`webglErrorBoundary.ts`) wrapping `<Canvas>` in `BodyHeatmap.tsx`.
+   - Registered DOM event listeners for `webglcontextlost` and `webglcontextrestored`, transitioning to `Body2DFallbackSvg` with explicit status banner whenever GPU context is lost.
+   - Preserves 2D clinical safety gate cards, LBNP emergency vent buttons, and MedOps playbook execution 100% interactive and operable without unmounting during 3D WebGL failure.
+   - Updated `enforceHardSafetyGatesOnActions` in `playbookCatalog.ts` and verified via `ares-cockpit/tests/webgl_error_boundary.test.ts` (42 tests passing).
+
+## Gemini 4 Carbon Adversarial Review & P1 Hardening (2026-11-15)
+
+Following the adversarial review by Google DeepMind's frontier reasoning model **Gemini 4 Carbon** (`gemini-4-carbon`, 21,051 tokens processed), all identified P1 edge cases were remediated, verified, and integrated:
+
+1. **Cockpit Freshness Gate & Source Switch Lockout Prevention (`useTelemetry.ts` & `freshnessGate.ts`):**
+   * Extracted `evaluateFreshnessGate` pure module (`ares-cockpit/src/lib/freshnessGate.ts`).
+   * Watermarks (`lastAppliedTimestampMsRef` and `lastAppliedRecTimeRef`) are dynamically reset when `source_record_id !== activeSourceId` or when replay wraps backwards (> 1.0s), preventing cockpit lockout when transitioning between `bidmc_01` and `awaiting_wearable_hardware`.
+   * Cleared 1500ms `setTimeout` with `clearTimeout` in a `finally` block in `hydrateTauriSnapshot`.
+   * Added behavioral unit test suite in `ares-cockpit/tests/tauri_freshness.test.ts` (37 tests across 7 suites passing).
+
+2. **Wearable State Machine Consistency & Deduplication (`ws_server.rs`):**
+   * When entering `LiveWearableHardware` without active nodes (`active_wearable_node.is_none()`), `set_source_mode` preserves `wearable_stale = true` and `last_wearable_packet_time = None` (eliminating contradictory faked timestamps).
+   * Extracted `enforce_awaiting_wearable_hardware_packet(&mut TelemetryPacket)`, eliminating 3x copy-pasted blocks across `set_source_mode`, `advance_tick`, and `apply_stress_test_patch`.
+   * Prevented terrestrial replay biometrics leakage during What-If simulation in awaiting mode by instantiating clean `Biometrics::default()` with `"wearable_sensor_loss"`.
+   * Added unit verification in `crates/ares-server-cli/tests/wearable_source_selection.rs` (7 tests passing).
+
+3. **Storage Partial Sol Bounds & Fault-Injection Retry Test (`warm_arrow_ipc.rs`):**
+   * In `read_telemetry_sol_range`, evaluated bounds independently using idiomatic Clippy-approved `.is_none_or()`:
+     `s.min_mission_sol.is_none_or(|min_s| min_s <= sol_end) && s.max_mission_sol.is_none_or(|max_s| max_s >= sol_start)`.
+   * In `crates/ares-storage-lsah/tests/legacy_manifest_and_atomic_retry.rs`:
+     - Added `test_partial_sol_bounds_independent_filtering`: proves segments with only `min_mission_sol` populated are pruned when query range is strictly below the minimum.
+     - Added `test_atomic_multi_sol_retry_after_write_failure`: injects directory collision on partition 2, verifies partition 1 file is rolled back/unlinked from disk, confirms manifest remains unmodified, clears fault, retries, and verifies clean commit without duplicate rows or gaps (4 tests passing).
+
+## Full Resolution of Follow-Up Runtime Correctness Review (2026-11-15)
+
+Completed end-to-end implementation and behavioral regression verification of all 6 follow-up issues on branch `work/MiServeRDC-runtime-followup` (base `0899f4d`):
+
+1. **P1-1 (Warm Archives Reopen Failure & Unpartitioned Sol Queries):**
+   * Added `skip_serializing_if = "Option::is_none"` on `WarmSegmentMeta::{min_mission_sol, max_mission_sol}` to prevent `serde_json` from injecting explicit nulls that invalidate legacy signed manifest digests.
+   * Implemented dual-schema verification in `open_with_report` with `LegacySignedManifest` fallback parser to preserve bit-exact backward compatibility.
+   * Fixed `read_telemetry_sol_range` to retain unconstrained legacy segments (where `min_mission_sol` is `None`) at segment level so row-level Arrow boolean masks correctly return rows for later sols (e.g. Sol 2 in Sol 1 segments).
+   * Verified via `crates/ares-storage-lsah/tests/legacy_manifest_and_atomic_retry.rs`.
+
+2. **P1-2 (Retry Partition Duplication):**
+   * Replaced sequential partition commit in `append_telemetry_batch` with an all-or-nothing transactional discipline:
+     - All partitions are encoded, CRC-computed, and written to disk before any in-memory state or manifest update.
+     - If writing any partition fails, all written files for that batch are unlinked, and in-memory state remains untouched.
+     - If manifest persistence fails, added segments are truncated, `next_segment_id` is restored, and partition files are unlinked.
+   * Retries now produce exactly the expected rows without duplicate partitions.
+
+3. **P1-3 (What-If CSV Contamination & Hardware Awaiting State):**
+   * In `crates/ares-server-cli/src/ws_server.rs`, updated `apply_stress_test_patch`:
+     - When `source_mode == TelemetrySourceMode::LiveWearableHardware`, it does NOT call `current_replay_row()`; it updates scenario parameters (radiation, cabin CO2, bone loss, POCUS posterior) while strictly preserving hardware sensor observations, `source_record_id`, and `BiometricsSource::HardwareWearable` provenance.
+   * When switching to `LiveWearableHardware` before receiving any hardware packets (`active_wearable_node.is_none()`), `latest_packet` immediately transitions to an explicit `awaiting_wearable_hardware` state with `None` biometrics, `AlertSeverity::DataDegradedMissingChannels`, and `"wearable_sensor_loss"` flag.
+   * Verified via 7 tests in `crates/ares-server-cli/tests/wearable_source_selection.rs`.
+
+4. **P1-4 (Desktop Snapshot Inversion & Out-of-Order Regression):**
+   * In `ares-cockpit/src/lib/useTelemetry.ts`:
+     - Added `snapshotInFlightRef` to enforce at most 1 in-flight request at any time, raced against a 1500 ms timeout.
+     - Added monotonic freshness guard in `acceptRawPayload`: rejects out-of-order snapshots with older `timestamp_ms` or regressive `relative_recording_time_s`.
+     - In `acceptBinaryBuffer`, updated `lastAppliedTimestampMsRef` from decoded 20 Hz binary frames so delayed snapshots never overwrite newer binary updates.
+   * Verified with Playwright/Chromium script (`/tmp/ares-native-order-review.mjs`), confirming resolution order `[1, 2, 3]` and HR `122` without regression, and unit test in `ares-cockpit/tests/tauri_freshness.test.ts`.
+
+5. **P2-5 (Storage CRC Policy Inconsistency):**
+   * Unified all storage write, read, recovery, and manifest verification on canonical IEEE 802.3 CRC-32 (`compute_storage_crc32_ieee`).
+   * Removed speculative dual-algorithm branching in `verify_segment_checksum` and aligned `verify_segment_file_crc` and `read_telemetry_sol_range`.
+   * Preserved Castagnoli CRC-32C strictly for 128-byte binary network frames.
+
+6. **P2-6 (Test Runner Failure Reporting & Stale Report Retention):**
+   * In `scripts/run_all_test_tiers.sh`:
+     - Added bash `trap on_exit EXIT` handler: any non-zero exit immediately rewrites `docs/evaluation/MASTER_TEST_EXECUTION_REPORT.md` with `Verification Status: FAILED`, step name, exit code, git SHA, and dirty status, preventing stale `PASSED` report retention.
+     - Added git commit SHA, dirty flag, host architecture, and dynamically parsed frontend test counts (`36 tests across 7 suites`).
+     - Corrected live workstation benchmark description to note disk recording and WS mirror are disabled during benchmark.
+   * Added automated verification probe in `scripts/test_runner_lifecycle.sh` (passing).
+
+## Previous Resolution of Runtime Correctness & Verification Review (2026-11-15)
+
+Completed end-to-end resolution and verification of all 6 runtime correctness issues on branch `work/MiServeRDC-runtime-correctness` (base `bfee931`):
+
+1. **Problem 1 (Wearable Data vs CSV Replay Overwrite & Provenance):**
+   * Added `BiometricsSource::HardwareWearable` to `crates/ares-core-types/src/telemetry.rs` and mapped it to `PROVENANCE_HARDWARE_EDGE` in `crates/ares-storage-lsah/src/hot_ring.rs`.
+   * Added `"HARDWARE_WEARABLE"` to `contracts/telemetry_schema.json`, `ares-cockpit/src/types/telemetry.ts`, and `ProvenanceInspector.tsx`.
+   * In `crates/ares-server-cli/src/ws_server.rs`, decoupled sampling from 20 Hz UI refresh:
+     - Implemented `TelemetrySourceMode { RecordedReplay, LiveWearableHardware }` and `WEARABLE_STALE_TIMEOUT` (3.0s).
+     - In wearable mode, 20 Hz `advance_tick` advances mission time without overwriting biometrics with CSV rows.
+     - Detects sensor loss after 3.0s timeout and marks `DataDegradedMissingChannels` (`"wearable_sensor_loss"`) without silent CSV fallback.
+     - Ingests wearable packets at native rate into anomaly detector and EWMA forecasters; preserves null RMSSD (Issue #11).
+     - Sequence monotonicity check rejects out-of-order/duplicate packets and handles node supervisor restarts.
+     - Added REST endpoints `GET /api/source-status` and `POST /api/source-mode`, plus `--source` CLI flag in `crates/ares-server-cli/src/main.rs`.
+   * Added regression test suite `crates/ares-server-cli/tests/wearable_source_selection.rs` (5 tests passing).
+
+2. **Problem 2 (Playbooks 10–15 Binary Protocol & Client Parity):**
+   * In `crates/ares-core-types/src/binary_ipc.rs`, extended `playbook_id_to_u16` and added `playbook_id_from_u16` covering all 15 playbooks (1..15) and returning 0 / None for invalid IDs.
+   * In `ares-cockpit/src/lib/binaryTelemetryDecoder.ts`, added canonical titles, step counts, instructions, causal chains, and actions for codes 10 through 15 in `BINARY_PLAYBOOK_DEFAULTS`, matching `playbookCatalog.ts`.
+   * Set `nextPlaybook = null` for code 0 or unknown codes, preventing action and instruction leakage from previous playbooks.
+   * Extended tests in `ares-cockpit/tests/phase36_m2.test.ts` (roundtrip transitions `09 -> 10 -> 15 -> 09` and unknown clearing). All 35 cockpit tests passing.
+
+3. **Problem 3 & Problem 6 (Warm Multi-Sol Partitioning & Storage CRC Ambiguity):**
+   * In `crates/ares-storage-lsah/src/config.rs`: added `compute_storage_crc32_ieee` (IEEE 802.3 `crc32fast`, producing `0xcbf43926` for `b"123456789"`), `compute_storage_crc32c_castagnoli` (Castagnoli CRC-32C, producing `0xe3069283`), and `verify_segment_checksum` accepting either polynomial.
+   * In `crates/ares-storage-lsah/src/warm_trait.rs`: added `min_mission_sol` and `max_mission_sol` fields to `WarmSegmentMeta`.
+   * In `crates/ares-storage-lsah/src/warm_arrow_ipc.rs`: partitioned multi-sol batches on append so each segment is homogeneous per sol; updated `read_telemetry_sol_range` to filter row-by-row on both `mission_sol` and `crew_id`.
+   * Added test suite `crates/ares-storage-lsah/tests/mixed_sol_query.rs` (3 tests passing: partition isolation, engine push flow, and CRC known vectors).
+
+4. **Problem 4 (Desktop Snapshot Freshness & Native Tauri Fallback):**
+   * In `ares-cockpit/src/lib/useTelemetry.ts`, added a bounded 1 Hz interval refreshing `hydrateTauriSnapshot()` to keep extended panels (cones, anomalies, Block N) fresh even when binary frame header codes are stable.
+   * In `subscribe_binary_telemetry`, handled subscription failure with active fallback to 1000 ms snapshot polling, with clean unmount disposal.
+   * Added unit test suite `ares-cockpit/tests/tauri_freshness.test.ts`.
+
+5. **Problem 5 (Master Test Execution Report Scope, Unsupported Claims & Benchmark Accuracy):**
+   * In `scripts/run_all_test_tiers.sh` and `docs/evaluation/MASTER_TEST_EXECUTION_REPORT.md`:
+     - Retitled to "Master Test Execution & Software Verification Report", replacing "flight-ready" claims with explicit notices that scenario models remain illustrative and unvalidated (`ILLUSTRATIVE_UNVALIDATED`, Issue #12).
+     - Corrected Tier 5 scope description to 3 bundled BIDMC records (`bidmc_01..03`) under subject-disjoint anti-leakage constraints, distinguishing it from the 53-cohort anomaly evaluation.
+     - In `phase_28_k4_nasa_std_3001_bench.rs`, benchmarked both Pre-Block-N Core Algorithmic Microbenchmark (p99 = 4.75 us) and Live Workstation Engine Tick (p99 = 11.62 us).
+     - Ensured test plan runner fails closed on missing measurements. All 7 tiers pass cleanly.
+
+## User-authorized optimization release (2026-11-14)
+
+The user now authorizes merging PR #31 into main. Integrated the newer main
+`d1d6227` (Phase 37 scenario tests only; no production changes). Preserved both
+sets of memory records. The 6 added Rust scenario tests and all 32 frontend tests pass. Previous
+212 Rust / 15 desktop results remain the baseline for unchanged production
+code; the added Rust suite brings the default test inventory to 218. Run the
+fast probe before the release commit, then merge PR #31 and fast-forward the
+clean local main clone. Actions stays disabled.
+
+## Integration of concurrent main updates (2026-11-14)
+
+Merged `origin/main` at `3516da4` into the optimization branch. Preserved the
+team’s Block N/gate, atomic IPC, metadata, licensing and submission changes.
+Combined-tree verification passed: 212 default Rust tests, 15 desktop tests,
+26 frontend tests, all-target Clippy, lint/build, the browser/process harness and
+the unchanged generated anomaly evaluation tables. Main-entry size with these
+additional team changes is 435.70 kB (132.23 kB gzip). Hosted Actions stay disabled.
+Published as draft PR #31: https://github.com/MiServeRDC/nasa-space-apps-2026/pull/31.
+Branch `work/MiServeRDC-optimization` is pushed; this task does not merge main.
+
+## Reliability/performance optimization completed (2026-11-14)
+
+User authorized resolving all reviewed reliability/performance weaknesses, one at
+a time, on `work/MiServeRDC-optimization` (isolated worktree `/tmp/ares-optimization`,
+base `2b0a9bc`). Plan: `docs/plans/PROJECT_OPTIMIZATION_IMPLEMENTATION.md`.
+Backend work is verified: retained/acknowledged Warm batches, retries and explicit
+shutdown errors, partial deadlines, manifest rollback, explicit runtime storage
+(`--storage-dir`), exclusive writer lease, sequence recovery and null-HRV readback.
+Coherent wire snapshots are encoded outside the mission lock with ordered
+publication. The default workspace has 212 passing tests and all-target Clippy is
+clean; the desktop tauri-runtime configuration has 15 passing tests. Frontend is
+also verified: unused simulation pauses, geometry memoization, local lazy panels,
+adaptive/saved quality, hidden/covered viewport suspension and pooled atlas
+materials. Main entry is 435.70 kB (132.23 kB gzip); actual atlas material objects
+drop from 3,746 to 11. All 26 Node tests, lint/build and browser/process checks pass,
+including reconnect, alarm delivery, lazy-load failure isolation and shutdown with
+a real WebSocket still connected. Longer validation runs 8 hours each of stationary,
+artificial drift and dropout streams; delayed scores are cross-checked independently
+and retained history remains at 8,940 entries. The horizon-scaled experimental gain
+stays false: it improves synthetic width stability but worsens real development
+coverage. Detector/forecast table results remain unchanged; no clinical validation
+is implied. Reproduction and limits are in `docs/operations/PROJECT_OPTIMIZATION.md`
+and `docs/evaluation/OPTIMIZATION_RESULTS.md`. Work is complete on the dedicated
+branch for review. Hosted Actions remain disabled; no main merge is requested here.
+## Phase 37 (M3): End-to-End Mission Scenario Harnesses & Tier 7 Verification (2026-11-14)
+
+Completed full implementation and verification of Tier 7 of the Master Test Plan (`ARES_HEALTH_MASTER_TEST_PLAN.md`):
+1. **Backend E2E Mission Scenario Harness (`crates/ares-server-cli/tests/phase_37_m3_mission_scenarios_e2e.rs`):**
+   * SCEN-01: Nominal Mars Transit Baseline (FD180) — verifies nominal homeostasis, alert severity <= Caution, and locked decompression.
+   * SCEN-02: Acute Venous Stasis & POCUS Confirmation (Gate 1) — proves anticoagulant lock remains active on stasis and strictly unlocks only upon POCUS intraluminal thrombus verification.
+   * SCEN-03: LBNP Syncope Pre-emption & Auto-Vent (Gate 2) — proves automatic chamber venting to 0 mmHg on SBP drop > 15 mmHg or HR > 115 bpm.
+   * SCEN-04: Mars Aerocapture & 0.38g Landing Gait Asymmetry (Gate 3 & Gate 4B) — proves GAI > 12.0% automatically activates suit damping +25% and flags EVA NO-GO.
+   * SCEN-05: Nephrolithiasis (Renal Stone Risk) & Bone Resorption (Playbook #10) — proves elevated urinary calcium (> 250 mg/d) and renal POCUS twinkling trigger forced hydration bolus and potassium citrate without false anticoagulant stripping.
+   * SCEN-06: Multiple-Trauma Tension Pneumothorax & Invasive Decompression (Gate 4A) — proves needle thoracostomy is locked on negative eFAST and unlocked upon confirmed pneumothorax or emergency vital collapse override (Shock Index >= 1.20 and SpO2 < 85%).
+2. **Cockpit Scenario Contract Test Suite (`ares-cockpit/tests/phase37_scenarios.test.ts`):**
+   * 6 automated scenario tests verifying TypeScript client data model normalization and gate enforcement rules.
+   * Total Cockpit tests: 29/29 passing across 7 suites (`node --test tests/*.test.ts`).
+3. **Workspace Metrics:**
+   * Rust workspace: 211+ tests passing with 0 failures across all 9 crates.
+   * `./scripts/agent_probe.sh --fast`: 4/4 probes passing (0 clippy warnings, 0 unwraps, 0 emojis).
 
 ## Full Resolution of Carbon High Independent Audit & Verified Merge into Main (2026-11-14)
 
@@ -78,8 +293,8 @@ All 5 critical audit vulnerabilities identified by the independent Gemini Carbon
 
 ---
 
-**Last Updated:** 2026-11-15  
-**Current Phase:** ALL 41 ENGINE PHASES / BLOCKS A-O + GREENFIELD TERRA RASA COCKPIT PHASES 1-6 `COMPLETED (TESTED)` — Block N (`Phases 38-41` / `N1-N4`) and Greenfield Spatial Workbench (`Phases 1-6`: Single-Canvas WebGL2 GLSL3 Biodigital Stage, Zero-GC Ring Buffer, Locked `100dvh` Bento Shell, Clinical Lenses, Slide-Over Drawers, and NotebookLM Surgical Risks 1-5) fully implemented and verified alongside Blocks A-M with **`205/205` workspace Rust tests passing across `9` crates with `0` Clippy warnings**, **`54/54` cockpit Node tests passing across `12` suites**, **`471.58 kB` (`460.53 KiB`) total gzipped JS** (`< 480 KB` budget), `0` `.unwrap()`/`.expect()` in production `crates/*/src/`, `0` Unicode emojis, `ares-calibrate --verify-only` clean across all `53` PhysioNet BIDMC subjects, `./scripts/launch_ares_medos.sh --verify` clean, `./scripts/build_submission_docs.sh` (`6/6` gates passing), and `ares-cockpit` passing. See [`docs/architecture/MODEL_EVIDENCE_AUDIT.md`](../docs/architecture/MODEL_EVIDENCE_AUDIT.md).  
+**Last Updated:** 2026-11-14  
+**Current Phase:** ALL 41 PHASES / 14 BLOCKS (A–N) `COMPLETED (TESTED)` — Block N (`Phases 38–41` / `N1–N4`: Multisystem Exploration Medicine, Wearable Suite V2, Tiselius RSR Lithiasis, Orthostatic Fluid-Shift Hemodynamics, Mars Circadian & Neuro-Immune Dynamics, Multi-Organ POCUS & Playbooks #10–#15, and Hard Clinical Safety Gate 4) fully implemented and verified alongside Blocks A–M with **all workspace Rust crates passing tests & Clippy with 0 warnings**, **`21/21` cockpit Node tests passing across `7` suites**, `0` Clippy warnings, `0` `.unwrap()`/`.expect()` in production `crates/*/src/`, `0` Unicode emojis, `ares-calibrate --verify-only` clean across all `53` PhysioNet BIDMC subjects, `./scripts/launch_ares_medos.sh --verify` clean, `./scripts/build_submission_docs.sh` (`6/6` gates passing), and `ares-cockpit` passing. See [`docs/architecture/MODEL_EVIDENCE_AUDIT.md`](../docs/architecture/MODEL_EVIDENCE_AUDIT.md).  
 **Active Repository:** `https://github.com/MiServeRDC/nasa-space-apps-2026` (`main` synchronized).
 
 ---

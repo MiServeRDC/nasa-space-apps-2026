@@ -150,6 +150,9 @@ impl Default for VitalsAnomalyDetector {
 const IDENTITY: [[f64; 3]; 3] = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
 
 impl VitalsAnomalyDetector {
+    pub fn retained_baseline_samples(&self) -> usize {
+        self.channels.iter().map(|c| c.baseline_buf.len()).sum()
+    }
     pub fn new(config: VitalsAnomalyConfig) -> Self {
         Self {
             config,

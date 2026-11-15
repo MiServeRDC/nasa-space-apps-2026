@@ -34,6 +34,7 @@ import type {
 type JsonRecord = Record<string, unknown>;
 
 const BIOMETRICS_SOURCES = new Set<string>([
+  'HARDWARE_WEARABLE',
   'RECORDED_TERRESTRIAL_BIDMC_CSV',
   'RECORDED_TERRESTRIAL_WAVEFORM',
   'SIMULATED_SCENARIO_INPUT',
@@ -813,7 +814,8 @@ export function normalizeTelemetryPacket(data: unknown): TelemetryPacket | null 
       flow_grade: typeof h.flow_grade === 'string' ? h.flow_grade : null,
       lbnp_active: asNullableBoolean(h.lbnp_active),
       lbnp_pressure_mmhg: asNullableNumber(h.lbnp_pressure_mmhg),
-      onsd_mm: asNullableNumber(h.onsd_mm),
+      onsd_mm: h.onsd_mm !== undefined ? asNullableNumber(h.onsd_mm)
+        : isRecord(d.sans_ocular) ? asNullableNumber(d.sans_ocular.onsd_mm) : null,
       sans_risk_index: asNullableNumber(h.sans_risk_index),
     };
   } else if (isRecord(d.jugular_hemodynamics)) {
@@ -855,6 +857,7 @@ export function normalizeTelemetryPacket(data: unknown): TelemetryPacket | null 
       soleus_csa_pct: asNullableNumber(m.soleus_csa_pct),
       mqi_index: asNullableNumber(m.mqi_index),
       sclerostin_pmol_l: asNullableNumber(m.sclerostin_pmol_l),
+      urinary_calcium_mg_d: asNullableNumber(m.urinary_calcium_mg_d),
       gai_pct: asNullableNumber(m.gai_pct),
     };
   }
@@ -874,6 +877,22 @@ export function normalizeTelemetryPacket(data: unknown): TelemetryPacket | null 
       cumulative_radiation_mgy: asNullableNumber(e.cumulative_radiation_mgy),
     };
   }
+
+  // Preserve backend predicate values even when the packet also has safety_margins.
+  // An explicitly present null map/value must not fall back to another representation.
+  const readPredicates = (sm?: JsonRecord): Record<string, number | null> | undefined => {
+    if (sm && 'per_predicate_rho' in sm) {
+      if (!isRecord(sm.per_predicate_rho)) return undefined;
+      return Object.fromEntries(Object.entries(sm.per_predicate_rho).map(([key, value]) => [key, asNullableNumber(value)]));
+    }
+    if (!isRecord(d.nqs_stl)) return undefined;
+    const n = d.nqs_stl;
+    return { tau_w: asNullableNumber(n.rho_tau_w), ared: asNullableNumber(n.rho_ared),
+      sclerostin: asNullableNumber(n.rho_sost), rmssd: asNullableNumber(n.rho_rmssd),
+      sans: asNullableNumber(n.rho_sans), renal: asNullableNumber(n.rho_renal),
+      orthostatic: asNullableNumber(n.rho_orthostatic), circadian: asNullableNumber(n.rho_circadian),
+      immune: asNullableNumber(n.rho_immune) };
+  };
 
   // Safety margins (`safety_margins` OR Rust `nqs_stl` + `alert_severity` OR flat fields)
   let safetyMargins: SafetyMargins;
@@ -895,6 +914,7 @@ export function normalizeTelemetryPacket(data: unknown): TelemetryPacket | null 
       mission_readiness_index: asNullableNumber(sm.mission_readiness_index),
       alarm_level: normalizeAlarmLevel(String(sm.alarm_level)),
       pending_sources: isStringArray(sm.pending_sources) ? sm.pending_sources : undefined,
+      per_predicate_rho: readPredicates(sm),
     };
   } else if (isRecord(d.nqs_stl)) {
     const nqs = d.nqs_stl;
@@ -907,14 +927,6 @@ export function normalizeTelemetryPacket(data: unknown): TelemetryPacket | null 
     const alarm = hasMissingBiometrics && rawAlarm === 'NOMINAL'
       ? 'DATA_DEGRADED_MISSING_CHANNELS'
       : normalizeAlarmLevel(rawAlarm);
-
-    const perPred: Record<string, number | null> = {
-      tau_w: asNullableNumber(nqs.rho_tau_w),
-      ared: asNullableNumber(nqs.rho_ared),
-      sclerostin: asNullableNumber(nqs.rho_sost),
-      rmssd: asNullableNumber(nqs.rho_rmssd),
-      sans: asNullableNumber(nqs.rho_sans),
-    };
 
     safetyMargins = {
       provenance:
@@ -931,7 +943,7 @@ export function normalizeTelemetryPacket(data: unknown): TelemetryPacket | null 
         (ttvDays !== null ? 'ILLUSTRATIVE_SCENARIO_RANGE' : undefined),
       mission_readiness_index: asNullableNumber(nqs.mri_pct),
       alarm_level: alarm,
-      per_predicate_rho: perPred,
+      per_predicate_rho: readPredicates(),
     };
   } else {
     const ttv = asNullableNumber(d.ttv_days ?? d.ttv_most_likely_days ?? d.time_to_violation_days);
@@ -1014,6 +1026,10 @@ export function normalizeTelemetryPacket(data: unknown): TelemetryPacket | null 
       hrvRmssdMs: biometrics.hrv_rmssd_ms,
     }),
     vitals_anomaly: normalizeVitalsAnomaly(d.vitals_anomaly),
+    renal_nephrolithiasis: isRecord(d.renal_nephrolithiasis) ? {
+      rsr_calcium_oxalate: asNullableNumber(d.renal_nephrolithiasis.rsr_calcium_oxalate),
+      renal_colic_risk_index: asNullableNumber(d.renal_nephrolithiasis.renal_colic_risk_index),
+    } : null,
     is_local_simulation: false,
   };
 }

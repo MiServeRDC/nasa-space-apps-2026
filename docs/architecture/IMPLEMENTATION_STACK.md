@@ -9,6 +9,26 @@
 
 ## 1. Scopo del Registro (Ispirato a `spatiotemporal-mcp-engine`)
 
+### Optimization evidence addendum (2026-11-14)
+
+- Streaming intervals: [Gibbs/Candes 2021](https://arxiv.org/abs/2106.00170),
+  [Szabadvary, COPA 2024](https://proceedings.mlr.press/v230/hallberg-szabadvary24a.html)
+  and [Wu et al., ICLR 2025](https://arxiv.org/abs/2502.00818) motivate separate
+  coverage/width evaluation across horizons and distribution shifts. No theorem
+  from these papers is claimed for the current clipped empirical EWMA controller.
+  The experimental gain divided by horizon is our engineering candidate, not a
+  literature-derived constant. It remains off: real development coverage worsens
+  despite improved synthetic width stability. No new physiological thresholds.
+- UI/engine implementation follows [React lazy](https://react.dev/reference/react/lazy),
+  [R3F scaling](https://r3f.docs.pmnd.rs/advanced/scaling-performance),
+  [Drei PerformanceMonitor](https://drei.docs.pmnd.rs/performances/performance-monitor),
+  [Tokio shared state](https://tokio.rs/tokio/tutorial/shared-state) and
+  [graceful shutdown](https://tokio.rs/tokio/topics/shutdown). Rendering FPS bounds
+  and pixel-density limits are UI policies, unrelated to clinical inference.
+- Reproduction and limits: [optimization operations](../operations/PROJECT_OPTIMIZATION.md),
+  [8-hour synthetic stress](../evaluation/FORECAST_STRESS_8H.md),
+  [development comparison](../evaluation/FORECAST_CONTROLLER_DEVELOPMENT.md).
+
 Questo documento traccia formalmente:
 1. **Quali crate costituiscono il "Motore Rust" (Core Engine) e l'intero Backend Rust** di ARES-Health.
 2. **Tutte le librerie open-source dell'ecosistema Rust 2024** utilizzate in ciascun crate, con file coinvolti e motivazione architetturale.
@@ -204,3 +224,23 @@ Sources: [NeuroKit HRV input documentation](https://neuropsychology.github.io/Ne
 ## Issue #12: model evidence scope
 
 [MODEL_EVIDENCE_AUDIT.md](MODEL_EVIDENCE_AUDIT.md) is the authoritative current source-to-output and parameter register. Checked sources support research context and source-data interpretation, not calibration of the implemented coefficients, risk scores or forecast bands. Current scenario outputs are `ILLUSTRATIVE_UNVALIDATED`; accepted gates are heuristic, and historical `ci95` names do not establish 95% coverage. Unit tests, monotonicity and CRCs establish software properties only. No threshold/policy change or new model is introduced.
+
+
+## Greenfield remediation and anatomy planning evidence (2026-11-15)
+
+Plan: [GREENFIELD_REMEDIATION_AND_ANATOMY_IMPLEMENTATION.md](../plans/GREENFIELD_REMEDIATION_AND_ANATOMY_IMPLEMENTATION.md).
+The plan's source register records official HRA asset/crosswalk evidence, the
+Andreassen 2023 lower-limb paper and University of Denver dataset, current official
+BodyParts3D terms, existing Z-Anatomy derivative obligations, EBI OLS identifiers
+and the Human-Atlas pipeline as an inspected community reference. Crossref CLI
+retrieved DOI 10.1038/s41597-022-01905-2. HRA v1.10 female HEAD size is 374,505,632
+bytes; its crosswalk does not explicitly name vagus/IJV/soleus/calcaneus. Coverage
+remains to inspect, not assume. No registration tolerance, physiological constant
+or clinical validity claim is introduced. No implementation or model download.
+
+
+## Greenfield phases 0-1 implementation (2026-11-15)
+
+Typed nullable clinical display and exact channel/unit forecast selection are implemented.
+No new physiology constants or inference model. See [results](../evaluation/GREENFIELD_PHASE01_RESULTS.md)
+for pinned refs, local asset decoding, software regressions and remaining phase 2 gates.

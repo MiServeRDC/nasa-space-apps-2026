@@ -14,7 +14,9 @@ import { QuantileConeChart } from '../instruments/QuantileConeChart';
 import { TabularCounter } from '../instruments/TabularCounter';
 import { WaveformCanvas2D } from '../instruments/WaveformCanvas2D';
 import { SecondaryMeshViewport } from '../stage3d/SecondaryMeshViewport';
-import { useWorkbenchStore } from '../stores/workbenchStore';
+import { buildClinicalViewModel } from '../lib/clinicalViewModel';
+import { ClinicalDataNotice } from '../workbench/ClinicalDataNotice';
+import { clinicalDataMode } from '../lib/clinicalViewModel';
 
 export interface ForecastAndBoneRenalLensProps {
   packet: TelemetryPacket;
@@ -26,32 +28,18 @@ export interface ForecastAndBoneRenalLensProps {
 
 export function ForecastAndBoneRenalLens({
   packet,
-  scenario,
-  empiricalBaselineScenario,
-  whatIf,
   section,
 }: ForecastAndBoneRenalLensProps) {
-  const simulationMode = useWorkbenchStore((s) => s.simulationMode);
-  const frostMicrostrain = Math.round((whatIf.ared_load_pct / 60) * 1050);
+  const mode = clinicalDataMode(packet);
+  const view = buildClinicalViewModel(packet);
 
   if (section === 'STL_AND_CONES') {
-    const abstained =
-      packet.timestral_quantiles?.confidence_state === 'ABSTAINED_FALLBACK_DETERMINISTIC' ||
-      packet.timestral_quantiles?.conformal_status === 'ABSTAINED_FALLBACK_DETERMINISTIC';
-
     return (
       <div className="space-y-2.5">
+        <ClinicalDataNotice packet={packet} />
         <div className="flex items-center justify-between font-mono text-[10px]">
           <span className="text-[var(--color-ink-meta)]">CONFORMAL FORECAST GATE</span>
-          <span
-            className={`rounded border px-1.5 py-0.5 font-semibold ${
-              abstained
-                ? 'border-amber-400/70 bg-amber-500/15 text-amber-200'
-                : 'border-emerald-400/60 bg-emerald-500/15 text-emerald-200'
-            }`}
-          >
-            {abstained ? 'ABSTAINED_FALLBACK_DETERMINISTIC' : 'HEURISTIC_GATE_ACCEPTED'}
-          </span>
+
         </div>
 
         <QuantileConeChart
@@ -60,9 +48,8 @@ export function ForecastAndBoneRenalLens({
           unit="rho"
           timestralSummary={packet.timestral_quantiles}
           safetyThreshold={0}
-          currentRho={packet.safety_margins.med_stl_rho_robustness ?? scenario.rhoMin}
-          empiricalBaselineRho={empiricalBaselineScenario?.rhoMin ?? null}
-          isSimulatedOverlay={simulationMode === 'simulated'}
+          currentRho={view.rhoGlobal.value}
+          isSimulatedOverlay={mode === 'LOCAL_PREVIEW' || mode === 'BACKEND_SCENARIO'}
           ttvIntervalKind={
             packet.safety_margins.ttv_interval_kind ?? 'ILLUSTRATIVE_SCENARIO_RANGE'
           }
@@ -75,69 +62,21 @@ export function ForecastAndBoneRenalLens({
 
   return (
     <div className="space-y-2.5">
+      <ClinicalDataNotice packet={packet} />
       <div className="grid grid-cols-2 gap-2">
-        <div className="ares-inner-well p-2">
-          <TabularCounter
-            label="Periosteal Strain"
-            sublabel="FROST 1000ue"
-            value={frostMicrostrain}
-            unit="ue"
-            decimals={0}
-            tone={frostMicrostrain < 1000 ? 'caution' : 'nominal'}
-            size="sm"
-          />
-        </div>
-
-        <div className="ares-inner-well p-2">
-          <TabularCounter
-            label="Sclerostin (SOST)"
-            sublabel="WNT INHIBITOR"
-            value={packet.musculoskeletal?.sclerostin_pmol_l ?? scenario.sclerostin}
-            unit="pmol/L"
-            decimals={1}
-            tone={scenario.sclerostin > 42 ? 'caution' : 'nominal'}
-            size="sm"
-          />
-        </div>
-
-        <div className="ares-inner-well p-2">
-          <TabularCounter
-            label="Urinary Calcium"
-            sublabel="HYPERCALCIURIA"
-            value={scenario.urinaryCalciumMgD}
-            unit="mg/d"
-            decimals={0}
-            tone={scenario.urinaryCalciumMgD > 250 ? 'caution' : 'nominal'}
-            size="sm"
-          />
-        </div>
-
-        <div className="ares-inner-well p-2 font-mono">
-          <div className="text-[10px] text-[var(--color-ink-meta)]">TISELIUS AP(CaOx)</div>
-          <div
-            className={`mt-1 text-sm font-semibold ${
-              scenario.nephrolithiasisRisk === 'ELEVATED'
-                ? 'text-rose-300'
-                : scenario.nephrolithiasisRisk === 'MODERATE'
-                  ? 'text-amber-300'
-                  : 'text-emerald-300'
-            }`}
-          >
-            {scenario.nephrolithiasisRisk} STONE RISK
-          </div>
-          <div className="mt-0.5 text-[9px] text-[var(--color-ink-muted)]">
-            Irisin {scenario.irisin.toFixed(1)} ng/mL | BMD -{scenario.bmdLossPct.toFixed(1)}%
-          </div>
-        </div>
+        {([
+          ['ARED load', view.aredLoad], ['Sclerostin (SOST)', view.sclerostin],
+          ['Urinary calcium', view.urinaryCalcium], ['Calcium oxalate RSR', view.renalRsr],
+          ['Renal colic model index', view.renalColic], ['Bone loss model', view.boneLoss],
+        ] as const).map(([label, metric]) => <div className="ares-inner-well p-2" key={label} data-availability={metric.availability}>
+          <TabularCounter label={label} value={metric.value} unit={metric.unit} decimals={2}
+            unavailableLabel="N/A" unavailableReason={metric.reason} tone="display" size="sm" />
+          <p className="font-mono text-[9px] text-[var(--color-ink-meta)]">{metric.provenance}</p>
+        </div>)}
       </div>
-
-      <SecondaryMeshViewport
-        specimen="FEMUR_TRABECULAR"
-        scalarLoad={Math.min(1, Math.max(0, scenario.bmdLossPct / 6))}
-        observed
-        label="3D Femoral Neck Trabecular Remodeling Mesh"
-        className="h-40 w-full"
-      />
+      <p className="font-mono text-[10px] text-amber-300">Anatomical reference illustration; no measured remodeling is inferred from this mesh.</p>
+      <SecondaryMeshViewport specimen="FEMUR_TRABECULAR" scalarLoad={0} observed={false}
+        label="Femoral trabecular reference (unobserved)" className="h-40 w-full" />
     </div>
   );
 }

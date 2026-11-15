@@ -19,6 +19,8 @@ import {
   type SecondarySpecimenKind,
 } from '../stage3d/SecondaryMeshViewport';
 import { useWorkbenchStore } from '../stores/workbenchStore';
+import { buildClinicalViewModel } from '../lib/clinicalViewModel';
+import { ClinicalDataNotice } from '../workbench/ClinicalDataNotice';
 import { announcePolite } from '../stores/a11yAnnouncer';
 
 export interface DiagnosticImagingLensProps {
@@ -33,7 +35,6 @@ export interface DiagnosticImagingLensProps {
 
 export function DiagnosticImagingLens({
   packet,
-  scenario,
   thrombusConfirmed,
   onChangeThrombusConfirmed,
   injuryMarkers = [],
@@ -42,17 +43,11 @@ export function DiagnosticImagingLens({
 }: DiagnosticImagingLensProps) {
   const imagingTab = useWorkbenchStore((s) => s.imagingTab);
   const setImagingTab = useWorkbenchStore((s) => s.setImagingTab);
-  const simulationMode = useWorkbenchStore((s) => s.simulationMode);
   const [specimen, setSpecimen] = useState<SecondarySpecimenKind>('OCULAR_SANS_GLOBE');
 
-  const csa = packet.hemodynamics?.ijv_csa_cm2 ?? scenario.csa;
-  const vmax = packet.hemodynamics?.ijv_velocity_max_cm_s ?? scenario.vmax;
-  const tauW = packet.hemodynamics?.wall_shear_stress_dyn_cm2 ?? scenario.tauW;
-  const onsd = packet.hemodynamics?.onsd_mm ?? scenario.onsdMm;
-  const onsdSigma = scenario.onsdSigmaMm;
-
-  const isSimulated =
-    simulationMode === 'simulated' || packet.is_local_simulation === true;
+  const vm = buildClinicalViewModel(packet);
+  const csa = vm.ijvCsa.value, vmax = vm.ijvVelocity.value;
+  const tauW = vm.ijvShear.value, onsd = vm.onsd.value;
 
   const activeTab: DiagnosticImagingTab =
     mode === 'OPTICAL_3D'
@@ -61,8 +56,12 @@ export function DiagnosticImagingLens({
         ? 'POCUS_IJV'
         : imagingTab;
 
+  const imagingAvailable = activeTab === 'OCULAR_ONSD' ? onsd !== null : csa !== null && vmax !== null;
+
   return (
     <div className="space-y-3">
+      <ClinicalDataNotice packet={packet} />
+      <p className="font-mono text-[10px] text-amber-300">Procedural anatomy illustration; no acquired ultrasound image. Measurement uncertainty is not supplied. Parameter origin: {vm.ijvCsa.provenance}.</p>
       {/* Sub-mode switcher when not locked to OPTICAL_3D */}
       {mode !== 'OPTICAL_3D' ? (
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -100,7 +99,7 @@ export function DiagnosticImagingLens({
           </div>
 
           <span className="ares-tabular-metric font-mono text-[10px] text-amber-300">
-            TAU_W {tauW.toFixed(2)} dyn/cm2
+            TAU_W {tauW?.toFixed(2) ?? 'N/A'} dyn/cm2
           </span>
         </div>
       ) : null}
@@ -108,31 +107,31 @@ export function DiagnosticImagingLens({
       {/* Modality 1 & 2: POCUS IJV / Ocular ONSD Ultrasound + SVG Caliper Reticle */}
       {activeTab !== 'OPTICAL_AND_MRI' ? (
         <div className="space-y-3">
-          {activeTab === 'OCULAR_ONSD' ? (
+          {!imagingAvailable ? <p role="status" data-imaging-availability="UNAVAILABLE">Imaging parameters unavailable for this source.</p> : activeTab === 'OCULAR_ONSD' && onsd !== null ? (
             <div className="relative overflow-hidden rounded-xl border border-white/10">
-              <OcularOnsd onsd={onsd} sigma={onsdSigma} />
+              <OcularOnsd onsd={onsd} sigma={null} />
               <TacticalReticleSvg
                 variant="OCULAR_ONSD"
-                simulated={isSimulated}
+                simulated sourceLabel="PROCEDURAL ILLUSTRATION"
                 warningActive={onsd >= 5.8}
-                caliperPrimaryText={`ONSD ${onsd.toFixed(2)} mm (+/-${onsdSigma.toFixed(2)})`}
+                caliperPrimaryText={`ONSD ${onsd.toFixed(2)} mm | uncertainty unavailable`}
                 caliperSecondaryText="SANS CUTOFF 5.80 mm"
                 className="absolute inset-0 h-full w-full"
               />
             </div>
-          ) : (
+          ) : csa !== null && vmax !== null ? (
             <div className="relative overflow-hidden rounded-xl border border-white/10">
               <PocusIjv csa={csa} vmax={vmax} thrombus={thrombusConfirmed} />
               <TacticalReticleSvg
                 variant="POCUS_IJV"
-                simulated={isSimulated}
-                warningActive={thrombusConfirmed === true || tauW < 1.2}
+                simulated sourceLabel="PROCEDURAL ILLUSTRATION"
+                warningActive={thrombusConfirmed === true || (tauW !== null && tauW < 1.2)}
                 caliperPrimaryText={`CSA ${csa.toFixed(2)} cm2 | VMAX ${vmax.toFixed(1)} cm/s`}
-                caliperSecondaryText={`POISEUILLE TAU_W ${tauW.toFixed(2)} dyn/cm2`}
+                caliperSecondaryText={`POISEUILLE TAU_W ${tauW?.toFixed(2) ?? 'N/A'} dyn/cm2`}
                 className="absolute inset-0 h-full w-full"
               />
             </div>
-          )}
+          ) : null}
 
           {/* Tactile Gate 1 Intraluminal Thrombus Compression Exam (`>= 48px` buttons) */}
           <div className="ares-inner-well space-y-2 p-2.5">
@@ -225,14 +224,10 @@ export function DiagnosticImagingLens({
           <SecondaryMeshViewport
             specimen={specimen}
             scalarLoad={
-              specimen === 'OCULAR_SANS_GLOBE'
-                ? Math.min(1, Math.max(0, (onsd - 4.8) / 1.4))
-                : specimen === 'IJV_LUMEN_SEGMENT'
-                  ? Math.min(1, Math.max(0, (2.2 - tauW) / 2.0))
-                  : Math.min(1, Math.max(0, scenario.bmdLossPct / 6))
+              0
             }
-            observed
-            label={`Scoped 3D Specimen: ${specimen}`}
+            observed={false}
+            label={`Anatomical reference (not measured): ${specimen}`}
             className="h-44 w-full"
           />
 

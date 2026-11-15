@@ -208,6 +208,8 @@ impl WarmColumnarVectorBackend for MockSlowSsdBackend {
         Ok(WarmSegmentMeta {
             segment_id: id,
             mission_sol: 1,
+            min_mission_sol: Some(1),
+            max_mission_sol: Some(1),
             relative_path: format!("mock_{id}.arrow.zst"),
             row_count: batch.num_rows(),
             compressed_bytes: 512,
@@ -298,7 +300,7 @@ async fn m1_t03_slow_ssd_stall_never_blocks_20hz_ingestion() -> Result<(), Box<d
         "overflow during 180ms stall across >2 swap banks must fold into warm_coalesced_frames"
     );
 
-    engine.stop_background_flusher().await;
+    engine.stop_background_flusher().await?;
     assert!(slow_backend.batches_written.load(Ordering::Relaxed) >= 1);
     Ok(())
 }

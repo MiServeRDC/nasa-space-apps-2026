@@ -261,6 +261,8 @@ impl WearableSensorPacket {
             let_quality_factor: None,
             suit_metabolic_watts: None,
             helmet_ppco2_mmhg: None,
+            cabin_ppco2_mmhg: None,
+            platelet_count_k_ul: None,
         }
     }
 
@@ -613,6 +615,8 @@ impl ExplorationWearablePacketV2 {
             let_quality_factor,
             suit_metabolic_watts,
             helmet_ppco2_mmhg,
+            cabin_ppco2_mmhg: None,
+            platelet_count_k_ul: None,
         }
     }
 }
