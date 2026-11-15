@@ -6,6 +6,7 @@
 //! 3. Renal & Bladder (Nephrolithiasis, Twinkling, Hydronephrosis, Retention)
 //! 4. Extended Focused Assessment with Sonography for Trauma (eFAST: RUQ, LUQ, pelvic, subxiphoid, thoracic)
 
+pub use ares_core_types::medical_360::PocusPelvicScan;
 use ares_core_types::telemetry::ModelValidationStatus;
 use serde::{Deserialize, Serialize};
 
@@ -17,6 +18,7 @@ pub enum PocusAnatomicalTarget {
     OcularOpticNerve = 2,
     RenalBladder = 3,
     ThoracicAbdominalEfast = 4,
+    PelvicUrogyn = 5,
 }
 
 impl PocusAnatomicalTarget {
@@ -27,6 +29,7 @@ impl PocusAnatomicalTarget {
             Self::OcularOpticNerve => "UBERON:0001793",
             Self::RenalBladder => "UBERON:0002113",
             Self::ThoracicAbdominalEfast => "UBERON:0002048",
+            Self::PelvicUrogyn => "UBERON:0000992",
         }
     }
 
@@ -37,6 +40,7 @@ impl PocusAnatomicalTarget {
             Self::OcularOpticNerve => "Optic Nerve & Retina (SANS)",
             Self::RenalBladder => "Kidneys & Urinary Bladder (Renal)",
             Self::ThoracicAbdominalEfast => "eFAST 5-Window Trauma",
+            Self::PelvicUrogyn => "Pelvic & Urogynecologic (Ovarian/Ectopic/UTI)",
         }
     }
 }
@@ -178,6 +182,51 @@ impl PocusEfastScan {
     }
 }
 
+/// Primary diagnostic differential for female pelvic/urogynecologic POCUS (`PLAYBOOK_30`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum PelvicPocusDifferential {
+    NominalOrNotPerformed,
+    EctopicPregnancyEmergency,
+    OvarianTorsionSuspected,
+    RupturedHemorrhagicCyst,
+    UncomplicatedUtiOrPyelonephritisRisk,
+}
+
+/// Structured evaluation of `PocusPelvicScan` with explicit epistemic validation status.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct PelvicPocusEvaluation {
+    pub differential: PelvicPocusDifferential,
+    pub urgent_surgical_or_evac_consult: bool,
+    pub validation_status: ModelValidationStatus,
+}
+
+/// Evaluates female pelvic and urogynecologic POCUS differential (`PLAYBOOK_30`).
+pub fn evaluate_pelvic_pocus_differential(scan: &PocusPelvicScan) -> PelvicPocusEvaluation {
+    let differential = if scan.is_ectopic_pregnancy_emergency() {
+        PelvicPocusDifferential::EctopicPregnancyEmergency
+    } else if scan.is_ovarian_torsion_suspected() {
+        PelvicPocusDifferential::OvarianTorsionSuspected
+    } else if scan.is_ruptured_hemorrhagic_cyst() {
+        PelvicPocusDifferential::RupturedHemorrhagicCyst
+    } else if scan.urine_leukocyte_nitrite_positive {
+        PelvicPocusDifferential::UncomplicatedUtiOrPyelonephritisRisk
+    } else {
+        PelvicPocusDifferential::NominalOrNotPerformed
+    };
+
+    let urgent = matches!(
+        differential,
+        PelvicPocusDifferential::EctopicPregnancyEmergency
+            | PelvicPocusDifferential::OvarianTorsionSuspected
+    );
+
+    PelvicPocusEvaluation {
+        differential,
+        urgent_surgical_or_evac_consult: urgent,
+        validation_status: ModelValidationStatus::IllustrativeUnvalidated,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -188,6 +237,7 @@ mod tests {
         assert_eq!(PocusAnatomicalTarget::OcularOpticNerve.uberon_curie(), "UBERON:0001793");
         assert_eq!(PocusAnatomicalTarget::RenalBladder.uberon_curie(), "UBERON:0002113");
         assert_eq!(PocusAnatomicalTarget::ThoracicAbdominalEfast.uberon_curie(), "UBERON:0002048");
+        assert_eq!(PocusAnatomicalTarget::PelvicUrogyn.uberon_curie(), "UBERON:0000992");
     }
 
     #[test]
@@ -221,5 +271,81 @@ mod tests {
             ..Default::default()
         };
         assert!(renal_retention.is_urinary_retention());
+    }
+
+    #[test]
+    fn test_pocus_pelvic_scan_predicates_and_differential() {
+        let nominal = PocusPelvicScan::default();
+        assert!(!nominal.is_ovarian_torsion_suspected());
+        assert!(!nominal.is_ectopic_pregnancy_emergency());
+        assert!(!nominal.is_ruptured_hemorrhagic_cyst());
+        let eval_nominal = evaluate_pelvic_pocus_differential(&nominal);
+        assert_eq!(
+            eval_nominal.differential,
+            PelvicPocusDifferential::NominalOrNotPerformed
+        );
+        assert!(!eval_nominal.urgent_surgical_or_evac_consult);
+        assert_eq!(
+            eval_nominal.validation_status,
+            ModelValidationStatus::IllustrativeUnvalidated
+        );
+
+        // Whirlpool sign without performed=true must NOT trigger torsion
+        let unperformed = PocusPelvicScan {
+            performed: false,
+            adnexal_whirlpool_sign: true,
+            ..Default::default()
+        };
+        assert!(!unperformed.is_ovarian_torsion_suspected());
+
+        // Absent Doppler + enlarged ovary (>15 mL) triggers torsion
+        let torsion_enlarged = PocusPelvicScan {
+            performed: true,
+            left_ovary_volume_ml: Some(18.5),
+            ovarian_doppler_flow_absent: true,
+            ..Default::default()
+        };
+        assert!(torsion_enlarged.is_ovarian_torsion_suspected());
+        assert_eq!(
+            evaluate_pelvic_pocus_differential(&torsion_enlarged).differential,
+            PelvicPocusDifferential::OvarianTorsionSuspected
+        );
+
+        // Absent Doppler with normal ovary (<=15 mL) and no whirlpool does NOT trigger torsion
+        let no_torsion_small = PocusPelvicScan {
+            performed: true,
+            right_ovary_volume_ml: Some(12.0),
+            ovarian_doppler_flow_absent: true,
+            ..Default::default()
+        };
+        assert!(!no_torsion_small.is_ovarian_torsion_suspected());
+
+        // Ectopic pregnancy emergency: beta-hCG+ with complex cul-de-sac free fluid
+        let ectopic = PocusPelvicScan {
+            performed: true,
+            point_of_care_beta_hcg_positive: Some(true),
+            cul_de_sac_free_fluid_complex: true,
+            ..Default::default()
+        };
+        assert!(ectopic.is_ectopic_pregnancy_emergency());
+        let eval_ectopic = evaluate_pelvic_pocus_differential(&ectopic);
+        assert_eq!(
+            eval_ectopic.differential,
+            PelvicPocusDifferential::EctopicPregnancyEmergency
+        );
+        assert!(eval_ectopic.urgent_surgical_or_evac_consult);
+
+        // Ruptured hemorrhagic cyst: beta-hCG- with complex free fluid and no torsion
+        let cyst = PocusPelvicScan {
+            performed: true,
+            point_of_care_beta_hcg_positive: Some(false),
+            cul_de_sac_free_fluid_complex: true,
+            ..Default::default()
+        };
+        assert!(cyst.is_ruptured_hemorrhagic_cyst());
+        assert_eq!(
+            evaluate_pelvic_pocus_differential(&cyst).differential,
+            PelvicPocusDifferential::RupturedHemorrhagicCyst
+        );
     }
 }
