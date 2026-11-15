@@ -295,22 +295,23 @@ mod tests {
             ..Default::default()
         };
         let assessment = evaluate_toxicology_dcs(&input);
-        let pb = build_playbook_27_aerospace_toxicology(&assessment, SafetyGates::default())
-            .expect("playbook 27 must activate");
-
-        assert_eq!(pb.playbook_id, "PLAYBOOK_27_AEROSPACE_TOXICOLOGY_EXPOSURE");
-        let ids: Vec<&str> = pb.actions.iter().map(|a| a.action_id.as_str()).collect();
-        assert!(ids.contains(&"ACT_TOX_DON_PBA_QDM_ISOLATE_THERMAL_LOOP"));
-        assert!(ids.contains(&"ACT_TOX_OCULAR_DERMAL_DECONTAMINATION"));
-        assert!(ids.contains(&"ACT_TOX_HUMIDIFIED_O2_BRONCHODILATOR_LARYNGOSPASM_WATCH"));
-        assert!(ids.contains(&"ACT_TOX_PYRIDOXINE_VITAMIN_B6_25MG_KG_IV"));
-        assert!(ids.contains(&"ACT_TOX_N2O4_72H_DELAYED_PULMONARY_EDEMA_SURVEILLANCE"));
-        assert!(!ids.contains(&"ACT_TOX_METHYLENE_BLUE_1_2MG_KG_IV"));
-        assert!(ids.contains(&"ACT_TOX_ASCORBIC_ACID_100PCT_O2_G6PD_SAFE"));
-        assert!(ids.contains(&"ACT_PYROLYSIS_DON_PBA_100PCT_NORMOBARIC_O2"));
-        assert!(ids.contains(&"ACT_PYROLYSIS_HYDROXOCOBALAMIN_5G_IV_CYANOKIT"));
-        assert!(ids.contains(&"ACT_REGOLITH_HEPA_SUITPORT_WASHOUT_SALINE_NASAL_OCULAR_LAVAGE"));
-        assert!(ids.contains(&"ACT_PERCHLORATE_ORAL_KI_SUPPLEMENT_TSH_AND_MARROW_CBC_MONITOR"));
+        let pb_opt = build_playbook_27_aerospace_toxicology(&assessment, SafetyGates::default());
+        assert!(pb_opt.is_some());
+        if let Some(pb) = pb_opt {
+            assert_eq!(pb.playbook_id, "PLAYBOOK_27_AEROSPACE_TOXICOLOGY_EXPOSURE");
+            let ids: Vec<&str> = pb.actions.iter().map(|a| a.action_id.as_str()).collect();
+            assert!(ids.contains(&"ACT_TOX_DON_PBA_QDM_ISOLATE_THERMAL_LOOP"));
+            assert!(ids.contains(&"ACT_TOX_OCULAR_DERMAL_DECONTAMINATION"));
+            assert!(ids.contains(&"ACT_TOX_HUMIDIFIED_O2_BRONCHODILATOR_LARYNGOSPASM_WATCH"));
+            assert!(ids.contains(&"ACT_TOX_PYRIDOXINE_VITAMIN_B6_25MG_KG_IV"));
+            assert!(ids.contains(&"ACT_TOX_N2O4_72H_DELAYED_PULMONARY_EDEMA_SURVEILLANCE"));
+            assert!(!ids.contains(&"ACT_TOX_METHYLENE_BLUE_1_2MG_KG_IV"));
+            assert!(ids.contains(&"ACT_TOX_ASCORBIC_ACID_100PCT_O2_G6PD_SAFE"));
+            assert!(ids.contains(&"ACT_PYROLYSIS_DON_PBA_100PCT_NORMOBARIC_O2"));
+            assert!(ids.contains(&"ACT_PYROLYSIS_HYDROXOCOBALAMIN_5G_IV_CYANOKIT"));
+            assert!(ids.contains(&"ACT_REGOLITH_HEPA_SUITPORT_WASHOUT_SALINE_NASAL_OCULAR_LAVAGE"));
+            assert!(ids.contains(&"ACT_PERCHLORATE_ORAL_KI_SUPPLEMENT_TSH_AND_MARROW_CBC_MONITOR"));
+        }
     }
 
     #[test]
@@ -323,18 +324,19 @@ mod tests {
             ..Default::default()
         };
         let assessment = evaluate_toxicology_dcs(&input);
-        let pb = select_toxicology_or_eva_playbook(&assessment, SafetyGates::default())
-            .expect("playbook 28 must activate");
-
-        assert_eq!(pb.playbook_id, "PLAYBOOK_28_EVA_DCS_AND_SUIT_EMERGENCY");
-        assert_eq!(
-            pb.actions[0].action_id,
-            "ACT_EVA_PARMITANO_WATER_INTRUSION_IMMEDIATE_ABORT"
-        );
-        assert!(pb.safety_gates.gate4_eva_fitness_no_go);
-        let ids: Vec<&str> = pb.actions.iter().map(|a| a.action_id.as_str()).collect();
-        assert!(ids.contains(&"ACT_DCS_ABORT_EVA_100PCT_O2_SPLINT_IMMOBILIZE"));
-        assert!(ids.contains(&"ACT_EVA_HYPERTHERMIA_STOP_EXERTION_SHADE_SUIT_SUBLIMATOR_BACKUP"));
+        let pb_opt = select_toxicology_or_eva_playbook(&assessment, SafetyGates::default());
+        assert!(pb_opt.is_some());
+        if let Some(pb) = pb_opt {
+            assert_eq!(pb.playbook_id, "PLAYBOOK_28_EVA_DCS_AND_SUIT_EMERGENCY");
+            assert_eq!(
+                pb.actions[0].action_id,
+                "ACT_EVA_PARMITANO_WATER_INTRUSION_IMMEDIATE_ABORT"
+            );
+            assert!(pb.safety_gates.gate4_eva_fitness_no_go);
+            let ids: Vec<&str> = pb.actions.iter().map(|a| a.action_id.as_str()).collect();
+            assert!(ids.contains(&"ACT_DCS_ABORT_EVA_100PCT_O2_SPLINT_IMMOBILIZE"));
+            assert!(ids.contains(&"ACT_EVA_HYPERTHERMIA_STOP_EXERTION_SHADE_SUIT_SUBLIMATOR_BACKUP"));
+        }
     }
 
     #[test]
@@ -346,11 +348,13 @@ mod tests {
             ..Default::default()
         };
         let assessment = evaluate_toxicology_dcs(&input);
-        let pb = build_playbook_28_eva_dcs_and_suit_emergency(&assessment, SafetyGates::default())
-            .expect("playbook 28 must activate");
-
-        let ids: Vec<&str> = pb.actions.iter().map(|a| a.action_id.as_str()).collect();
-        assert!(ids.contains(&"ACT_DCS_TYPE2_AGE_HYPERBARIC_RECOMPRESSION_BTA_AIRLOCK"));
-        assert!(ids.contains(&"ACT_EVA_HYPOTHERMIA_ABORT_ACTIVE_REWARMING"));
+        let pb_opt =
+            build_playbook_28_eva_dcs_and_suit_emergency(&assessment, SafetyGates::default());
+        assert!(pb_opt.is_some());
+        if let Some(pb) = pb_opt {
+            let ids: Vec<&str> = pb.actions.iter().map(|a| a.action_id.as_str()).collect();
+            assert!(ids.contains(&"ACT_DCS_TYPE2_AGE_HYPERBARIC_RECOMPRESSION_BTA_AIRLOCK"));
+            assert!(ids.contains(&"ACT_EVA_HYPOTHERMIA_ABORT_ACTIVE_REWARMING"));
+        }
     }
 }
