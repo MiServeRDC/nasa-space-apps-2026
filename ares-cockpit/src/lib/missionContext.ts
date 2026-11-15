@@ -18,3 +18,9 @@ export const ACTIVITY_CONTEXT: Record<CrewActivity, string> = {
   rest: 'At rest, compare persistent changes in heart and breathing rate with the crew member’s resting baseline.',
   exercise: 'During exercise, heart and breathing rates can rise with effort. Check whether they settle after exercise and review any accompanying change in blood oxygen.',
 };
+
+
+export function formatMissionDelay(seconds: number): string {
+  return seconds < 60 ? `${seconds.toFixed(1)} s`
+    : `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`;
+}

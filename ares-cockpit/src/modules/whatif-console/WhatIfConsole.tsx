@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { CockpitSelect } from '../ui-primitives/CockpitControls';
 import { type CrewSex, type WhatIf } from '../../lib/scenario';
 
@@ -14,6 +15,7 @@ const SLIDERS: { key: NumericKey; label: string; unit: string; min: number; max:
 export function WhatIfConsole({
   value,
   onChange,
+  onSelectCrewProfile,
   onReset,
   ventEvent,
   onRearm,
@@ -24,15 +26,20 @@ export function WhatIfConsole({
 }: {
   value: WhatIf;
   onChange: (w: WhatIf) => void;
+  onSelectCrewProfile: (sex: CrewSex) => void;
   onReset: () => void;
   ventEvent: string | null;
   onRearm: () => void;
   link: 'ENGINE_LIVE' | 'LOCAL_SIMULATION';
   overlayActive: boolean;
   onToggleOverlay: (active: boolean) => void;
-  onSyncNow: () => void;
+  onSyncNow: () => Promise<boolean>;
 }) {
-  const setSex = (sex: CrewSex) => onChange({ ...value, sex });
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
+  const resync = async () => {
+    setSyncStatus('pending');
+    setSyncStatus(await onSyncNow() ? 'success' : 'error');
+  };
 
   return (
     <div className="scenario-fields text-xs">
@@ -61,7 +68,7 @@ export function WhatIfConsole({
       </div>
       <label className="scenario-profile">
         <span>Simulation body profile</span>
-        <CockpitSelect value={value.sex} onChange={event => setSex(event.currentTarget.value as CrewSex)}
+        <CockpitSelect value={value.sex} onChange={event => onSelectCrewProfile(event.currentTarget.value as CrewSex)}
           className="rounded border border-line bg-black px-2">
           <option value="MALE">Male</option>
           <option value="FEMALE">Female</option>
@@ -102,10 +109,16 @@ export function WhatIfConsole({
           <button
             type="button"
             className="cursor-pointer rounded border border-nominal px-2.5 py-1 font-mono text-nominal hover:bg-nominal/15"
-            onClick={onSyncNow}
+            onClick={() => void resync()}
+            disabled={syncStatus === 'pending'}
           >
-            Resync with engine
+            {syncStatus === 'pending' ? 'Syncing…' : 'Resync with engine'}
           </button>
+        )}
+        {link === 'ENGINE_LIVE' && overlayActive && syncStatus !== 'idle' && (
+          <span role="status" className="text-gray-300">
+            {syncStatus === 'pending' ? 'Sending scenario…' : syncStatus === 'success' ? 'Engine accepted the scenario.' : 'Sync could not be confirmed. Retry.'}
+          </span>
         )}
       </div>
     </div>

@@ -6,30 +6,32 @@ colors:
   background: "#000000"
   oled: "#000000"
   void: "#000000"
-  panel: "#0a0a0a"
+  panel: "#080d15"
+  panel-headings: "#0b1321"
+  panel-borders: "#27364b"
   surface: "oklch(0.13 0.008 250)"
   surface-l1: "oklch(0.13 0.008 250)"
   surface-l2: "oklch(0.17 0.012 250)"
   surface-l3: "oklch(0.10 0.006 250)"
   surfaceElevated: "oklch(0.17 0.012 250)"
-  primary: "oklch(0.96 0.002 250)"
-  secondary: "oklch(0.65 0.008 250)"
-  ink-display: "oklch(0.96 0.002 250)"
-  ink-body: "oklch(0.85 0.004 250)"
-  ink-meta: "oklch(0.65 0.008 250)"
-  ink-muted: "oklch(0.48 0.010 250)"
-  accent: "oklch(0.72 0.16 235)"
-  accent-spatial: "oklch(0.72 0.16 235)"
-  nominal: "oklch(0.72 0.17 152)"
-  status-nominal: "oklch(0.72 0.17 152)"
-  warning: "oklch(0.78 0.16 75)"
-  status-caution: "oklch(0.78 0.16 75)"
-  critical: "oklch(0.64 0.22 25)"
-  status-critical: "oklch(0.64 0.22 25)"
-  simulated: "oklch(0.68 0.17 300)"
-  status-simulated: "oklch(0.68 0.17 300)"
-  border: "oklch(1 0 0 / 0.09)"
-  border-active: "oklch(1 0 0 / 0.16)"
+  primary: "#e2e8f0"
+  secondary: "#94a3b8"
+  ink-display: "#ffffff"
+  ink-body: "#e2e8f0"
+  ink-meta: "#94a3b8"
+  ink-muted: "#64748b"
+  accent: "#38bdf8"
+  accent-spatial: "#38bdf8"
+  nominal: "#22c55e"
+  status-nominal: "#22c55e"
+  warning: "#eab308"
+  status-caution: "#eab308"
+  critical: "#f43f5e"
+  status-critical: "#f43f5e"
+  simulated: "#a855f7"
+  status-simulated: "#a855f7"
+  border: "#334155"
+  border-active: "#38bdf8"
 typography:
   h1:
     fontFamily: Geist Variable
@@ -83,52 +85,35 @@ rounded:
   full: 9999px
 ---
 
-## Overview
+# ARES-Health Aerospace Clinical Cockpit & Biodigital Twin
 
-ARES-Health is an autonomous aerospace medical decision-support cockpit operating over air-gapped 20 Hz physiological telemetry and a 3D React Three Fiber anatomical digital twin. Every visual choice prioritizes rapid clinical triage under sleep deprivation and strict non-fabrication of missing sensor channels.
+The desktop cockpit adopts the OLED visual system from `work/MiServeRDC` at `cfcb41a` combined with the 3 NASA operational steps (Gather, Evaluate, Act) and the dual-mode switch between vertical scrollytelling and the 100dvh operational workbench. Existing data, anatomy, controls and workflows carry through the visual refresh.
 
-## Colors
+## Visual System
 
-- **L0 OLED Void (`#000000`) & L1..L3 Elevation (`oklch(0.13 0.008 250)` / `oklch(0.17 0.012 250)` / `oklch(0.10 0.006 250)`)**: Pure `#000000` behind the 3D aperture and root canvas so dark space recedes completely behind bioluminescent organs and telemetry curves.
-- **Specular Hairline Borders (`oklch(1 0 0 / 0.09)` resting, `oklch(1 0 0 / 0.16)` active/focus)**: Zero heavy slate frames and zero blurred outer drop shadows.
-- **Semantic & Epistemic Accents**:
-  - **Spatial / Focus Cyan (`oklch(0.72 0.16 235)`)**: Active selection, 3D aperture focus, and primary flight-deck telemetry cues.
-  - **Nominal Emerald (`oklch(0.72 0.17 152)`)**: Empirical observed status and cleared safety gates.
-  - **Caution / Epistemic Amber (`oklch(0.78 0.16 75)`)**: Advisory state, missing-channel 45-degree diagonal hatch, and degraded telemetry provenance.
-  - **Critical / Gate-Trip Crimson (`oklch(0.64 0.22 25)`)**: Critical clinical alarms and locked hard safety interlocks.
-  - **Counterfactual Simulated Violet (`oklch(0.68 0.17 300)`)**: Strict Issue #12 separation for counterfactual What-If projections (`ILLUSTRATIVE_UNVALIDATED`).
-- **Contrast**: Primary ink (`oklch(0.96 0.002 250)`) on `#000000` / `L1` exceeds WCAG AAA contrast; secondary metadata (`oklch(0.65 0.008 250)`) exceeds WCAG AA.
+| Role | Value | Description |
+| --- | --- | --- |
+| Background | #000000 | Absolute OLED pitch black |
+| Panels | #080d15 | Dark slate glass surface with 75% opacity and blur |
+| Panel headings | #0b1321 | Header strip background |
+| Panel borders | #27364b | Restrained blue-slate edges (334155/60) |
+| Working selection & focus | #38bdf8 | Cyan spatial highlight and primary flight-deck cues |
+| Primary text | #e2e8f0 | High-contrast Geist display and body |
+| Metadata & muted | #94a3b8 / #64748b | Monospace telemetry and provenance indicators |
+| Status Nominal | #22c55e | Empirical observed status and cleared safety gates |
+| Status Caution | #eab308 | Advisory states, missing-channel diagonal hatch |
+| Status Critical | #f43f5e | Critical alarms and locked hard safety interlocks |
 
-## Typography
+Locally bundled Geist sets the interface and display type. Geist Mono is used for telemetry, mission identity and navigation. Panels use restrained blue-slate edges and a compact radius. Cyan marks controls and selection, while warning and critical colors keep their operational meaning.
 
-- **Primary UI (`Geist Variable`)**: Self-hosted variable font (`/fonts/Geist-Variable.woff2`) with metric-matched fallback (`Geist-Fallback`) for zero CLS.
-- **Telemetry Numerals (`Geist Mono Variable`)**: Self-hosted `/fonts/GeistMono-Variable.woff2` enforcing `tabular-nums slashed-zero` (`.ares-tabular-metric`) for all vitals, timestamps, radiation doses, and safety-gate countdowns.
+## Workspace & 3 NASA Steps
 
-## Layout & Spacing
+- **Gather**: Opens on the bedside monitor with 20 Hz Lead-II ECG strip, POCUS IJV ultrasound, signal coverage, 30-second rolling ranges, and cabin ECLSS telemetry. Signal coverage sits with honest missingness (`.ares-missing-hatch`). The historical BIDMC chart and anomaly panel keep their place in the telemetry column.
+- **Evaluate**: Features the interactive 3D humanoid twin (`open-anatomy-3d` paired male/female GLBs) with 4-strata layer controls, neuro-ocular SANS ONSD caliper, AI injury inspector, 14-day STL robust forecast, and the short-term forecast (`TimestralQuantileConePanel`) with readable signal names, units, median/quantile legends, and model limitations disclosure.
+- **Act**: Autonomous clinical decision support with 10 hard safety interlocks (Gates 1..7, 5A..5C), 30 Aerospace 360 flight playbooks across 4 mission domains, and physical crew confirmation (`PRESS & HOLD 1.5S TO ENGAGE ACTION`) committing immutable SHA-256 audit records.
 
-- **4px Base Grid**: Core rhythm steps (`4px`, `8px`, `12px`, `16px`, `24px`) organize peripheral telemetry rails around the central 3D aperture.
-- **Full-Viewport Spatial Bento (`100dvh`)**: Desktop flight-deck pairs a single-row `36px` to `44px` `HorizonBar` with a `280-310px` left rail, a `55-65%` central 3D biodigital twin aperture, and a `300-340px` right diagnostic/playbook rail.
-- **Scoped Touch Floor (`48px`)**: `48px` minimum control height applies strictly to touch viewports (`@media (pointer: coarse), (max-width: 1023px)`) and explicit primary confirmation actions (such as `HOLD 1.5S`) so desktop chrome remains compact.
+## Invariants
 
-## Elevation & Depth
-
-- **Zero Outer Drop Shadows**: Visual separation uses tonal OKLCH steps (`L0` void -> `L1` rail -> `L2` elevated interactive control -> `L3` recessed inner well) plus `1px` specular borders and Houdini `@property` directional highlights.
-- **Glassmorphism 2.0 Budget (`<= 4` Blur Surfaces)**: At most four concurrent `backdrop-filter: blur(12px)` root containers; zero nested blur wells and zero blur on `HorizonBar` or continuous waveform rails.
-
-## Shapes
-
-- **Instrumentation Micro-Radius (`2px`)**: Micro status tags, keycap hints, and telemetry tick badges.
-- **Control & Bento Radius (`8px` - `14px`)**: `8px` for tactile controls and bento cards; `12px` to `14px` (`shell`) for primary rails and floating HUD shells.
-- **Status Pill (`9999px`)**: Epistemic badges, live telemetry dots, and alarm pills.
-
-## Components
-
-- **Radix / shadcn OLED Primitives (`src/components/ui/`)**: Accessible `Button`, `Command`, `Sheet`, `Tabs`, `Tooltip`, and `Badge` primitives themed in `L0..L3` OKLCH tokens with `1px` specular borders and zero shadows.
 - **Honest Missingness (`.ares-missing-hatch`)**: Missing or uncalibrated channels (`null`, `NaN`, unavailable HRV RMSSD) render a `-45deg` amber diagonal hatch with `--` sentinel and provenance tooltip—never synthetic zeros.
-- **Zero-Emoji Policy**: Strictly zero emojis in UI copy, logs, and code.
-
-## Do's and Don'ts
-
-- **Do**: Verify rendered layouts, WebGL canvas bounds, Core Web Vitals, and console errors in live Chrome via `chrome-devtools-mcp` before shipping UI changes.
-- **Do**: Keep animations subtle, deterministic, and wrapped in `gsap.context()` with `prefers-reduced-motion` immediate snap fallback.
-- **Don't**: Add marketing landing-page effects (neon border beams, confetti, saturated purple gradients, or scroll-jacking) inside clinical telemetry panels.
+- **Strict Zero-Emoji Policy**: Strictly zero emojis in code, comments, logs, and user interface.
+- **Dual-Mode Switch**: Seamless transition between `VIEW: NARRATIVE (SCROLL)` and `VIEW: WORKBENCH (COCKPIT)`.

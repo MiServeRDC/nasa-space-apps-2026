@@ -352,6 +352,10 @@
       ],
       "description": "Current model outputs are illustrative and lack clinical/outcome calibration. Separate from recorded-data provenance. Accepted numerical gates do not imply calibrated coverage."
     },
+    "vitals_playbook": {
+      "description": "Checklist recommended specifically for a current vital-sign alarm.",
+      "$ref": "#/properties/active_playbook"
+    },
     "active_playbook": {
       "type": ["object", "null"],
       "properties": {

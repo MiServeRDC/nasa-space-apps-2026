@@ -46,6 +46,8 @@ const CONTRACT_BASE_EPOCH_MS: u64 = 1_794_657_600_000;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct StressTestPatchRequest {
+    /// Apply mission or crew context without changing the current overlay mode.
+    pub preserve_overlay: bool,
     pub source_record_id: Option<String>,
     pub flight_day: Option<u32>,
     pub mission_elapsed_days: Option<f64>,
@@ -80,6 +82,7 @@ pub struct StressTestPatchRequest {
 impl From<StressTestScenarioInput> for StressTestPatchRequest {
     fn from(s: StressTestScenarioInput) -> Self {
         Self {
+            preserve_overlay: false,
             source_record_id: Some(s.source_record_id),
             flight_day: Some(s.flight_day),
             mission_elapsed_days: None,
@@ -341,6 +344,8 @@ pub struct WireTelemetryPacket {
     pub environment: Option<WireEnvironment>,
     pub safety_margins: WireSafetyMargins,
     pub active_playbook: WireActivePlaybook,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vitals_playbook: Option<WireActivePlaybook>,
     pub medops: WireMedOps,
     pub causal_graph_state: WireCausalGraphState,
     pub nqs_stl_status: WireNqsStlStatus,
@@ -576,6 +581,19 @@ impl WireTelemetryPacket {
         };
 
         let active_playbook = wire_active_playbook(&p.active_playbook);
+        let vitals_playbook = if ctx.vitals_anomaly["overall"] == "ALARM" {
+            serde_json::from_value::<ares_core_types::VitalsAnomalyReport>(ctx.vitals_anomaly.clone())
+                .ok()
+                .and_then(|report| {
+                    ares_medops_playbooks::playbooks::select_vitals_anomaly_playbook(
+                        &report,
+                        p.active_playbook.safety_gates,
+                    )
+                })
+                .map(|playbook| wire_active_playbook(&playbook))
+        } else {
+            None
+        };
 
         let medops = WireMedOps {
             gates: WireMedOpsGates {
@@ -661,6 +679,7 @@ impl WireTelemetryPacket {
             environment,
             safety_margins,
             active_playbook,
+            vitals_playbook,
             medops,
             causal_graph_state,
             nqs_stl_status,

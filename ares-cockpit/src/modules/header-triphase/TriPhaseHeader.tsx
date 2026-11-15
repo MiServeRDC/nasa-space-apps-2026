@@ -4,14 +4,9 @@ import { useEffect, useState, type ReactNode } from 'react';
 import type { AlarmLevel } from '../../types/telemetry';
 import type { LinkState } from '../../lib/useTelemetry';
 
-import { MISSION_PROFILES, type MissionProfile } from '../../lib/missionContext';
+import { MISSION_PROFILES, formatMissionDelay, type MissionProfile } from '../../lib/missionContext';
 
 export type Phase = 'GATHER' | 'EVALUATE' | 'ACT';
-
-function fmt(s: number): string {
-  if (s < 60) return `${s.toFixed(1)} s`;
-  return `${Math.floor(s / 60)}m ${String(Math.round(s % 60)).padStart(2, '0')}s`;
-}
 
 export function AlarmBadge({ level }: { level: AlarmLevel }) {
   const cls: Record<AlarmLevel, string> = {
@@ -30,6 +25,7 @@ export function AlarmBadge({ level }: { level: AlarmLevel }) {
 
 export function TriPhaseHeader({
   astronautId,
+  recordedSourceId,
   profile,
   onSelectProfile,
   alarm,
@@ -44,6 +40,7 @@ export function TriPhaseHeader({
   onOpenShortcuts,
 }: {
   astronautId: string;
+  recordedSourceId?: string;
   profile: MissionProfile;
   onSelectProfile: (profile: MissionProfile) => void;
   alarm: AlarmLevel;
@@ -102,7 +99,7 @@ export function TriPhaseHeader({
         })}
       </nav>
 
-        <div className="mission-identity"><span className="crew-avatar" aria-hidden="true">{astronautId.slice(-2)}</span><span>Crew member<strong>{astronautId}</strong></span><button type="button" className="tools-button" onClick={onTogglePalette} aria-label="Open onboard tools">Tools <span aria-hidden="true">⌘ K</span></button></div>
+        <div className="mission-identity"><span className="crew-avatar" aria-hidden="true">{astronautId.slice(-2)}</span><span>Crew member<strong title={recordedSourceId ? `BIDMC source: ${recordedSourceId}` : undefined}>{astronautId}</strong></span><button type="button" className="tools-button" onClick={onTogglePalette} aria-label="Open onboard tools">Tools <span aria-hidden="true">⌘ K</span></button></div>
       </div>
       <div className="mission-masthead">
         <div><h1>{titles[activePhase]}</h1><p>{descriptions[activePhase]}</p></div>
@@ -127,7 +124,7 @@ export function TriPhaseHeader({
           ))}
         </CockpitSelect>
         <span className={profile.oneWayS === null ? 'font-bold text-warning' : 'text-gray-300'}>
-          {profile.oneWayS === null ? 'Earth link unavailable' : `${fmt(profile.oneWayS)} one way`}
+          {profile.oneWayS === null ? 'Earth link unavailable' : `${formatMissionDelay(profile.oneWayS)} one way`}
           <small className="profile-demo-label">demo profile</small>
         </span>
         <AlarmBadge level={alarm} />

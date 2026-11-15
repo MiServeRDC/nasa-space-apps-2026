@@ -989,83 +989,83 @@ html.reduce-transparency .hud-glass {
 ::selection { background: #3b614f; color: white; }
 .ares-workspace { min-height: 100dvh; color: #edf2fb; --color-panel: #111615; }
 .mission-header { padding: 0 36px; flex-shrink: 0; }
-.mission-topline { display: flex; align-items: center; justify-content: space-between; gap: 28px; min-height: 70px; border-bottom: 1px solid #373b34; }
+.mission-topline { display: flex; align-items: center; justify-content: space-between; gap: 28px; min-height: 70px; border-bottom: 1px solid #253348; }
 .ares-wordmark { display: inline-flex; align-items: center; gap: 10px; color: #eef4ff; text-decoration: none; font-size: 27px; font-weight: 600; letter-spacing: -1.4px; }
-.ares-wordmark svg { width: 38px; height: 38px; color: #d8a85f; border: 1px solid #494b42; border-radius: 12px; padding: 3px; }
+.ares-wordmark svg { width: 38px; height: 38px; color: #38bdf8; border: 1px solid #334155; border-radius: 12px; padding: 3px; }
 .wordmark-health { color: #a5b2c8; font-weight: 400; margin-left: 5px; }
-.phase-navigation { display: flex; align-items: center; gap: 6px; padding: 5px; border: 1px solid #373b34; border-radius: 16px; background: #080b0a; }
-.phase-button { display: flex; align-items: center; gap: 11px; min-width: 138px; min-height: 51px; padding: 8px 15px; border: 1px solid transparent; border-radius: 11px; text-align: left; color: #b1b5ad; font-size: 13px; font-weight: 500; }
+.phase-navigation { display: flex; align-items: center; gap: 6px; padding: 5px; border: 1px solid #253348; border-radius: 16px; background: #05080d; }
+.phase-button { display: flex; align-items: center; gap: 11px; min-width: 138px; min-height: 51px; padding: 8px 15px; border: 1px solid transparent; border-radius: 11px; text-align: left; color: #a0aec1; font-size: 13px; font-weight: 500; }
 .phase-button small { display: block; margin-top: 1px; font-size: 10px; color: #99abc5; font-weight: 400; }
-.phase-button:hover { background: #171d1a; color: white; }
-.phase-button.is-active { background: #d8a85f; border-color: #d8a85f; color: #181007; }
-.phase-button.is-active small { color: #3a2914; }
+.phase-button:hover { background: #131f30; color: white; }
+.phase-button.is-active { background: #38bdf8; border-color: #38bdf8; color: #07111a; }
+.phase-button.is-active small { color: #183a53; }
 .phase-button.needs-attention { border-color: #fb923c; color: #fb923c; }
-.mission-identity { display: flex; align-items: center; gap: 11px; color: #b1b5ad; font-size: 11px; }
+.mission-identity { display: flex; align-items: center; gap: 11px; color: #a0aec1; font-size: 11px; }
 .mission-identity strong { display: block; color: #e2eaf8; font-size: 12px; font-weight: 500; }
-.crew-avatar { display: grid; place-items: center; width: 35px; height: 35px; border: 1px solid #494b42; border-radius: 50%; color: #cbdcff; background: #20241f; font-size: 11px; }
-.tools-button { margin-left: 8px; padding: 10px 12px; min-height: 44px; border: 1px solid #494b42; border-radius: 10px; color: #d7e3f5; font-size: 12px; }
-.tools-button:hover { background: #20241f; }
+.crew-avatar { display: grid; place-items: center; width: 35px; height: 35px; border: 1px solid #334155; border-radius: 50%; color: #cbdcff; background: #111b2b; font-size: 11px; }
+.tools-button { margin-left: 8px; padding: 10px 12px; min-height: 44px; border: 1px solid #334155; border-radius: 10px; color: #d7e3f5; font-size: 12px; }
+.tools-button:hover { background: #111b2b; }
 .tools-button span { margin-left: 10px; color: #97abc9; font-size: 10px; }
 .mission-masthead { position: relative; isolation: isolate; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 16px 0 14px; }
 .mission-masthead h1 { max-width: 64rem; margin: 0 0 7px; font-size: clamp(32px, 4.1vw, 64px); line-height: 1.04; font-weight: 500; letter-spacing: -.045em; text-wrap: balance; }
-.mission-masthead p { margin: 0; color: #b1b5ad; font-size: 12px; line-height: 1.7; max-width: 70ch; }
+.mission-masthead p { margin: 0; color: #a0aec1; font-size: 12px; line-height: 1.7; max-width: 70ch; }
 .mission-link-block { display: flex; flex-direction: column; align-items: flex-end; gap: 11px; font-size: 11px; }
 .mission-actions { display: flex; flex-wrap: wrap; gap: 6px; }
-.mission-actions button { min-height: 36px; padding: 6px 10px; border: 1px solid #494b42; border-radius: 8px; color: #c8d8f0; font-size: 11px; }
-.mission-actions button:hover { background: #272c24; color: white; }
-.ares-workspace .bedside-monitor { background: #111615; border: 1px solid #373b34; border-radius: 16px; box-shadow: none; backdrop-filter: none; }
+.mission-actions button { min-height: 36px; padding: 6px 10px; border: 1px solid #334155; border-radius: 8px; color: #c8d8f0; font-size: 11px; }
+.mission-actions button:hover { background: #18283c; color: white; }
+.ares-workspace .bedside-monitor { background: #0a0f18; border: 1px solid #253348; border-radius: 16px; box-shadow: none; backdrop-filter: none; }
 .ares-workspace .act-grid { overflow: visible; }
 .mission-connection { display: flex; align-items: center; gap: 7px; color: #d4e0f1; }
 .connection-dot { width: 6px; height: 6px; background: #fb923c; border-radius: 50%; }
 .connection-dot.is-live { background: #4ade80; }
 .utc-clock { font-variant-numeric: tabular-nums; color: #93a3bc; margin-left: 17px; }
 .mission-profile-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.earth-profile-select { background: #111615; border: 1px solid #494b42; border-radius: 8px; padding: 7px 8px; min-height: 34px; color: #dce7f8; font-size: 11px; }
+.earth-profile-select { background: #0a0f18; border: 1px solid #334155; border-radius: 8px; padding: 7px 8px; min-height: 34px; color: #dce7f8; font-size: 11px; }
 .profile-demo-label { display: block; color: #98a8c0; font-size: 9px; }
 .autonomy-label { color: #9aaac1; font-size: 10px; }
 .alarm-badge { display: inline-flex; align-items: center; min-height: 24px; border-radius: 6px; font-size: 10px; font-weight: 500; line-height: 1.3; }
 .workspace-content { max-width: 1800px; padding: 0 36px 24px; gap: 14px; }
 .workspace-columns { gap: 24px; align-items: start; }
 .clinical-main { overflow: visible; }
-.assessment-summary { padding: 13px 18px; min-height: 50px; border: 1px solid #373b34; border-radius: 12px; background: #151a17; }
+.assessment-summary { padding: 13px 18px; min-height: 50px; border: 1px solid #253348; border-radius: 12px; background: #0b1220; }
 .assessment-summary .font-mono { font-family: inherit; font-variant-numeric: tabular-nums; }
-.clinical-panel { overflow: hidden; border: 1px solid #373b34; background: #111615; border-radius: 16px; }
-.clinical-panel-heading { min-height: 52px; padding: 12px 16px; border-bottom: 1px solid #373b34; background: #151a17; }
+.clinical-panel { overflow: hidden; border: 1px solid #253348; background: #0a0f18; border-radius: 16px; }
+.clinical-panel-heading { min-height: 52px; padding: 12px 16px; border-bottom: 1px solid #253348; background: #0b1220; }
 .clinical-panel-heading h3 { font-size: 15px; font-weight: 500; letter-spacing: -.3px; }
 .clinical-panel-heading > span { font-family: inherit; font-size: 10px; color: #a2b1c8; }
 .clinical-panel-content { padding: 12px 14px; }
 .anatomy-panel .clinical-panel-content { flex: none; }
-.readiness-panel, .scenario-panel { padding: 20px; border: 1px solid #373b34; border-radius: 16px; background: #111615; }
-.readiness-panel { background: #1b1c17; }
+.readiness-panel, .scenario-panel { padding: 20px; border: 1px solid #253348; border-radius: 16px; background: #0a0f18; }
+.readiness-panel { background: #0b1220; }
 .sidebar-heading { color: #e3ecfb; font-size: 13px; font-weight: 500; letter-spacing: -.1px; }
 .clinical-sidebar > .readiness-panel > div:first-child { gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
 .clinical-sidebar .font-mono { font-family: inherit; font-variant-numeric: tabular-nums; }
 .clinical-sidebar .tracking-widest { letter-spacing: normal; }
-.scenario-panel label { padding: 11px 0; border-bottom: 1px solid #31352d; }
+.scenario-panel label { padding: 11px 0; border-bottom: 1px solid #253348; }
 .scenario-panel label > div:first-child { font-size: 12px; gap: 8px; }
-.scenario-panel label > div:last-child { color: #b1b5ad; font-size: 10px; line-height: 1.5; }
+.scenario-panel label > div:last-child { color: #a0aec1; font-size: 10px; line-height: 1.5; }
 input[type="range"] { min-height: 32px; touch-action: pan-y; }
 .scenario-panel button { min-height: 36px; }
-.vital-tile { position: relative; min-height: 135px; padding: 18px 15px; border: 1px solid #494b42; background: #151a17; border-radius: 15px; }
+.vital-tile { position: relative; min-height: 135px; padding: 18px 15px; border: 1px solid #334155; background: #0b1220; border-radius: 15px; }
 .vital-tile > div:first-child > span { color: #c4d1e5; font-family: inherit; }
 .vital-tile > div:nth-child(2) { font-family: inherit; font-size: 30px; font-weight: 500; letter-spacing: -1.2px; font-variant-numeric: tabular-nums; }
 .vital-tile > div:nth-child(2).text-xs { font-size: 12px; letter-spacing: normal; }
 .vital-tile .text-\[10px\] { font-size: 9px; }
-.system-disclosure { flex-shrink: 0; padding: 0 36px 12px; color: #b1b5ad; font-size: 10px; }
-.system-disclosure > summary { padding: 12px 0; border-top: 1px solid #373b34; min-height: 42px; }
+.system-disclosure { flex-shrink: 0; padding: 0 36px 12px; color: #a0aec1; font-size: 10px; }
+.system-disclosure > summary { padding: 12px 0; border-top: 1px solid #253348; min-height: 42px; }
 .system-disclosure > summary > span { float: right; color: #91a0b8; }
-.system-disclosure > [role="region"] { border: 1px solid #373b34; border-radius: 12px; padding: 16px; gap: 12px; }
+.system-disclosure > [role="region"] { border: 1px solid #253348; border-radius: 12px; padding: 16px; gap: 12px; }
 .system-disclosure[open] { padding-bottom: 24px; }
 .ares-workspace .text-gray-500 { color: #9aa9bf; }
 .ares-workspace .text-gray-600 { color: #8c9bb2; }
-.ares-workspace .text-gray-400 { color: #b1b5ad; }
+.ares-workspace .text-gray-400 { color: #a0aec1; }
 .clinical-panel-content button { min-height: 36px; }
 .clinical-panel-content input:not([type="range"]), .clinical-panel-content select, .clinical-panel-content textarea { border-radius: 8px; }
 .clinical-panel-content > .flex.h-full { height: 100%; }
 .anatomical-explorer { font-size: 12px; }
 .anatomical-explorer .font-mono { font-family: inherit; font-variant-numeric: tabular-nums; }
 .anatomical-explorer > div:first-child > span { font-size: 9px; }
-.atlas-preferences { border: 1px solid #373b34; border-radius: 10px; background: #151a17; }
+.atlas-preferences { border: 1px solid #253348; border-radius: 10px; background: #0b1220; }
 .atlas-preferences > summary { min-height: 44px; padding: 13px 14px; color: #d5e4fb; font-size: 11px; }
 .atlas-preferences > summary span { float: right; color: #a4b4ce; font-size: 10px; }
 .atlas-preferences-content { display: flex; flex-direction: column; gap: 12px; padding: 0 14px 14px; }
@@ -1151,17 +1151,17 @@ input[type="range"] { min-height: 32px; touch-action: pan-y; }
 
 .anatomical-explorer {
   padding: 10px;
-  background: #0b100f;
+  background: #070b12;
 }
 .anatomical-explorer > [data-anatomy-model] {
   flex: 1 0 auto;
   min-height: clamp(380px, 56vh, 580px);
   overflow: hidden;
-  background-color: #070b0b;
+  background-color: #03060b;
   background-image:
-    radial-gradient(ellipse at center, #76957724, transparent 64%),
-    linear-gradient(#82937d12 1px, transparent 1px),
-    linear-gradient(90deg, #82937d12 1px, transparent 1px);
+    radial-gradient(ellipse at center, #38bdf817, transparent 64%),
+    linear-gradient(#7da1cb10 1px, transparent 1px),
+    linear-gradient(90deg, #7da1cb10 1px, transparent 1px);
   background-size: auto, 32px 32px, 32px 32px;
   box-shadow: inset 0 0 65px #0009;
 }
@@ -1183,23 +1183,23 @@ input[type="range"] { min-height: 32px; touch-action: pan-y; }
   gap: 3px 7px;
   padding: 6px 9px;
   text-align: left;
-  border: 1px solid #373b34;
-  background: #111615;
+  border: 1px solid #253348;
+  background: #0a0f18;
   border-radius: 8px;
   color: #e7e8df;
   font-size: 11px;
 }
 .anatomy-region-controls button:hover,
-.anatomy-region-controls button[aria-pressed="true"] { border-color: #d8a85f; }
+.anatomy-region-controls button[aria-pressed="true"] { border-color: #38bdf8; }
 .anatomy-region-dot { width: 6px; height: 6px; border-radius: 50%; }
 .anatomy-region-controls strong {
   grid-column: 2;
-  color: #b1b5ad;
+  color: #a0aec1;
   font: 400 10px var(--font-mono);
 }
 
 /* Unified workspace: clear paths between scenario controls and their results. */
-.ares-workspace { background: #101917; }
+.ares-workspace { background: #000000; }
 .mission-topline { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
 .mission-identity { justify-self: end; }
 .phase-navigation { border: 0; border-radius: 0; padding: 0; background: transparent; }
@@ -1212,8 +1212,8 @@ input[type="range"] { min-height: 32px; touch-action: pan-y; }
   background: transparent;
   color: #bccac3;
 }
-.phase-button:hover { background: #25342d; }
-.phase-button.is-active { background: transparent; color: #f1d39d; border-color: #d8a85f; }
+.phase-button:hover { background: #102133; }
+.phase-button.is-active { background: transparent; color: #9bdfff; border-color: #38bdf8; }
 .phase-button.needs-attention { border-color: var(--color-warning); }
 .evaluate-wide { grid-template-columns: minmax(0, 1fr); }
 .evaluate-workbench {
@@ -1256,8 +1256,8 @@ input[type="range"] { min-height: 32px; touch-action: pan-y; }
 .scenario-actions, .scenario-vent { grid-column: 1 / -1; }
 .scenario-fields .scenario-slider input[type="range"] { display: block; min-height: 28px; }
 .scenario-scans { display: grid; gap: 10px; }
-.scenario-scans canvas { display: block; max-width: 100%; max-height: 155px; object-fit: contain; background: #080b0a; }
-.scenario-forecast { background: #171e19; border-color: #627566; }
+.scenario-scans canvas { display: block; max-width: 100%; max-height: 155px; object-fit: contain; background: #05080d; }
+.scenario-forecast { background: #0a0f18; border-color: #38516b; }
 .scenario-forecast .clinical-panel-heading h3 { font-size: 17px; }
 .scenario-disclosure { margin-top: 9px; border-top: 1px solid var(--color-line); }
 .scenario-disclosure > summary { padding: 9px 0; color: var(--color-nominal); }
@@ -1268,7 +1268,7 @@ input[type="range"] { min-height: 32px; touch-action: pan-y; }
   gap: 12px 20px;
   padding: 4px 0 10px;
   font-size: 13px;
-  color: #b8c9c0;
+  color: #a9b8ce;
 }
 .mission-context-content strong { color: #edf3ee; }
 .mission-context-content label { display: grid; gap: 5px; }
@@ -1390,16 +1390,16 @@ input[type="range"] { min-height: 32px; touch-action: pan-y; }
   min-height: 38px;
   padding: 7px 33px 7px 10px;
   border: 0;
-  border-bottom: 1px solid #557064;
+  border-bottom: 1px solid #3d6580;
   border-radius: 5px 5px 0 0;
-  background: #18251f;
+  background: #0c1523;
   color: #eef3ef;
 }
-.cockpit-select > select:hover { background: #24362e; }
+.cockpit-select > select:hover { background: #152438; }
 .cockpit-select > svg {
   position: absolute;
   inset-inline-end: 10px;
-  color: #a8cabc;
+  color: #9ebad2;
   pointer-events: none;
 }
 .scenario-profile > .cockpit-select, .act-procedure-picker > .cockpit-select { width: 100%; }
@@ -1472,27 +1472,27 @@ details[open] > summary > .disclosure-caret { transform: rotate(90deg); }
   min-height: 32px;
   padding-inline: 9px;
   border-radius: 5px;
-  color: #bdcbc3;
+  color: #b2c2d8;
 }
-.anatomy-segments button:hover { background: #23332b; color: white; }
-.anatomy-segments button[aria-pressed="true"] { background: #34483b; color: #f2f7f3; }
-.anatomy-marker-toggle { display: flex; gap: 5px; align-items: center; color: #b8c9c0; }
-.anatomy-marker-toggle input { accent-color: #80b39f; }
-.anatomy-photo-button { color: #c7e6d9; }
+.anatomy-segments button:hover { background: #142437; color: white; }
+.anatomy-segments button[aria-pressed="true"] { background: #14334b; color: #f2f7f3; }
+.anatomy-marker-toggle { display: flex; gap: 5px; align-items: center; color: #a9b8ce; }
+.anatomy-marker-toggle input { accent-color: #38bdf8; }
+.anatomy-photo-button { color: #a8dcfa; }
 .forecast-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; color: #c1ccc5; font-size: 12px; }
 .forecast-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .forecast-legend i { width: 16px; border-top: 2px solid currentColor; }
 .forecast-legend .forecast-dashed { border-top-style: dashed; }
 .forecast-legend .forecast-range { height: 8px; border: 0; background: #4bbdb54d; }
-.forecast-assumption { margin-top: 8px; color: #b4c1b9; font-size: 12px; }
-.act-monitor-state { border-inline-start: 3px solid var(--color-line); color: #b8c9c0; padding: 7px 10px; }
+.forecast-assumption { margin-top: 8px; color: #aabbd0; font-size: 12px; }
+.act-monitor-state { border-inline-start: 3px solid var(--color-line); color: #a9b8ce; padding: 7px 10px; }
 .act-monitor-state[data-status="urgent"] { border-color: var(--color-critical); color: #ffd9df; }
 .act-monitor-state[data-status="normal"],
 .act-monitor-state[data-status="recovered"] { border-color: var(--color-nominal); }
 .act-monitor-state[data-status="awaiting"],
 .act-monitor-state[data-status="recovered-watch"] { border-color: var(--color-warning); }
 .act-recovery-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
-.act-next-step { display: grid; gap: 10px; padding: 16px; background: #1c3028; border: 1px solid #5d8b79; border-radius: 10px; }
+.act-next-step { display: grid; gap: 10px; padding: 16px; background: #102033; border: 1px solid #376586; border-radius: 10px; }
 .act-next-step h4 { font-weight: 600; color: var(--color-nominal); }
 .act-next-step > p { font-size: clamp(1.05rem, 1.7vw, 1.25rem); line-height: 1.42; color: #f2f6f3; }
 
@@ -1503,13 +1503,13 @@ details[open] > summary > .disclosure-caret { transform: rotate(90deg); }
   height: 38px;
   flex: 0 0 auto;
   place-items: center;
-  border: 1px solid #55675b;
+  border: 1px solid #334155;
   border-radius: 8px;
-  background: #151f18;
+  background: #0c1523;
   color: #e3ece6;
 }
-.cockpit-close:hover { background: #2c3c32; }
-.cockpit-close:focus-visible { outline: 2px solid #5fcbb9; outline-offset: 2px; }
+.cockpit-close:hover { background: #18283c; }
+.cockpit-close:focus-visible { outline: 2px solid #38bdf8; outline-offset: 2px; }
 [data-placing-marker="true"] canvas { cursor: crosshair; }
 .anatomy-marker-details {
   position: absolute;
@@ -1517,13 +1517,13 @@ details[open] > summary > .disclosure-caret { transform: rotate(90deg); }
   display: flex;
   align-items: center;
   gap: 12px;
-  border: 1px solid #55675b;
+  border: 1px solid #334155;
   border-radius: 8px;
-  background: #131d17;
+  background: #0b1220;
   padding: 10px;
 }
 .anatomy-marker-details > div { flex: 1; }
-.anatomy-marker-details p { color: #bdcbc3; }
+.anatomy-marker-details p { color: #b2c2d8; }
 .anatomical-explorer button:disabled { cursor: default; }
 .anatomical-explorer button:disabled:not([aria-pressed="true"]) { opacity: 0.46; }
 
@@ -1533,20 +1533,125 @@ details[open] > summary > .disclosure-caret { transform: rotate(90deg); }
   display: grid;
   gap: 12px;
   padding: 14px;
-  border: 1px solid #53665a;
+  border: 1px solid #27364b;
   border-radius: 12px;
-  background: #171e19;
+  background: #080d15;
 }
 .short-forecast-controls { display: flex; flex-wrap: wrap; gap: 6px; }
 .short-forecast-controls button {
   min-height: 36px;
   padding: 6px 10px;
-  border: 1px solid #465b4e;
+  border: 1px solid #334155;
   border-radius: 7px;
-  color: #c2d0c7;
+  color: #b8c9df;
   font-size: 12px;
 }
-.short-forecast-controls button:hover { border-color: #80b39f; }
-.short-forecast-controls button[aria-pressed="true"] { background: #2b4236; color: #f1f7f3; }
-.short-forecast-chart { border-top: 1px solid #465b4e; padding-top: 12px; }
-.short-forecast-meta { display: grid; gap: 4px; color: #b4c1b9; font-size: 12px; }
+.short-forecast-controls button:hover { border-color: #38bdf8; }
+.short-forecast-controls button[aria-pressed="true"] {
+  border-color: #38bdf8;
+  background: #122d43;
+  color: #c4eeff;
+}
+.short-forecast-notice {
+  padding: 8px 10px;
+  border-inline-start: 2px solid #e4af65;
+  color: #ddc49b;
+  background: #18151a;
+  font-size: 12px;
+}
+.short-forecast-chart {
+  --short-forecast-trace: #38bdf8;
+  padding: 12px;
+  border: 1px solid #26384c;
+  border-radius: 8px;
+  background: #0b1321;
+}
+.short-forecast-chart[data-fallback="true"] { --short-forecast-trace: #e4af65; }
+.short-forecast-chart-header { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 14px; }
+.short-forecast-chart-header strong { color: #b4e5fc; font-size: 14px; font-weight: 550; }
+.short-forecast-chart-header strong span { color: #94a3b8; font-size: 12px; }
+.short-forecast-chart .forecast-legend i { color: var(--short-forecast-trace); }
+.short-forecast-chart .forecast-range { background: color-mix(in srgb, var(--short-forecast-trace) 30%, transparent); }
+.short-forecast-grid { stroke: #26384c; stroke-width: 1; }
+.short-forecast-summary { display: flex; flex-wrap: wrap; gap: 10px 20px; padding-top: 10px; }
+.short-forecast-summary dt { color: #9cacc1; font-size: 11px; }
+.short-forecast-summary dd { color: #e2e8f0; font: 500 13px var(--font-mono); }
+.short-forecast-summary small { color: #9cacc1; font-size: 10px; }
+.short-forecast-meta { display: grid; gap: 4px; color: #aabbd0; font-size: 12px; }
+
+.urgent-status[data-procedure-pending="true"] { background: #2d2317; border-color: #d5a35f; }
+.urgent-status[data-procedure-pending="true"] svg, .urgent-status[data-procedure-pending="true"] strong { color: #f4d39d; }
+.act-monitor-state[data-status="procedure-pending"] { border-color: var(--color-warning); }
+.mission-connection-details { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px 16px; padding: 8px 0; color: #d1deee; font-size: 13px; }
+.mission-connection-details small { color: #98a9be; }
+
+/* MiServeRDC OLED palette on the desktop cockpit's existing phase layout. */
+@font-face {
+  font-family: "Geist";
+  src: url("/fonts/Geist-Variable.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/fonts/GeistMono-Variable.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+.ares-workspace {
+  --font-sans: "Geist", system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, monospace;
+  --color-panel: #0a0f18;
+  --color-line: #263449;
+  --color-nominal: #38bdf8;
+  background: #000000;
+  color: #e2e8f0;
+  font-family: var(--font-sans);
+}
+.ares-workspace ::selection { background: #38bdf84d; color: #ffffff; }
+.ares-workspace .mission-topline { min-height: 62px; }
+.ares-wordmark { font-size: 24px; letter-spacing: -.06em; }
+.ares-wordmark svg { border-radius: 8px; background: #070d17; }
+.mission-identity strong, .mission-profile-row, .phase-navigation, .crew-avatar {
+  font-family: var(--font-mono);
+}
+.ares-workspace .phase-button {
+  min-height: 46px;
+  font-size: 12px;
+  letter-spacing: .01em;
+}
+.ares-workspace .phase-button.is-active {
+  color: #b7eaff;
+  background: #0a1929;
+  border-bottom-color: #38bdf8;
+}
+.mission-masthead h1 { color: #f4f7fb; font-weight: 350; letter-spacing: -.064em; }
+.mission-masthead::before {
+  background: radial-gradient(ellipse at 28% 100%, #16385955 0%, transparent 64%);
+}
+.ares-workspace :is(.clinical-panel, .readiness-panel, .scenario-panel, .bedside-monitor, .measurement-context) {
+  border-radius: 12px;
+  background: #080d15;
+  border-color: #27364b;
+}
+.ares-workspace .clinical-panel-heading {
+  background: #0b1321;
+  border-color: #243449;
+}
+.ares-workspace :is(.clinical-panel-heading h3, .measurement-context h2, .health-trend h2) {
+  color: #b4e5fc;
+  font-weight: 550;
+}
+.ares-workspace .health-trend {
+  background: #080d15;
+  border-color: #27364b;
+}
+.ares-workspace .act-next-step {
+  background: #101e30;
+  border-color: #37536d;
+}
+.ares-workspace .act-next-step h4 { color: #a9e2fd; }
+.ares-workspace .clinical-sidebar .readiness-panel { background: #0b1321; }
