@@ -1,7 +1,7 @@
 import { requireLocalSpeech } from '../lib/localSpeechPolicy';
-// Persistent Ambient Voice Copilot & Studio Director Pill (`BottomCopilotStudioPill`).
+// Document-flow Voice Copilot & Studio Director controls (`BottomCopilotStudioPill`).
 // Implements:
-// - Compact bottom-center tactile bar (`0` `backdrop-filter`, `>= 48px` hit targets)
+// - Compact wrapping tactile bar (`0` `backdrop-filter`, `>= 48px` hit targets)
 // - Air-gapped voice & typed command router (`classifyVoiceTranscript` + `requestEdgeCopilot`)
 // - Hard Clinical Safety Interlock (`NASA-STD-3001 [V2 10027]`): blocks any vocal attempt to
 //   unlock Gate 1, confirm POCUS thrombus by voice, or administer systemic anticoagulants,
@@ -210,9 +210,7 @@ export function BottomCopilotStudioPill({
   return (
     <div
       onPointerDown={(e) => e.stopPropagation()}
-      className={`pointer-events-auto fixed left-1/2 z-[45] -translate-x-1/2 font-mono text-[10px] ${
-        studioBarOpen ? 'bottom-[104px]' : 'bottom-3'
-      }`}
+      className="copilot-flow pointer-events-auto font-mono text-sm"
     >
       {voiceNotice ? <p role="status" className="rounded bg-black p-2 text-amber-200">{voiceNotice}</p> : null}
       {/* Safety Interlock Toast (`NASA-STD-3001 [V2 10027]`) */}
@@ -298,7 +296,7 @@ export function BottomCopilotStudioPill({
       <div
         ref={pillRef}
         data-copilot-state={visualState}
-        className={`flex items-center gap-1.5 rounded-full border bg-[#06090f] px-2 py-1 shadow-2xl ${
+        className={`flex flex-wrap items-center gap-2 rounded-xl border bg-[#06090f] px-2 py-1 shadow-2xl ${
           visualState === 'SAFETY_INTERLOCK_BLOCKED'
             ? 'border-rose-500/85'
             : visualState === 'LISTENING'

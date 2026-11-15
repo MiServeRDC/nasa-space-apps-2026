@@ -178,6 +178,11 @@ export function WaveformCanvas2D({
 
     let rafId = 0;
     let lastPaintMs = 0;
+    let lastRenderedWriteIdx = -1;
+    let lastRenderedLength = -1;
+    let lastRenderedRefTime: number | undefined = undefined;
+    let lastRenderedCssW = 0;
+    let lastRenderedCssH = 0;
 
     const renderStrip = (nowMs: number): void => {
       const reducedMotion = prefersReducedMotionSafe();
@@ -186,7 +191,34 @@ export function WaveformCanvas2D({
         rafId = window.requestAnimationFrame(renderStrip);
         return;
       }
+
+      const wb = useWorkbenchStore.getState();
+      const st = useStudioTimelineStore.getState();
+      const refLatest =
+        wb.studioBarOpen && Number.isFinite(st.t) && ringBuffer.length > 0
+          ? ringBuffer.oldestTimestampS() + st.t
+          : undefined;
+
+      const currentWriteIdx = ringBuffer.oldestRingIndex();
+      const currentLen = ringBuffer.length;
+      const sizeChanged = cssW !== lastRenderedCssW || cssH !== lastRenderedCssH;
+      const dataChanged =
+        currentWriteIdx !== lastRenderedWriteIdx ||
+        currentLen !== lastRenderedLength ||
+        refLatest !== lastRenderedRefTime;
+
+      // Skip redundant clear and redraw cycles when ring-buffer state is unchanged
+      if (!sizeChanged && !dataChanged && nowMs - lastPaintMs < 1000) {
+        rafId = window.requestAnimationFrame(renderStrip);
+        return;
+      }
+
       lastPaintMs = nowMs;
+      lastRenderedWriteIdx = currentWriteIdx;
+      lastRenderedLength = currentLen;
+      lastRenderedRefTime = refLatest;
+      lastRenderedCssW = cssW;
+      lastRenderedCssH = cssH;
 
       ctx.save();
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -224,13 +256,6 @@ export function WaveformCanvas2D({
         ctx.stroke();
         ctx.restore();
       }
-
-      const wb = useWorkbenchStore.getState();
-      const st = useStudioTimelineStore.getState();
-      const refLatest =
-        wb.studioBarOpen && Number.isFinite(st.t) && ringBuffer.length > 0
-          ? ringBuffer.oldestTimestampS() + st.t
-          : undefined;
 
       const channelArray = ringBuffer[channel];
       const segmented = segmentWaveformWithDropouts({

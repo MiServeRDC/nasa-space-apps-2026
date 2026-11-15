@@ -4,9 +4,9 @@ import { announceAssertive } from './stores/a11yAnnouncer';
 // Greenfield ("Terra Rasa") ARES-Health Spatial Biomedical Workbench Entry (`App.tsx`).
 // Orchestrates:
 // - 20 Hz dual-transport telemetry (`useTelemetry`) + counterfactual `WhatIf` ODE state
-// - Single-screen `100dvh` 4-Layer `<WorkbenchShell>` (`<= 4` blurred root shells, zero page scroll)
+// - Responsive operational/presentation `<WorkbenchShell>` with scrollable clinical content
 // - Slide-Over Drawers (`MissionPortalDrawer`, `AuditAndProvenanceDrawer`, `PLAYBOOK_FULL`)
-// - Ambient `<BottomCopilotStudioPill>` + `<= 29.8s` `<OpenScreenStudioBar>`
+// - Document-flow `<BottomCopilotStudioPill>` + `<= 29.8s` `<OpenScreenStudioBar>`
 // - `<CommandPaletteOverlay>`, `<ShortcutsOverlay>`, and `<AiInjuryModal>`
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';

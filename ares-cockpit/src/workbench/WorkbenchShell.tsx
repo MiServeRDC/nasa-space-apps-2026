@@ -1,14 +1,7 @@
-// Locked `100dvh` 4-Layer Spatial Workbench Shell (`WorkbenchShell`).
-// Orchestrates:
-// - Layer 0 (`Z-0`): Single persistent WebGL2 `<SpatialCanvasRoot>` + `<BiodigitalTwinStage>`
-//   with `setViewOffset` optical centering inside the `62-68%` open central aperture
-// - Layer 1 (`Z-40`): Persistent `36px` `<HorizonBar>` (`0` backdrop-filter)
-// - Layer 2 (`Z-20`, `#main-workbench-scaffold`): Asymmetric 3-column `.ares-workbench-grid`
-//   with strictly `<= 4` blurred root shells (`VitalsAnchorCard`, `LeftSlot2`, `RightDock`, `SpatialStageHud` pill)
-// - Layer 3 (`Z-50`, `#drawer-host-layer`) & Layer 4 (`Z-90..95`): Overlays + `<TelemetryIgnitionPreloader>`
-// - Zero-GC ring buffer ingestion (`telemetryRingBuffer.pushTelemetryFrame`)
-// - Capture-phase keyboard orchestrator (`useKeyboardOrchestrator`)
-// - NotebookLM Risk 5: All discrete live announcements routed through `src/stores/a11yAnnouncer.ts`
+import {TriageOverview} from './TriageOverview';
+// Phase 8 operational/presentation shell: clinical content in document flow,
+// one scissored optional 3D canvas, independent 2D navigation and overlay hosts.
+// Safety execution and provenance remain in their existing packet-driven modules.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CountermeasureAction, TelemetryPacket } from '../types/telemetry';
@@ -112,6 +105,8 @@ export function WorkbenchShell({
   modalSlot,
   studioSlot,
 }: WorkbenchShellProps) {
+  const displayMode=useWorkbenchStore(s=>s.displayMode),setDisplayMode=useWorkbenchStore(s=>s.setDisplayMode);
+  const eventRootRef=useRef<HTMLDivElement>(null);
   const phase = useWorkbenchStore((s) => s.phase);
   const [spatialUnavailable, setSpatialUnavailable] = useState(
     () => typeof window === 'undefined' || typeof window.WebGL2RenderingContext === 'undefined');
@@ -207,28 +202,22 @@ export function WorkbenchShell({
   const dataMode = clinicalDataMode(packet);
   const isSimulated = dataMode === 'LOCAL_PREVIEW' || dataMode === 'BACKEND_SCENARIO';
 
-  const chromeInsets = useMemo(
-    () => ({
-      leftPx: 326,
-      rightPx: 386,
-      topPx: 88,
-      bottomPx: studioBarOpen ? 142 : 112,
-    }),
-    [studioBarOpen],
-  );
+  const chromeInsets = useMemo(()=>({leftPx:0,rightPx:0,topPx:0,bottomPx:0}),[]);
 
   return (
     <div
+      ref={eventRootRef}
       className="workbench-frame"
+      data-display-mode={displayMode}
       data-mode={isSimulated ? 'simulated' : 'empirical'}
       data-phase={phase}
     >
       {/* Layer 4 (Boot): 2.2s Skippable Value-Setter Ignition Preloader */}
       <TelemetryIgnitionPreloader astronautId={packet.astronaut_id} />
 
-      {/* Layer 0: Single Persistent WebGL2 Spatial Canvas Root */}
+      {/* Single shared canvas; primary view follows the measured local aperture */}
       <OptionalSpatialBoundary
-        eventSource={stageApertureRef}
+        eventSource={eventRootRef}
         onFailure={() => setSpatialUnavailable(true)}
         onContextLostChange={setSpatialUnavailable}
         apertureTrackRef={stageApertureRef}
@@ -239,7 +228,8 @@ export function WorkbenchShell({
         onCaptureSnapshotRef={effectiveCaptureRef}
       />
 
-      {/* Layer 1: Persistent 36px Top Telemetry Horizon */}
+      {/* Document-flow workflow navigation */}
+      <div id={MAIN_WORKBENCH_SCAFFOLD_ID} className="phase8-content" tabIndex={-1}>
       <HorizonBar
         packet={packet}
         telemetryStatus={telemetryStatus}
@@ -250,14 +240,15 @@ export function WorkbenchShell({
         onSelectSubject={onSelectSubject}
       />
 
-      {/* Layer 2: Locked 3-Column Bento Grid (`<= 4` blurred root shells) */}
+      {/* Responsive clinical grid; presentation changes only placement */}
       <main
-        id={MAIN_WORKBENCH_SCAFFOLD_ID}
         aria-label="ARES-Health Spatial Biomedical Workbench"
         className="ares-workbench-grid relative z-20 pointer-events-none"
       >
+        <TriageOverview packet={packet} status={telemetryStatus}/>
+        <div className="display-mode-controls" role="group" aria-label="Workbench display mode"><button className="phase8-button" aria-pressed={displayMode==='operational'} onClick={()=>setDisplayMode('operational')}>Operational</button><button className="phase8-button" aria-pressed={displayMode==='presentation'} onClick={()=>setDisplayMode('presentation')}>Presentation</button><span>Same telemetry and action gates in both views.</span></div>
         {/* Left Column: Invariant Slot 1 Vitals Anchor + Contextual Slot 2 */}
-        <div className="pointer-events-auto flex min-h-0 flex-col gap-3 overflow-y-auto">
+        <div className="clinical-context pointer-events-auto flex min-w-0 flex-col gap-3">
           <VitalsAnchorCard packet={packet} telemetryStatus={telemetryStatus} />
 
           {phase === 'GATHER' ? (
@@ -280,15 +271,11 @@ export function WorkbenchShell({
           ) : null}
         </div>
 
-        {/* Center Column: 62-68% Open Optical Aperture for 3D Biodigital Twin */}
-        <div
-          ref={stageApertureRef}
-          className="pointer-events-auto relative min-h-[340px] w-full overflow-hidden rounded-2xl"
-        >
-          {spatialUnavailable ? <p role="status" data-spatial-fallback="true" className="relative z-30 rounded border border-amber-400 bg-black p-3 text-sm text-amber-200">
-            3D unavailable. Vitals, alerts, diagnostic navigation and playbooks remain available in 2D.
-          </p> : null}
+        {/* Optional reference view; all controls are outside its aperture */}
+        <section className="clinical-stage pointer-events-auto" aria-label="Optional anatomy reference">
+          {spatialUnavailable ? <p role="status" data-spatial-fallback="true" className="rounded border border-amber-400 bg-black p-3 text-sm text-amber-200">3D unavailable. Vitals, alerts, diagnostic navigation and playbooks remain available in 2D.</p>:null}
           <SpatialStageHud
+            viewport={<div ref={stageApertureRef} className="stage-aperture" data-stage-aperture aria-label="Optional illustrative body viewport"/>}
             lazyGlbLayers={lazyGlbLayers}
             onToggleGlbLayer={handleToggleGlbLayer}
             hypergraphSummary={packet.hypergraph_spatial}
@@ -298,10 +285,10 @@ export function WorkbenchShell({
             sourceLabel={clinicalSourceLabel(packet)}
             onSexChange={handleSexChange}
           />
-        </div>
+        </section>
 
         {/* Right Column: Phase-Contextual Primary Diagnostic / Prognostic / Playbook Dock */}
-        <div className="pointer-events-auto flex min-h-0 flex-col overflow-hidden">
+        <div id="clinical-phase-dock" tabIndex={-1} aria-label="Current clinical phase" className="clinical-dock pointer-events-auto flex min-w-0 flex-col">
           {phase === 'GATHER' ? (
             <PhaseGatherRightDock
               packet={packet}
@@ -344,8 +331,9 @@ export function WorkbenchShell({
         </div>
       </main>
 
-      {/* Optional Studio Director Floating Bar Slot (Phase 5) */}
-      {studioSlot}
+      {/* Copilot and presentation tools stay in flow */}
+      <aside className="workbench-tools" aria-label="Copilot and presentation tools">{studioSlot}</aside>
+      </div>
 
       {/* Layer 3: Slide-Over Drawer Host (`#drawer-host-layer`) */}
       <div id={DRAWER_HOST_LAYER_ID} className="relative z-50">

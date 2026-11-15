@@ -14,6 +14,34 @@
   - Binary IPC `1..=30` (`binary_ipc.rs`), `ExtendedSafetyGates` bits `14..=16`, and `FastMCP` 360 domain filters/aliases (`97aeea5`).
   - Full workspace verification: `323` Rust tests passed (`0` failed, `0` ignored across `34` active suites / `9` crates).
 
+## Greenfield phase 10 end-to-end qualification and controlled integration delivered (2026-11-15)
+
+Dedicated work/MiServeRDC-greenfield-phase01; no main/push/hosted Actions.
+Delivered full-system end-to-end qualification (`tests/greenfield_phase10.test.ts`): verified 4 historical UI failure remediations, provenance/ordering/stale lifecycle, all 15 playbooks, safety gates, and dual-donor license segregation.
+Verified 167/167 frontend tests, 0 TS errors, clean production bundle, and fast probe 4/4 passing (0 unwrap/expect in crates, cargo check and clippy 0 warnings).
+Dual-profile Playwright browser qualification verified 100% air-gapped execution (Profile 1 3D desktop, Profile 2 forced WebGL-disabled 2D fallback with 0 console errors).
+See `docs/evaluation/GREENFIELD_PHASE10_RESULTS.md`.
+Status: All Greenfield Phases 0-10 complete and verified. Ready for controlled PR review.
+
+## Greenfield phase 9 performance, quality policy, and resource governance delivered (2026-11-15)
+
+Dedicated work/MiServeRDC-greenfield-phase01; no main/push/hosted Actions.
+Delivered WaveformCanvas2D revision gating (reducing idle redraws by >66%), adaptive quality policy engine (`renderQuality.ts`) with hardware heuristics and hysteresis step-down/recovery, and 3D frameloop suppression to `never` on hidden/LOW_2D states.
+Verified 160/160 frontend tests, 0 TS errors, clean production bundle with lazy-loaded 3D chunks, and fast probe 4/4 passing (0 unwrap/expect in crates, cargo check and clippy 0 warnings).
+Headless Chrome / Playwright browser qualification verified 100% air-gapped execution (0 external requests), responsive layouts at 1440 and 390 viewports, and 200% zoom continuity.
+See `docs/evaluation/GREENFIELD_PHASE9_RESULTS.md`.
+Next: Phase 10 (End-to-end qualification of software and controlled integration).
+
+## Greenfield phase 8 operational triage and responsive flow delivered (2026-11-15)
+
+Dedicated work/MiServeRDC-greenfield-phase01; no main/push/hosted Actions.
+Delivered 2D packet-only triage summary (`TriageOverview.tsx`), decoupled operational/presentation display modes in `workbenchStore.ts`, replaced height-locked layout with responsive document flow, contained canvas inside local stage aperture, and extracted controls outside 3D aperture.
+Integrated `useReducedMotion.ts` for automated reduced-motion compliance.
+Verified 156/156 frontend unit/integration tests, 0 TS errors, clean production bundle, fast probe 4/4 passing (0 unwrap/expect in crates, cargo check and clippy 0 warnings).
+Headless Chrome / Playwright browser matrix verified on 1440, 1024, 768, 390, and 740x390 viewports with zero horizontal overflow, 200% zoom continuity, focus restoration on Escape, and no-WebGL 2D alert-to-action path.
+See `docs/evaluation/GREENFIELD_PHASE8_RESULTS.md`.
+Next: Phase 9 (Measure and optimize resources) and Phase 10 (End-to-end qualification and controlled integration).
+
 ## Greenfield phase 7 partial female reference/tooling delivered (2026-11-15)
 
 Dedicated work/MiServeRDC-greenfield-phase01; no main/push/hosted Actions.

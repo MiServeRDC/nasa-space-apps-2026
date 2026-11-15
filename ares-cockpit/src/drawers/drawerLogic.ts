@@ -16,7 +16,12 @@ export function restoreFocusById(id: string | null | undefined): void {
   if (!id || typeof document === 'undefined') return;
   const target = document.getElementById(id);
   if (target && typeof target.focus === 'function') {
-    target.focus({ preventScroll: true });
+    if(target.closest?.('[inert]')&&typeof window!=='undefined'){
+      window.requestAnimationFrame(()=>window.requestAnimationFrame(()=>{
+        const current=document.getElementById(id);
+        if(current&&!current.closest?.('[inert]'))current.focus({preventScroll:true});
+      }));
+    }else target.focus({ preventScroll: true });
   }
 }
 

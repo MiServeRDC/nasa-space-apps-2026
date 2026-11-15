@@ -20,6 +20,61 @@ Integrated the complete Aerospace 360 architecture and P0/P1 runtime fixes acros
    - **Domain 6 (`behavioral_bmed.rs`, `playbooks_bmed.rs`):** `PLAYBOOK_29_BMED_PSYCHIATRIC_CRISIS`, **Gate 7A/7B/7C** (reversible organic delirium exclusion, CMRS restraint guard, Ketamine IM QTc `>= 470 ms` substitution), and `[V1 3003]` privacy redaction.
    - **Binary IPC & FastMCP:** `binary_ipc.rs` maps `1..=30` playbooks and `FLAG_GATE5_PHARMA_LOCK` / `FLAG_GATE6_RADIATION_INVASIVE_LOCK` / `FLAG_GATE7_BMED_DELIRIUM_GUARD`; `server_mcp` supports Phase-2 360 domains, Gates 5-7, and domain filters/aliases.
 
+## Greenfield phase 10 end-to-end qualification and controlled integration delivered (2026-11-15)
+
+Dedicated work/MiServeRDC-greenfield-phase01; no main/push/hosted Actions.
+Implemented complete end-to-end qualification suite (`tests/greenfield_phase10.test.ts`):
+- Suite A1: Non-finite telemetry values (null, NaN, undefined) render explicit "Unavailable" badges without string leaks or false zeros.
+- Suite A2: Strict forecast channel binding suppresses unmatched cones (Issue #11 absent RMSSD forces null rmssd_ms_cone).
+- Suite A3: Deliberate confirmation hold time enforced under reduced motion; frameloop drops to on-demand.
+- Suite A4: Unavailable WebGL deterministic 2D fallback; LOW_2D drops frameloop to never with DPR 1 while preserving complete clinical state.
+- Suite B: Provenance, snapshot ordering, and stale detection lifecycle verified; regressive sequence rejected; source switch resets tracking.
+- Suite C: All 15 crystallized and vitals playbooks (#01-#15) verified in catalog with safety gates, default_actions, and normative clauses.
+- Suite D: Dual donor switching (Male Z-Anatomy CC BY-SA 4.0 vs Female HRA CC BY 4.0) with license segregation and focus preservation.
+Tests: 167 frontend tests passing (`node --test`), TypeScript lint and build passing in 2.34s with 0 errors.
+Fast probe 4/4 passing (0 unwrap/expect in crates, cargo check and clippy 0 warnings).
+Dual-profile browser qualification via headless Chrome/Playwright (`scripts/verify_greenfield_phase10_browser.mjs`):
+Profile 1 (Desktop 3D): 0 external requests (100% air-gapped), cold boot within budget, 2D alert-to-action confirmed, multi-viewport reflow across 1440, 1024, 768, 390px with zero horizontal scroll overflow.
+Profile 2 (Forced WebGL Disabled): WebGL2/WebGL stubbed to undefined; deterministic 2D fallback mounts cleanly with 0 console errors and full interactive 2D alert-to-action navigation.
+Artifacts recorded in `/var/folders/0t/wclc3zfx6vn6vrcmw_bz2s9w0000gn/T/ares-greenfield-phase10-viUroQ/`.
+See `docs/evaluation/GREENFIELD_PHASE10_RESULTS.md`.
+Status: All Greenfield Phases 0-10 complete, qualified, and ready for team review and controlled integration.
+
+## Greenfield phase 9 performance, quality policy, and resource governance delivered (2026-11-15)
+
+Dedicated work/MiServeRDC-greenfield-phase01; no main/push/hosted Actions.
+Implemented WaveformCanvas2D revision gating and size delta tracking, eliminating over 66% of redundant 2D canvas redraw iterations during 60 FPS RAF cycles.
+Preserved Issue #11 NaN dropouts, pen-lift segment boundaries, and tactical threshold lines.
+Implemented configurable quality policy in `src/lib/renderQuality.ts`: `QualityTier` (LOW_2D, STANDARD, DETAILED) and `QualityMode` (AUTO | tier) with hardware capability detection (`detectHardwareTier`) and hysteresis-stabilized frame-pressure step-down (> 28ms) and recovery (< 14ms).
+Invariants: Quality tier changes NEVER mutate clinical measurements, telemetry freshness, or selected anatomical identifiers.
+Suppressed WebGL frameloop (`frameloop="never"`) on `SpatialCanvasRoot.tsx` when stage is hidden, occluded, context-lost, or in LOW_2D mode, ensuring 0 active draw calls without delaying 20 Hz telemetry ingestion.
+Tests: 160 frontend tests passing (`node --test`), TypeScript lint and build passing in 2.31s with 0 errors.
+Fast probe 4/4 passing (0 unwrap/expect in crates, cargo check and clippy 0 warnings).
+Real browser qualification via headless Chrome/Playwright (`scripts/verify_greenfield_phase9_browser.mjs`):
+100% air-gapped (0 external requests), cold boot within budget, 2D triage authoritative across 1440 and 390 viewports, 200% zoom without horizontal overflow.
+Artifacts recorded in `/var/folders/0t/wclc3zfx6vn6vrcmw_bz2s9w0000gn/T/ares-greenfield-phase9-bwQqIa/`.
+See `docs/evaluation/GREENFIELD_PHASE9_RESULTS.md`.
+Next: Phase 10 (End-to-end qualification of software and controlled integration).
+
+## Greenfield phase 8 operational triage and responsive flow delivered (2026-11-15)
+
+Dedicated work/MiServeRDC-greenfield-phase01; no main/push/hosted Actions.
+Implemented 2D packet-only clinical overview (`TriageOverview.tsx`): Problem, Evidence (Heart rate, SpO2, Respiration, HRV), Missing Channels, Next Permitted Step. Navigation-only to playbooks or measurements, retaining all hard safety gates and hold-to-confirm semantics.
+Decoupled `displayMode` in `workbenchStore.ts` into `operational` (quiet default, no autorotation) and `presentation` (autorotation active if reduced-motion is not set). Both share identical clinical telemetry, selection, and safety gates.
+Refactored layout in `WorkbenchShell.tsx`, `index.css`, and `SpatialStageHud.tsx`: replaced height-locked viewport grid with responsive document flow.
+Extracted hotspot/layer controls outside the 3D body aperture onto dedicated bars, preventing occlusion of anatomy and touch interference on mobile.
+Contained primary canvas inside measured local stage aperture (`data-stage-aperture`).
+Integrated `useReducedMotion.ts` respecting `(prefers-reduced-motion: reduce)` to disable autorotation and camera transitions.
+Guaranteed full 2D alert-to-action navigation without touching 3D or WebGL.
+Preserved keyboard orchestrator, dialog `Escape` focus restoration to activator, and focus following phase transitions.
+Tests: 156 frontend tests passing (`node --test`), TypeScript lint and build passing in 2.32s with 0 errors.
+Fast probe 4/4 passing (0 unwrap/expect in crates, cargo check and clippy 0 warnings).
+Real browser qualification via headless Chrome/Playwright (`scripts/verify_greenfield_phase8_browser.mjs`):
+1440x1000, 1024x900, 768x1024, 390x844, and narrow landscape 740x390 across both Operational and Presentation modes passed. Zero horizontal overflow, real rendered geometry verified in primary stage and studio split view, 200% layout zoom tested, no-WebGL fallback alert-to-action path available in 2D.
+Artifacts recorded in `/var/folders/0t/wclc3zfx6vn6vrcmw_bz2s9w0000gn/T/ares-greenfield-phase8-rKLQUI/`.
+See `docs/evaluation/GREENFIELD_PHASE8_RESULTS.md`.
+Next: Phase 9 (Measure and optimize resources) and Phase 10 (End-to-end qualification and controlled integration).
+
 ## Greenfield phase 7 partial female reference/tooling delivered (2026-11-15)
 
 Dedicated work/MiServeRDC-greenfield-phase01; no main/push/hosted Actions.

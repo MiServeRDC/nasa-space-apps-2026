@@ -13,6 +13,7 @@ import { View } from '@react-three/drei';
 import * as THREE from 'three';
 import { ShaderWarmupManager } from './ShaderWarmupManager';
 import { AdaptivePerformanceGuard } from './AdaptivePerformanceGuard';
+import { useWorkbenchStore } from '../stores/workbenchStore';
 
 /**
  * Explicit priority-1 full-bleed render pass for the primary 3D Biodigital Twin scene.
@@ -108,13 +109,18 @@ export function SpatialCanvasRoot({
     (eventSource as HTMLElement | React.RefObject<HTMLElement> | undefined) ??
     fallbackEventSource;
 
+  const qualityTier = useWorkbenchStore((s) => s.qualityTier);
+  const frameloop = contextLost || qualityTier === 'LOW_2D' ? 'never' : 'always';
+
   return (
     <div
-      className={`fixed inset-0 z-0 pointer-events-none select-none ${className}`.trim()}
+      className={`fixed inset-0 z-30 pointer-events-none select-none ${className}`.trim()}
       data-webgl-context-lost={contextLost ? 'true' : 'false'}
+      data-frameloop-mode={frameloop}
       aria-hidden="true"
     >
       <Canvas
+        frameloop={frameloop}
         fallback={<span>3D unavailable; use the 2D cockpit.</span>}
         dpr={[1, 2]}
         eventSource={resolvedEventSource}

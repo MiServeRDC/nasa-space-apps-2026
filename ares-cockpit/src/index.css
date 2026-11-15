@@ -363,85 +363,9 @@ input[type="range"] {
 /* ==========================================================================
    6. 4-TIER RESPONSIVE WORKBENCH TOPOLOGY (2560PX -> 1440PX -> 1024PX -> 390PX)
    ========================================================================== */
-.workbench-frame {
-  position: relative;
-  width: 100%;
-  height: 100dvh;
-  overflow: hidden;
-  background-color: #000000;
-  color: var(--color-ink-display);
-}
-
-/* Issue #12 peripheral empirical vs counterfactual framing */
-.workbench-frame[data-mode="simulated"]::after {
-  content: "";
-  position: fixed;
-  inset: 4px;
-  border: 1px dashed rgba(245, 158, 11, 0.36);
-  border-radius: 14px;
-  pointer-events: none;
-  z-index: 85;
-}
-
-.ares-workbench-grid {
-  display: grid;
-  grid-template-columns: minmax(288px, 308px) minmax(0, 1fr) minmax(320px, 368px);
-  gap: var(--space-gap);
-  padding: var(--space-outer);
-  height: calc(100dvh - var(--horizon-height));
-}
-
-/* Tier 1: Ultrawide Studio (1921px - 2560px+) */
-@media (min-width: 1921px) {
-  .ares-workbench-grid {
-    grid-template-columns: 340px minmax(0, 1fr) 420px;
-  }
-}
-
-/* Tier 3: Tablet Touch Deck (768px - 1024px) */
-@media (min-width: 768px) and (max-width: 1024px) {
-  .workbench-frame {
-    height: auto;
-    min-height: 100dvh;
-    overflow-y: auto;
-  }
-  .ares-workbench-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    height: auto;
-  }
-  button,
-  select,
-  summary,
-  [role="tab"],
-  [role="slider"] {
-    min-width: var(--touch-target-min);
-    min-height: var(--touch-target-min);
-  }
-}
-
-/* Tier 4: Mobile Triage Deck (<= 767px / 390px) */
-@media (max-width: 767px) {
-  .workbench-frame {
-    height: auto;
-    min-height: 100dvh;
-    overflow-x: hidden;
-    overflow-y: auto;
-    padding-bottom: 64px;
-  }
-  .ares-workbench-grid {
-    grid-template-columns: minmax(0, 1fr);
-    height: auto;
-    padding: 12px;
-    gap: 12px;
-  }
-  button,
-  select,
-  summary,
-  [role="tab"],
-  [role="slider"] {
-    min-width: var(--touch-target-min);
-    min-height: var(--touch-target-min);
-  }
+/* Keep the existing touch baseline for standalone reference tools, too. */
+@media (max-width:1024px) {
+  button,select,summary,[role="tab"],[role="slider"] {min-width:var(--touch-target-min);min-height:var(--touch-target-min);}
 }
 
 /* ==========================================================================
@@ -593,3 +517,84 @@ html.reduce-transparency .ares-root-shell {
 .monitor-vital {
   font-variant-numeric: tabular-nums;
 }
+
+/* Phase 8: clinical content stays in document flow; only dialogs overlay it. */
+.workbench-frame {height:auto;min-height:100dvh;overflow:visible;padding-bottom:env(safe-area-inset-bottom,0px);}
+.workbench-frame[data-mode="simulated"]::after {display:none;}
+.phase8-content {position:relative;}
+.ares-workbench-grid {height:auto;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);align-items:start;gap:20px;max-width:1600px;margin:auto;}
+.ares-workbench-grid > * {min-width:0;pointer-events:auto;}
+.triage-overview {grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr);gap:20px;padding:24px;border:1px solid #334155;border-left:4px solid #22d3ee;border-radius:16px;background:#090f16;color:#e2e8f0;}
+.triage-overview[data-triage-alarm="CRITICAL"] {border-left-color:#fb7185;}
+.triage-overview[data-triage-alarm="WARNING"],.triage-overview[data-triage-alarm="DATA_DEGRADED_MISSING_CHANNELS"] {border-left-color:#fbbf24;}
+.triage-overview h1 {font:600 22px/1.35 var(--font-sans);overflow-wrap:anywhere;margin:8px 0;}
+.triage-overview h2 {font:600 15px/1.4 var(--font-sans);margin-bottom:8px;}
+.triage-eyebrow,.triage-source {font-size:12px;line-height:1.6;color:#b6c6d8;overflow-wrap:anywhere;}
+.triage-alarm {font:600 14px/1.5 var(--font-mono);color:#fcd34d;}
+.triage-evidence {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-content:start;}
+.triage-evidence span {display:block;font-size:13px;color:#b6c6d8;}
+.triage-evidence strong {display:block;font:600 20px/1.6 var(--font-mono);overflow-wrap:anywhere;}
+.triage-next p,.triage-missing p {font-size:14px;line-height:1.6;overflow-wrap:anywhere;}
+.triage-next .phase8-button {margin:12px 0;}
+.triage-missing {grid-column:1/-1;border-top:1px solid #334155;padding-top:12px;}
+.triage-details {grid-column:1/-1;font-size:13px;overflow-wrap:anywhere;}
+.triage-details summary,.stage-details summary,.phase8-disclosure summary {cursor:pointer;min-height:44px;display:list-item;padding:10px 0;color:#a5f3fc;}
+.display-mode-controls {grid-column:1/-1;display:flex;flex-wrap:wrap;gap:10px;align-items:center;}
+.display-mode-controls > span {font-size:13px;color:#b6c6d8;}
+.phase8-button {min-height:44px;min-width:44px;padding:10px 14px;border:1px solid #475569;background:#080f17;border-radius:8px;color:#d5f6fc;font-size:14px;line-height:1.4;text-align:left;white-space:normal;overflow-wrap:anywhere;cursor:pointer;}
+.phase8-button[aria-pressed="true"] {background:#153743;border-color:#67e8f9;}
+.phase8-button:disabled {opacity:.55;cursor:default;}
+.phase8-link {display:inline-block;min-height:44px;padding:10px 0;color:#a5f3fc;text-decoration:underline;}
+.clinical-context {grid-column:1;grid-row:3;}
+.clinical-dock {grid-column:2;grid-row:3;}
+.clinical-stage {grid-column:1/-1;grid-row:4;border:1px solid #334155;border-radius:16px;overflow:clip;background:transparent;}
+.stage-description,.stage-hotspots,.stage-controls,.stage-selection,.stage-notes,.stage-details {position:relative;z-index:35;padding:16px;background:#080e15;}
+.stage-description h2 {font-size:20px;font-weight:600;}
+.stage-description p {font-size:14px;line-height:1.6;color:#b6c6d8;}
+.stage-hotspots {display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;}
+.stage-observation {display:block;font-size:12px;color:#b6c6d8;margin-top:4px;}
+.stage-aperture {height:480px;position:relative;width:100%;overflow:hidden;touch-action:none;}
+.stage-selection {display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;}
+.stage-controls {display:flex;flex-wrap:wrap;gap:10px;}
+.stage-details {font-size:13px;line-height:1.6;overflow-wrap:anywhere;}
+.workbench-tools {max-width:1560px;margin:20px auto;padding:20px;position:relative;z-index:20;background:#070c12;}
+.copilot-flow {width:100%;max-width:900px;margin:0 auto 20px;}
+.copilot-flow form {flex-wrap:wrap;}
+.copilot-flow input {min-width:0;}
+.workbench-frame h2,.workbench-frame h3,.workbench-frame button {overflow-wrap:anywhere;}
+.workbench-frame h2 {white-space:normal;text-overflow:clip;}
+.workbench-frame [data-tier] > div {overflow-y:visible;}
+.workbench-frame [data-tier] {min-width:0;}
+.workbench-frame :is(button,select,summary,input:not([type="hidden"])) {min-height:44px;}
+.workbench-frame [role="banner"] {gap:12px;padding:16px;}
+.workbench-frame [role="banner"] > div {min-width:0;max-width:100%;}
+.workbench-frame [role="banner"] select {max-width:100%;}
+.workbench-frame .truncate {white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;}
+.workbench-frame details p {line-height:1.6;}
+@media(min-width:1200px) {
+ .workbench-frame[data-display-mode="presentation"] .ares-workbench-grid {grid-template-columns:minmax(0,1fr) minmax(0,1.35fr) minmax(0,1.2fr);}
+ .workbench-frame[data-display-mode="presentation"] .clinical-stage {grid-column:2;grid-row:3;}
+ .workbench-frame[data-display-mode="presentation"] .clinical-dock {grid-column:3;}
+ .workbench-frame[data-display-mode="presentation"] .stage-hotspots {grid-template-columns:repeat(2,minmax(0,1fr));}
+ .workbench-frame[data-display-mode="presentation"] .stage-aperture {height:560px;}
+}
+@media(max-width:900px) {
+ .triage-overview {grid-template-columns:repeat(2,minmax(0,1fr));}
+ .triage-next {grid-column:1/-1;}
+ .stage-hotspots {grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media(max-width:699px) {
+ .ares-workbench-grid {grid-template-columns:minmax(0,1fr);padding:12px;gap:16px;}
+ .clinical-context,.clinical-dock,.clinical-stage {grid-column:1;grid-row:auto;}
+ .clinical-dock {order:3;}.clinical-stage {order:4;}
+ .triage-overview {padding:16px;grid-template-columns:minmax(0,1fr);gap:16px;}
+ .triage-evidence {grid-template-columns:repeat(2,minmax(0,1fr));}
+ .stage-aperture {height:420px;}
+ .workbench-tools {padding:12px;}
+ .workbench-frame [role="banner"] {padding:12px;}
+}
+.workbench-frame :is([class*="text-[9px]"],[class*="text-[10px]"],[class*="text-[11px]"]) {font-size:12px;line-height:1.5;}
+.workbench-frame :is(button,select) {font-size:14px;}
+.workbench-frame :is(button,select,summary,input:not([type="hidden"])) {min-height:48px;}
+.phase8-button {min-width:48px;min-height:48px;}
+.phase8-link {min-height:48px;}

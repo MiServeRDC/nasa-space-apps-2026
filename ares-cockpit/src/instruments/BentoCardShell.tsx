@@ -163,7 +163,7 @@ export function BentoCardShell({
             </div>
           ) : null}
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="truncate font-sans text-sm font-semibold tracking-tight text-[var(--color-ink-display)]">
+            <h2 className="break-words font-sans text-sm font-semibold tracking-tight text-[var(--color-ink-display)]">
               {title}
             </h2>
             {badge}
