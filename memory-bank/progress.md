@@ -1,5 +1,26 @@
 # Progress Tracking: ARES-Health (Autonomous Resilient Edge-native System for Astronaut Health)
 
+## Greenfield phase 6 reference viewer engineering delivered (2026-11-15)
+
+Branch work/MiServeRDC-greenfield-phase01; no main integration/push or hosted
+Actions. Added /anatomy, a metadata-only catalog of 3,074 raw mesh-bearing source
+nodes from the original five pinned GLBs, exact parser-association picking,
+search/isolate/detail, keyboard/pointer/touch surface anchors and revision-scoped
+local notes. One system per owned session, direct indexed batching and the same
+64 MB geometry budget; muscular default shows soleus while an all-muscle request
+is rejected without losing the previous view. Original source bytes unchanged.
+Invalid primitives and explicitly VH_F-labelled supplements are listed/excluded,
+not repaired or treated as native male anatomy. Unsupported clinical values stay
+unavailable; supported region links do not mutate sex/What-If. Kidney context has
+no invented backend region. See docs/evaluation/GREENFIELD_PHASE6_RESULTS.md.
+Validation: 135 frontend tests, lint/build, real-asset browser and earlier fixture/
+cockpit regressions; local fast probe, Cargo check and Clippy pass.
+Anatomy/registration expert acceptance and source-specific
+commercial clearance remain OPEN; optic sheath is still missing. Phase 6 is an
+engineering delivery, not a clinical or anatomical completeness certificate.
+Next: phase 7 female-source acquisition/registration subject to its existing
+source-license and expert-review gates; do not synthesize missing counterparts.
+
 ## Greenfield phase 5 controlled pipeline complete (2026-11-15)
 
 Branch work/MiServeRDC-greenfield-phase01, no main merge/push. Added static GLB

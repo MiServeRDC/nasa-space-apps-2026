@@ -179,3 +179,17 @@
   and concurrent checks. Do not disable the assertion to hide such failures.
 - Evidence: ANATOMY_PIPELINE.md and GREENFIELD_PHASE5_RESULTS.md. Engineering API
   references are primary Three.js/Meshoptimizer docs; no physiology is introduced.
+
+## 2026-11-15 — real atlas source identity and bounded reference rendering
+
+A male-labelled asset bundle can include explicitly VH_F-labelled supplements.
+Raw mesh nodes can also be unnamed; the nearest named ancestor is a source label,
+not a reviewed ontology identity. IJV source groups include named tributaries and
+unnamed primary primitives: descendant membership does not certify every child as
+the parent vessel. Preserve raw file SHA/node index, disclose inherited labels,
+keep missing sheath separate, and quarantine invalid geometry rather than repairing
+it silently. Use GLTFLoader parser associations through multi-primitive parents.
+Direct indexed batching avoids triangle expansion; reserve old plus replacement
+geometry against the unchanged budget and keep the old view on rejection. Browser
+load assertions must wait for the completed system identity, not a generic ready
+flag that may still belong to the previous selection.

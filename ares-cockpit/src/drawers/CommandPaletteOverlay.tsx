@@ -157,6 +157,12 @@ export function CommandPaletteOverlay({
 
     const coreCmds: QuickCommandItem[] = [
       {
+        id: 'reference-atlas',
+        capsule: 'REFERENCE',
+        title: 'Open reference anatomy atlas (existing source geometry)',
+        run: () => { window.open('/anatomy', '_blank', 'noopener,noreferrer'); handleCommitClose(); },
+      },
+      {
         id: 'reference-lab',
         capsule: 'REFERENCE',
         title: 'Open anatomy pipeline lab (synthetic reference only)',

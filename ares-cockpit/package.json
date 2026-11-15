@@ -12,7 +12,8 @@
     "test": "node --test --experimental-strip-types tests/*.test.ts",
     "anatomy:fixture": "node --experimental-strip-types scripts/buildAnatomyFixture.mjs",
     "anatomy:convert": "node --experimental-strip-types scripts/convertAnatomy.mjs",
-    "anatomy:measure": "node --experimental-strip-types scripts/measureAnatomyFixture.mjs"
+    "anatomy:measure": "node --experimental-strip-types scripts/measureAnatomyFixture.mjs",
+    "anatomy:catalog": "node --experimental-strip-types scripts/buildReferenceCatalog.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.0.0",

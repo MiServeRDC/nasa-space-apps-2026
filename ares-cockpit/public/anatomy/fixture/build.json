@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "pipeline": "ARES_STATIC_ANATOMY_V1",
-  "pipelineSha256": "2a9da76ee93c221104f9f157477a0a0208f9b23a2056f845f8bae0da716903f5",
+  "pipelineSha256": "2669f1b0718657ec632077ece4e85289c9111e8604ce6710c603c89f5c3e3fa0",
   "tools": {
     "three": "171",
     "meshoptimizer": "0.18.1"

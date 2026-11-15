@@ -4,6 +4,8 @@ import './index.css';
 import App from './App';
 import { waitForFontsReadyBounded } from './instruments/instrumentMath';
 
+const ReferenceAtlas = lazy(() => import('./anatomy/ReferenceInspector'));
+const isReferenceAtlas = window.location.pathname === '/anatomy';
 const AnatomyLab = lazy(() => import('./anatomy/FixtureInspector'));
 const isAnatomyLab = window.location.pathname === '/anatomy-lab';
 
@@ -12,6 +14,6 @@ void waitForFontsReadyBounded();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {isAnatomyLab ? <Suspense fallback={<p>Loading reference tool</p>}><AnatomyLab /></Suspense> : <App />}
+    {isReferenceAtlas ? <Suspense fallback={<p>Loading reference atlas</p>}><ReferenceAtlas /></Suspense> : isAnatomyLab ? <Suspense fallback={<p>Loading reference tool</p>}><AnatomyLab /></Suspense> : <App />}
   </StrictMode>,
 );

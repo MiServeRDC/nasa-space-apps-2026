@@ -46,7 +46,7 @@ layer batches. Fetches accept only packaged `/anatomy/*.glb` paths, verify full 
 hashes and declared extensions, reject external glTF resources and preflight
 file/decoded/instance budgets. File streaming stops at the byte limit, including
 responses without a length header. Byte budgets include model geometry and the
-expanded display batches; they are engineering configuration, not clinical values.
+indexed display batches (since phase 6); they are engineering configuration, not clinical values.
 
 A shared per-document fetch/decode gate serializes active asset decoding. Waiting
 obsolete jobs are removed on abort, preventing rapid switches from accumulating
@@ -111,3 +111,61 @@ Primary API references:
 [Three.js cleanup](https://threejs.org/manual/en/cleanup.html),
 [Meshoptimizer JavaScript APIs](https://github.com/zeux/meshoptimizer/tree/v0.18/js),
 [EXT_meshopt_compression](https://github.com/KhronosGroup/glTF/tree/main/extensions/2.0/Vendor/EXT_meshopt_compression).
+
+## Phase 6: existing reference catalog and viewer
+
+`npm --prefix ares-cockpit run anatomy:catalog` reproduces
+`public/anatomy/reference-catalog.json` from the original five hash/byte-pinned
+GLBs and the phase 4 inventory. It emits metadata, not new mesh derivatives. Each
+mesh-bearing glTF node owns a stable system/node ID. Multi-primitive nodes retain
+that identity for every primitive. An unnamed node uses its nearest named ancestor
+plus the explicit node index as a display label; this is not ontology validation.
+Groups are the exact source descendants, including vascular tributaries. Clinical
+bindings are context-only and never certify that each descendant is the named
+parent organ. Required anatomical review remains open.
+
+The legacy load path validates every raw node index/name and complete mesh-node
+coverage against the verified file. It resolves GLTFLoader parser associations,
+not sanitized Three.js display names. It excludes explicitly VH_F-labelled nodes
+and descendants from this existing male reference. Invalid normalized primitives
+are quarantined with exact node/reason; other valid primitives of the same node
+may remain, visibly marked partial. Nothing is silently repaired, synthesized or
+relabelled as native. The strict fixture conversion path still rejects invalid
+geometry. Missing optic sheath remains an explicit empty target.
+
+`/anatomy` lazily loads one system at a time in a session with no global model
+cache. Indexed batching directly allocates position/normal/index buffers and
+triangle-to-source ranges without expanding vertices or cloning intermediate
+batches. The geometry budget remains 64,000,000 bytes; visibility updates reserve
+both old and replacement batches before publishing. A failed update retains the
+old view. Equivalent visibility is a no-op. All muscle source geometry fits but
+its full display copy does not: the default shows soleus, while other muscles can
+be searched and isolated. The budget accounts for owned CPU geometry attributes
+and indices, not total browser heap, decoder scratch space or VRAM.
+
+Search, paginated source list, source detail, group focus, isolate/hide/default,
+auto-fit camera and real pointer/touch ray selection share exact IDs. The viewport
+also accepts keyboard arrows (pan), Control + arrows (rotate), and Enter (a real
+ray through the center cross). DOM list selection creates no fabricated point.
+Source geometry, optional WebGL and telemetry have independent availability.
+
+Notes require a picked surface and bind to catalog revision, asset SHA, raw node
+and reference-frame coordinates. They are localStorage-only, scoped by revision,
+limited to 500 records and 2,000 text characters each, and deletable. Invalid JSON,
+unsupported storage and failed writes are explicit. No clinical action or
+cross-model coordinate transplant results from a note. glTF metres are not a
+patient calibration or a physical registration report.
+
+Clinical detail uses the existing telemetry hook and null-preserving display
+adapter, with source/model status and stale/held state. Unsupported channels stay
+unavailable; HRV is not inferred from heart rate. Kidney context may show supplied
+renal outputs without inventing a Kidney backend region. A validated
+`?phase=EVALUATE&anatomyRegion=...` link selects only one of the five existing wire
+regions. Neither the reference selection nor this link carries sex or What-If
+parameters. No stress-test POST is issued by the atlas.
+
+Run `node scripts/verify_anatomy_reference_browser.mjs` with the same external
+Playwright/Chrome paths as above. It uses the built bundle, blocked external
+network and mocked local telemetry; assertions cover real rays, keyboard anchors,
+touch, null channels, notes, failures, switching and unload. Expert anatomical
+review and source-specific commercial clearance are separate outstanding gates.

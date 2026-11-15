@@ -18,7 +18,13 @@ The files are copied unchanged from the pinned source commit recorded in `MANIFE
 
 The supplied GLB derivatives retain **CC BY-SA 4.0**: https://creativecommons.org/licenses/by-sa/4.0/ . A copy of its legal text is included in `LICENSE-CC-BY-SA-4.0.txt`. Keep these credits and licence information with redistributed geometry and respect the upstream share-alike terms for adaptations. The application code licence does not relicense the anatomical assets.
 
-This is a generic male anatomical reference, used for both scenario profiles. It is not an individual body scan. The source projects do not endorse this application.
+These are generic reference assets, historically shared by both scenario profiles.
+The visceral file also contains explicitly `VH_F`-labelled female supplements;
+therefore a male source filename is not evidence of a single male donor or of
+source sex for every node. The phase 6 reference viewer excludes those labelled
+supplements and descendants, lists their exclusion, and leaves source sex
+unverified. It does not provide a reviewed female atlas or an individual body
+scan. The source projects do not endorse this application.
 
 
 ## Subcomponent provenance review (2026-11-15)
@@ -33,3 +39,14 @@ assets for provenance review before new redistribution or commercial packaging;
 do not assume an umbrella CC BY-SA declaration overrides component restrictions.
 See `docs/anatomy/SOURCE_DECISIONS.json` and `COVERAGE_MATRIX.md` in the repository.
 The newer direct BodyParts3D terms do not relicense these existing derivatives.
+
+## Phase 6 development reference viewer
+
+`reference-catalog.json` is a reproducible metadata-only node index. Original GLB
+bytes, license declarations and credits are unchanged. Display labels for unnamed
+mesh nodes include the nearest named source ancestor and exact node index; source
+groups may contain tributaries or other descendants. These labels are provenance,
+not anatomical certification or an ontology crosswalk. Non-degenerate static
+parts are displayed; invalid parts are quarantined with per-node reasons. Runtime
+geometry validation does not validate anatomy. The optic sheath is not supplied
+by substituting the eye or optic nerve.

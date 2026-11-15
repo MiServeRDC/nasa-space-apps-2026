@@ -1,10 +1,9 @@
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
-export interface SemanticPart { structureId: string; layer: string; geometry: THREE.BufferGeometry }
+export interface SemanticPart { structureId: string; layer: string; assetSha256?: string; nodeId?: string; geometry: THREE.BufferGeometry }
 export interface SemanticBatch {
   layer: string; mesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
-  ranges: {start: number; end: number; structureId: string}[];
+  ranges: {start: number; end: number; structureId: string; assetSha256?: string; nodeId?: string}[];
 }
 export function geometryBytes(g: THREE.BufferGeometry): number {
   return Object.values(g.attributes).reduce((n,a)=>n+a.array.byteLength,0)+(g.index?.array.byteLength??0);
@@ -53,30 +52,38 @@ export function buildSemanticBatches(parts: readonly SemanticPart[], visibleIds:
   const result:SemanticBatch[]=[];
   try {
     for(const [layer,items] of layers){
-      const copies:THREE.BufferGeometry[]=[];const ranges:SemanticBatch['ranges']=[];let cursor=0;
-      try {
-        for(const part of items){const g=part.geometry.index?part.geometry.toNonIndexed():part.geometry.clone();
-          copies.push(g);const count=g.getAttribute('position').count/3;ranges.push({start:cursor,end:cursor+count,structureId:part.structureId});cursor+=count;}
-        const geometry=mergeGeometries(copies,false);if(!geometry)throw Error('Incompatible batch geometry');
-        const material=new THREE.MeshBasicMaterial({color:0x51c3d6,side:THREE.DoubleSide,wireframe:false});
-        const mesh=new THREE.Mesh(geometry,material);mesh.name=`ARES_REFERENCE_LAYER_${layer}`;
-        result.push({layer,mesh,ranges});
-      } finally {for(const g of copies)g.dispose();}
+      const vertexCount=items.reduce((n,p)=>n+p.geometry.getAttribute('position').count,0);
+      const indexCount=items.reduce((n,p)=>n+(p.geometry.index?.count??p.geometry.getAttribute('position').count),0);
+      const positions=new Float32Array(vertexCount*3),normals=new Float32Array(vertexCount*3),indices=new Uint32Array(indexCount);
+      const ranges:SemanticBatch['ranges']=[];let vertex=0,cursor=0;
+      for(const part of items){
+        const g=part.geometry,p=g.getAttribute('position'),n=g.getAttribute('normal'),count=g.index?.count??p.count;
+        positions.set(p.array as Float32Array,vertex*3);normals.set(n.array as Float32Array,vertex*3);
+        for(let i=0;i<count;i++)indices[cursor+i]=vertex+(g.index?g.index.getX(i):i);
+        ranges.push({start:cursor/3,end:(cursor+count)/3,structureId:part.structureId,assetSha256:part.assetSha256,nodeId:part.nodeId});
+        vertex+=p.count;cursor+=count;
+      }
+      const geometry=new THREE.BufferGeometry().setAttribute('position',new THREE.BufferAttribute(positions,3)).setAttribute('normal',new THREE.BufferAttribute(normals,3));
+      geometry.setIndex(new THREE.BufferAttribute(indices,1));geometry.computeBoundingBox();geometry.computeBoundingSphere();
+      const material=new THREE.MeshBasicMaterial({color:0x51c3d6,side:THREE.DoubleSide});
+      const mesh=new THREE.Mesh(geometry,material);mesh.name=`ARES_REFERENCE_LAYER_${layer}`;
+      result.push({layer,mesh,ranges});
     }
     return result;
   } catch(error){disposeBatches(result);throw error;}
 }
-export function pickSemantic(batches: readonly SemanticBatch[], ray: THREE.Raycaster): {structureId:string;point:THREE.Vector3}|null {
-  let selected:{structureId:string;point:THREE.Vector3;distance:number}|null=null;
+export interface SemanticHit {structureId:string;point:THREE.Vector3;assetSha256?:string;nodeId?:string}
+export function pickSemantic(batches: readonly SemanticBatch[], ray: THREE.Raycaster): SemanticHit|null {
+  let selected:(SemanticHit&{distance:number})|null=null;
   for(const batch of batches){
     if(!batch.mesh.visible)continue;
     batch.mesh.updateMatrixWorld(true);
     const hit=ray.intersectObject(batch.mesh,false)[0];if(!hit||hit.faceIndex==null)continue;
     let low=0,high=batch.ranges.length;
     while(low<high){const mid=(low+high)>>>1;if(batch.ranges[mid].end<=hit.faceIndex)low=mid+1;else high=mid;}
-    const range=batch.ranges[low];if(range&&hit.faceIndex>=range.start&&(!selected||hit.distance<selected.distance))selected={structureId:range.structureId,point:hit.point.clone(),distance:hit.distance};
+    const range=batch.ranges[low];if(range&&hit.faceIndex>=range.start&&(!selected||hit.distance<selected.distance))selected={structureId:range.structureId,assetSha256:range.assetSha256,nodeId:range.nodeId,point:hit.point.clone(),distance:hit.distance};
   }
-  return selected?{structureId:selected.structureId,point:selected.point}:null;
+  return selected;
 }
 export function disposeBatches(batches: readonly SemanticBatch[]): void {
   for(const b of batches){b.mesh.removeFromParent();b.mesh.geometry.dispose();b.mesh.material.dispose();}

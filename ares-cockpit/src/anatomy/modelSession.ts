@@ -3,7 +3,9 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { buildSemanticBatches, disposeBatches, geometryBytes, normalizeStaticMesh, type SemanticBatch, type SemanticPart } from './semanticGeometry';
 
-export interface AnatomyChunk { path: string; sha256: string; layer: string; lod: number }
+export interface SourceNode {nodeIndex:number;nodeName:string;structureId:string;excluded?:boolean}
+export interface AnatomyChunk { path: string; sha256: string; layer: string; lod: number; sourceNodes?:SourceNode[] }
+export interface GeometryIssue {structureId:string;nodeId:string;reason:string}
 export interface SessionLimits { maxFileBytes: number; maxDecodedBytes: number; maxMeshCount: number }
 const DEFAULT_LIMITS:SessionLimits={maxFileBytes:16_000_000,maxDecodedBytes:64_000_000,maxMeshCount:2000};
 const IDENTITY=[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1];
@@ -52,6 +54,9 @@ export class AnatomyModelSession {
   private parts:SemanticPart[]=[];
   private ownedBatches:SemanticBatch[]=[];
   private closed=false;
+  private geometryIssues:GeometryIssue[]=[];
+  get issues():readonly GeometryIssue[]{return this.geometryIssues;}
+  get loadedIds():ReadonlySet<string>{return new Set(this.parts.map(p=>p.structureId));}
   private lastDecodeMs=0;
   constructor(private readonly limits:SessionLimits=DEFAULT_LIMITS,
     private readonly decoder:typeof MeshoptDecoder|null=MeshoptDecoder,
@@ -63,25 +68,29 @@ export class AnatomyModelSession {
   unload():void {
     this.epoch++;this.controller?.abort();this.controller=null;
     disposeBatches(this.ownedBatches);this.ownedBatches=[];
-    for(const p of this.parts)p.geometry.dispose();this.parts=[];this.lastDecodeMs=0;
+    for(const p of this.parts)p.geometry.dispose();this.parts=[];this.lastDecodeMs=0;this.geometryIssues=[];
   }
   close():void{this.unload();this.closed=true;}
   setVisible(ids:ReadonlySet<string>):void {
+    const current=new Set(this.ownedBatches.flatMap(b=>b.ranges.map(r=>r.structureId)));
+    const requested=new Set(this.parts.filter(p=>ids.has(p.structureId)).map(p=>p.structureId));
+    if(current.size===requested.size&&[...current].every(id=>requested.has(id)))return;
     this.checkBatchBudget(this.parts,ids);
     const next=buildSemanticBatches(this.parts,ids);
     disposeBatches(this.ownedBatches);this.ownedBatches=next;
   }
   private checkBatchBudget(parts:readonly SemanticPart[],visible:ReadonlySet<string>):void {
     const original=parts.reduce((n,p)=>n+geometryBytes(p.geometry),0);
-    const expanded=parts.filter(p=>visible.has(p.structureId)).reduce((n,p)=>n+(p.geometry.index?.count??p.geometry.getAttribute('position').count)*24,0);
-    if(original+expanded>this.limits.maxDecodedBytes)throw Error('Batch memory budget exceeded');
+    const expanded=parts.filter(p=>visible.has(p.structureId)).reduce((n,p)=>n+p.geometry.getAttribute('position').count*24+(p.geometry.index?.count??p.geometry.getAttribute('position').count)*4,0);
+    const previous=this.ownedBatches.reduce((n,b)=>n+geometryBytes(b.mesh.geometry),0);
+    if(original+expanded+previous>this.limits.maxDecodedBytes)throw Error('Batch memory budget exceeded');
   }
   async load(chunks:readonly AnatomyChunk[],allowedIds:ReadonlySet<string>,visibleIds:ReadonlySet<string>,signal?:AbortSignal):Promise<void>{
     if(this.closed)throw Error('Session is closed');
     if(new Set(chunks.map(c=>c.lod)).size!==1||new Set(chunks.map(c=>c.path)).size!==chunks.length)throw Error('Invalid or mixed chunk set');
     this.unload();const epoch=this.epoch,controller=new AbortController();this.controller=controller;
     const cancel=()=>controller.abort();signal?.addEventListener('abort',cancel,{once:true});if(signal?.aborted)cancel();
-    const parts:SemanticPart[]=[];let bytes=0,decodeMs=0;
+    const parts:SemanticPart[]=[],issues:GeometryIssue[]=[];let bytes=0,decodeMs=0;
     const current=()=>{if(controller.signal.aborted||epoch!==this.epoch||this.closed)throw new DOMException('Obsolete anatomy load','AbortError');};
     try {
       for(const chunk of chunks){
@@ -100,17 +109,38 @@ export class AnatomyModelSession {
         const digest=await crypto.subtle.digest('SHA-256',buffer);
         if(Array.from(new Uint8Array(digest),x=>x.toString(16).padStart(2,'0')).join('')!==chunk.sha256)throw Error('Anatomy hash mismatch');
         inspect(buffer,this.decoder,this.limits);current();
+        const sourceMap=new Map<number,SourceNode>();
+        if(chunk.sourceNodes){
+          const doc=JSON.parse(new TextDecoder().decode(new Uint8Array(buffer,20,new DataView(buffer).getUint32(12,true))));
+          for(const node of chunk.sourceNodes){
+            if(!Number.isInteger(node.nodeIndex)||sourceMap.has(node.nodeIndex)||doc.nodes?.[node.nodeIndex]?.mesh===undefined||(doc.nodes[node.nodeIndex].name??'')!==node.nodeName||!allowedIds.has(node.structureId))throw Error('Invalid source-node mapping');
+            sourceMap.set(node.nodeIndex,node);
+          }
+          if(doc.nodes.filter((n:{mesh?:number})=>n.mesh!==undefined).length!==sourceMap.size)throw Error('Incomplete source-node mapping');
+        }
         const loader=new GLTFLoader();if(this.decoder)loader.setMeshoptDecoder(this.decoder);
         const start=performance.now();const gltf=await loader.parseAsync(buffer,'');decodeMs+=performance.now()-start;
         try {
           current();gltf.scene.updateMatrixWorld(true);
           gltf.scene.traverse(o=>{
             const mesh=o as THREE.Mesh;if(!mesh.isMesh)return;
-            const tag=mesh.userData.ares;
+            let source:SourceNode|undefined;
+            if(chunk.sourceNodes){
+              let object:THREE.Object3D|null=mesh;
+              while(object){const index=gltf.parser.associations.get(object)?.nodes;if(index!==undefined){source=sourceMap.get(index);break;}object=object.parent;}
+              if(!source)throw Error('Unmapped source mesh');
+              if(source.excluded){issues.push({structureId:source.structureId,nodeId:`node:${source.nodeIndex}`,reason:'Excluded: female-labelled supplement in mixed reference source'});return;}
+            }
+            const tag=source?{structureId:source.structureId,layer:chunk.layer}:mesh.userData.ares;
             if(!tag||!allowedIds.has(tag.structureId)||tag.layer!==chunk.layer)throw Error('Missing or mismatched semantic mesh identity');
-            const g=normalizeStaticMesh(mesh,IDENTITY);bytes+=geometryBytes(g);
+            let g:THREE.BufferGeometry;
+            try{g=normalizeStaticMesh(mesh,IDENTITY);}catch(error){
+              if(!source)throw error;
+              issues.push({structureId:source.structureId,nodeId:`node:${source.nodeIndex}`,reason:String(error)});return;
+            }
+            bytes+=geometryBytes(g);
             if(bytes>this.limits.maxDecodedBytes||parts.length>=this.limits.maxMeshCount){g.dispose();throw Error('Decoded anatomy budget exceeded');}
-            parts.push({structureId:tag.structureId,layer:tag.layer,geometry:g});
+            parts.push({structureId:tag.structureId,layer:tag.layer,geometry:g,assetSha256:chunk.sha256,nodeId:source?`node:${source.nodeIndex}`:mesh.name});
           });
         } finally{disposeImported(gltf.scene);}
         } finally{release();}
@@ -120,7 +150,7 @@ export class AnatomyModelSession {
       const batches=buildSemanticBatches(parts,visibleIds);
       const batchBytes=batches.reduce((n,b)=>n+geometryBytes(b.mesh.geometry),0);
       if(bytes+batchBytes>this.limits.maxDecodedBytes){disposeBatches(batches);throw Error('Batch memory budget exceeded');}
-      this.parts=parts;this.ownedBatches=batches;this.lastDecodeMs=decodeMs;
+      this.parts=parts;this.geometryIssues=issues;this.ownedBatches=batches;this.lastDecodeMs=decodeMs;
     } catch(error){for(const p of parts)p.geometry.dispose();throw error;}
     finally{signal?.removeEventListener('abort',cancel);if(this.controller===controller)this.controller=null;}
   }

@@ -1,3 +1,4 @@
+import {supportedReferenceRegion} from './anatomy/referenceCatalog';
 import { appendLocalAudit } from './lib/localAudit';
 import { announceAssertive } from './stores/a11yAnnouncer';
 // Greenfield ("Terra Rasa") ARES-Health Spatial Biomedical Workbench Entry (`App.tsx`).
@@ -57,6 +58,7 @@ export default function App() {
   const invokerElementId = useWorkbenchStore((s) => s.invokerElementId);
   const closeDrawer = useWorkbenchStore((s) => s.closeDrawer);
   const setTwinSex = useWorkbenchStore((s) => s.setTwinSex);
+  const selectUberonRegion = useWorkbenchStore((s) => s.selectUberonRegion);
   const setPhase = useWorkbenchStore((s) => s.setPhase);
   const selectPlaybook = useWorkbenchStore((s) => s.selectPlaybook);
   const openDrawer = useWorkbenchStore((s) => s.openDrawer);
@@ -81,6 +83,8 @@ export default function App() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
+    const region = supportedReferenceRegion(params.get('anatomyRegion'));
+    if (region) selectUberonRegion(region);
     const qPhase = params.get('phase')?.toUpperCase();
     if (qPhase === 'GATHER' || qPhase === 'EVALUATE' || qPhase === 'ACT') {
       setPhase(qPhase);
@@ -100,7 +104,7 @@ export default function App() {
     if (qDrawer === 'AUDIT') {
       openDrawer('AUDIT_PROVENANCE');
     }
-  }, [openDrawer, setPhase, setStudioBarOpen, setTwinSex]);
+  }, [openDrawer, setPhase, setStudioBarOpen, setTwinSex, selectUberonRegion]);
 
   const handleChangeWhatIf = useCallback(
     (patch: Partial<WhatIf>) => {

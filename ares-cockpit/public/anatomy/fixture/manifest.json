@@ -3,7 +3,7 @@
     "schemaVersion": 1,
     "id": "ARES_SYNTHETIC_CALIBRATION_V1",
     "label": "Synthetic pipeline fixture (not anatomy)",
-    "revisionSha256": "c7cdd487bb6cb03b640e61bcea982048d112702ccea906400afe0131110c85f5",
+    "revisionSha256": "fea52bde860778bb9a4e618ba56734f7797eb88e2d1646362b6aea327917d77b",
     "modelUnits": "m",
     "referenceSex": "UNSPECIFIED",
     "assets": [

@@ -52,6 +52,7 @@ export function buildClinicalViewModel(packet: TelemetryPacket) {
     cabinCo2: metric(e?.cabin_ppco2_mmhg, 'mmHg', e?.provenance ?? 'UNAVAILABLE'),
     radiationDose: metric(packet.biometrics.radiation_dose_rate_msv_d, 'mSv/d', packet.provenance_manifest.biometrics_source),
     cumulativeRadiation: metric(e?.cumulative_radiation_mgy, 'mGy', e?.provenance ?? 'UNAVAILABLE'),
+    hrvRmssd: metric(packet.biometrics.hrv_rmssd_ms, 'ms', packet.is_local_simulation ? 'SIMULATED_SCENARIO_INPUT' : packet.provenance_manifest.biometrics_source),
     sqi: metric(packet.biometrics.sqi_score, 'ratio', packet.provenance_manifest.biometrics_source),
     ijvCsa: metric(h?.ijv_csa_cm2, 'cm2', h?.provenance ?? 'UNAVAILABLE'),
     ijvVelocity: metric(h?.ijv_velocity_max_cm_s, 'cm/s', h?.provenance ?? 'UNAVAILABLE'),
