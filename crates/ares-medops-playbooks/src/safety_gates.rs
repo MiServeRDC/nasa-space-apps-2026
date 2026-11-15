@@ -10,6 +10,12 @@ use ares_core_types::telemetry::{
     SafetyGates, StressTestScenarioInput,
 };
 
+pub const PLATELET_ABSOLUTE_CONTRAINDICATION_K_UL: f64 = 75.0;
+pub const RADIATION_ACUTE_THRESHOLD_MSV_D: f64 = 10.0;
+pub const PLATELET_RADIATION_SAFE_FLOOR_K_UL: f64 = 100.0;
+pub const LBNP_MIN_SAFE_PULSE_PRESSURE_MMHG: f64 = 25.0;
+pub const ECLSS_PPCO2_ACTION_LIMIT_MMHG: f64 = 4.0;
+
 /// Applica in modo inflessibile i 4 Hard Clinical Safety Gates al Playbook candidato.
 #[inline]
 #[allow(clippy::too_many_arguments)]
@@ -23,14 +29,37 @@ pub fn enforce_hard_clinical_safety_gates_ext(
     fatigue_index: Option<f64>,
     shock_index: Option<f64>,
 ) -> ActivePlaybook {
-    let anticoagulant_lock_active = !jugular.pocus_thrombus_confirmed;
+    let platelet_contraindicated = biometrics
+        .platelet_count_k_ul
+        .is_some_and(|plt| plt < PLATELET_ABSOLUTE_CONTRAINDICATION_K_UL);
+    let acute_radiation_contraindicated = biometrics.radiation_dose_rate_msv_d
+        > RADIATION_ACUTE_THRESHOLD_MSV_D
+        && biometrics
+            .platelet_count_k_ul
+            .is_none_or(|plt| plt < PLATELET_RADIATION_SAFE_FLOOR_K_UL);
+    let bleeding_risk_active = platelet_contraindicated || acute_radiation_contraindicated;
+    let anticoagulant_lock_active = !jugular.pocus_thrombus_confirmed || bleeding_risk_active;
+
     let hr = biometrics.heart_rate_bpm.unwrap_or(72.0);
     let sbp_drop = biometrics.sbp_mmhg.map_or(scenario.systolic_bp_drop_mmhg, |sbp| {
         (120.0 - sbp).max(scenario.systolic_bp_drop_mmhg)
     });
+    let pulse_pressure_narrowed = match (biometrics.sbp_mmhg, biometrics.dbp_mmhg) {
+        (Some(sbp), Some(dbp)) if sbp > 0.0 => (sbp - dbp) < LBNP_MIN_SAFE_PULSE_PRESSURE_MMHG,
+        _ => false,
+    };
+    let explicit_sensor_loss = biometrics
+        .missing_channels
+        .iter()
+        .any(|ch| ch == "wearable_sensor_loss" || ch == "sensor_dropout");
+    let dual_vital_blackout = biometrics.heart_rate_bpm.is_none() && biometrics.sbp_mmhg.is_none();
+    let sensor_dropout_critical = explicit_sensor_loss || dual_vital_blackout;
+
     let pre_syncope_detected = jugular.lbnp_active
         && (sbp_drop > LBNP_MAX_SYS_BP_DROP_MMHG
-            || hr > LBNP_MAX_SAFE_HR_BPM);
+            || hr > LBNP_MAX_SAFE_HR_BPM
+            || pulse_pressure_narrowed
+            || sensor_dropout_critical);
     let eva_suit_damping_active = musculo.gai_pct > GAI_MAX_SAFE_PCT;
 
     // Calcolo del Shock Index per Gate 4
@@ -61,20 +90,38 @@ pub fn enforce_hard_clinical_safety_gates_ext(
     let si_elevated = computed_si.is_some_and(|si| si >= SHOCK_INDEX_ATTENTION);
     let gate4_eva_fitness_no_go = eva_suit_damping_active || cognitive_fatigued || si_elevated;
 
+    let cabin_co2 = biometrics.cabin_ppco2_mmhg.or(biometrics.helmet_ppco2_mmhg);
+    let eclss_alert = cabin_co2.is_some_and(|ppco2| ppco2 > ECLSS_PPCO2_ACTION_LIMIT_MMHG);
+
     playbook.safety_gates = SafetyGates {
         anticoagulant_lock_active,
+        anticoagulant_contraindicated_bleeding_risk: bleeding_risk_active,
         lbnp_auto_vent_armed: true,
+        lbnp_auto_vent_triggered: pre_syncope_detected,
         eva_suit_damping_active,
         gate4_invasive_decompression_locked,
         gate4_eva_fitness_no_go,
+        eclss_environmental_co2_alert: eclss_alert,
     };
 
     // Gate 1: Rimuove categoricamente qualsiasi farmaco anticoagulante se POCUS non conferma trombo
-    // (Filtro mirato a PHARMACOLOGICAL_ANTICOAGULANT per preservare farmaci non anticoagulanti - Patch N0-A)
+    // o se sussiste controindicazione emorragica / trombocitopenia
     if anticoagulant_lock_active {
         playbook.actions.retain(|a| {
             !a.action_id.contains("ANTICOAG") && !a.category.contains("PHARMACOLOGICAL_ANTICOAGULANT")
         });
+
+        if bleeding_risk_active && jugular.pocus_thrombus_confirmed {
+            playbook.actions.insert(
+                0,
+                CountermeasureAction {
+                    action_id: "ACT_ANTICOAG_CONTRAINDICATED_THROMBOCYTOPENIA_RISK".to_string(),
+                    label: "CONTRAINDICATION LOCK: Systemic Anticoagulation Blocked (Hemorrhagic Risk)".to_string(),
+                    category: "CLINICAL_SAFETY_GATE_OVERRIDE".to_string(),
+                    delta_rho_per_hour: 0.0,
+                },
+            );
+        }
     }
 
     // Gate 3: Se GAI > 12%, aggiunge vincolo di smorzamento caviglia tuta EVA a 0.38g
@@ -122,14 +169,25 @@ pub fn enforce_hard_clinical_safety_gates_ext(
 
     // Gate 2: Se viene rilevato rischio pre-sincopale durante LBNP, sfiata immediatamente a 0 mmHg (priorita assoluta al vertice)
     if pre_syncope_detected {
+        playbook.actions.retain(|a| !a.action_id.contains("LBNP_MAINTAIN") && !a.action_id.contains("LBNP_ESCALATE"));
+        let vent_label = if sensor_dropout_critical {
+            "SAFETY GATE 2 TRIGGERED: Emergency LBNP Auto-Vent to 0 mmHg (Sensor Dropout Fail-Safe)".to_string()
+        } else if pulse_pressure_narrowed {
+            format!(
+                "SAFETY GATE 2 TRIGGERED: Auto-vent LBNP chamber to 0 mmHg immediately (Pulse Pressure Narrowing < 25 mmHg, SBP drop {:.1} mmHg)",
+                sbp_drop
+            )
+        } else {
+            format!(
+                "SAFETY GATE 2 TRIGGERED: Auto-vent LBNP chamber to 0 mmHg immediately (SBP drop {:.1} mmHg / HR {:.0} bpm)",
+                sbp_drop, hr
+            )
+        };
         playbook.actions.insert(
             0,
             CountermeasureAction {
                 action_id: "ACT_EMERGENCY_LBNP_AUTO_VENT_0_MMHG".to_string(),
-                label: format!(
-                    "SAFETY GATE 2 TRIGGERED: Auto-vent LBNP chamber to 0 mmHg immediately (SBP drop {:.1} mmHg / HR {:.0} bpm)",
-                    scenario.systolic_bp_drop_mmhg, hr
-                ),
+                label: vent_label,
                 category: "HARD_SAFETY_GATE_OVERRIDE".to_string(),
                 delta_rho_per_hour: 0.35,
             },
@@ -169,6 +227,7 @@ mod tests {
                 eva_suit_damping_active: false,
                 gate4_invasive_decompression_locked: true,
                 gate4_eva_fitness_no_go: false,
+                ..SafetyGates::default()
             },
             actions: vec![
                 CountermeasureAction {
@@ -214,6 +273,8 @@ mod tests {
             let_quality_factor: None,
             suit_metabolic_watts: None,
             helmet_ppco2_mmhg: None,
+            cabin_ppco2_mmhg: None,
+            platelet_count_k_ul: None,
         }
     }
 

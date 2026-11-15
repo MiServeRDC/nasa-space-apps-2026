@@ -893,6 +893,8 @@ mod tests {
                 let_quality_factor: Some(2.8),
                 suit_metabolic_watts: Some(220.0),
                 helmet_ppco2_mmhg: Some(2.1),
+                cabin_ppco2_mmhg: None,
+                platelet_count_k_ul: None,
             },
             musculoskeletal: Musculoskeletal {
                 ared_daily_load_kgf: 125.0,
@@ -944,6 +946,7 @@ mod tests {
                     eva_suit_damping_active: false,
                     gate4_invasive_decompression_locked: true,
                     gate4_eva_fitness_no_go: false,
+                    ..SafetyGates::default()
                 },
                 actions: vec![CountermeasureAction {
                     action_id: "ACT_ARED".to_string(),

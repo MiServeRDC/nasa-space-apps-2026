@@ -1,4 +1,4 @@
-import { lazy, memo, Suspense, useCallback, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { equalTelemetryValue } from '../../lib/equalTelemetryValue';
 import { DeferredPanel } from '../ui-primitives/DeferredPanel';
 import { Canvas } from '@react-three/fiber';
@@ -320,14 +320,18 @@ function AtlasLoading() {
   );
 }
 
-function Body2DFallbackSvg({
+import { WebGlErrorBoundary } from './webglErrorBoundary';
+
+export function Body2DFallbackSvg({
   nodes,
   hottestRegion,
   onSelect,
+  reason,
 }: {
   nodes: ProjectedAnatomicalNode[];
   hottestRegion: AnatomicalRegionWireId | null;
   onSelect: (region: AnatomicalRegionWireId) => void;
+  reason?: string;
 }) {
   const posMap: Record<AnatomicalRegionWireId, { x: number; y: number }> = {
     BrainVestibularCns: { x: 110, y: 34 },
@@ -337,9 +341,16 @@ function Body2DFallbackSvg({
     SoleusCalcaneus: { x: 92, y: 270 },
   };
   return (
-    <div className="flex h-full flex-col items-center justify-center p-4 font-mono text-xs text-gray-300">
-      <div className="mb-2 text-advisory">
-        WebGL unavailable: displaying 2D UBERON anatomical schematic fallback
+    <div
+      data-testid="body-2d-fallback-container"
+      role="region"
+      aria-label="2D Anatomical Clinical Telemetry Fallback"
+      className="flex h-full flex-col items-center justify-center p-4 font-mono text-xs text-gray-300"
+    >
+      <div data-testid="webgl-degraded-banner" className="mb-2 text-advisory">
+        {reason
+          ? `2D DETERMINISTIC VECTOR MODE ACTIVE (${reason})`
+          : 'WebGL unavailable: displaying 2D UBERON anatomical schematic fallback'}
       </div>
       <svg viewBox="0 0 220 340" className="h-72 w-48" role="img" aria-label="2D anatomical organ fallback">
         <circle cx="110" cy="44" r="24" fill="#0a0a0a" stroke="#1f2937" strokeWidth="2" />
@@ -400,6 +411,43 @@ function BodyHeatmapView({
   const [glbEnabled, setGlbEnabled] = useState(false);
   const [glbStatus, setGlbStatus] = useState<GlbLoadStatus>('OFF');
   const [glbDetail, setGlbDetail] = useState('Procedural anatomical mesh active');
+
+  const [contextLost, setContextLost] = useState<boolean>(false);
+  const canvasDomRef = useRef<HTMLCanvasElement | null>(null);
+
+  const handleContextLost = useCallback((event: Event) => {
+    event.preventDefault();
+    setContextLost(true);
+  }, []);
+
+  const handleContextRestored = useCallback(() => {
+    setContextLost(false);
+  }, []);
+
+  const detachCanvasListeners = useCallback(() => {
+    if (canvasDomRef.current) {
+      canvasDomRef.current.removeEventListener('webglcontextlost', handleContextLost);
+      canvasDomRef.current.removeEventListener('webglcontextrestored', handleContextRestored);
+      canvasDomRef.current = null;
+    }
+  }, [handleContextLost, handleContextRestored]);
+
+  useEffect(() => {
+    return () => {
+      detachCanvasListeners();
+    };
+  }, [detachCanvasListeners]);
+
+  const handleCanvasCreated = useCallback(
+    (rootState: { gl: { domElement: HTMLCanvasElement } }) => {
+      detachCanvasListeners();
+      const domElement = rootState.gl.domElement;
+      canvasDomRef.current = domElement;
+      domElement.addEventListener('webglcontextlost', handleContextLost, false);
+      domElement.addEventListener('webglcontextrestored', handleContextRestored, false);
+    },
+    [detachCanvasListeners, handleContextLost, handleContextRestored]
+  );
 
   // Injury modal & manual marker state
   const [modalOpen, setModalOpen] = useState(false);
@@ -739,20 +787,39 @@ function BodyHeatmapView({
 
       {/* 3D Layered Viewport */}
       <div ref={quality.viewportRef} data-render-loop={quality.frameloop} data-render-dpr={quality.dpr} className="relative min-h-0 flex-1 rounded border border-line bg-black">
-        <Canvas
-          dpr={quality.dpr}
-          frameloop={quality.frameloop}
-          camera={{ position: [0, 0.45, 3.3], fov: 45 }}
-          style={{ background: '#000000' }}
-          onPointerMissed={() => setSelected(null)}
-          fallback={
-            <Body2DFallbackSvg
-              nodes={scene.nodes}
-              hottestRegion={scene.hottestRegion}
-              onSelect={(r) => setSelected(r)}
-            />
-          }
-        >
+        {contextLost ? (
+          <Body2DFallbackSvg
+            nodes={scene.nodes}
+            hottestRegion={scene.hottestRegion}
+            onSelect={(r) => setSelected(r)}
+            reason="GPU WebGL Context Lost"
+          />
+        ) : (
+          <WebGlErrorBoundary
+            fallback={(errorMsg) => (
+              <Body2DFallbackSvg
+                nodes={scene.nodes}
+                hottestRegion={scene.hottestRegion}
+                onSelect={(r) => setSelected(r)}
+                reason={errorMsg}
+              />
+            )}
+          >
+            <Canvas
+              dpr={quality.dpr}
+              frameloop={quality.frameloop}
+              camera={{ position: [0, 0.45, 3.3], fov: 45 }}
+              style={{ background: '#000000' }}
+              onPointerMissed={() => setSelected(null)}
+              onCreated={handleCanvasCreated}
+              fallback={
+                <Body2DFallbackSvg
+                  nodes={scene.nodes}
+                  hottestRegion={scene.hottestRegion}
+                  onSelect={(r) => setSelected(r)}
+                />
+              }
+            >
           {quality.profile==='AUTO' && quality.active && !quality.reducedMotion && <PerformanceMonitor
             bounds={()=>[30,55]} flipflops={3}
             onChange={api=>quality.setFactor(api.factor)} onFallback={()=>quality.setFactor(0)}
@@ -873,6 +940,8 @@ function BodyHeatmapView({
             maxDistance={6.5}
           />
         </Canvas>
+          </WebGlErrorBoundary>
+        )}
 
         {/* Selected UBERON node details */}
         {selectedNode && selectedMetrics && (

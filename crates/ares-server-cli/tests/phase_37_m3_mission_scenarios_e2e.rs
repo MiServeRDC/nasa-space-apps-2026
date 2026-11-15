@@ -51,6 +51,8 @@ fn baseline_biometrics() -> Biometrics {
         let_quality_factor: None,
         suit_metabolic_watts: None,
         helmet_ppco2_mmhg: None,
+        cabin_ppco2_mmhg: None,
+        platelet_count_k_ul: None,
     }
 }
 

@@ -103,6 +103,8 @@ fn base_packet() -> TelemetryPacket {
             let_quality_factor: Some(2.8),
             suit_metabolic_watts: Some(220.0),
             helmet_ppco2_mmhg: Some(2.1),
+            cabin_ppco2_mmhg: None,
+            platelet_count_k_ul: None,
         },
         musculoskeletal: Musculoskeletal {
             ared_daily_load_kgf: 125.0,
@@ -154,6 +156,7 @@ fn base_packet() -> TelemetryPacket {
                 eva_suit_damping_active: false,
                 gate4_invasive_decompression_locked: true,
                 gate4_eva_fitness_no_go: false,
+                ..SafetyGates::default()
             },
             actions: vec![CountermeasureAction {
                 action_id: "ACT_ARED".to_string(),
@@ -512,6 +515,7 @@ fn k1_property_quality_flags_mask_roundtrips_and_safety_gate_boundaries() {
             eva_suit_damping_active: g3,
             gate4_invasive_decompression_locked: true,
             gate4_eva_fitness_no_go: false,
+            ..SafetyGates::default()
         };
         if hrv_none {
             pkt.biometrics.rmssd_ms = None;
@@ -578,6 +582,7 @@ fn k1_property_quality_flags_mask_roundtrips_and_safety_gate_boundaries() {
             eva_suit_damping_active: g3,
             gate4_invasive_decompression_locked: true,
             gate4_eva_fitness_no_go: false,
+            ..SafetyGates::default()
         };
         let frame = BinaryTelemetryFrame::from_telemetry_packet(
             &pkt,

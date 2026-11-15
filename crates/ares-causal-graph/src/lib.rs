@@ -11,6 +11,7 @@ pub mod bayesian_pocus;
 pub mod biokg_reasoner;
 pub mod circadian_cognitive;
 pub mod dataset_graph;
+pub mod eclss_differential;
 pub mod error;
 pub mod hemodynamics;
 pub mod hypergraph_spatial;

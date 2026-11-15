@@ -1,5 +1,13 @@
 # Progress Tracking: ARES-Health (Autonomous Resilient Edge-native System for Astronaut Health)
 
+## Gemini 4 Carbon P0 Flight Safety & Clinical Correctness (2026-11-15)
+
+- [x] **P0 - Gate 1 Hemorrhagic Contraindication Lock:** Added `platelet_count_k_ul` to `Biometrics` and `SpotPoctPanel`. Locked anticoagulation when platelets `< 75 k/uL` or acute radiation `> 10 mSv/d` with platelets `< 100 k/uL` even with confirmed thrombus, stripped anticoagulants, and inserted warning action `ACT_ANTICOAG_CONTRAINDICATED_THROMBOCYTOPENIA_RISK`.
+- [x] **P0 - Gate 2 Anti-Syncope LBNP Guardrail Hardening:** Added Pulse Pressure narrowing (`(sbp - dbp) < 25 mmHg`) and active LBNP telemetry blackout fail-safe auto-vent to 0 mmHg with descriptive action `ACT_EMERGENCY_LBNP_AUTO_VENT_0_MMHG`.
+- [x] **P0 - Coupled Habitat-Crew Differential Diagnosis:** Added `crates/ares-causal-graph/src/eclss_differential.rs` with `evaluate_coupled_habitat_crew_co2`, identifying cabin $P_{\text{CO}_2} > 4.0\text{ mmHg}$ as `EnvironmentalEclssScrubberSaturation` and recommending LiOH secondary bed switch.
+- [x] **P0 - WebGL Fault Isolation & 2D Clinical Safety Controls:** Extracted `WebGlErrorBoundary` (`webglErrorBoundary.ts`), added `webglcontextlost` / `webglcontextrestored` listeners, seamless 2D vector fallback, updated `enforceHardSafetyGatesOnActions`, and verified with 42 passing tests in `ares-cockpit`.
+- [x] **Verification & Compliance:** Zero warnings across Cargo Clippy, zero `.unwrap()` or `.expect()` in production code, agent probe passed, and all 7 test tiers passed in 34s.
+
 ## Gemini 4 Carbon Adversarial Review & P1 Remediation (2026-11-15)
 
 - [x] **P1 - Cockpit Freshness Gate & Lockout Prevention:** Extracted `evaluateFreshnessGate` pure helper (`ares-cockpit/src/lib/freshnessGate.ts`), reset watermarks on source changes and loop wraps, cleared timeout in `finally`, added behavioral test suite (37 tests passing in `ares-cockpit`).

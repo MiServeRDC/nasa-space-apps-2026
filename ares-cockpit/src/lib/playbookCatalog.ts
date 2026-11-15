@@ -536,25 +536,62 @@ export function enforceHardSafetyGatesOnActions(
     sbpDropMmhg?: number;
     hrBpm?: number | null;
     gaiPct?: number;
+    sbpMmhg?: number | null;
+    dbpMmhg?: number | null;
+    sensorLoss?: boolean;
+    plateletCountKUl?: number | null;
   } = {},
 ): CountermeasureAction[] {
   const hr = typeof context.hrBpm === 'number' && Number.isFinite(context.hrBpm) ? context.hrBpm : 72.0;
   const sbpDrop = typeof context.sbpDropMmhg === 'number' && Number.isFinite(context.sbpDropMmhg) ? context.sbpDropMmhg : 0.0;
+  
+  const pulsePressureNarrowed =
+    typeof context.sbpMmhg === 'number' &&
+    typeof context.dbpMmhg === 'number' &&
+    context.sbpMmhg > 0 &&
+    (context.sbpMmhg - context.dbpMmhg) < 25.0;
+
+  const sensorDropoutCritical =
+    Boolean(context.sensorLoss) || (context.hrBpm === null && context.sbpMmhg === null);
+
   const preSyncopeDetected =
     Boolean(context.lbnpActive) &&
-    (sbpDrop > LBNP_MAX_SYS_BP_DROP_MMHG || hr > LBNP_MAX_SAFE_HR_BPM);
+    (sbpDrop > LBNP_MAX_SYS_BP_DROP_MMHG || hr > LBNP_MAX_SAFE_HR_BPM || pulsePressureNarrowed || sensorDropoutCritical);
+
+  const thrombocytopeniaContraindicated =
+    typeof context.plateletCountKUl === 'number' && context.plateletCountKUl < 75.0;
+
+  const anticoagulantLockActive = gates.anticoagulant_lock_active || thrombocytopeniaContraindicated;
 
   // Gate 1: Strip ONLY anticoagulant actions when locked (preserve non-anticoagulant drugs)
-  let next = gates.anticoagulant_lock_active
+  let next = anticoagulantLockActive
     ? actions.filter((a) => !isAnticoagulantAction(a))
     : [...actions];
 
-  // Gate 2: Prepend emergency LBNP auto-vent if pre-syncopal threshold exceeded during LBNP
+  if (thrombocytopeniaContraindicated && !next.some((a) => a.action_id === 'ACT_ANTICOAG_CONTRAINDICATED_THROMBOCYTOPENIA_RISK')) {
+    next = [
+      {
+        action_id: 'ACT_ANTICOAG_CONTRAINDICATED_THROMBOCYTOPENIA_RISK',
+        label: 'CONTRAINDICATION LOCK: Systemic Anticoagulation Blocked (Hemorrhagic Risk)',
+        category: 'CLINICAL_SAFETY_GATE_OVERRIDE',
+        delta_rho_per_hour: 0.0,
+      },
+      ...next,
+    ];
+  }
+
+  // Gate 2: Prepend emergency LBNP auto-vent if pre-syncopal threshold or sensor blackout exceeded during LBNP
   if (preSyncopeDetected && !next.some((a) => a.action_id === 'ACT_EMERGENCY_LBNP_AUTO_VENT_0_MMHG')) {
+    const ventLabel = sensorDropoutCritical
+      ? 'SAFETY GATE 2 TRIGGERED: Emergency LBNP Auto-Vent to 0 mmHg (Sensor Dropout Fail-Safe)'
+      : pulsePressureNarrowed
+      ? `SAFETY GATE 2 TRIGGERED: Auto-vent LBNP chamber to 0 mmHg immediately (Pulse Pressure Narrowing < 25 mmHg, SBP drop ${sbpDrop.toFixed(1)} mmHg)`
+      : `SAFETY GATE 2 TRIGGERED: Auto-vent LBNP chamber to 0 mmHg immediately (SBP drop ${sbpDrop.toFixed(1)} mmHg / HR ${hr.toFixed(0)} bpm)`;
+
     next = [
       {
         action_id: 'ACT_EMERGENCY_LBNP_AUTO_VENT_0_MMHG',
-        label: `SAFETY GATE 2 TRIGGERED: Auto-vent LBNP chamber to 0 mmHg immediately (SBP drop ${sbpDrop.toFixed(1)} mmHg / HR ${hr.toFixed(0)} bpm)`,
+        label: ventLabel,
         category: 'HARD_SAFETY_GATE_OVERRIDE',
         delta_rho_per_hour: 0.35,
       },

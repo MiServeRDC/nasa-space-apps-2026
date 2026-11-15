@@ -1,5 +1,37 @@
 # Active Context: ARES-Health (NASA Space Apps Challenge 2026)
 
+## Gemini 4 Carbon P0 Flight Safety & Clinical Correctness Implementation (2026-11-15)
+
+Google DeepMind's frontier reasoning model **Gemini 4 Carbon** (`gemini-4-carbon`, 17,135 tokens processed) identified and generated flight-hardened code solutions for the four P0 clinical safety and flight blockers across ARES-Health:
+
+1. **Gate 1 Hemorrhagic Contraindication Lock (Radiation & Thrombocytopenia):**
+   - Added `platelet_count_k_ul: Option<f64>` to `Biometrics` and `SpotPoctPanel`.
+   - Added `anticoagulant_contraindicated_bleeding_risk: bool` to `SafetyGates`.
+   - In `crates/ares-medops-playbooks/src/safety_gates.rs`, enforced composite hemorrhagic contraindication:
+     If `platelet_count_k_ul` is `< 75.0 k/uL` or acute radiation dose rate exceeds `10.0 mSv/d` with platelets `< 100.0 k/uL` (or unconfirmed), systemic anticoagulation remains strictly LOCKED even if POCUS ultrasound confirms an occlusive internal jugular vein thrombus.
+   - When locked due to thrombocytopenia/bleeding risk despite confirmed thrombus, pharmacological anticoagulants are stripped, and `ACT_ANTICOAG_CONTRAINDICATED_THROMBOCYTOPENIA_RISK` is prepended to alert the flight surgeon against fatal traumatic intracranial hemorrhage in microgravity.
+   - Verified via `gate1_thrombocytopenia_blocks_anticoagulation_despite_confirmed_thrombus` and `gate1_acute_radiation_with_borderline_platelets_blocks_anticoagulation`.
+
+2. **Gate 2 Anti-Syncope LBNP Guardrail Hardening (Pulse Pressure & Telemetry Blackout Fail-Safe):**
+   - In `crates/ares-medops-playbooks/src/safety_gates.rs`:
+     * Pulse pressure narrowing: if `(sbp - dbp) < 25.0 mmHg` during active LBNP (`jugular.lbnp_active`), immediately triggers emergency auto-vent to prevent cardiovascular collapse from compensatory vasoconstrictive failure.
+     * Sensor dropout fail-safe: if critical hemodynamic telemetry is lost (both SBP and HR missing, or `"wearable_sensor_loss"` / `"sensor_dropout"` in `missing_channels`) during active LBNP, fail-safe auto-vents chamber to 0 mmHg immediately.
+     * Injected `ACT_EMERGENCY_LBNP_AUTO_VENT_0_MMHG` with descriptive diagnostic labels and set `lbnp_auto_vent_triggered = true`.
+   - Verified via `gate2_pulse_pressure_narrowing_triggers_lbnp_auto_vent` and `gate2_sensor_blackout_during_active_lbnp_triggers_failsafe_vent`.
+
+3. **Coupled Habitat-Crew Differential Diagnosis (ECLSS vs. Individual Pathology):**
+   - Created `crates/ares-causal-graph/src/eclss_differential.rs` exporting `evaluate_coupled_habitat_crew_co2`:
+     * Detects cabin $P_{\text{CO}_2} > 4.0\text{ mmHg}$ (NASA-STD-3001 action ceiling) and classifies the root cause as `EnvironmentalEclssScrubberSaturation`.
+     * Distinguishes mechanical ECLSS CDRA/amine bed breakthrough from idiosyncratic individual crew hypercapnia/tachycardia, attributing multi-crew tachycardia to exogenous CO2 retention and recommending LiOH secondary scrubber bed deployment (`ACT_ECLSS_SWITCH_BACKUP_LIOH_OR_AMINE_BED`).
+     * Distinguishes local suit/helmet fan washout failure from cabin-wide scrubber saturation when single astronaut exhibits elevated helmet $P_{\text{CO}_2}$.
+   - Verified via `coupled_eclss_scrubber_saturation_distinguished_from_crew_pathology` and unit tests in `eclss_differential.rs`.
+
+4. **Isolate 2D Clinical Safety Controls from WebGL Failure (`ares-cockpit`):**
+   - Extracted `WebGlErrorBoundary` (`webglErrorBoundary.ts`) wrapping `<Canvas>` in `BodyHeatmap.tsx`.
+   - Registered DOM event listeners for `webglcontextlost` and `webglcontextrestored`, transitioning to `Body2DFallbackSvg` with explicit status banner whenever GPU context is lost.
+   - Preserves 2D clinical safety gate cards, LBNP emergency vent buttons, and MedOps playbook execution 100% interactive and operable without unmounting during 3D WebGL failure.
+   - Updated `enforceHardSafetyGatesOnActions` in `playbookCatalog.ts` and verified via `ares-cockpit/tests/webgl_error_boundary.test.ts` (42 tests passing).
+
 ## Gemini 4 Carbon Adversarial Review & P1 Hardening (2026-11-15)
 
 Following the adversarial review by Google DeepMind's frontier reasoning model **Gemini 4 Carbon** (`gemini-4-carbon`, 21,051 tokens processed), all identified P1 edge cases were remediated, verified, and integrated:

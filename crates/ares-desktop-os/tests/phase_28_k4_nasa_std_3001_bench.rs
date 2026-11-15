@@ -107,6 +107,8 @@ fn sample_packet_for_privacy(critical: bool) -> TelemetryPacket {
             let_quality_factor: None,
             suit_metabolic_watts: None,
             helmet_ppco2_mmhg: None,
+            cabin_ppco2_mmhg: None,
+            platelet_count_k_ul: None,
         },
         musculoskeletal: Musculoskeletal {
             ared_daily_load_kgf: 128.0,
@@ -158,6 +160,7 @@ fn sample_packet_for_privacy(critical: bool) -> TelemetryPacket {
                 eva_suit_damping_active: false,
                 gate4_invasive_decompression_locked: true,
                 gate4_eva_fitness_no_go: false,
+                ..SafetyGates::default()
             },
             actions: vec![],
         },
@@ -407,6 +410,7 @@ fn cert_phase_28_k4_nasa_std_3001_automated_traceability_matrix() {
             eva_suit_damping_active: false,
             gate4_invasive_decompression_locked: true,
             gate4_eva_fitness_no_go: false,
+            ..SafetyGates::default()
         },
         actions: vec![CountermeasureAction {
             action_id: "ACT_ANTICOAG_ENOXAPARIN".to_string(),

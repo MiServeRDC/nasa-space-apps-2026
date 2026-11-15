@@ -133,6 +133,9 @@ export interface SafetyGatesState {
   eva_suit_damping_active: boolean;
   gate4_invasive_decompression_locked?: boolean;
   gate4_eva_fitness_no_go?: boolean;
+  anticoagulant_contraindicated_bleeding_risk?: boolean;
+  lbnp_auto_vent_triggered?: boolean;
+  eclss_environmental_co2_alert?: boolean;
 }
 
 export interface CountermeasureAction {
@@ -163,6 +166,8 @@ export interface Biometrics {
   core_temp_celsius?: number | null;
   sqi_score?: number | null;
   radiation_dose_rate_msv_d?: number | null;
+  cabin_ppco2_mmhg?: number | null;
+  platelet_count_k_ul?: number | null;
   missing_channels?: string[];
   quality_flags?: string[];
 }
