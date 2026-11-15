@@ -1,5 +1,19 @@
 # Progress Tracking: ARES-Health (Autonomous Resilient Edge-native System for Astronaut Health)
 
+## Aerospace 360 Phase 1 & Phase 2 + P0/P1 Hardening (2026-11-15) [COMPLETED (TESTED) — 323/323 Rust Workspace Tests]
+
+- [x] **P0/P1 Runtime Hardening (Phase 1):**
+  - ECLSS `3.0`/`4.0` mmHg live wiring (`eclss_differential.rs` + `ws_server.rs`).
+  - Gate 1 platelets (`< 75.0 K/uL` or radiation `> 10.0 mSv/d` with platelets `< 100.0 K/uL` / unconfirmed) + drug category stripping (`is_systemic_anticoagulant_action`).
+  - Gate 2 dynamic LBNP baseline (`LbnpBaselineState`), vasovagal bradycardia, pulse pressure `< 25 mmHg`, HR/SBP dropout fail-safe, and `SharedMissionState::advance_tick` live wiring.
+  - Storage Castagnoli CRC-32C v2 with IEEE 802.3 v1 fallback and warm orphan segment GC (`crates/ares-storage-lsah`).
+  - POCUS live wiring (`PocusEfastScan`, `PocusRenalBladderScan` in `ws_server.rs` / `wire_contract.rs`) + `HardwareTransportAdapter` trait (`crates/ares-telemetry-ingest/src/hardware_adapter.rs`).
+- [x] **6 Aerospace 360 Medical Domains, Playbooks `#16..=#30`, Gates 5-7 & Sex-Specific Physiology (Phase 2):**
+  - Sex-Specific Aerospace Physiology (`BiologicalSex::Male` / `BiologicalSex::Female`, `ContraceptiveRegimen`, `g6pd_deficient`) + `PLAYBOOK_30_FEMALE_PELVIC_UROGYN_POCUS`.
+  - Radiation/ARS (`#26`, Gate 6), Acute Surgical/Trauma/CPR (`#17..=#25`), Aerospace Toxicology & EVA DCS (`#27`, `#28`), Space Pharmacology & Sepsis (`#16`, Gate 5A/5B/5C), Behavioral Medicine (`#29`, Gate 7A/7B/7C, `[V1 3003]` privacy redaction).
+  - Binary IPC `1..=30` (`binary_ipc.rs`), `ExtendedSafetyGates` bits `14..=16`, and `FastMCP` 360 domain filters/aliases (`97aeea5`).
+  - Full workspace verification: `323` Rust tests passed (`0` failed, `0` ignored across `34` active suites / `9` crates).
+
 ## Greenfield phase 7 partial female reference/tooling delivered (2026-11-15)
 
 Dedicated work/MiServeRDC-greenfield-phase01; no main/push/hosted Actions.
