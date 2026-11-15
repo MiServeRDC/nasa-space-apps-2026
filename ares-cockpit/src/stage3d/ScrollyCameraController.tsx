@@ -1,7 +1,7 @@
 // Scrollytelling camera controller: slerp-interpolated camera rig driven by
-// active chapter index and normalized scroll progress.
+// active chapter index (1 = Gather, 2 = Evaluate, 3 = Act) and normalized scroll progress.
 // Uses `Quaternion.slerp` via three.js to prevent gimbal lock on all chapter
-// transitions. Microgravity floating oscillation active on Chapter 1 (Hero).
+// transitions. Microgravity floating oscillation active on Act 1 (Gather).
 // Invariant: STRICTLY ZERO EMOJIS in code, comments, or documentation.
 
 import { useRef } from 'react';
@@ -18,11 +18,15 @@ interface CameraWaypoint {
 }
 
 const CHAPTER_WAYPOINTS: Readonly<Record<ScrollyChapter, CameraWaypoint>> = {
-  1: { position: [0, 0, 3.2],    target: [0, 0, 0] },        // Hero / Descent
-  2: { position: [0.35, 0.45, 1.25], target: [0, 0.4, 0] },  // Cardio / Hemodynamics
-  3: { position: [0, 0, 2.8],    target: [0, 0, 0] },        // Interactive Explorer
-  4: { position: [0.2, -0.65, 1.3], target: [0, -0.6, 0] },  // Musculoskeletal
-  5: { position: [0.9, 0.2, 2.5], target: [0, 0, 0] },       // Clinical Decision
+  // Act 1: Gather overview + float
+  1: { position: [0, 0, 3.2], target: [0, 0, 0] },
+  // Act 2: Evaluate interactive 3D explorer + lower limb zoom
+  2: { position: [0.15, -0.3, 1.8], target: [0, -0.3, 0] },
+  // Act 3: Act three-quarter clinical decision angle
+  3: { position: [0.9, 0.2, 2.5], target: [0, 0, 0] },
+  // Legacy chapter backward compatibility aliases
+  4: { position: [0.2, -0.65, 1.3], target: [0, -0.6, 0] },
+  5: { position: [0.9, 0.2, 2.5], target: [0, 0, 0] },
 };
 
 // Interpolation speed (critically-damped, zeta=1) expressed as natural frequency.
@@ -157,14 +161,14 @@ export function ScrollyCameraController() {
     const tz = stepSpring(rig.tgtZ, wp.target[2], rig.tgtZVel, dt, omegaN);
     rig.tgtZ = tz.value; rig.tgtZVel = tz.velocity;
 
-    // Chapter 1: gentle microgravity floating oscillation
+    // Act 1: gentle microgravity floating oscillation
     // A slow sinusoidal Y offset (amplitude 0.03 m, period ~8 s).
     let oscillationY = 0;
     if (activeChapter === 1) {
       rig.oscillationPhase += dt * (2 * Math.PI / 8); // 8-second period
       oscillationY = 0.03 * Math.sin(rig.oscillationPhase);
     } else {
-      // Damp phase back to 0 to avoid a jump when returning to ch1
+      // Damp phase back to 0 to avoid a jump when returning to act 1
       rig.oscillationPhase *= 0.95;
     }
 

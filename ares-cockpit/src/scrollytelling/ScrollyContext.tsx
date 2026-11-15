@@ -1,5 +1,5 @@
-// Scrollytelling state: active chapter (1..5), overall scroll progress (0..1),
-// and interactive camera enable/disable toggle for Chapter 3.
+// Scrollytelling state: active chapter (1..3), overall scroll progress (0..1),
+// and interactive camera enable/disable toggle for Act 2.
 // Invariant: STRICTLY ZERO EMOJIS in code, comments, or documentation.
 
 import React, {
@@ -11,17 +11,17 @@ import React, {
   type ReactNode,
 } from 'react';
 
-/** Narrative chapter index (1 = Hero/Descent, ..., 5 = Clinical Decision). */
+/** Narrative chapter index (1 = Gather, 2 = Evaluate, 3 = Act; 4 & 5 supported for backwards compatibility). */
 export type ScrollyChapter = 1 | 2 | 3 | 4 | 5;
 
 export interface ScrollyState {
-  /** Currently visible chapter (1..5). */
+  /** Currently visible chapter (1..3). */
   activeChapter: ScrollyChapter;
   /** Normalized scroll progress across the entire scrollytelling section [0..1]. */
   scrollProgress: number;
   /**
    * Whether the 3D stage should accept pointer events (orbit + click).
-   * True only while Chapter 3 (Interactive Explorer) is active.
+   * True while Act 2 (Evaluate / Interactive Explorer) or legacy Chapter 3 is active.
    */
   interactiveCameraEnabled: boolean;
 }
@@ -44,8 +44,8 @@ export function ScrollyProvider({ children }: { children: ReactNode }) {
 
   const setActiveChapter = useCallback((chapter: ScrollyChapter) => {
     setActiveChapterState(chapter);
-    // Chapter 3 is the Interactive Explorer: enable orbit + click.
-    setInteractiveCameraEnabledState(chapter === 3);
+    // Act 2 (or legacy Chapter 3) is the Evaluate / Interactive 3D Biodigital Core: enable orbit + click.
+    setInteractiveCameraEnabledState(chapter === 2 || chapter === 3);
   }, []);
 
   const setScrollProgress = useCallback((progress: number) => {

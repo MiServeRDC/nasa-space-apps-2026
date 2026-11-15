@@ -1,27 +1,27 @@
 // StoryShell — ARES-Health Narrative Scrollytelling & 3D Twin Host.
 // Wraps SmoothScrollProvider (Lenis + GSAP ScrollTrigger ticker bridge),
-// ScrollyProvider, PinnedScrollyStage, TopNavBar, the 5 Narrative Chapters,
-// OperatorToolsDrawer, and OsCommandPalette.
+// ScrollyProvider, PinnedScrollyStage, TopNavBar, the 3 NASA Triad Acts
+// (Act1Gather, Act2Evaluate, Act3Act), OperatorToolsDrawer, OsCommandPalette,
+// and AiInjuryModal.
 // Invariant: STRICTLY ZERO EMOJIS in code, comments, or documentation.
 
 import React, {
+  lazy,
   useCallback,
   useMemo,
   useRef,
   useState,
-  type ReactNode,
 } from 'react';
-import { SmoothScrollProvider } from './SmoothScrollProvider';
+import { SmoothScrollProvider, useSmoothScroll } from './SmoothScrollProvider';
 import { ScrollyProvider } from './ScrollyContext';
 import { PinnedScrollyStage } from '../stage3d/PinnedScrollyStage';
 import { TopNavBar } from '../components/navigation/TopNavBar';
-import { Chapter1Hero } from './chapters/Chapter1Hero';
-import { Chapter2Cardio } from './chapters/Chapter2Cardio';
-import { Chapter3Explorer } from './chapters/Chapter3Explorer';
-import { Chapter4Musculoskeletal } from './chapters/Chapter4Musculoskeletal';
-import { Chapter5Decision } from './chapters/Chapter5Decision';
+import { Act1Gather } from './acts/Act1Gather';
+import { Act2Evaluate } from './acts/Act2Evaluate';
+import { Act3Act } from './acts/Act3Act';
 import { OperatorToolsDrawer } from '../drawers/OperatorToolsDrawer';
 import { OsCommandPalette } from '../modules/os-shell/OsCommandPalette';
+import { DeferredPanel } from '../modules/ui-primitives/DeferredPanel';
 import {
   DEFAULT_MISSION_PROFILE,
   type CrewActivity,
@@ -37,11 +37,17 @@ import {
 import { ENGINE_HTTP_URL, useTelemetry } from '../lib/useTelemetry';
 import { updateAlarmEpisode, type AlarmEpisode } from '../lib/alarmRecovery';
 import { formatNullableMetric } from '../lib/telemetryValidation';
-import type { AtlasAnchors } from '../modules/body-3d-heatmap/AtlasBody';
 import type { V3 } from '../modules/body-3d-heatmap/AnatomicalLayers';
-import type { InjuryMarker } from '../types/injury';
+import type { InjuryMarker, InjuryRegionId } from '../types/injury';
 import type { AuditRecord } from '../modules/audit-chain/AuditChainModal';
 import type { DataOrigin } from '../types/telemetry';
+import { gsap } from 'gsap';
+
+const AiInjuryModal = lazy(() =>
+  import('../modules/body-3d-heatmap/AiInjuryModal').then((m) => ({
+    default: m.AiInjuryModal,
+  })),
+);
 
 // ---------------------------------------------------------------------------
 // Default initial audit genesis record
@@ -67,10 +73,15 @@ const INITIAL_AUDIT_LOG: AuditRecord[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Inner shell: consumes ScrollyContext and renders chapters + 3D stage
+// Inner shell content props
 // ---------------------------------------------------------------------------
 
-function ScrollyShellContent() {
+interface ShellContentProps {
+  viewMode?: 'scrolly' | 'workbench';
+  onViewModeChange?: (mode: 'scrolly' | 'workbench') => void;
+}
+
+function ScrollyShellContent({ viewMode = 'scrolly', onViewModeChange }: ShellContentProps) {
   // Navigation & drawer UI state
   const [operatorToolsOpen, setOperatorToolsOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -81,24 +92,40 @@ function ScrollyShellContent() {
   const [whatIfOverlayActive, setWhatIfOverlayActive] = useState(false);
   const [whatIf, setWhatIf] = useState<WhatIf>(DEFAULT_WHATIF);
 
-  // 3D stage state
+  // 3D stage & injury state
   const [activeLayers, setActiveLayers] = useState<readonly number[]>([0, 1, 2, 3]);
   const [surfaceClickPoint, setSurfaceClickPoint] = useState<V3 | null>(null);
   const [injuries, setInjuries] = useState<InjuryMarker[]>([]);
+  const [aiInjuryModalOpen, setAiInjuryModalOpen] = useState(false);
+  const [selectedInjuryRegion, setSelectedInjuryRegion] = useState<InjuryRegionId>('LEFT_FOREARM');
   const [auditRecords, setAuditRecords] = useState<AuditRecord[]>(INITIAL_AUDIT_LOG);
   const [alarmEpisode, setAlarmEpisode] = useState<AlarmEpisode | null>(null);
 
-  // Chapter DOM refs for click-to-scroll navigation
-  const ch1Ref = useRef<HTMLElement>(null);
-  const ch2Ref = useRef<HTMLElement>(null);
-  const ch3Ref = useRef<HTMLElement>(null);
-  const ch4Ref = useRef<HTMLElement>(null);
-  const ch5Ref = useRef<HTMLElement>(null);
+  // Act DOM refs for click-to-scroll navigation
+  const act1Ref = useRef<HTMLElement>(null);
+  const act2Ref = useRef<HTMLElement>(null);
+  const act3Ref = useRef<HTMLElement>(null);
 
   const chapterRefs = useMemo(
-    () => [ch1Ref, ch2Ref, ch3Ref, ch4Ref, ch5Ref],
+    () => [act1Ref, act2Ref, act3Ref],
     [],
   );
+
+  const { lenis } = useSmoothScroll();
+
+  const handleScrollToAct2 = useCallback(() => {
+    const el = act2Ref.current;
+    if (!el) return;
+    if (lenis) {
+      lenis.scrollTo(el, { offset: -44, duration: 1.0 });
+    } else {
+      gsap.to(window, {
+        scrollTo: { y: el, offsetY: 44 },
+        duration: 1.0,
+        ease: 'power2.inOut',
+      });
+    }
+  }, [lenis]);
 
   // Authoritative telemetry hook
   const {
@@ -111,7 +138,6 @@ function ScrollyShellContent() {
     osStatus,
     status,
     recordedHistory,
-    injectAnomaly,
   } = useTelemetry(whatIf, thrombus, lastScanDay, whatIfOverlayActive);
 
   // Physiological scenario model
@@ -146,8 +172,11 @@ function ScrollyShellContent() {
   const criticalMargin = sm.alarm_level === 'CRITICAL';
   const vitalsAlarm = packet.vitals_anomaly?.overall === 'ALARM';
   const hasCurrentData = !status.isStale && sm.alarm_level !== 'DATA_DEGRADED_MISSING_CHANNELS';
-  const canVerifyVitals = Boolean(packet.vitals_anomaly?.baseline_ready) &&
-    b.heart_rate_bpm != null && b.spo2_percent != null && b.respiration_rate_brpm != null;
+  const canVerifyVitals =
+    Boolean(packet.vitals_anomaly?.baseline_ready) &&
+    b.heart_rate_bpm != null &&
+    b.spo2_percent != null &&
+    b.respiration_rate_brpm != null;
 
   const currentEpisode = updateAlarmEpisode(alarmEpisode, {
     source: packet.is_local_simulation ? 'simulation' : 'engine',
@@ -179,8 +208,9 @@ function ScrollyShellContent() {
     setInjuries((prev) => [...prev.filter((i) => i.id !== inj.id), inj]);
   }, []);
 
-  const handleClearSurfaceClick = useCallback(() => {
-    setSurfaceClickPoint(null);
+  const handleOpenAiInjury = useCallback((region?: InjuryRegionId) => {
+    if (region) setSelectedInjuryRegion(region);
+    setAiInjuryModalOpen(true);
   }, []);
 
   return (
@@ -189,7 +219,10 @@ function ScrollyShellContent() {
       <PinnedScrollyStage
         sex={whatIf.sex}
         layers={activeLayers}
-        onSurfaceClick={(pt) => setSurfaceClickPoint(pt)}
+        onSurfaceClick={(pt) => {
+          setSurfaceClickPoint(pt);
+          setAiInjuryModalOpen(true);
+        }}
       />
 
       {/* Fixed 44px Top Navigation Bar */}
@@ -199,64 +232,61 @@ function ScrollyShellContent() {
         onMissionProfileChange={setMissionProfile}
         sex={whatIf.sex}
         onSexChange={handleSexChange}
+        viewMode={viewMode}
+        onViewModeChange={onViewModeChange}
+        sol={Math.round(packet.mission_elapsed_days ?? 242)}
         onOpenCommandPalette={() => setPaletteOpen(true)}
         onOpenOperatorTools={() => setOperatorToolsOpen(true)}
       />
 
-      {/* Narrative Chapters Container (z-10 relative, transparent backdrop) */}
+      {/* Narrative Acts Container (z-10 relative, transparent backdrop) */}
       <main className="relative z-10 flex flex-col pt-11">
-        {/* Chapter 1: Hero / Descent */}
-        <div ref={ch1Ref as React.RefObject<HTMLDivElement>}>
-          <Chapter1Hero
+        {/* Act 1: Gather */}
+        <div ref={act1Ref as React.RefObject<HTMLDivElement>}>
+          <Act1Gather
             hr={hrVal}
             spo2={spo2Val}
             resp={respVal}
+            sbp={localSim.sbp}
+            dbp={78}
+            map={Math.round(localSim.sbp * 0.33 + 78 * 0.67)}
             history={recordedHistory}
             crewActivity={crewActivity}
             onActivityChange={setCrewActivity}
-          />
-        </div>
-
-        {/* Chapter 2: Cardiorespiratory & Thoracic Monitor */}
-        <div ref={ch2Ref as React.RefObject<HTMLDivElement>}>
-          <Chapter2Cardio
-            hr={hrVal}
             artifact={whatIf.artifact_level}
             sqi={b.sqi_score ?? localSim.sqi}
             isRecorded={bioOrigin === 'RECORDED_TERRESTRIAL_BIDMC_CSV'}
             ijvCsa={packet.hemodynamics?.ijv_csa_cm2 ?? localSim.csa}
             vmax={packet.hemodynamics?.ijv_velocity_max_cm_s ?? localSim.vmax}
+            tauW={packet.hemodynamics?.wall_shear_stress_dyn_cm2 ?? localSim.tauW}
             thrombus={thrombus}
             bioOrigin={bioOrigin}
             sampleRate={packet.provenance_manifest.biometrics_native_rate_hz}
             hrv={hrvFmt.unavailable ? null : `${hrvFmt.text} ms`}
             temperature={b.core_temp_celsius ?? null}
             ppco2Mmhg={packet.environment?.cabin_ppco2_mmhg ?? whatIf.ppco2_mmhg}
-            radiationMsvD={packet.environment?.ambient_radiation_rate_ugy_h ? (packet.environment.ambient_radiation_rate_ugy_h * 24) / 1000 : 0.45}
-            history={recordedHistory}
+            radiationMsvD={
+              packet.environment?.ambient_radiation_rate_ugy_h
+                ? (packet.environment.ambient_radiation_rate_ugy_h * 24) / 1000
+                : 0.45
+            }
+            onScrollToAct2={handleScrollToAct2}
           />
         </div>
 
-        {/* Chapter 3: Interactive Biodigital Explorer */}
-        <div ref={ch3Ref as React.RefObject<HTMLDivElement>}>
-          <Chapter3Explorer
+        {/* Act 2: Evaluate */}
+        <div ref={act2Ref as React.RefObject<HTMLDivElement>}>
+          <Act2Evaluate
             activeLayers={activeLayers}
             onLayersChange={setActiveLayers}
+            sex={whatIf.sex}
+            onSexChange={handleSexChange}
             onsdMm={packet.hemodynamics?.onsd_mm ?? localSim.onsdMm}
             onsdSigma={localSim.onsdSigmaMm}
             injuries={injuries}
-            onSaveInjury={handleSaveInjury}
-            anomalyReport={packet.vitals_anomaly}
-            activePlaybook={packet.active_playbook}
+            onOpenAiInjury={() => handleOpenAiInjury()}
+            anomalyReport={packet.vitals_anomaly ?? undefined}
             engineLive={link === 'ENGINE_LIVE'}
-            surfaceClickPoint={surfaceClickPoint}
-            onClearSurfaceClick={handleClearSurfaceClick}
-          />
-        </div>
-
-        {/* Chapter 4: Musculoskeletal & Bone Cascade */}
-        <div ref={ch4Ref as React.RefObject<HTMLDivElement>}>
-          <Chapter4Musculoskeletal
             packet={packet}
             whatIf={whatIf}
             lastScanDay={lastScanDay}
@@ -265,9 +295,9 @@ function ScrollyShellContent() {
           />
         </div>
 
-        {/* Chapter 5: Clinical Decision Support & Aerospace 360 */}
-        <div ref={ch5Ref as React.RefObject<HTMLDivElement>}>
-          <Chapter5Decision
+        {/* Act 3: Act */}
+        <div ref={act3Ref as React.RefObject<HTMLDivElement>}>
+          <Act3Act
             packet={packet}
             auditRecords={auditRecords}
             onAuditAppend={setAuditRecords}
@@ -275,7 +305,7 @@ function ScrollyShellContent() {
         </div>
       </main>
 
-      {/* Operator Tools Slide-Over Drawer (Level 3 Engineering Tools) */}
+      {/* Operator Tools Slide-Over Drawer */}
       <OperatorToolsDrawer
         open={operatorToolsOpen}
         onClose={() => setOperatorToolsOpen(false)}
@@ -300,6 +330,24 @@ function ScrollyShellContent() {
         transportMode={transportMode}
         osStatus={osStatus}
       />
+
+      {/* Mount AiInjuryModal when onOpenAiInjury is triggered */}
+      {aiInjuryModalOpen && (
+        <DeferredPanel name="ai injury inspector">
+          <AiInjuryModal
+            isOpen={aiInjuryModalOpen}
+            initialRegion={selectedInjuryRegion}
+            onClose={() => setAiInjuryModalOpen(false)}
+            onSaveInjury={(inj) => {
+              handleSaveInjury(inj);
+              setAiInjuryModalOpen(false);
+            }}
+            onResolveInjury={(id) => {
+              setInjuries((prev) => prev.filter((i) => i.id !== id));
+            }}
+          />
+        </DeferredPanel>
+      )}
     </div>
   );
 }
@@ -308,11 +356,16 @@ function ScrollyShellContent() {
 // StoryShell (Public Export)
 // ---------------------------------------------------------------------------
 
-export function StoryShell() {
+export interface StoryShellProps {
+  viewMode?: 'scrolly' | 'workbench';
+  onViewModeChange?: (mode: 'scrolly' | 'workbench') => void;
+}
+
+export function StoryShell({ viewMode = 'scrolly', onViewModeChange }: StoryShellProps) {
   return (
     <SmoothScrollProvider>
       <ScrollyProvider>
-        <ScrollyShellContent />
+        <ScrollyShellContent viewMode={viewMode} onViewModeChange={onViewModeChange} />
       </ScrollyProvider>
     </SmoothScrollProvider>
   );

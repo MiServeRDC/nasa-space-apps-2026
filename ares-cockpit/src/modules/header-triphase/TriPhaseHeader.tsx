@@ -38,6 +38,7 @@ export function TriPhaseHeader({
   provenance,
   onOpenAudit,
   onOpenShortcuts,
+  onSwitchToNarrative,
 }: {
   astronautId: string;
   recordedSourceId?: string;
@@ -53,6 +54,7 @@ export function TriPhaseHeader({
   provenance?: ReactNode;
   onOpenAudit?: () => void;
   onOpenShortcuts?: () => void;
+  onSwitchToNarrative?: () => void;
 }) {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -105,6 +107,15 @@ export function TriPhaseHeader({
         <div><h1>{titles[activePhase]}</h1><p>{descriptions[activePhase]}</p></div>
         <div className="mission-link-block">
           <div className="mission-actions" aria-label="Mission applications">
+            {onSwitchToNarrative && (
+              <button
+                type="button"
+                className="shortcuts-button text-sky-400 border border-sky-400/40 hover:bg-sky-950/40 font-mono text-xs"
+                onClick={onSwitchToNarrative}
+              >
+                View: Narrative
+              </button>
+            )}
             {onOpenAudit && <button type="button" onClick={onOpenAudit}>Audit chain</button>}
             {onOpenShortcuts && <button type="button" className="shortcuts-button" aria-label="Keyboard shortcuts" onClick={onOpenShortcuts}><KeyboardIcon size={17} aria-hidden="true" /> Shortcuts</button>}
           </div>

@@ -991,7 +991,7 @@ html.reduce-transparency .hud-glass {
 .mission-header { padding: 0 36px; flex-shrink: 0; }
 .mission-topline { display: flex; align-items: center; justify-content: space-between; gap: 28px; min-height: 70px; border-bottom: 1px solid #253348; }
 .ares-wordmark { display: inline-flex; align-items: center; gap: 10px; color: #eef4ff; text-decoration: none; font-size: 27px; font-weight: 600; letter-spacing: -1.4px; }
-.ares-wordmark svg { width: 38px; height: 38px; color: #38bdf8; border: 1px solid #334155; border-radius: 12px; padding: 3px; }
+.ares-wordmark svg { width: 38px; height: 38px; color: #38bdf8; border: 1px solid #27364b; border-radius: 12px; padding: 3px; }
 .wordmark-health { color: #a5b2c8; font-weight: 400; margin-left: 5px; }
 .phase-navigation { display: flex; align-items: center; gap: 6px; padding: 5px; border: 1px solid #253348; border-radius: 16px; background: #05080d; }
 .phase-button { display: flex; align-items: center; gap: 11px; min-width: 138px; min-height: 51px; padding: 8px 15px; border: 1px solid transparent; border-radius: 11px; text-align: left; color: #a0aec1; font-size: 13px; font-weight: 500; }
@@ -1002,8 +1002,8 @@ html.reduce-transparency .hud-glass {
 .phase-button.needs-attention { border-color: #fb923c; color: #fb923c; }
 .mission-identity { display: flex; align-items: center; gap: 11px; color: #a0aec1; font-size: 11px; }
 .mission-identity strong { display: block; color: #e2eaf8; font-size: 12px; font-weight: 500; }
-.crew-avatar { display: grid; place-items: center; width: 35px; height: 35px; border: 1px solid #334155; border-radius: 50%; color: #cbdcff; background: #111b2b; font-size: 11px; }
-.tools-button { margin-left: 8px; padding: 10px 12px; min-height: 44px; border: 1px solid #334155; border-radius: 10px; color: #d7e3f5; font-size: 12px; }
+.crew-avatar { display: grid; place-items: center; width: 35px; height: 35px; border: 1px solid #27364b; border-radius: 50%; color: #cbdcff; background: #111b2b; font-size: 11px; }
+.tools-button { margin-left: 8px; padding: 10px 12px; min-height: 44px; border: 1px solid #27364b; border-radius: 10px; color: #d7e3f5; font-size: 12px; }
 .tools-button:hover { background: #111b2b; }
 .tools-button span { margin-left: 10px; color: #97abc9; font-size: 10px; }
 .mission-masthead { position: relative; isolation: isolate; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 16px 0 14px; }
@@ -1011,7 +1011,7 @@ html.reduce-transparency .hud-glass {
 .mission-masthead p { margin: 0; color: #a0aec1; font-size: 12px; line-height: 1.7; max-width: 70ch; }
 .mission-link-block { display: flex; flex-direction: column; align-items: flex-end; gap: 11px; font-size: 11px; }
 .mission-actions { display: flex; flex-wrap: wrap; gap: 6px; }
-.mission-actions button { min-height: 36px; padding: 6px 10px; border: 1px solid #334155; border-radius: 8px; color: #c8d8f0; font-size: 11px; }
+.mission-actions button { min-height: 36px; padding: 6px 10px; border: 1px solid #27364b; border-radius: 8px; color: #c8d8f0; font-size: 11px; }
 .mission-actions button:hover { background: #18283c; color: white; }
 .ares-workspace .bedside-monitor { background: #0a0f18; border: 1px solid #253348; border-radius: 16px; box-shadow: none; backdrop-filter: none; }
 .ares-workspace .act-grid { overflow: visible; }
@@ -1020,7 +1020,7 @@ html.reduce-transparency .hud-glass {
 .connection-dot.is-live { background: #4ade80; }
 .utc-clock { font-variant-numeric: tabular-nums; color: #93a3bc; margin-left: 17px; }
 .mission-profile-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.earth-profile-select { background: #0a0f18; border: 1px solid #334155; border-radius: 8px; padding: 7px 8px; min-height: 34px; color: #dce7f8; font-size: 11px; }
+.earth-profile-select { background: #0a0f18; border: 1px solid #27364b; border-radius: 8px; padding: 7px 8px; min-height: 34px; color: #dce7f8; font-size: 11px; }
 .profile-demo-label { display: block; color: #98a8c0; font-size: 9px; }
 .autonomy-label { color: #9aaac1; font-size: 10px; }
 .alarm-badge { display: inline-flex; align-items: center; min-height: 24px; border-radius: 6px; font-size: 10px; font-weight: 500; line-height: 1.3; }
@@ -1046,7 +1046,7 @@ html.reduce-transparency .hud-glass {
 .scenario-panel label > div:last-child { color: #a0aec1; font-size: 10px; line-height: 1.5; }
 input[type="range"] { min-height: 32px; touch-action: pan-y; }
 .scenario-panel button { min-height: 36px; }
-.vital-tile { position: relative; min-height: 135px; padding: 18px 15px; border: 1px solid #334155; background: #0b1220; border-radius: 15px; }
+.vital-tile { position: relative; min-height: 135px; padding: 18px 15px; border: 1px solid #27364b; background: #0b1220; border-radius: 15px; }
 .vital-tile > div:first-child > span { color: #c4d1e5; font-family: inherit; }
 .vital-tile > div:nth-child(2) { font-family: inherit; font-size: 30px; font-weight: 500; letter-spacing: -1.2px; font-variant-numeric: tabular-nums; }
 .vital-tile > div:nth-child(2).text-xs { font-size: 12px; letter-spacing: normal; }
@@ -1503,7 +1503,7 @@ details[open] > summary > .disclosure-caret { transform: rotate(90deg); }
   height: 38px;
   flex: 0 0 auto;
   place-items: center;
-  border: 1px solid #334155;
+  border: 1px solid #27364b;
   border-radius: 8px;
   background: #0c1523;
   color: #e3ece6;
@@ -1517,7 +1517,7 @@ details[open] > summary > .disclosure-caret { transform: rotate(90deg); }
   display: flex;
   align-items: center;
   gap: 12px;
-  border: 1px solid #334155;
+  border: 1px solid #27364b;
   border-radius: 8px;
   background: #0b1220;
   padding: 10px;
@@ -1541,7 +1541,7 @@ details[open] > summary > .disclosure-caret { transform: rotate(90deg); }
 .short-forecast-controls button {
   min-height: 36px;
   padding: 6px 10px;
-  border: 1px solid #334155;
+  border: 1px solid #27364b;
   border-radius: 7px;
   color: #b8c9df;
   font-size: 12px;

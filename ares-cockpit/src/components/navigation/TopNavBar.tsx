@@ -1,14 +1,16 @@
 // TopNavBar — 44px fixed OLED header for ARES-Health scrollytelling shell.
-// Displays mission branding, profile selector, OWLT latency, 5-chapter progress
-// pills, sex profile toggle, CMD+K launcher, and Operator Tools sheet trigger.
+// Displays mission branding, SOL counter, OWLT latency, 3-Act NASA Triad navigation
+// [1. GATHER] [2. EVALUATE] [3. ACT] with smooth Lenis scroll, sex profile toggle,
+// Dual-Mode toggle [VIEW: NARRATIVE] vs [VIEW: WORKBENCH], CMD+K launcher, and Operator Tools trigger.
 // Invariant: STRICTLY ZERO EMOJIS in code, comments, or documentation.
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { gsap } from 'gsap';
 import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
 import {
   MISSION_PROFILES,
   DEFAULT_MISSION_PROFILE,
+  formatMissionDelay,
   type MissionProfile,
 } from '../../lib/missionContext';
 import {
@@ -21,21 +23,19 @@ import type { CrewSex } from '../../lib/scenario';
 gsap.registerPlugin(ScrollToPlugin);
 
 // ---------------------------------------------------------------------------
-// Chapter metadata
+// 3-Act NASA Triad Metadata
 // ---------------------------------------------------------------------------
 
 interface ChapterMeta {
   id: ScrollyChapter;
   label: string;
-  abbr: string;
+  stepNum: string;
 }
 
 const CHAPTERS: readonly ChapterMeta[] = [
-  { id: 1, label: 'Descent', abbr: '01' },
-  { id: 2, label: 'Cardio', abbr: '02' },
-  { id: 3, label: 'Explorer', abbr: '03' },
-  { id: 4, label: 'Musculoskeletal', abbr: '04' },
-  { id: 5, label: 'Decision', abbr: '05' },
+  { id: 1, label: 'GATHER', stepNum: '1' },
+  { id: 2, label: 'EVALUATE', stepNum: '2' },
+  { id: 3, label: 'ACT', stepNum: '3' },
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -44,10 +44,7 @@ const CHAPTERS: readonly ChapterMeta[] = [
 
 function formatOwlt(seconds: number | null): string {
   if (seconds === null) return 'COMMS BLACKOUT';
-  if (seconds < 2) return `${(seconds * 1000).toFixed(0)} ms OWLT`;
-  if (seconds < 120) return `${seconds.toFixed(1)} s OWLT`;
-  if (seconds < 3600) return `${(seconds / 60).toFixed(1)} min OWLT`;
-  return `${(seconds / 3600).toFixed(2)} hr OWLT`;
+  return `${formatMissionDelay(seconds)} OWLT`;
 }
 
 // ---------------------------------------------------------------------------
@@ -55,7 +52,7 @@ function formatOwlt(seconds: number | null): string {
 // ---------------------------------------------------------------------------
 
 export interface TopNavBarProps {
-  /** Chapter section refs, indexed 1..5, used for scroll-to. */
+  /** Chapter section refs, indexed 1..3, used for scroll-to. */
   chapterRefs?: React.RefObject<HTMLElement | null>[];
   /** Current mission profile (drives OWLT display). */
   missionProfile?: MissionProfile;
@@ -63,6 +60,11 @@ export interface TopNavBarProps {
   /** Biological sex of the crew member displayed. */
   sex?: CrewSex;
   onSexChange?: (sex: CrewSex) => void;
+  /** Active view mode ('scrolly' narrative vs 'workbench' clinical workstation). */
+  viewMode?: 'scrolly' | 'workbench';
+  onViewModeChange?: (mode: 'scrolly' | 'workbench') => void;
+  /** Sol number or mission day (default: 242). */
+  sol?: number;
   /** Opens the CMD+K command palette. */
   onOpenCommandPalette?: () => void;
   /** Opens the Operator Tools slide-over sheet. */
@@ -79,20 +81,21 @@ export function TopNavBar({
   onMissionProfileChange,
   sex = 'MALE',
   onSexChange,
+  viewMode = 'scrolly',
+  onViewModeChange,
+  sol = 242,
   onOpenCommandPalette,
   onOpenOperatorTools,
 }: TopNavBarProps) {
   const { activeChapter } = useScrollyContext();
   const [localProfile, setLocalProfile] = useState<MissionProfile>(missionProfile);
 
-  // Sync external prop changes.
+  // Sync external prop changes
   useEffect(() => {
     setLocalProfile(missionProfile);
   }, [missionProfile]);
 
-  // ---------------------------------------------------------------------------
   // CMD+K keyboard shortcut
-  // ---------------------------------------------------------------------------
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -106,26 +109,28 @@ export function TopNavBar({
 
   const { lenis } = useSmoothScroll();
 
-  // ---------------------------------------------------------------------------
-  // Click-to-scroll: smoothly jump to a chapter section
-  // ---------------------------------------------------------------------------
+  // Click-to-scroll: smoothly jump to an Act section
   const scrollToChapter = useCallback(
     (chapter: ScrollyChapter) => {
       const ref = chapterRefs?.[chapter - 1];
-      const el = ref?.current || (document.querySelector(`[data-chapter="${chapter}"]`) as HTMLElement | null);
+      const el =
+        ref?.current ||
+        (document.querySelector(`[data-chapter="${chapter}"]`) as HTMLElement | null);
       if (!el) return;
       if (lenis) {
         lenis.scrollTo(el, { offset: -44, duration: 1.0 });
       } else {
-        gsap.to(window, { scrollTo: { y: el, offsetY: 44 }, duration: 1.0, ease: 'power2.inOut' });
+        gsap.to(window, {
+          scrollTo: { y: el, offsetY: 44 },
+          duration: 1.0,
+          ease: 'power2.inOut',
+        });
       }
     },
     [chapterRefs, lenis],
   );
 
-  // ---------------------------------------------------------------------------
   // Profile selector handler
-  // ---------------------------------------------------------------------------
   const handleProfileChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
       const found = MISSION_PROFILES.find((p) => p.id === e.target.value);
@@ -138,74 +143,73 @@ export function TopNavBar({
 
   const owltDisplay = formatOwlt(localProfile.oneWayS);
 
-  // ---------------------------------------------------------------------------
-  // Render
-  // ---------------------------------------------------------------------------
   return (
     <header
-      className="fixed inset-x-0 top-0 z-50 flex h-11 items-center border-b border-[var(--color-border)] bg-black px-3 gap-2"
+      className="fixed inset-x-0 top-0 z-50 flex h-11 items-center border-b border-[#334155]/60 bg-black/95 px-3 gap-2 backdrop-blur-md"
       aria-label="ARES-Health navigation"
     >
-      {/* Brand */}
-      <div className="flex shrink-0 items-center gap-2 pr-2 border-r border-[var(--color-border)]">
-        {/* Logo mark: simple SVG cross / heartbeat glyph, air-gapped, no image file */}
+      {/* Brand & SOL Badge */}
+      <div className="flex shrink-0 items-center gap-2 pr-2 border-r border-[#334155]/60">
         <svg
           viewBox="0 0 20 20"
-          className="h-5 w-5 shrink-0 text-[var(--color-accent)]"
+          className="h-5 w-5 shrink-0 text-sky-400"
           aria-hidden="true"
           fill="currentColor"
         >
           <path d="M10 2.5C6.96 2.5 4.5 4.96 4.5 8c0 3.86 5.5 9.5 5.5 9.5s5.5-5.64 5.5-9.5C15.5 4.96 13.04 2.5 10 2.5zm0 7a2 2 0 110-4 2 2 0 010 4z" />
         </svg>
-        <span className="font-mono text-xs font-semibold tracking-widest text-[var(--color-ink-display)] uppercase">
+        <span className="font-mono text-xs font-bold tracking-widest text-white uppercase">
           ARES
         </span>
-        <span className="hidden sm:block font-sans text-[10px] text-[var(--color-ink-meta)] leading-none">
+        <span className="hidden sm:block font-sans text-[10px] text-slate-400 leading-none">
           Health
+        </span>
+        <span className="hidden lg:inline-flex rounded border border-sky-500/30 bg-sky-950/30 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-sky-400">
+          SOL {sol}
         </span>
       </div>
 
-      {/* Mission Profile selector */}
-      <div className="hidden sm:flex shrink-0 items-center gap-1.5 pr-2 border-r border-[var(--color-border)]">
-        <span className="font-mono text-[9px] uppercase tracking-widest text-[var(--color-ink-muted)]">
+      {/* Mission Profile Selector */}
+      <div className="hidden sm:flex shrink-0 items-center gap-1.5 pr-2 border-r border-[#334155]/60">
+        <span className="font-mono text-[9px] uppercase tracking-widest text-slate-500">
           Mission
         </span>
         <select
           value={localProfile.id}
           onChange={handleProfileChange}
-          className="bg-transparent font-mono text-[11px] text-[var(--color-ink-body)] border-none outline-none cursor-pointer"
+          className="bg-transparent font-mono text-[11px] text-slate-300 border-none outline-none cursor-pointer"
           aria-label="Mission profile"
         >
           {MISSION_PROFILES.map((p) => (
-            <option key={p.id} value={p.id}>
+            <option key={p.id} value={p.id} className="bg-slate-900 text-white">
               {p.label}
             </option>
           ))}
         </select>
       </div>
 
-      {/* OWLT */}
-      <div className="hidden md:flex shrink-0 items-center gap-1 pr-2 border-r border-[var(--color-border)]">
-        <span className="font-mono text-[9px] uppercase tracking-widest text-[var(--color-ink-muted)]">
+      {/* OWLT Latency */}
+      <div className="hidden md:flex shrink-0 items-center gap-1 pr-2 border-r border-[#334155]/60">
+        <span className="font-mono text-[9px] uppercase tracking-widest text-slate-500">
           OWLT
         </span>
         <span
           className={`font-mono text-[11px] tabular-nums ${
             localProfile.oneWayS === null
-              ? 'text-[var(--color-status-critical)]'
+              ? 'text-rose-400'
               : localProfile.oneWayS > 300
-              ? 'text-[var(--color-status-caution)]'
-              : 'text-[var(--color-status-nominal)]'
+              ? 'text-amber-300'
+              : 'text-emerald-400'
           }`}
         >
           {owltDisplay}
         </span>
       </div>
 
-      {/* Chapter progress pills — centered */}
+      {/* Center Navigation: 3-Act NASA Triad Steps [1. GATHER] [2. EVALUATE] [3. ACT] */}
       <nav
-        aria-label="Narrative chapters"
-        className="flex flex-1 items-center justify-center gap-1"
+        aria-label="NASA Triad steps"
+        className="flex flex-1 items-center justify-center gap-1.5"
       >
         {CHAPTERS.map((ch) => {
           const isActive = activeChapter === ch.id;
@@ -214,90 +218,93 @@ export function TopNavBar({
             <button
               key={ch.id}
               onClick={() => scrollToChapter(ch.id)}
-              aria-label={`Chapter ${ch.id}: ${ch.label}`}
+              aria-label={`Step ${ch.stepNum}: ${ch.label}`}
               aria-current={isActive ? 'step' : undefined}
-              className={`
-                group flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest
-                transition-all duration-200
-                ${
-                  isActive
-                    ? 'border-[var(--color-accent)] bg-[var(--color-accent)]/10 text-[var(--color-accent)]'
-                    : isPast
-                    ? 'border-[var(--color-border-active)] text-[var(--color-ink-muted)]'
-                    : 'border-[var(--color-border)] text-[var(--color-ink-muted)] hover:border-[var(--color-border-active)] hover:text-[var(--color-ink-meta)]'
-                }
-              `}
+              className={`group flex items-center gap-1.5 rounded-full border px-3 py-1 font-mono text-[10px] uppercase tracking-widest transition-all duration-200 cursor-pointer ${
+                isActive
+                  ? 'border-sky-400 bg-sky-950/50 text-sky-300 shadow-[0_0_12px_rgba(56,189,248,0.3)]'
+                  : isPast
+                  ? 'border-slate-700 bg-slate-900/30 text-slate-400'
+                  : 'border-slate-800 text-slate-500 hover:border-slate-700 hover:text-slate-300'
+              }`}
             >
-              <span className="hidden sm:inline">{ch.abbr}</span>
-              <span className="hidden md:inline"> {ch.label}</span>
-              {/* Mobile: dot only */}
-              <span
-                className={`sm:hidden h-1.5 w-1.5 rounded-full ${
-                  isActive
-                    ? 'bg-[var(--color-accent)]'
-                    : isPast
-                    ? 'bg-[var(--color-ink-muted)]'
-                    : 'bg-[var(--color-border-active)]'
-                }`}
-              />
+              <span className="font-bold">{ch.stepNum}.</span>
+              <span>{ch.label}</span>
             </button>
           );
         })}
       </nav>
 
-      {/* Sex profile toggle */}
-      <div className="flex shrink-0 items-center gap-0.5 pl-2 border-l border-[var(--color-border)]">
-        <span className="font-mono text-[9px] uppercase tracking-widest text-[var(--color-ink-muted)] mr-1 hidden sm:inline">
+      {/* Dual-Mode Toggle: [VIEW: NARRATIVE] vs [VIEW: WORKBENCH] */}
+      <div className="hidden lg:flex shrink-0 items-center gap-1 border-r border-[#334155]/60 pr-2">
+        <button
+          type="button"
+          onClick={() => onViewModeChange?.('scrolly')}
+          aria-pressed={viewMode === 'scrolly'}
+          className={`rounded px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider transition-all duration-150 cursor-pointer ${
+            viewMode === 'scrolly'
+              ? 'bg-sky-950/50 text-sky-300 border border-sky-400/50'
+              : 'text-slate-400 border border-transparent hover:border-slate-700 hover:text-slate-200'
+          }`}
+        >
+          VIEW: NARRATIVE
+        </button>
+        <button
+          type="button"
+          onClick={() => onViewModeChange?.('workbench')}
+          aria-pressed={viewMode === 'workbench'}
+          className={`rounded px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider transition-all duration-150 cursor-pointer ${
+            viewMode === 'workbench'
+              ? 'bg-sky-950/50 text-sky-300 border border-sky-400/50'
+              : 'text-slate-400 border border-transparent hover:border-slate-700 hover:text-slate-200'
+          }`}
+        >
+          VIEW: WORKBENCH
+        </button>
+      </div>
+
+      {/* Sex Profile Toggle [MALE] [FEMALE] */}
+      <div className="flex shrink-0 items-center gap-1 border-r border-[#334155]/60 pr-2">
+        <span className="font-mono text-[9px] uppercase tracking-widest text-slate-500 mr-1 hidden sm:inline">
           Sex
         </span>
         {(['MALE', 'FEMALE'] as const).map((s) => (
           <button
             key={s}
+            type="button"
             onClick={() => onSexChange?.(s)}
             aria-pressed={sex === s}
-            className={`
-              rounded px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest
-              transition-colors duration-150
-              ${
-                sex === s
-                  ? 'bg-[var(--color-accent)]/15 text-[var(--color-accent)] border border-[var(--color-accent)]/40'
-                  : 'text-[var(--color-ink-muted)] border border-transparent hover:border-[var(--color-border)] hover:text-[var(--color-ink-meta)]'
-              }
-            `}
+            className={`rounded px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider transition-colors duration-150 cursor-pointer ${
+              sex === s
+                ? 'bg-sky-950/50 text-sky-300 border border-sky-400/40'
+                : 'text-slate-500 border border-transparent hover:border-slate-800 hover:text-slate-300'
+            }`}
           >
-            {s === 'MALE' ? 'M' : 'F'}
+            {s}
           </button>
         ))}
       </div>
 
       {/* CMD+K trigger */}
       <button
+        type="button"
         onClick={onOpenCommandPalette}
         aria-label="Open command palette (Cmd K)"
-        className="
-          hidden sm:flex shrink-0 items-center gap-1 rounded border border-[var(--color-border)]
-          px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest
-          text-[var(--color-ink-muted)] hover:border-[var(--color-border-active)]
-          hover:text-[var(--color-ink-meta)] transition-colors duration-150
-        "
+        className="hidden sm:flex shrink-0 items-center gap-1 rounded border border-slate-800 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-slate-400 hover:border-slate-700 hover:text-slate-200 transition-colors duration-150 cursor-pointer"
       >
         <kbd className="not-italic">CMD</kbd>
         <span>+</span>
         <kbd className="not-italic">K</kbd>
       </button>
 
-      {/* Operator Tools */}
+      {/* OPERATOR TOOLS trigger */}
       <button
+        type="button"
         onClick={onOpenOperatorTools}
         aria-label="Open Operator Tools panel"
-        className="
-          shrink-0 rounded border border-[var(--color-border)]
-          px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest
-          text-[var(--color-ink-muted)] hover:border-[var(--color-border-active)]
-          hover:text-[var(--color-ink-meta)] transition-colors duration-150
-        "
+        className="shrink-0 rounded border border-slate-800 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-slate-400 hover:border-slate-700 hover:text-slate-200 transition-colors duration-150 cursor-pointer"
       >
-        Tools
+        OPERATOR TOOLS
       </button>
     </header>
   );

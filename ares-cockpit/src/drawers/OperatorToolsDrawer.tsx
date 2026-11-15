@@ -17,6 +17,7 @@ import type { WhatIf } from '../lib/scenario';
 import type { TransportMode, OsStatusBarState } from '../modules/os-shell/OsSystemStatusBar';
 import type { DecodedBinaryTelemetryFrame } from '../lib/binaryTelemetryDecoder';
 import type { AuditRecord } from '../modules/audit-chain/AuditChainModal';
+import { DEFAULT_MISSION_PROFILE, type MissionProfile } from '../lib/missionContext';
 
 // ---------------------------------------------------------------------------
 // Tool tab metadata
@@ -141,6 +142,7 @@ export interface OperatorToolsDrawerProps {
   onClose: () => void;
   packet: TelemetryPacket;
   whatIf: WhatIf;
+  missionProfile?: MissionProfile;
   transportMode: TransportMode;
   ipcLatencyUs: number | null;
   binaryFrameCount: number;
@@ -158,6 +160,7 @@ export function OperatorToolsDrawer({
   onClose,
   packet,
   whatIf,
+  missionProfile = DEFAULT_MISSION_PROFILE,
   transportMode,
   ipcLatencyUs,
   binaryFrameCount,
@@ -258,6 +261,7 @@ export function OperatorToolsDrawer({
             <OsSystemStatusBar
               packet={packet}
               whatIf={whatIf}
+              missionProfile={missionProfile}
               transportMode={transportMode}
               ipcLatencyUs={ipcLatencyUs}
               binaryFrameCount={binaryFrameCount}

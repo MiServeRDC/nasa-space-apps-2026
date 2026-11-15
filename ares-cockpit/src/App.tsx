@@ -361,13 +361,13 @@ export default function App() {
     }
   };
 
-  const [viewMode] = useState<'scrolly' | 'workbench'>(() => {
+  const [viewMode, setViewMode] = useState<'scrolly' | 'workbench'>(() => {
     const v = getInitialParam('view') || getInitialParam('mode');
     return v === 'workbench' ? 'workbench' : 'scrolly';
   });
 
   if (viewMode === 'scrolly') {
-    return <StoryShell />;
+    return <StoryShell viewMode={viewMode} onViewModeChange={setViewMode} />;
   }
 
   const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false);
@@ -707,6 +707,7 @@ export default function App() {
         onOpenAudit={() => setAuditModalOpen(true)}
         onOpenShortcuts={() => setShortcutsModalOpen(true)}
         onTogglePalette={() => setPaletteOpen((v) => !v)}
+        onSwitchToNarrative={() => setViewMode('scrolly')}
       />
 
       {(showUrgentStatus || procedurePending) && (
