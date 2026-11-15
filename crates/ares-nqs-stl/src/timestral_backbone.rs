@@ -1,4 +1,4 @@
-//! Fase 15 (H1): Pure-Rust Timestral Backbone for ARES-Health.
+//! Phase 15 (H1): Pure-Rust Timestral Backbone for ARES-Health.
 //! Implements CausalScaler (causal median, MAD * 1.4826, asinh/sinh),
 //! PatchRepresentation with ZOH + explicit missing mask, CircularTelemetryBuffer,
 //! RmsNorm (eps = 1e-5), FusedSwiGlu, SinCosRoPe (rotary factor 0.5),

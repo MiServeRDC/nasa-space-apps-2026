@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 
-//! `ares-core-types`: Contratti telemetrici condivisi, manifesto di provenienza,
-//! costanti normative NASA-STD-3001, errori fortemente tipizzati e trait di sicurezza.
+//! `ares-core-types`: Shared telemetry contracts, provenance manifest,
+//! NASA-STD-3001 normative constants, strongly typed errors, and security traits.
 
 pub mod anomaly;
 pub mod binary_ipc;

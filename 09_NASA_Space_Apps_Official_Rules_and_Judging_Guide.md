@@ -163,10 +163,10 @@ Projects that receive Global Nomination from local judging advance to the NASA E
 
 ## 6. Checklist Pre-Gara per gli Agenti AI del Team
 
-Prima di iniziare la scrittura di codice o la generazione di asset durante le 48 ore di gara, ogni agente (Claude Code, Google Antigravity, OpenAI Codex, Cursor) deve verificare la conformita' con le seguenti regole:
+Before starting implementation or generating assets, every autonomous agent (Claude Code, Google Antigravity, OpenAI Codex, Cursor) must verify compliance with the following invariants:
 
-- [ ] **Fresh Code Verification:** Verificare che nessun binario o codice sorgente sia precompilato nel repository.
-- [ ] **Air-Gapped Constraint:** Assicurarsi che nessuna chiamata HTTP punti a endpoint esterni durante l'esecuzione del simulatore (tutte le comunicazioni devono essere `localhost` / `127.0.0.1`).
-- [ ] **Dimensional Consistency:** Controllare che tutte le unita' dimensionali delle equazioni emodinamiche siano conformi ($\text{dyn/cm}^2$, $\text{cm}^2$, $\text{cm/s}$).
-- [ ] **UI Palette Consistency:** Rispettare rigorosamente la palette OLED dark aerospaziale (`#000000`, ambra `#F59E0B`, ciano `#06B6D4`, rosso critico `#EF4444`).
-- [ ] **AI Disclosure Logging:** Registrare ogni utilizzo di assistenti AI per la dichiarazione formale nella pagina di sottomissione.
+- [ ] **Fresh Code Verification:** Verify that no application source code or binaries are precompiled outside the repository.
+- [ ] **Air-Gapped Constraint:** Ensure that zero outbound HTTP calls target external cloud endpoints during simulator execution (all communications must be `localhost` / `127.0.0.1`).
+- [ ] **Dimensional Consistency:** Verify that all physical dimensions in hemodynamic equations strictly adhere to standard physical units ($\text{dyn/cm}^2$, $\text{cm}^2$, $\text{cm/s}$).
+- [ ] **UI Palette Consistency:** Strictly respect the aerospace OLED dark palette (`#000000`, amber `#F59E0B`, cyan `#06B6D4`, critical red `#EF4444`).
+- [ ] **AI Disclosure Logging:** Maintain an exhaustive log of all AI engineering assistants for mandatory formal disclosure in the official submission portal.

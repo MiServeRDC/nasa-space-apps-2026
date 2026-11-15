@@ -1,5 +1,5 @@
-//! Fase 21 (J1): Zero-Copy Binary Telemetry Protocol (`#[repr(C, align(64))]`
-//! `BinaryTelemetryFrame` da 128 byte) e ring buffer lock-free SPMC Seqlock.
+//! Phase 21 (J1): Zero-Copy Binary Telemetry Protocol (`#[repr(C, align(64))]`
+//! 128-byte `BinaryTelemetryFrame`) and lock-free SPMC Seqlock ring buffer.
 
 use crate::NqsQuantileForecastSnapshot;
 use crate::error::AresCoreError;

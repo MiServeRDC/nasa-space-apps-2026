@@ -1,12 +1,12 @@
 #![forbid(unsafe_code)]
 
-//! `ares-telemetry-ingest` — Blocco B (`1. GATHER`, Fasi 03 B1, 04 B2 & Fase 31 L3).
+//! `ares-telemetry-ingest` — Block B (`1. GATHER`, Phases 03 B1, 04 B2 & Phase 31 L3).
 //!
-//! Esporta il motore di replay deterministico `BIDMC v1.0.0` (`bidmc_replayer`),
-//! il filtro di qualita del segnale ad entropia spettrale di Shannon (`sqi_filter`),
-//! il combinatore di scenario (`scenario_overlay`), la demodulazione radar Doppler
-//! contactless (`radar_csi_dsp`), i biomarcatori vocali YIN (`vocal_acoustic_dsp`)
-//! e l'estrattore Pan-Tompkins R-R a 125-500 Hz (`waveform_rr_extractor`).
+//! Exports the deterministic `BIDMC v1.0.0` replay engine (`bidmc_replayer`),
+//! Shannon spectral entropy signal quality filter (`sqi_filter`),
+//! scenario combiner (`scenario_overlay`), contactless Doppler radar
+//! demodulation (`radar_csi_dsp`), YIN vocal acoustic biomarkers (`vocal_acoustic_dsp`),
+//! and Pan-Tompkins R-R 125-500 Hz extractor (`waveform_rr_extractor`).
 
 pub mod anomaly_injection;
 pub mod bidmc_replayer;

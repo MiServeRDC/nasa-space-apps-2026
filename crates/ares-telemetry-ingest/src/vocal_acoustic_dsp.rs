@@ -1,5 +1,5 @@
-//! Fase 31 (L3): Estrazione biomarcatori acustici vocali in Puro Rust (stimatore YIN,
-//! jitter, shimmer, HNR, inclinazione spettrale e pause ratio VAD per HERA/CHAPEA).
+//! Phase 31 (L3): Pure-Rust vocal acoustic biomarker extraction (YIN estimator,
+//! jitter, shimmer, HNR, spectral slope, and VAD pause ratio for HERA/CHAPEA).
 
 use crate::radar_csi_dsp::DspError;
 use ares_core_types::telemetry::ModelValidationStatus;

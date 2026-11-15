@@ -1,4 +1,4 @@
-//! Fase 16 (H2): Direct Multi-Horizon Forecasting (DHF) Non-Crossing Monotone QuantileHead
+//! Phase 16 (H2): Direct Multi-Horizon Forecasting (DHF) Non-Crossing Monotone QuantileHead
 //! and Adaptive Conformal Abstention Gate (Conformal PID / ACI) for ARES-Health.
 
 use crate::error::NqsStlError;

@@ -1,4 +1,4 @@
-//! Fase 33 (`L5`): Multi-agency columnar & waveform dataset adapters (`BIDMC`, `PhysioNet`,
+//! Phase 33 (`L5`): Multi-agency columnar & waveform dataset adapters (`BIDMC`, `PhysioNet`,
 //! `NASA OSDR`, `DLR :envihab HDBR`) with mandatory SHA-256 manifest verification,
 //! real beat-to-beat HRV extraction (`NN >= 30`), and strict zero-synthetic fallback.
 

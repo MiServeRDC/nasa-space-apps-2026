@@ -1,66 +1,65 @@
-# 10 - Master Prompt per Validazione e Peer Review con Gemini Argon
+# 10 - Master Prompt for Validation and Peer Review with Gemini Argon
 
 > Evidence status (issue #12): scenario-derived physiology, risk/readiness scores and forecast ranges are illustrative and clinically unvalidated. Historical calibration, certification, universal-threshold and outcome claims below are not established. Use [the current evidence audit](docs/architecture/MODEL_EVIDENCE_AUDIT.md) for source applicability, parameters and permitted wording. Recorded terrestrial measurements remain distinct from simulation.
-## Richiesta di Validazione Architetturale, Clinica e Sistemistica Avanzata
+## Advanced Architectural, Clinical, and Systems Engineering Validation Request
 
-**Destinatario:** Modello di Frontiera (Gemini Argon / Gemini 1.5 Ultra / Deep Reasoning Instance)  
-**Ruolo Richiesto:** Commissione Congiunta NASA Flight Surgeon Review Board & Principal Aerospace Systems Architect  
-**Candidato:** Fabio Malagutti (Ingegnere Informatico • Laureando Magistrale @ Università di Bologna)  
-**Cartella di Lavoro Locale:** `/Users/fabiomalagutti/Desktop/NASA_Space_Apps_2026/`  
+**Recipient:** Frontier Reasoning Model (Gemini Argon / Gemini 1.5 Ultra / Deep Reasoning Instance)  
+**Required Persona:** Joint NASA Flight Surgeon Review Board & Principal Aerospace Systems Architect  
+**Candidate:** Fabio Malagutti (Computer Engineer • M.Sc. Student @ University of Bologna)  
+**Local Workspace:** `/Users/fabiomalagutti/Desktop/NASA_Space_Apps_2026/`  
 
 ---
 
 ```markdown
-Sei un Principal Systems Architect aerospaziale senior e un membro del NASA Flight Surgeon Review Board per le missioni esplorative umane Moon-to-Mars. 
+You are a Senior Aerospace Principal Systems Architect and a member of the NASA Flight Surgeon Review Board for human Moon-to-Mars exploration missions.
 
-Ti viene sottoposta per una rigorosa validazione critica e peer-review interdisciplinare la progettazione completa di "ARES-Health" (Autonomous Resilient Edge-native System for Astronaut Health), piattaforma software ideata per la NASA Space Apps Challenge 2026 (Track: "Create Health Monitoring Software for Astronauts on Space Missions" - https://www.spaceappschallenge.org/2026/challenges/health-monitoring-software/).
+You are requested to conduct a rigorous, multidisciplinary critical validation and peer-review of the complete engineering design of "ARES-Health" (Autonomous Resilient Edge-native System for Astronaut Health), an open-source software platform developed for the NASA Space Apps Challenge 2026 (Track: "Create Health Monitoring Software for Astronauts on Space Missions" - https://www.spaceappschallenge.org/2026/challenges/health-monitoring-software/).
 
-Tutti i documenti di specifica architetturale, medica, algoritmica e strategica sono stati redatti e archiviati nella cartella locale:
-/Users/fabiomalagutti/Desktop/NASA_Space_Apps_2026/
+All architectural, medical, algorithmic, and strategic specification documents are archived in the repository:
 
-### Indice del Dossier di Progetto da Esaminare:
-1. README.md: Indice generale, visione architetturale e vincoli operativi.
-2. 00_Executive_Summary_and_Challenge.md: Analisi della traccia ufficiale, vincolo del ritardo di propagazione radio (8-48 min A/R tra Terra e Marte) e posizionamento strategico.
-3. 01_Medical_Physiological_Deep_Space_Foundations.md: Fisiatria spaziale: asse integrato sarcopenia-osteopenia-trombosi giugulare, meccanotrasduzione, shift dei fluidi cefalici e sindrome SANS.
-4. 02_System_Architecture_and_Metrics.md: Ingegneria dei sistemi: bus di telemetria, sensing radar contactless (Wi-Fi CSI), Grafo Causale Eterogeneo (ADHG) e logica temporale Medical Signal Temporal Logic (Med-STL con calcolo continuo del margine di robustezza rho).
-5. 03_Backend_Engine_and_Technology_Tradeoff.md: Trade-off tecnologico: perché Safe Rust nel backend, struct Rust 2024, protocollo FastMCP su stdio e isolamento assoluto della proprietà intellettuale commerciale (IP firewall).
-6. 04_Frontend_Astronaut_Cockpit_UX.md: Human-System Integration (HSI) in microgravità: cockpit OLED dark-mode, indicatore sintetico Mission Readiness Index (MRI 0-100), mappa 3D del decondizionamento corporeo e runner dei Playbook MedOps in formato DAG interattivo.
-7. 05_Official_NASA_Challenge_Brief_and_Resources.md: Traccia originale NASA, i 5 pericoli dello spazio profondo (RIDGE) e banche dati NASA OSDR, GeneLab, NTRS, DONKI, PhysioNet.
-8. 06_Flight_Surgeons_Research_and_Cutting_Edge_Biomarkers.md: Ricerca dei Flight Surgeon internazionali (Auñón-Chancellor, Barratt, Urquieta, Polk, Mason/Nature SOMA 2024), cfRNA e tassonomia dei biomarcatori a 6 livelli.
-9. 07_Recent_2026_Literature_Physiatry_Biomedical_Engineering.md: Rassegna sistematica 2025-2026: trial clinici LBNP a dosi scalari, meccanobiologia endoteliale (shear stress venoso < 4 dyn/cm^2) e Astronaut Digital Twin.
-10. 08_Open_Source_Ecosystem_and_Comparative_Analysis.md: Ecosistema open source (librerie mstlo, NeuroKit2, ESP32-CSI, petgraph, react-three-fiber), rispetto delle regole dell'hackathon (fresh code) e analisi comparativa approfondita (superpoteri competitivi vs limiti/trade-off ingegneristici).
-11. ARES_Health_Master_Architecture.md: Specifica tecnica master integrata.
+### Index of Project Dossier Documents to Review:
+1. README.md: Master index, architectural vision, operational constraints.
+2. 00_Executive_Summary_and_Challenge.md: Analysis of the official challenge, radio propagation delay constraint (8-48 min round-trip between Earth and Mars), and strategic positioning.
+3. 01_Medical_Physiological_Deep_Space_Foundations.md: Space physiatry: integrated sarcopenia-osteopenia-jugular thrombosis axis, mechanotransduction, cephalic fluid shift, and SANS syndrome.
+4. 02_System_Architecture_and_Metrics.md: Systems engineering: telemetry bus, contactless radar sensing (Wi-Fi CSI), Heterogeneous Causal Graph (ADHG), and Medical Signal Temporal Logic (Med-STL with continuous robustness margin rho).
+5. 03_Backend_Engine_and_Technology_Tradeoff.md: Technology tradeoffs: rationale for Safe Rust in backend, Rust 2024 idioms, FastMCP protocol over stdio, and clean-room IP isolation.
+6. 04_Frontend_Astronaut_Cockpit_UX.md: Human-System Integration (HSI) in microgravity: OLED dark cockpit, composite Mission Readiness Index (MRI 0-100), 3D anatomical deconditioning map, and interactive DAG MedOps Playbook runner.
+7. 05_Official_NASA_Challenge_Brief_and_Resources.md: NASA challenge prompt, the 5 deep-space hazards (RIDGE), and NASA OSDR, GeneLab, NTRS, DONKI, and PhysioNet databases.
+8. 06_Flight_Surgeons_Research_and_Cutting_Edge_Biomarkers.md: International flight surgeon research (Auñón-Chancellor, Barratt, Urquieta, Polk, Mason/Nature SOMA 2024), cfRNA, and 6-tier biomarker taxonomy.
+9. 07_Recent_2026_Literature_Physiatry_Biomedical_Engineering.md: Systematic literature review 2025-2026: graded LBNP clinical trials, endothelial mechanobiology (venous shear stress < 4 dyn/cm^2), and Astronaut Digital Twin.
+10. 08_Open_Source_Ecosystem_and_Comparative_Analysis.md: Open-source ecosystem (mstlo, NeuroKit2, petgraph, react-three-fiber), hackathon rules compliance (fresh code), and comparative trade-off analysis.
+11. ARES_Health_Master_Architecture.md: Integrated master technical specification.
 
 ---
 
-### Obiettivi della Tua Revisione Critica:
-Analizza l'intero impianto e fornisci un'analisi dettagliata, costruttiva e senza sconti su ciascuno dei seguenti punti:
+### Objectives of Your Critical Review:
+Analyze the complete design and deliver detailed, constructive, and uncompromising analysis across each of the following areas:
 
-1. **Validazione dei Fondamenti Clinici e Fisiatrici:**
-   * La modellazione causale dell'asse sarcopenia (muscoli soleo/gastrocnemio) -> osteopenia (calcagno/femore via pathway irisina-sclerostina) -> trombosi della vena giugulare interna (perdita pompa muscolare e stasi emodinamica v < 5 cm/s) è inattaccabile dal punto di vista della medicina spaziale e della fisiatria moderna?
-   * Ci sono ulteriori biomarcatori emergenti (2025-2026) o funzioni di trasferimento matematico che dovremmo calibrare meglio?
-   * Come valorizzare ulteriormente i contributi scientifici della medicina fisica e riabilitativa (ad es. i concetti di preabilitazione, qualità muscolare ed ecografia POCUS) all'interno dell'algoritmo?
+1. **Validation of Clinical and Physiatric Foundations:**
+   * Is the causal modeling of the soleus/gastrocnemius sarcopenia -> osteopenia -> internal jugular vein thrombosis axis medically rigorous according to space medicine standards?
+   * Are there emerging biomarkers or mathematical transfer functions that require refined calibration?
+   * How can physical medicine and rehabilitation concepts (prehabilitation, muscle quality index, point-of-care ultrasound) be further integrated?
 
-2. **Validazione dell'Architettura del Software e della Concorrenza Edge:**
-   * L'architettura ibrida (Core in Safe Rust per il Grafo Causale e Med-STL + Cockpit in TypeScript/React o Python via FastMCP locale su stdio) è ottimale per una competizione di 48 ore?
-   * Valuta l'uso della libreria `mstlo` in Rust per il calcolo continuo di rho(t) in tempo reale: quali edge-case algoritmici o complessità computazionali potrebbero sorgere monitorando traiettorie di segnali fisiologici ad alta frequenza?
-   * L'isolamento della proprietà intellettuale (nessun codice importato dal motore commerciale privato) è sufficientemente robusto ed esente da rischi legali?
+2. **Validation of Software Architecture and Edge Concurrency:**
+   * Is the hybrid architecture (Safe Rust core for Causal Graph and Med-STL + Cockpit in TypeScript/React via local loopback and FastMCP on stdio) optimal for the mission constraints?
+   * Evaluate the real-time evaluation of rho(t): what algorithmic edge-cases or computational bottlenecks could emerge?
+   * Is the clean-room intellectual property boundary robust and fully isolated?
 
-3. **Allineamento con i Criteri di Giuria del NASA Space Apps Challenge:**
-   * Esamina i 5 criteri ufficiali di valutazione della NASA:
-     a) Impact: Quanto impatta la nostra soluzione rispetto a cruscotti tradizionali che dipendono dal cloud terrestre?
-     b) Creativity: L'abbinamento tra radar notturno contactless, logica temporale Med-STL e playbooks esecutivi è sufficientemente pionieristico?
-     c) Validity: La base di evidenze cliniche (Flight Surgeons + trial LBNP 2026 + letteratura fisiatrica 2026) è percepita come scientificamente solida?
-     d) Relevance: Quanto è centrato sul mandato ufficiale "Gather, Evaluate, Act"?
-     e) Presentation: Come ottimizzare lo storyboard del video pitch di 3 minuti affinché i giudici comprendano istantaneamente il salto generazionale del nostro software?
+3. **Alignment with NASA Space Apps Challenge Judging Criteria:**
+   * Review the 5 official NASA evaluation criteria:
+     a) Impact: How significantly does this approach advance beyond legacy cloud-dependent telemetry dashboards?
+     b) Creativity: Is the pairing of contactless nighttime radar, Med-STL temporal logic, and executable playbooks sufficiently groundbreaking?
+     c) Validity: Is the clinical evidence base perceived as scientifically solid?
+     d) Relevance: How tightly does it fulfill the "Gather, Evaluate, Act" mandate?
+     e) Presentation: How can the demonstration video script be optimized so judges instantly grasp the architectural advancement?
 
-4. **Identificazione dei Punti Deboli e Potenziali Critiche (Red Teaming):**
-   * Se fossi un giudice scettico o un team concorrente, su quali aspetti cercheresti di attaccare il progetto? (Es. complessità eccessiva per 48h, dipendenza da troppi sensori simulati, calibrazione soggettiva delle baseline degli astronauti).
-   * Quali contromisure argomentative e tecniche dobbiamo preparare per neutralizzare queste obiezioni?
+4. **Identification of Vulnerabilities and Red Teaming:**
+   * If you were a skeptical judge, what aspects would you challenge (e.g., complexity, sensor dropout resilience, baseline calibration)?
+   * What technical and evidentiary countermeasures neutralize these critiques?
 
-5. **Piano di Azione per l'Hackathon (Roadmap Esecutiva 48 Ore):**
-   * Suggerisci la divisione ideale del lavoro per un team interdisciplinare (Ingegnere Informatico Lead, Sviluppatore Frontend/3D, Esperto Dati/Biomedico, Pitch Storyteller).
-   * Quali componenti conviene mockare in modo elegante e quali devono necessariamente essere funzionanti live nella demo per impressionare la giuria?
+5. **Action Plan and Work Allocation:**
+   * Provide actionable priorities for an interdisciplinary team (Lead Systems Engineer, Frontend/3D Specialist, Biomedical Data Scientist, Video/Pitch Storyteller).
+   * Which components must run live in the evaluation demo vs. what can be presented through deterministic scenarios?
 
-Fornisci una risposta analitica, ad altissimo livello ingegneristico e clinico, senza preamboli generici o formule di cortesia.
+Deliver an analytical, high-level engineering and clinical evaluation without generic introductory remarks or filler phrases.
 ```

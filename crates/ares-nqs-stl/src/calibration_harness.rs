@@ -1,4 +1,4 @@
-//! Fase 33 (`L5`): Subject-disjoint Split Harness, 4 Anti-Leakage Guards, Split-Conformal CQR,
+//! Phase 33 (`L5`): Subject-disjoint Split Harness, 4 Anti-Leakage Guards, Split-Conformal CQR,
 //! Exact Clopper-Pearson 95% Binomial Intervals, Persistence / Rolling-Median-IQR Baselines,
 //! Brier/ECE Reliability Audit, 900-Sol RK4 Sensitivity Audit, and Fail-Closed Validation Gate.
 

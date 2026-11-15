@@ -1,4 +1,4 @@
-//! Fase 18 (Blocco I1): `ARES-HyperGraph` Layers 1 and 2.
+//! Phase 18 (Block I1): `ARES-HyperGraph` Layers 1 and 2.
 //!
 //! 1. **Layer 1 - Welford Longitudinal Compaction.** `WelfordAccumulator` keeps
 //!    `(count, mean, m2, min, max)` in O(1) per sample (Welford 1962,

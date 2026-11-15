@@ -16,7 +16,7 @@ pub fn evaluate_nqs_stl_and_mri(
     evaluate_nqs_stl_and_mri_ext(biometrics, musculo, jugular, sans, None, None, None, None)
 }
 
-/// Versione estesa di valutazione NQS-STL che include i margini di Blocco N:
+/// Extended NQS-STL evaluation version that includes Block N margins:
 /// rho_renal, rho_orthostatic, rho_circadian, rho_immune.
 #[allow(clippy::too_many_arguments)]
 pub fn evaluate_nqs_stl_and_mri_ext(

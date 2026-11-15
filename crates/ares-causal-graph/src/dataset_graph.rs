@@ -1,4 +1,4 @@
-//! Fase 20 (Blocco I3): Unified Multi-Dataset Knowledge Graph Builder (`ARES-DatasetGraph`).
+//! Phase 20 (Block I3): Unified Multi-Dataset Knowledge Graph Builder (`ARES-DatasetGraph`).
 //!
 //! Integrates all 5 reference architectures in pure safe Rust:
 //! 1. **NASA OSDR / GeneLab + UCSF SPOKE (`BaranziniLab/SPOKE`, `nasa/GeneLab_Data_Processing`):**

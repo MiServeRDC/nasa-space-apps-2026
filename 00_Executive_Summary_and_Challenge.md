@@ -21,17 +21,17 @@
 ### 1.2 Decomposition of the Three Mandates
 NASA has structured the prompt around three sequential imperatives:
 
-1. **GATHER (Raccolta Dati Multimodale):**
+1. **GATHER (Multimodal Data Ingestion):**
    * Must ingest heterogeneous biosignals (heart rate, ECG, respiration, sleep, core body temperature) without causing *wearable fatigue* or skin breakdown in microgravity.
    * Must fuse physiological metrics with environmental stressors (cabin $CO_2$ spikes, ambient acoustic noise, cumulative radiation dose in mGy, mission elapsed days in microgravity).
    * Must filter out motion artifacts and sensor decoupling induced by fluid shifts and floating sweat.
 
-2. **EVALUATE (Valutazione e Diagnostica Predittiva):**
+2. **EVALUATE (Predictive Evaluation & Diagnostics):**
    * Must transcend simplistic static thresholds (e.g., standard alarms that trigger during normal exercise).
    * Must model the non-linear coupling between organ systems: how muscle atrophy (*sarcopenia*) drives bone loss (*osteopenia*), and how cephalic fluid shifts combined with the loss of the calf muscle pump trigger venous stasis and thrombotic risk (*internal jugular vein thrombosis*).
    * Must calculate a continuous quantitative margin of safety, warning the astronaut weeks before an acute clinical failure occurs.
 
-3. **ACT (Prescrizione e Contromisure Attive):**
+3. **ACT (Prescriptive Actions & Active Countermeasures):**
    * Must not stop at passive visualization. In deep space, astronauts cannot wait 40 minutes for advice from flight surgeons in Houston.
    * Must provide deterministic, actionable countermeasures:
      * Adaptive resistive exercise prescriptions (calibrated on the ARED device).

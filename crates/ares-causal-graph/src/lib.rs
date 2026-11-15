@@ -1,10 +1,10 @@
 #![forbid(unsafe_code)]
 
-//! `ares-causal-graph` — Blocco C (Fasi 05 C1, 06 C2, 07 C3):
-//! Fisiopatologia differenziale (RK4 Frost-Hargens Sclerostin ODE, Ultrasound MQI, Martian GAI at 0.38g),
-//! emodinamica venosa giugulare dimensionalmente esatta (`tau_w` in `dyn/cm^2`), risposta dose-dipendente
-//! LBNP, accoppiamento translaminare SANS, Osservatore Bayesiano POCUS a 2 stadi e Grafo Causale Eterogeneo
-//! Astronaut Digital Health Graph (`ADHG` su `petgraph`).
+//! `ares-causal-graph` — Block C (Phases 05 C1, 06 C2, 07 C3):
+//! Differential pathophysiology (RK4 Frost-Hargens Sclerostin ODE, Ultrasound MQI, Martian GAI at 0.38g),
+//! dimensionally exact internal jugular venous hemodynamics (`tau_w` in `dyn/cm^2`), LBNP dose-response,
+//! SANS translaminar coupling, 2-stage Bayesian POCUS Observer, and Heterogeneous Astronaut Digital Health Graph
+//! (`ADHG` on `petgraph`).
 
 pub mod acute_emergencies;
 pub mod adhg_graph;

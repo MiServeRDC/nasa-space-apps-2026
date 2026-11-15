@@ -1,4 +1,4 @@
-//! Fase 17 (H3): Grey-Box Neuro-Mechanistic Bridge between the 1 Hz Timestral
+//! Phase 17 (H3): Grey-Box Neuro-Mechanistic Bridge between the 1 Hz Timestral
 //! forecaster worker and the deterministic 20 Hz (< 150 us) ARES-Health hot-path.
 
 use crate::error::NqsStlError;

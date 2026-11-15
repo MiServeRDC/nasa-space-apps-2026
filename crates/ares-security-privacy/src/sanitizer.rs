@@ -1,11 +1,11 @@
-//! Fase 12 (F1): Sanitizzatore rigoroso FastMCP anti-Prompt-Injection e anti-DoS.
+//! Phase 12 (F1): Strict FastMCP anti-Prompt-Injection and anti-DoS sanitizer.
 
 use ares_core_types::error::AresCoreError;
 use ares_core_types::security::McpInputSanitizer;
 
 const MAX_MCP_QUERY_BYTES: usize = 65_536;
 
-/// Sanitizzatore rigoroso per query JSON-RPC e osservazioni telemetriche.
+/// Strict sanitizer for JSON-RPC queries and telemetry observations.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct StrictMcpSanitizer;
 

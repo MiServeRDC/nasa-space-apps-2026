@@ -1,4 +1,4 @@
-//! Fase 19 (Blocco I2): `ARES-HyperGraph` Layer 3 (`ARES-BioKG`).
+//! Phase 19 (Block I2): `ARES-HyperGraph` Layer 3 (`ARES-BioKG`).
 //!
 //! 1. **16-Byte Hardware-Aligned `BiomedicalEvidenceDescriptor`:** `#[repr(C, align(16))]`
 //!    stack-allocated descriptor packing dataset ID, `NASA-STD-3001` clause ID, LOINC

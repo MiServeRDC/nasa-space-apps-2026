@@ -1,4 +1,4 @@
-//! Typed error domain of `ares-causal-graph` (Blocco I, Fasi 18-20).
+//! Typed error domain of `ares-causal-graph` (Block I, Phases 18-20).
 //!
 //! Every fallible operation of the `ARES-HyperGraph` layers (Welford longitudinal
 //! compaction, 16-byte evidence descriptors, unified dataset graph ingestion and

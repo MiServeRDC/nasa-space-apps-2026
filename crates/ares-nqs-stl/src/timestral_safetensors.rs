@@ -1,4 +1,4 @@
-//! Fase 32 (L4): Pure-Rust SafeTensors v1 binary format parser, pre-parse SHA-256 verification
+//! Phase 32 (L4): Pure-Rust SafeTensors v1 binary format parser, pre-parse SHA-256 verification
 //! against `assets/models/MANIFEST.json`, `F64`/`F32`/`BF16` -> `f64` decoding with finiteness
 //! validation, and deterministic fallback without `.unwrap()` / `.expect()`.
 

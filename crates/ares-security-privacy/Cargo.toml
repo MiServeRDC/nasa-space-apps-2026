@@ -2,7 +2,7 @@
 name = "ares-security-privacy"
 version = "0.1.0"
 edition = "2024"
-description = "Blocco F (Fase 12 F1): NASA-STD-3001 Vol. 1 Ch. 7 Crew Medical Privacy Views, SHA-256 Audit Chain, ChaCha20-Poly1305 Store-and-Forward AEAD, and FastMCP Prompt Shield"
+description = "Block F (Phase 12 F1): NASA-STD-3001 Vol. 1 Ch. 7 Crew Medical Privacy Views, SHA-256 Audit Chain, ChaCha20-Poly1305 Store-and-Forward AEAD, and FastMCP Prompt Shield"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
