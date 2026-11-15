@@ -98,7 +98,7 @@ modules and do not establish production or clinical readiness.
 4. [System Architecture](#4-system-architecture)
 5. [Repository Structure](#5-repository-structure)
 6. [Rust Workspace: Crate Roster](#6-rust-workspace-crate-roster)
-7. [Quickstart](#7-quickstart)
+7. [Developer Quickstart](#7-developer-quickstart-two-terminals--hot-reload)
 8. [Data, Provenance & Evidence Boundary](#8-data-provenance--evidence-boundary)
 9. [Compliance, Licensing & Clean-Room Mandate](#9-compliance-licensing--clean-room-mandate)
 10. [Team](#10-team)
@@ -108,6 +108,7 @@ modules and do not establish production or clinical readiness.
 
 ## 1. Mission & Challenge
 
+<a id="core-constraint"></a>
 | Field | Value |
 | :--- | :--- |
 | **Project** | ARES-Health (Autonomous Resilient Edge-native System for Astronaut Health) |
@@ -175,7 +176,7 @@ ARES-Health is a **dual-transport hybrid**: a Safe-Rust core engine and a React 
 flowchart TD
     subgraph GATHER ["1. GATHER (Level-1 DSP & Sensor Ingest)"]
         BIDMC["PhysioNet BIDMC v1.0.0<br/>(Deterministic 1 Hz Replay)"] --> NullGate["Null Honesty Gate<br/>(13 nulls preserved, HRV None)"]
-        RADAR["60/5.2 GHz Doppler Radar<br/>(Notch 60/120 Hz)"] --> RingBuffer
+        RADAR["Contactless Radar DSP Model<br/>(60/5.2 GHz Notch Filter)"] --> RingBuffer
         NullGate --> RingBuffer["128B BinaryTelemetryFrame<br/>(Seqlock RingBuffer: 42 ns)"]
     end
 
@@ -188,7 +189,7 @@ flowchart TD
 
     subgraph ACT ["3. ACT (Deterministic Flight Playbooks)"]
         Cones --> SafetyGates["7 Hard Clinical Safety Gates<br/>(POCUS Clot Lock, LBNP Auto-Vent, EVA Damping)"]
-        SafetyGates -- "Verified Trigger" --> Playbooks["30 MedOps Playbooks (#01..#30)<br/>(Deterministic State Machines)"]
+        SafetyGates -- "Verified Trigger" --> Playbooks["30 Illustrative Playbooks (#01..#30)<br/>(Deterministic State Machines)"]
     end
 
     subgraph COCKPIT ["Astronaut Interface (ARES-MedOS)"]
@@ -197,7 +198,7 @@ flowchart TD
     end
 ```
 
-- **Core engine (`ares-server-cli`):** a Tokio orchestrator running an `axum` REST + 20 Hz WebSocket server on `127.0.0.1:8080` for the cockpit and the sub-millisecond What-If Stress-Test Console, **concurrently** with a dedicated `stdio` JSON-RPC 2.0 FastMCP server (<150 tokens per response) for a local, quantized AI copilot. The two transports are fully isolated.
+- **Core engine (`ares-server-cli`):** a Tokio orchestrator running an `axum` REST + 20 Hz WebSocket server on `127.0.0.1:8080` for the single-process cockpit demo (`--mode ws-only`), alongside an optional dedicated `stdio` JSON-RPC 2.0 FastMCP server (<150 tokens per response, active in `--mode ws-and-mcp`) for local AI copilot agents. The transports are fully isolated.
 - **Cockpit (`ares-cockpit`):** React 19 + TypeScript + Tailwind CSS v4 + Three.js / React-Three-Fiber, a high-contrast OLED dark dashboard with a tri-phase header `[1. GATHER] -> [2. EVALUATE] -> [3. ACT]`.
 - **Native shell (`ares-desktop-os`):** an optional pure-Rust mission-workstation OS shell with a seqlock 128-byte binary IPC bridge and a FastMCP command-palette runtime.
 
@@ -254,11 +255,9 @@ The backend is partitioned into **nine decoupled Safe-Rust crates** so that team
 
 ---
 
-## 7. Quickstart
+## 7. Developer Quickstart (Two Terminals & Hot Reload)
 
-Use the complete [judge launch instructions at the top](#run-the-demo)
-for the production cockpit and backend in one terminal. No native archive is
-required. For a developer workflow with hot reload, use two terminals:
+For evaluating the judged submission, use the single-process instructions at the top ([Run the demo](#run-the-demo), port 8080). For local contributor development with hot reload, use two terminals on port 5173:
 
 ```bash
 # Terminal 1, repository root
@@ -324,7 +323,7 @@ ARES-Health is built by a cross-university team for NASA Space Apps Challenge 20
 | Name | Affiliation | Contact |
 | :--- | :--- | :--- |
 | Fabio Malagutti | Università di Bologna | fabiomalagutti27@gmail.com |
-| Alessandro Nicolini | Università di Bologna | alessandronicolini@gmail.com |
+| Alessandro Nicolini | Università di Bologna | aleeesandronicolini@gmail.com |
 | Carolina Bonafè | Università di Bologna | carolinabonafe02@gmail.com |
 | Leonardo Perrone | KU Leuven | leonardo.perrone02@gmail.com |
 | Fernando Alonzi | KU Leuven | alonzifernando209@gmail.com |
