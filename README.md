@@ -179,8 +179,6 @@ npm run lint       # tsc -b --noEmit
 npm run build      # production build
 ```
 
-**Invariants.** 100% offline edge execution; strict dimensional math; zero external cloud dependencies; zero emojis anywhere in code, output, or documentation.
-
 ---
 
 ## 8. Data, Provenance & Evidence Boundary
