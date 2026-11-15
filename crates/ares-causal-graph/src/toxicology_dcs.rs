@@ -314,7 +314,7 @@ pub fn evaluate_toxicology_dcs(input: &ToxicologyDcsInput) -> ToxicologyDcsAsses
     // deterministically to an illustrative uM concentration for NIS inhibition modeling.
     let cl_o4_um = input
         .cl_o4_conc_um
-        .unwrap_or_else(|| perchlorate * 200.0);
+        .unwrap_or(perchlorate * 200.0);
     let nis_thyroid_uptake_fraction = compute_nis_thyroid_uptake_fraction(cl_o4_um, iodide_um);
 
     let marrow_cbc_cytopenia_alert = perchlorate_rfd_exceeded
