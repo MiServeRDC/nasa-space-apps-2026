@@ -1,9 +1,13 @@
 # 06. Flight Surgeons Research, Clinical Evidence & Cutting-Edge Space Biomarkers
 
+> Development dossier. For the current demo, evaluation scope and submission
+> materials, start with the [judge walkthrough](docs/submission/JUDGES_START_HERE.md).
+
 > Evidence status (issue #12): scenario-derived physiology, risk/readiness scores and forecast ranges are illustrative and clinically unvalidated. Historical calibration, certification, universal-threshold and outcome claims below are not established. Use [the current evidence audit](docs/architecture/MODEL_EVIDENCE_AUDIT.md) for source applicability, parameters and permitted wording. Recorded terrestrial measurements remain distinct from simulation.
 ## Comprehensive Systematic Survey: Global Aerospace Medicine Literature, Clinical Case Discoveries & Master Biomarker Taxonomy
 
-**Candidate & Lead Architect:** Fabio Malagutti (Computer Engineer • M.Sc. Student @ University of Bologna)  
+**Project team:** [ARES-Health contributors](README.md#10-team)
+
 **Research Focus:** Aerospace Clinical Operations, Flight Surgeon Publications, Deep Space Autonomous Medicine  
 **Literature Index Date:** Novembre 2026  
 **Primary Institutional Evidence:** NASA Human Research Program (HRP), TRISH (Baylor College of Medicine), ESA European Astronaut Centre, Weill Cornell Aerospace Medicine Biobank  

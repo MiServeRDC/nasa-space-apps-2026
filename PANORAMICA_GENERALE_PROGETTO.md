@@ -5,7 +5,7 @@
 ## Unified Master Blueprint (NASA Space Apps Challenge 2026)
 
 - **Project Name:** **ARES-Health** (*Autonomous Resilient Edge-native System for Astronaut Health*) / **`ARES-MedOS v0.1`** Workstation
-- **Lead Architect:** Fabio Malagutti (`@fabiomalagutti27-droid`, University of Bologna)
+- **Project team:** [ARES-Health contributors](README.md#10-team)
 - **Team (`MiServeRDC/nasa-space-apps-2026`):** `@fabiomalagutti27-droid`, `@carolina2910`, `@fertech02`, `@LelloXV`, `@MiServeRDC`
 - **Official NASA Challenge:** *"Create Health Monitoring Software for Astronauts on Space Missions"* (`https://www.spaceappschallenge.org/2026/challenges/health-monitoring-software/`)
 - **Operational Domain:** Earth-to-Mars Transit, Deep Space Habitat, Lunar Gateway, Martian Surface (`0.38g`)

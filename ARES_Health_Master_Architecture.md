@@ -4,7 +4,8 @@
 ## Master Architecture & System Design Document for NASA Space Apps Challenge 2026
 
 **Project Designation:** ARES-Health (Autonomous Resilient Edge-native System for Astronaut Health)  
-**Lead Architect:** Fabio Malagutti (Computer Engineer • M.Sc. Student @ University of Bologna)  
+**Project team:** [ARES-Health contributors](README.md#10-team)
+
 **Challenge Track:** Long-Duration Space Mission Health Monitoring  
 **Target Environment:** Moon-to-Mars Transit, Lunar Gateway, Deep Space Habitat, Martian Surface  
 **Operational Mode:** 100% Offline, Deterministic Edge Execution, Air-Gapped, Zero-Cloud Dependency  

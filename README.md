@@ -1,5 +1,8 @@
 # ARES-Health
 
+An offline astronaut-health cockpit built for NASA Space Apps Challenge 2026.
+Replay recorded vital signs, test a synthetic alert and follow a guided checklist.
+
 ## Run the demo
 
 **Run locally from this repository. No hosted website, API key, AI model download
@@ -27,24 +30,32 @@ folder, then start at the `npm` command. The first build downloads dependencies
 and can take several minutes; subsequent starts reuse the compiled binary.
 Leave `VITE_ARES_HTTP_URL` and `VITE_ARES_WS_URL` unset for this single-origin demo.
 
-**What to try:** confirm **Engine connected** and **TERRESTRIAL REPLAY**, wait
-**120 real seconds** for personal-baseline learning, then inject **DESATURATION**
-in GATHER and follow the detector-selected checklist in ACT. EVALUATE offers
-explicitly labeled What-If scenarios. Missing HRV/MRI/TTV is intentional, not an
-installation failure. See the [guided walkthrough and troubleshooting](docs/submission/JUDGES_START_HERE.md).
+**What to try**
+
+1. **Gather:** confirm **Engine connected** and **TERRESTRIAL REPLAY**. Wait for
+   the detector to learn a baseline (about 120 seconds of replay), then choose
+   **Desaturation** under **Simulate a vital-sign event**.
+2. **Act:** open the suggested checklist when the alarm appears. Confirm the
+   steps and watch the detector reassess the incoming samples.
+3. **Evaluate:** choose **Start mission simulation** to explore synthetic
+   ultrasound and mission forecasts. This is a separate simulation from the
+   vital-sign event in Gather.
+
+Unavailable HRV, mission readiness or time-to-limit values are expected in pure
+BIDMC replay. See the [guided walkthrough](docs/submission/JUDGES_START_HERE.md).
 
 | Need | Go to |
 | --- | --- |
 | Judge walkthrough, expected results, troubleshooting | [Judge guide](docs/submission/JUDGES_START_HERE.md) |
 | Test results and remaining limits | [Release verification](docs/evaluation/JUDGES_HANDOFF_READINESS.md) |
 | Scientific evidence and model limitations | [Model evidence audit](docs/architecture/MODEL_EVIDENCE_AUDIT.md) |
-| Remaining Italian documentation | [Language audit](docs/evaluation/REPOSITORY_LANGUAGE_AUDIT.md) |
+| Technical background and historical drafts | [Documentation index](docs/README.md) |
 | Optional native archive or hosting templates | [Packaging/deployment](deploy/judges/README.md) |
 
-**Repository access:** the repository was private at the last authenticated check.
-Confirm that judges can open and download the submitted link without signing in.
-This source handoff does not publish a website or change repository visibility.
-The submission video will be supplied separately.
+**Source access:** use the [public GitHub repository](https://github.com/MiServeRDC/nasa-space-apps-2026)
+or [download the source ZIP](https://github.com/MiServeRDC/nasa-space-apps-2026/archive/refs/heads/main.zip).
+The cockpit runs on your computer. The project submission supplies the demo
+video separately.
 
 ---
 
@@ -127,14 +138,21 @@ The defining engineering constraint is the **speed-of-light latency barrier**, w
 
 ARES-Health decomposes the NASA prompt into three sequential phases, mirrored across the codebase.
 
-### 3.1 GATHER — multimodal acquisition
-Ingests heterogeneous biosignals (heart rate, ECG, respiration, core temperature, sleep) and fuses them with environmental stressors (cabin CO2, acoustic load, cumulative radiation dose, mission-elapsed microgravity days). Deterministic BIDMC replay, a Shannon spectral-entropy Signal Quality Index (SQI), and explicit missing-value handling filter motion artifacts and sensor decoupling without silent imputation.
+### 3.1 Gather
+Streams recorded heart rate, pulse, respiration and oxygen saturation from
+PhysioNet BIDMC. The demo keeps missing values explicit and labels synthetic
+events. The ECG display is illustrative.
 
-### 3.2 EVALUATE — predictive, coupled diagnostics
-Transcends static thresholds by modeling non-linear coupling between organ systems on the **Astronaut Dynamic Health Graph (ADHG)**: how muscle atrophy drives bone loss, and how cephalic fluid shifts plus loss of the calf muscle pump raise venous-stasis and thrombotic risk. A continuous quantitative margin of safety is computed with **NQS-STL** (`rho_hat ∈ (−∞, +1.0]`), and a 7-day EWMA-OLS Time-To-Violation (TTV) forecast feeds a composite **Mission Readiness Index** (`MRI ∈ [0, 100]`).
+### 3.2 Evaluate
+Explores scenario inputs such as cabin CO₂ and mission duration. The prototype
+uses a deterministic organ model to generate illustrative safety margins,
+forecasts and synthetic ultrasound. Assessments that lack required inputs
+remain unavailable in pure replay.
 
-### 3.3 ACT — deterministic, gated countermeasures
-Emits actionable countermeasures through NASA MedOps playbooks (#01–#05) implemented as deterministic state machines, each protected by **Hard Clinical Safety Gates** (for example: no empirical anticoagulation without POCUS-confirmed thrombus). Outputs span adaptive resistive-exercise prescriptions, medical-kit posology, environmental adjustments, and step-by-step ultrasound probe guidance.
+### 3.3 Act
+Links a detector alarm to an illustrative response checklist. Checklist progress
+and telemetry recovery are tracked separately. Safety gates can restrict
+simulated actions. The reviewed flow is an engineering demonstration with no treatment-device control.
 
 ---
 
@@ -179,12 +197,12 @@ NASA_Space_Apps_2026/
 ├── scripts/                 # Test, probe, and build scripts (.sh, .py, .mjs)
 │
 ├── docs/                    # Technical and clinical documentation
-│   ├── dossier/             # The 12 numbered dossier files (00_ … 11_)
 │   ├── architecture/        # System, cockpit, and crate blueprints; evidence audit
 │   ├── team/                # Ownership and task coordination
-│   ├── submission/          # NASA submission package, Typst and PDF deliverables
+│   ├── submission/          # Judge walkthrough and project submission copy
 │   └── REFERENCES.md         # Bibliography: papers, standards, and datasets
 │
+├── Numbered Markdown files  # Historical development dossier (see docs/README.md)
 ├── memory-bank/             # Context and tracking files for AI coding agents
 │
 ├── .github/                 # CI/CD workflows, CODEOWNERS, issue templates
@@ -209,7 +227,7 @@ The backend is partitioned into **nine decoupled Safe-Rust crates** so that team
 | `ares-telemetry-ingest` | **GATHER** | Deterministic PhysioNet BIDMC v1.0.0 CSV replayer, Shannon spectral-entropy SQI filter (`SQI >= 0.70`), and scenario-overlay merger with explicit null handling. |
 | `ares-causal-graph` | **EVALUATE (2A)** | ADHG via `petgraph`, regularized Frost-Hargens sclerostin/irisin ODEs (RK4), ultrasound Muscle Quality Index, dimensional jugular wall shear stress, and a Two-Stage Bayesian POCUS state observer. |
 | `ares-nqs-stl` | **EVALUATE (2B)** | `O(1)` Lemire monotonic-wedge NQS-STL evaluator (`rho_hat ∈ (−∞, +1.0]`), 7-day EWMA-OLS Time-To-Violation, and composite Mission Readiness Index. |
-| `ares-medops-playbooks` | **ACT** | Deterministic state machines for NASA MedOps Playbooks #01–#05 enforcing the three Hard Clinical Safety Gates. |
+| `ares-medops-playbooks` | **ACT** | Illustrative response checklists and deterministic safety gates. |
 | `ares-security-privacy` | Governance | Role-based crew privacy views (NASA-STD-3001 Vol. 1 Ch. 7), SHA-256 hash-chain audit logging, ChaCha20-Poly1305 store-and-forward AEAD, and a FastMCP prompt shield. |
 | `ares-storage-lsah` | Persistence | Three-tier LSAH store: zero-alloc hot ring, modular Arrow/LanceDB + HNSW warm store, and ChaCha20-Poly1305 cold DSN archive. |
 | `ares-server-cli` | Transport | Dual-transport Tokio orchestrator: `axum` 20 Hz WebSocket + REST, and native FastMCP JSON-RPC 2.0 over `stdio`. |
@@ -248,15 +266,13 @@ Developer verification: `cargo test --workspace`, `cargo clippy --workspace -- -
 - **Provenance tagging:** every value is tagged by origin; missing values are preserved as explicit `null` / `UNAVAILABLE` rather than imputed (Issue #4).
 - **Validation status:** coefficients, probabilities, readiness scores, and forecast coverage are **unvalidated**. NASA research and standards provide *context and grounding*, not validation of ARES-Health's outputs. The governing document is [`MODEL_EVIDENCE_AUDIT.md`](docs/architecture/MODEL_EVIDENCE_AUDIT.md).
 
-### 8.1 Musculoskeletal T0 Context & Early Unloading Kinetics
+### 8.1 Musculoskeletal evidence
 
-Findings from NASA Johnson Space Center and the ISS TBone cohort (Gabel, Liphardt, Sibonga, Smith, Boyd et al., *Br J Sports Med* 2022; 56:196-203; https://doi.org/10.1136/bjsports-2020-103602) show that microgravity bone loss in astronauts is strongly conditioned by pre-flight exercise history and baseline bone turnover. Resorption markers (urinary CTx, NTx) and urinary calcium rise as early as Flight Day 15 (FD15), osteocyte sclerostin (SOST) elevates across FD30-FD60, and astronauts with higher pre-flight running volume experience steeper tibial trabecular loss unless lower-body ARED resistive loading (squats, deadlifts, heel raises) is substantially scaled.
-
-ARES-Health reflects these mechanisms across two explicitly separated layers:
-1. **Implemented Scenario Coupling (`ILLUSTRATIVE_UNVALIDATED`):** In the What-If and EVALUATE scenario overlay, `crates/ares-causal-graph` models Frost-mechanostat sclerostin kinetics (`step_sclerostin_rk4`, 1000 microstrain reference), soleus area/echogenicity proxies, and Tiselius calcium-oxalate supersaturation (`AP(CaOx)`), routing sub-threshold margins (`NQS-STL` / `TTV` scenario sensitivity horizon) to deterministic checklists in **Playbook #03** (ARED squat/heel-raise load recalibration) and **Playbook #10** (guided renal POCUS, oral hydration, and potassium citrate buffering) under Hard Clinical Safety Gates.
-2. **Target T0 Calibration Protocol (Post-Hackathon Validation Roadmap):** Because static population cutoffs cannot capture inter-individual unloading sensitivity, clinical translation requires replacing fixed scenario baselines with an individualized pre-flight **T0 profile (L-30 days)** pairing quantitative soleus ultrasound, bone turnover panels (CTx, P1NP, SOST), sex-specific physiology, and pre-flight training volume to evaluate a 14-to-15-day early-warning window across solar-conjunction blackouts.
-
-*Epistemic Notice:* Per [`MODEL_EVIDENCE_AUDIT.md`](docs/architecture/MODEL_EVIDENCE_AUDIT.md), citing Gabel et al. (2022) establishes physiological context and motivates prospective subject-disjoint calibration; it does not clinically validate the prototype's ODE coefficients, scenario trajectories, or 14-to-15-day forecast accuracy.
+The ISS TBone study associated preflight exercise and bone turnover with bone
+loss during spaceflight. ARES uses this finding as context for its illustrative
+unloading model. Individual calibration and forecast accuracy remain open
+validation questions. See [Gabel et al.](https://pmc.ncbi.nlm.nih.gov/articles/PMC8862023/)
+and the [scientific notes](docs/scientific_references.md).
 
 ---
 

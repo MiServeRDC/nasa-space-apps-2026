@@ -8,7 +8,7 @@ This file is the single source of truth for all autonomous AI coding agents (Goo
 ## 1. Project Identity & Mission Domain
 
 * **Project Name:** ARES-Health (Autonomous Resilient Edge-native System for Astronaut Health)
-* **Lead Architect:** Fabio Malagutti (Computer Engineer • M.Sc. Student @ University of Bologna)
+* **Project team:** See the [ARES-Health team](README.md#10-team).
 * **Challenge Track:** NASA Space Apps Challenge 2026 — "Create Health Monitoring Software for Astronauts on Space Missions"
 * **Target Environment:** Moon-to-Mars Transit, Lunar Gateway, Deep Space Habitat, Martian Surface (0.38g)
 * **Core Operational Constraint:** Earth-Mars round-trip radio communication takes **8 to 48 minutes**. Standard telemedicine and terrestrial cloud computing are physically impossible. The platform must be **100% edge-native, deterministic, and air-gapped**.

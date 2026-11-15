@@ -572,3 +572,7 @@ Gather, Evaluate and Act use the MiServeRDC OLED palette with Geist typography. 
 ## Simulation controls and provenance
 
 Gather labels synthetic vital-sign events. Evaluate explains active events separately from mission simulation and offers a single entry point for synthetic ultrasound while replaying BIDMC.
+
+## Judging documentation cleanup
+
+The README and judge walkthrough are the entry points for the public source handoff. Draft presentation exports and their build-only inputs were removed from the checkout. Markdown credits point to the full team and historical dossiers remain available for reference.

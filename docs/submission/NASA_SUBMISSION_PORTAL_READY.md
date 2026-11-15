@@ -1,21 +1,14 @@
 # ARES-Health submission copy and release status
 
-Prepared in English for team review. The video will be recorded later by the team;
-no slides are being prepared. **This file does not mean the project is published.**
-The final-project URL and later video URL must be publicly accessible to reviewers.
-The repository was private at the last authenticated GitHub check: do not assume
-that sending its URL provides judge access. No visibility change is authorized or
-performed by the release-preparation scripts.
+Prepared in English for team review before pasting into the submission portal.
+The project and demo links should open without requiring reviewer sign-in.
 
 ## Current delivery: GitHub source repository
 
-The team has chosen a repository-first handoff. Judges should start with the
-[README run instructions](../../README.md#run-the-demo) and the
-[walkthrough](JUDGES_START_HERE.md), not assume an online demo or native archive
-is attached. Public hosting is optional for this delivery. The source link still
-needs to be accessible to judges: the repository is currently private, as
-confirmed through the authenticated GitHub API on 2026-11-15. No visibility change
-has been made.
+Use the [public GitHub repository](https://github.com/MiServeRDC/nasa-space-apps-2026) as the source link.
+Reviewers can follow the [README run instructions](../../README.md#run-the-demo)
+and [judge walkthrough](JUDGES_START_HERE.md) to launch the cockpit and engine
+locally. The online video is a separate submission link.
 
 ## Project title
 
@@ -85,11 +78,9 @@ output or software tests clinically validated the models.
 
 ## Links to supply at publication
 
-- Final project: the actual public project/app/source-artifact URL, checked logged out.
+- Final project and source: [https://github.com/MiServeRDC/nasa-space-apps-2026](https://github.com/MiServeRDC/nasa-space-apps-2026), checked without authentication.
 - Demo: the team's later public video link. Do not submit the older Timestral-focused
   draft as evidence of the currently verified release without updating it.
-- Source: use a public clean source snapshot or an explicitly approved public
-  repository; a private main link alone requires permissions and is unsuitable.
 
 Support guidance checked 2026-11-15:
 https://github.com/nasa/spaceapps/discussions/1991 explains public final-project and

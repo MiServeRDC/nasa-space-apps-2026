@@ -1,9 +1,13 @@
 # 07. Recent 2026 Literature: Physiatry, Rehabilitative Orthopedics & Zero-G Thrombosis
 
+> Development dossier. For the current demo, evaluation scope and submission
+> materials, start with the [judge walkthrough](docs/submission/JUDGES_START_HERE.md).
+
 > Evidence status (issue #12): scenario-derived physiology, risk/readiness scores and forecast ranges are illustrative and clinically unvalidated. Historical calibration, certification, universal-threshold and outcome claims below are not established. Use [the current evidence audit](docs/architecture/MODEL_EVIDENCE_AUDIT.md) for source applicability, parameters and permitted wording. Recorded terrestrial measurements remain distinct from simulation.
 ## Systematic Review of 2025–2026 Biomedical Engineering, Mechanobiology & Aerospace Medicine Publications
 
-**Candidate & Lead Architect:** Fabio Malagutti (Computer Engineer • M.Sc. Student @ University of Bologna)  
+**Project team:** [ARES-Health contributors](README.md#10-team)
+
 **Literature Scope:** Peer-Reviewed Papers Published in 2025–2026 (Updated to November 2026)  
 **Primary Journals:** *Journal of Applied Physiology*, *npj Microgravity (Nature)*, *Ultrasound in Medicine and Biology*, *NASA OCHMO Technical Briefs*, *Frontiers in Bioengineering and Biotechnology*  
 

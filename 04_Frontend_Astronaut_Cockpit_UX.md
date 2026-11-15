@@ -1,9 +1,13 @@
 # 04. Frontend Astronaut Cockpit UX & Interface Design
 
+> Development dossier. For the current demo, evaluation scope and submission
+> materials, start with the [judge walkthrough](docs/submission/JUDGES_START_HERE.md).
+
 > Evidence status (issue #12): scenario-derived physiology, risk/readiness scores and forecast ranges are illustrative and clinically unvalidated. Historical calibration, certification, universal-threshold and outcome claims below are not established. Use [the current evidence audit](docs/architecture/MODEL_EVIDENCE_AUDIT.md) for source applicability, parameters and permitted wording. Recorded terrestrial measurements remain distinct from simulation.
 ## Human-System Integration (HSI): Microgravity Ergonomics, Mission Readiness Gauges & Interactive Playbooks
 
-**Candidate & Lead Architect:** Fabio Malagutti (Computer Engineer • M.Sc. Student @ University of Bologna)  
+**Project team:** [ARES-Health contributors](README.md#10-team)
+
 **Standard Compliance:** NASA-STD-3001 Vol. 1 Rev C (`[V1 3003]`, `[V1 3006]`, `[V1 4001]` — https://standards.nasa.gov/standard/NASA/NASA-STD-3001_VOL_1 & https://www.nasa.gov/reference/nasa-std-3001v1/), NASA-STD-3001 Vol. 2 Rev F (Jul 2026, `[V2 6001]`, `[V2 6026]`, `[V2 7043]`, `[V2 10001]` — https://standards.nasa.gov/standard/NASA/NASA-STD-3001_VOL_2), MIL-STD-1472H  
 
 ---

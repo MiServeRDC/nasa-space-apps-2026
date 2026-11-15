@@ -34,7 +34,7 @@ Docker template are not established by those macOS tests. Recording stays off.
 
 Repository-first delivery requires no publicly hosted backend. It still requires
 that judges can read/download the repository without additional permissions.
-The video is a later, separate deliverable; no new slides are being prepared.
+Use the demo video linked from the project submission to preview the workflow.
 
 ## Optional: start a separately supplied native bundle
 
@@ -54,7 +54,7 @@ macOS provides the launcher shell and curl. A port conflict causes startup to fa
 set `ARES_PORT=18081` when launching to choose another port. Browser refresh does
 not reset the backend; stopping/restarting it starts a new replay/baseline.
 
-## Three-minute walkthrough
+## Guided walkthrough
 
 - **GATHER:** confirm `Engine connected` and `TERRESTRIAL REPLAY`. Heart rate,
   oxygen saturation, respiration and pulse come from de-identified PhysioNet BIDMC
@@ -62,10 +62,9 @@ not reset the backend; stopping/restarting it starts a new replay/baseline.
   illustrative, not an acquired waveform. Missing HRV/MRI/TTV is intentional.
 - Wait **120 real seconds** for personal-baseline learning. Explore EVALUATE while
   waiting. The 8-minute recording loops and relearns its detector baseline.
-- **EVALUATE:** inspect body regions and scenario controls. Enable the What-If
-  overlay explicitly to explore illustrative organ models; it does not transform
-  the recording into actual spaceflight measurements. Switch it off to return to
-  pure replay. Unavailable inputs remain unavailable.
+- **EVALUATE:** inspect body regions and scenario controls. Choose **Start mission simulation** to explore the illustrative
+  organ models and synthetic ultrasound. Choose **Return to recorded replay**
+  to switch back. Unavailable inputs remain unavailable.
 - Return to GATHER and press **DESATURATION** once the baseline is ready. The
   synthetic-event banner identifies the injection. A sufficiently sustained
   deviation raises the real detector's alarm; select **ACT** to inspect the
@@ -106,6 +105,6 @@ proxy, preserving Host and overwriting X-Forwarded-Proto. A hosted instance is a
 **shared replay sandbox**: visitors share scenario controls and detector state.
 Do not connect real sensors or enable persistence in that public copy.
 
-Publishing requires the actual hosting target, TLS/public URL and an outside
-browser check. A private GitHub URL is not publicly accessible to judges. The
-team will provide the submission video later; no slides are part of this delivery.
+A hosted instance requires a configured hosting target, TLS and an external
+browser check. The public source repository and the local launch instructions
+are the delivery path documented here.

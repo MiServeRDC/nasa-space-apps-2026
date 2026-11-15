@@ -1,9 +1,13 @@
 # 00. Executive Summary & NASA Challenge Formalization
 
+> Development dossier. For the current demo, evaluation scope and submission
+> materials, start with the [judge walkthrough](docs/submission/JUDGES_START_HERE.md).
+
 > Evidence status (issue #12): scenario-derived physiology, risk/readiness scores and forecast ranges are illustrative and clinically unvalidated. Historical calibration, certification, universal-threshold and outcome claims below are not established. Use [the current evidence audit](docs/architecture/MODEL_EVIDENCE_AUDIT.md) for source applicability, parameters and permitted wording. Recorded terrestrial measurements remain distinct from simulation.
 ## Project: ARES-Health (Autonomous Resilient Edge-native System for Astronaut Health)
 
-**Candidate & Lead Architect:** Fabio Malagutti (Computer Engineer • M.Sc. Student @ University of Bologna)  
+**Project team:** [ARES-Health contributors](README.md#10-team)
+
 **Location:** Bologna, Italy  
 **Competition:** NASA Space Apps Challenge 2026  
 **Official Challenge Track:** "Create Health Monitoring Software for Astronauts on Space Missions"  

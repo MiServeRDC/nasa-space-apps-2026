@@ -1,9 +1,13 @@
 # 02. System Architecture & Engineering Metrics
 
+> Development dossier. For the current demo, evaluation scope and submission
+> materials, start with the [judge walkthrough](docs/submission/JUDGES_START_HERE.md).
+
 > Evidence status (issue #12): scenario-derived physiology, risk/readiness scores and forecast ranges are illustrative and clinically unvalidated. Historical calibration, certification, universal-threshold and outcome claims below are not established. Use [the current evidence audit](docs/architecture/MODEL_EVIDENCE_AUDIT.md) for source applicability, parameters and permitted wording. Recorded terrestrial measurements remain distinct from simulation.
 ## High-Performance Edge Systems Engineering: Graph Foundations, Signal Temporal Logic & Multi-Modal Sensing
 
-**Candidate & Lead Architect:** Fabio Malagutti (Computer Engineer • M.Sc. Student @ University of Bologna)  
+**Project team:** [ARES-Health contributors](README.md#10-team)
+
 **System Classification:** Real-Time Safety-Critical Edge Medical System  
 **Design Standards:** DO-178C (Software Considerations in Airborne Systems), NIST SP 800-161r1 (Air-Gap)  
 

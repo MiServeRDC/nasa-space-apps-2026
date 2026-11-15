@@ -2,8 +2,8 @@
 
 Date: 2026-11-15. Initial baseline main 56b888d; integrated subsequent UX update
 aea748b without conflicts and repeated frontend/live checks. Branch release/judges-handoff.
-**Status: native software preparation verified; public online delivery is not yet
-qualified or published.** The user declined slides and deferred recording the submission video. Earlier draft video/audio exports have been removed from the judging repository; internal storyboard and scripts remain available for the later recording.
+**Status: native software preparation verified. GitHub source delivery is public.**
+A separately hosted cockpit is outside this verification.
 
 ## Repository-first handoff update
 
@@ -13,9 +13,8 @@ path before architecture; the walkthrough distinguishes checkout and optional
 archive paths. Reverified the documented npm install/build and Cargo launch,
 329 default Rust tests, real-browser connected replay (30 WS frames, no page
 errors), ready endpoint and English CLI diagnostics. Remaining Italian is listed
-in [the language audit](REPOSITORY_LANGUAGE_AUDIT.md). The repository is still
-private (authenticated API check, 2026-11-15), so judge access must be resolved
-before submitting that URL. No public deployment or visibility change is implied.
+in [the language audit](REPOSITORY_LANGUAGE_AUDIT.md). A subsequent unauthenticated check on 2026-11-15 confirmed that the GitHub
+repository and the main-branch source ZIP are public.
 
 ## Completed
 
@@ -37,7 +36,7 @@ before submitting that URL. No public deployment or visibility change is implied
   It refuses to overwrite a bundle and does not include development runtimes.
 - English reviewer walkthrough and submission copy now distinguish replay, scenario
   models, NASA research context, actual BIDMC data and unqualified functionality.
-  No slide or replacement video was generated. Earlier draft video and voice-over binaries were removed from the repository at the user’s request.
+  The source checkout omits draft videos, slides and their production assets.
 - Generic Docker/Caddy/compose templates are supplied; they are not a tested Linux
   deployment. Container data recording is off and the local example binds only
   127.0.0.1 externally. No hosted Actions, paid services or public visibility changes.
@@ -89,10 +88,8 @@ required notices before public redistribution.
 3. Exercise the deployed origin from an external/private browser: no judge-local
    loopback dependency, correct wss stream, source labels, full baseline/event/ACT,
    refresh/reconnect, assets and no unintended external data calls.
-4. Provide an actually public final-project/source-artifact URL. The original
-   repository remains private; its URL alone does not give judges access. The
-   user/team will provide the video later, not slides. Confirm all team AI-tool
-   disclosures and portal fields before submitting.
+4. Use the verified public source link. Confirm the separate demo URL, team
+   AI-tool disclosures and portal fields before submitting.
 
 Optional LanceDB parity and physical hardware/native GUI/LLM/voice are outside the
 selected replay release, not silently completed. Model status stays illustrative
