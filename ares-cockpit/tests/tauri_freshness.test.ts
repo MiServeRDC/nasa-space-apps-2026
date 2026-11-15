@@ -178,7 +178,72 @@ test('Snapshot freshness guards reject out-of-order and regressive delayed respo
   );
   assert.match(
     src,
-    /Promise\.race\(\[[\s\S]*?timeoutPromise[\s\S]*?\]\)/,
-    'hydrateTauriSnapshot must race invoke against timeout to prevent hung requests',
+    /window\.clearTimeout\(timerId\)/,
+    'hydrateTauriSnapshot must clear the timeout in finally to prevent timer leaks',
   );
+  assert.match(
+    src,
+    /evaluateFreshnessGate/,
+    'acceptRawPayload must delegate to evaluateFreshnessGate for bounded monotonic ordering',
+  );
+});
+
+test('Behavioral: evaluateFreshnessGate rejects out-of-order and prevents source-switch lockout', async () => {
+  const { evaluateFreshnessGate } = await import('../src/lib/freshnessGate.ts');
+
+  let state = {
+    activeSourceId: null as string | null,
+    lastAppliedTimestampMs: null as number | null,
+    lastAppliedRecTime: null as number | null,
+  };
+
+  // 1. Initial packet from bidmc_01 at t=10s, ts=10000
+  const r1 = evaluateFreshnessGate(
+    { timestamp_ms: 10000, relative_recording_time_s: 10.0, source_record_id: 'bidmc_01' },
+    state,
+  );
+  assert.equal(r1.accepted, true, 'First packet must be accepted');
+  state = r1.nextState;
+  assert.equal(state.activeSourceId, 'bidmc_01');
+  assert.equal(state.lastAppliedTimestampMs, 10000);
+  assert.equal(state.lastAppliedRecTime, 10.0);
+
+  // 2. Out-of-order delayed packet from same source (ts=9500) must be rejected
+  const r2 = evaluateFreshnessGate(
+    { timestamp_ms: 9500, relative_recording_time_s: 9.5, source_record_id: 'bidmc_01' },
+    state,
+  );
+  assert.equal(r2.accepted, false, 'Delayed packet from same source must be rejected');
+
+  // 3. Forward packet (ts=12000, rec=12.0) accepted
+  const r3 = evaluateFreshnessGate(
+    { timestamp_ms: 12000, relative_recording_time_s: 12.0, source_record_id: 'bidmc_01' },
+    state,
+  );
+  assert.equal(r3.accepted, true);
+  state = r3.nextState;
+
+  // 4. Source switch to awaiting_wearable_hardware (rec=0.0, lower than 12.0): MUST NOT LOCK OUT
+  const r4 = evaluateFreshnessGate(
+    { timestamp_ms: 5000, relative_recording_time_s: 0.0, source_record_id: 'awaiting_wearable_hardware' },
+    state,
+  );
+  assert.equal(r4.accepted, true, 'Source switch must reset watermark and accept packet without lockout');
+  state = r4.nextState;
+  assert.equal(state.activeSourceId, 'awaiting_wearable_hardware');
+  assert.equal(state.lastAppliedTimestampMs, 5000);
+  assert.equal(state.lastAppliedRecTime, 0.0);
+
+  // 5. Replay wrap / loop on same source (rec resets from 300s to 0.5s): MUST RESET WATERMARK
+  state = {
+    activeSourceId: 'bidmc_01',
+    lastAppliedTimestampMs: 300000,
+    lastAppliedRecTime: 300.0,
+  };
+  const r5 = evaluateFreshnessGate(
+    { timestamp_ms: 10000, relative_recording_time_s: 0.5, source_record_id: 'bidmc_01' },
+    state,
+  );
+  assert.equal(r5.accepted, true, 'Replay loop wrap must reset watermark and accept initial loop packet');
+  assert.equal(r5.nextState.lastAppliedRecTime, 0.5);
 });

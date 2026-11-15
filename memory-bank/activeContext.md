@@ -1,5 +1,28 @@
 # Active Context: ARES-Health (NASA Space Apps Challenge 2026)
 
+## Gemini 4 Carbon Adversarial Review & P1 Hardening (2026-11-15)
+
+Following the adversarial review by Google DeepMind's frontier reasoning model **Gemini 4 Carbon** (`gemini-4-carbon`, 21,051 tokens processed), all identified P1 edge cases were remediated, verified, and integrated:
+
+1. **Cockpit Freshness Gate & Source Switch Lockout Prevention (`useTelemetry.ts` & `freshnessGate.ts`):**
+   * Extracted `evaluateFreshnessGate` pure module (`ares-cockpit/src/lib/freshnessGate.ts`).
+   * Watermarks (`lastAppliedTimestampMsRef` and `lastAppliedRecTimeRef`) are dynamically reset when `source_record_id !== activeSourceId` or when replay wraps backwards (> 1.0s), preventing cockpit lockout when transitioning between `bidmc_01` and `awaiting_wearable_hardware`.
+   * Cleared 1500ms `setTimeout` with `clearTimeout` in a `finally` block in `hydrateTauriSnapshot`.
+   * Added behavioral unit test suite in `ares-cockpit/tests/tauri_freshness.test.ts` (37 tests across 7 suites passing).
+
+2. **Wearable State Machine Consistency & Deduplication (`ws_server.rs`):**
+   * When entering `LiveWearableHardware` without active nodes (`active_wearable_node.is_none()`), `set_source_mode` preserves `wearable_stale = true` and `last_wearable_packet_time = None` (eliminating contradictory faked timestamps).
+   * Extracted `enforce_awaiting_wearable_hardware_packet(&mut TelemetryPacket)`, eliminating 3x copy-pasted blocks across `set_source_mode`, `advance_tick`, and `apply_stress_test_patch`.
+   * Prevented terrestrial replay biometrics leakage during What-If simulation in awaiting mode by instantiating clean `Biometrics::default()` with `"wearable_sensor_loss"`.
+   * Added unit verification in `crates/ares-server-cli/tests/wearable_source_selection.rs` (7 tests passing).
+
+3. **Storage Partial Sol Bounds & Fault-Injection Retry Test (`warm_arrow_ipc.rs`):**
+   * In `read_telemetry_sol_range`, evaluated bounds independently using idiomatic Clippy-approved `.is_none_or()`:
+     `s.min_mission_sol.is_none_or(|min_s| min_s <= sol_end) && s.max_mission_sol.is_none_or(|max_s| max_s >= sol_start)`.
+   * In `crates/ares-storage-lsah/tests/legacy_manifest_and_atomic_retry.rs`:
+     - Added `test_partial_sol_bounds_independent_filtering`: proves segments with only `min_mission_sol` populated are pruned when query range is strictly below the minimum.
+     - Added `test_atomic_multi_sol_retry_after_write_failure`: injects directory collision on partition 2, verifies partition 1 file is rolled back/unlinked from disk, confirms manifest remains unmodified, clears fault, retries, and verifies clean commit without duplicate rows or gaps (4 tests passing).
+
 ## Full Resolution of Follow-Up Runtime Correctness Review (2026-11-15)
 
 Completed end-to-end implementation and behavioral regression verification of all 6 follow-up issues on branch `work/MiServeRDC-runtime-followup` (base `0899f4d`):

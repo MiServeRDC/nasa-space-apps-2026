@@ -1,5 +1,12 @@
 # Progress Tracking: ARES-Health (Autonomous Resilient Edge-native System for Astronaut Health)
 
+## Gemini 4 Carbon Adversarial Review & P1 Remediation (2026-11-15)
+
+- [x] **P1 - Cockpit Freshness Gate & Lockout Prevention:** Extracted `evaluateFreshnessGate` pure helper (`ares-cockpit/src/lib/freshnessGate.ts`), reset watermarks on source changes and loop wraps, cleared timeout in `finally`, added behavioral test suite (37 tests passing in `ares-cockpit`).
+- [x] **P1 - Wearable State Machine Consistency & Deduplication:** Unified awaiting state transitions under `enforce_awaiting_wearable_hardware_packet`, preserved `wearable_stale = true` and `last_wearable_packet_time = None` when entering hardware mode without active nodes, initialized clean `Biometrics::default()` in What-If to prevent terrestrial replay field leakage (7 tests passing in `crates/ares-server-cli/tests/wearable_source_selection.rs`).
+- [x] **P1 - Storage Partial Sol Bounds & Fault-Injection Retry:** Evaluated bounds independently using `.is_none_or()`, added fault-injection test proving disk rollback of partial multi-sol batches and clean retry without duplication (4 tests passing in `crates/ares-storage-lsah/tests/legacy_manifest_and_atomic_retry.rs`).
+- [x] **Master Verification & Compliance:** Zero warnings across Cargo Clippy, zero `.unwrap()` or `.expect()` in crates production code, and all 7 tiers passed in 29s.
+
 ## Follow-Up Runtime Correctness Review (2026-11-15)
 
 - [x] **P1-1 (Warm Archives Reopen Failure & Unpartitioned Sol Queries):** Added `skip_serializing_if = "Option::is_none"` on `WarmSegmentMeta` min/max sol bounds to preserve signed byte digests. Added `LegacySignedManifest` fallback reader in `open_with_report` and unconstrained legacy sol filtering. Verified via `legacy_manifest_and_atomic_retry.rs`.

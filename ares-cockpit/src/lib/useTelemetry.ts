@@ -141,6 +141,10 @@ function buildFertechStressTestPayload(whatIf: WhatIf) {
  * - `BROWSER_WEBSOCKET`: `GET /api/snapshot`, `ws://127.0.0.1:8080/ws/telemetry` (JSON or 128B binary), `POST /api/stress-test`
  * - Strict runtime validation & Issue #11 nullability preservation (`null` never coerced to `0`)
  */
+import { evaluateFreshnessGate, type FreshnessGateState } from './freshnessGate';
+
+export { evaluateFreshnessGate, type FreshnessGateState };
+
 export function useTelemetry(
   whatIf: WhatIf,
   thrombusConfirmed: boolean | null,
@@ -201,9 +205,24 @@ export function useTelemetry(
     }
 
     // Monotonic freshness guard: reject delayed, regressive, or out-of-order snapshots
+    const gate = evaluateFreshnessGate(
+      {
+        timestamp_ms: normalized.timestamp_ms,
+        relative_recording_time_s: normalized.relative_recording_time_s,
+        source_record_id: normalized.source_record_id,
+      },
+      {
+        activeSourceId: activeSourceIdRef.current,
+        lastAppliedTimestampMs: lastAppliedTimestampMsRef.current,
+        lastAppliedRecTime: lastAppliedRecTimeRef.current,
+      },
+    );
+
     if (
-      lastAppliedTimestampMsRef.current !== null &&
-      normalized.timestamp_ms < lastAppliedTimestampMsRef.current
+      !gate.accepted ||
+      (lastAppliedTimestampMsRef.current !== null &&
+        normalized.timestamp_ms < lastAppliedTimestampMsRef.current &&
+        normalized.source_record_id === activeSourceIdRef.current)
     ) {
       console.warn(
         `[ares-cockpit] Rejected out-of-order snapshot (${normalized.timestamp_ms} < ${lastAppliedTimestampMsRef.current}) from ${originLabel}`,
@@ -211,19 +230,9 @@ export function useTelemetry(
       return false;
     }
 
-    if (
-      lastAppliedRecTimeRef.current !== null &&
-      normalized.relative_recording_time_s < lastAppliedRecTimeRef.current &&
-      Math.abs(normalized.relative_recording_time_s - lastAppliedRecTimeRef.current) > 1e-4
-    ) {
-      console.warn(
-        `[ares-cockpit] Rejected regressive recording time (${normalized.relative_recording_time_s} < ${lastAppliedRecTimeRef.current}) from ${originLabel}`,
-      );
-      return false;
-    }
-
-    lastAppliedTimestampMsRef.current = normalized.timestamp_ms;
-    lastAppliedRecTimeRef.current = normalized.relative_recording_time_s;
+    activeSourceIdRef.current = gate.nextState.activeSourceId ?? normalized.source_record_id;
+    lastAppliedTimestampMsRef.current = gate.nextState.lastAppliedTimestampMs;
+    lastAppliedRecTimeRef.current = gate.nextState.lastAppliedRecTime;
 
     const now = Date.now();
     activeSourceIdRef.current = normalized.source_record_id;
@@ -456,9 +465,10 @@ export function useTelemetry(
         return;
       }
       snapshotInFlightRef.current = true;
+      let timerId: number | null = null;
       try {
         const timeoutPromise = new Promise<null>((_, reject) => {
-          window.setTimeout(() => reject(new Error('Tauri snapshot timeout')), 1500);
+          timerId = window.setTimeout(() => reject(new Error('Tauri snapshot timeout')), 1500);
         });
         const invokePromise = tauri.invoke?.('get_full_wire_snapshot');
         const snap = (await Promise.race([invokePromise, timeoutPromise])) as unknown;
@@ -468,6 +478,9 @@ export function useTelemetry(
       } catch {
         // Fallback handled gracefully or timed out
       } finally {
+        if (timerId !== null) {
+          window.clearTimeout(timerId);
+        }
         snapshotInFlightRef.current = false;
       }
       try {

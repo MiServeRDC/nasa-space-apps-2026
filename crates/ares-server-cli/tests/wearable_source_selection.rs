@@ -270,6 +270,14 @@ fn test_switching_to_live_hardware_before_packet_shows_awaiting_state() {
         );
         assert_eq!(ticked.biometrics.heart_rate_bpm, None);
     }
+
+    // 5. Applying What-If in awaiting state must NOT resurrect terrestrial CSV biometrics
+    let mut scenario = ares_server_cli::ws_server::default_scenario_input();
+    scenario.flight_day = 10;
+    let what_if = state.apply_stress_test(scenario).expect("what if in awaiting");
+    assert_eq!(what_if.source_record_id, "awaiting_wearable_hardware");
+    assert_eq!(what_if.provenance_manifest.biometrics_source, BiometricsSource::HardwareWearable);
+    assert_eq!(what_if.biometrics.heart_rate_bpm, None);
 }
 
 #[test]

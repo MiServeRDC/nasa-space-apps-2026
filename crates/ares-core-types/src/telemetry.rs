@@ -283,7 +283,7 @@ pub enum HrvUnavailableReason {
 /// Segnali biometrici, autonomici ed esposizione radiologica (`1. GATHER`).
 /// I campi provenienti da sensori fisici o CSV BIDMC usano `Option<f64>` per non
 /// convertire mai campioni mancanti (`NaN`/vuoti) in falsi zeri fisiologici.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct Biometrics {
     pub heart_rate_bpm: Option<f64>,
     pub pulse_rate_bpm: Option<f64>,

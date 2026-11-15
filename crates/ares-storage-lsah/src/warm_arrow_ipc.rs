@@ -459,12 +459,9 @@ impl WarmColumnarVectorBackend for ArrowIpcZstdHnswBackend {
                 .segments
                 .iter()
                 .filter(|s| {
-                    if let (Some(min_s), Some(max_s)) = (s.min_mission_sol, s.max_mission_sol) {
-                        min_s <= sol_end && max_s >= sol_start
-                    } else {
-                        // Unconstrained legacy segment: retain and filter row-by-row
-                        true
-                    }
+                    let min_ok = s.min_mission_sol.is_none_or(|min_s| min_s <= sol_end);
+                    let max_ok = s.max_mission_sol.is_none_or(|max_s| max_s >= sol_start);
+                    min_ok && max_ok
                 })
                 .cloned()
                 .collect()

@@ -1,10 +1,10 @@
 # ARES-Health Master Test Execution & Software Verification Report
 NASA Space Apps Challenge 2026 — Master Test Plan (Tiers 1-7 Verification)
 
-- **Execution Date:** 2026-11-15T00:07:05Z
-- **Total Execution Duration:** 25 seconds
+- **Execution Date:** 2026-11-15T00:33:59Z
+- **Total Execution Duration:** 29 seconds
 - **Verification Status:** ALL 7 TIERS PASSED (100% Deterministic Air-Gapped Verification)
-- **Git Commit:** 0899f4d (DIRTY (12 uncommitted changes))
+- **Git Commit:** a5116e8 (DIRTY (10 uncommitted changes))
 - **Platform:** Darwin arm64
 - **Formatting Invariant:** STRICTLY ZERO EMOJIS anywhere in report, logs, or codebase.
 
@@ -23,18 +23,18 @@ NASA Space Apps Challenge 2026 — Master Test Plan (Tiers 1-7 Verification)
 | **Tier 3** | Cosmic SEU & Chaos Recovery | `phase_26_k2_chaos_dropout_seu.rs`, `phase_26_k2_crypto_audit_chaos.rs`, `flush_reliability.rs`, `legacy_manifest_and_atomic_retry.rs`, `storage_runtime.rs`, `wearable_source_selection.rs` | 256-bit exhaustive SEU chaos, multichannel NaN/Inf dropouts, LSAH crash-atomic persistence, legacy manifest migration & hardware provenance preservation | **PASSED** |
 | **Tier 4** | ARINC 653 Latency & Memory Budgets | `phase_28_k4_nasa_std_3001_bench.rs` (Release Mode) | Core microbenchmark $< 150\ \mu\text{s}$, full live engine tick $< 50\ \text{ms}$, Seqlock read $< 100\ \text{ns}$, 900-Sol compactor $< 200\ \text{KB}$ | **PASSED** |
 | **Tier 5** | Clinical Anti-Leakage & Calibration | `phase_27_k3_cross_language_e2e.rs`, `ares-calibrate --verify-only` | Subject-disjoint split across 3 bundled BIDMC records (`bidmc_01..03`), zero temporal leakage, non-fabricated RMSSD missingness. (53-subject cohort anomaly evaluation is executed via `--mode eval-anomaly`). | **PASSED** |
-| **Tier 6** | NASA-STD-3001 HSI Cockpit Access | `ares-cockpit/tests/*.test.ts` (36 tests across 7 suites) | OLED `#000000` contrast, zero remote CDN calls, local GLB binary magic `0x46546c67`, desktop snapshot freshness fallback & monotonic ordering guards | **PASSED** |
+| **Tier 6** | NASA-STD-3001 HSI Cockpit Access | `ares-cockpit/tests/*.test.ts` (37 tests across 7 suites) | OLED `#000000` contrast, zero remote CDN calls, local GLB binary magic `0x46546c67`, desktop snapshot freshness fallback & monotonic ordering guards | **PASSED** |
 | **Tier 7** | End-to-End Mission Scenarios | `phase_37_m3_mission_scenarios_e2e.rs`, `phase37_scenarios.test.ts` | SCEN-01..SCEN-06 closed-loop GATHER $\to$ EVALUATE $\to$ ACT multi-phase validation | **PASSED** |
 
 ---
 
 ## Detailed Empirical Benchmark Measurements (Tier 4)
 
-- **Seqlock Zero-Allocation Read (`read_latest_bytes`):** p99 = **83.0 ns** (ARINC 653 budget: $< 100\ \text{ns}$)
-- **Seqlock CRC32C Verified Read (`read_latest`):** p99 = **1125.0 ns** (budget: $< 5.0\ \mu\text{s}$)
-- **Unified Dataset Knowledge Graph Search (24 Datasets):** p99 = **35.12 us** (budget: $< 1000\ \mu\text{s}$)
-- **Pre-Block-N Core Algorithmic Microbenchmark (`SQI` $\to$ `ADHG` $\to$ `NQS-STL` $\to$ `MedOps` $\to$ `128B Binary`):** p99 = **4.83 us** (budget: $< 150\ \mu\text{s}$)
-- **Live Workstation Engine Tick (`compute_mission_telemetry_tick_from_row` with multi-organ Block N, safety gates & Seqlock ring; disk recording and WS mirror disabled):** p99 = **12.21 us** (20 Hz frame budget: $< 50\ \text{ms}$)
+- **Seqlock Zero-Allocation Read (`read_latest_bytes`):** p99 = **84.0 ns** (ARINC 653 budget: $< 100\ \text{ns}$)
+- **Seqlock CRC32C Verified Read (`read_latest`):** p99 = **1334.0 ns** (budget: $< 5.0\ \mu\text{s}$)
+- **Unified Dataset Knowledge Graph Search (24 Datasets):** p99 = **44.50 us** (budget: $< 1000\ \mu\text{s}$)
+- **Pre-Block-N Core Algorithmic Microbenchmark (`SQI` $\to$ `ADHG` $\to$ `NQS-STL` $\to$ `MedOps` $\to$ `128B Binary`):** p99 = **5.00 us** (budget: $< 150\ \mu\text{s}$)
+- **Live Workstation Engine Tick (`compute_mission_telemetry_tick_from_row` with multi-organ Block N, safety gates & Seqlock ring; disk recording and WS mirror disabled):** p99 = **13.21 us** (20 Hz frame budget: $< 50\ \text{ms}$)
 - **Longitudinal Mission Compactor RAM (900 Sols):** **167352 bytes** (budget: $< 200\ \text{KB}$)
 - **Unified Dataset Graph In-Memory Size (24 Datasets, 110 Nodes, 326 Edges):** **196264 bytes** (budget: $< 10\ \text{MB}$)
 
