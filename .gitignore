@@ -8,3 +8,9 @@ __pycache__/
 *.log
 data/ares_storage/
 *.wav
+
+# Generated artifacts (not source): graphify incremental cache and ad-hoc report outputs.
+# Tracked graphify outputs (graph.json, GRAPH_REPORT.md) are intentionally NOT ignored.
+graphify-out/cache/
+/outputs/
+*.tsbuildinfo

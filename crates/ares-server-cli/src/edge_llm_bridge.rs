@@ -49,6 +49,7 @@ pub enum EdgeLlmWireProtocol {
 pub struct EdgeLlmConfig {
     /// Defaults to `"http://127.0.0.1:11434"`, overridable via `MACMINI_LLM_URL`.
     pub endpoint_url: String,
+    /// Defaults to `OllamaChat`; set `ARES_LLM_PROTOCOL=llamacpp` for the `llama.cpp` API.
     pub protocol: EdgeLlmWireProtocol,
     pub model_tag: String,
     /// Explicitly permits RFC1918 habitat LAN subnets (e.g. dedicated Mac mini compute node).
@@ -66,10 +67,22 @@ impl Default for EdgeLlmConfig {
             || std::env::var("ARES_ALLOW_HABITAT_LAN")
                 .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
                 .unwrap_or(false);
+        // `ARES_LLM_PROTOCOL=llamacpp` selects the OpenAI-compatible `llama.cpp`
+        // transport; any other value (or unset) keeps the native Ollama chat API.
+        let protocol = match std::env::var("ARES_LLM_PROTOCOL") {
+            Ok(v) if v.eq_ignore_ascii_case("llamacpp") || v.eq_ignore_ascii_case("llama.cpp") => {
+                EdgeLlmWireProtocol::LlamaCppOpenAiCompat
+            }
+            _ => EdgeLlmWireProtocol::OllamaChat,
+        };
         Self {
             endpoint_url: env_url.unwrap_or_else(|| "http://127.0.0.1:11434".to_string()),
-            protocol: EdgeLlmWireProtocol::OllamaChat,
-            model_tag: "llama3.2:3b-instruct-q4_K_M".to_string(),
+            protocol,
+            // Overridable via `ARES_LLM_MODEL` so the copilot uses whatever tag you pulled.
+            model_tag: std::env::var("ARES_LLM_MODEL")
+                .ok()
+                .filter(|v| !v.trim().is_empty())
+                .unwrap_or_else(|| "llama3.2:3b-instruct-q4_K_M".to_string()),
             allow_rfc1918_lan: allow_lan,
             force_offline_template: false,
             timeout_ms: 2_200,
