@@ -19,9 +19,7 @@ Long-duration exploration missions expose crews to space radiation, isolation an
 7. [Quickstart](#7-quickstart)
 8. [Data, Provenance & Evidence Boundary](#8-data-provenance--evidence-boundary)
 9. [Compliance, Licensing & Clean-Room Mandate](#9-compliance-licensing--clean-room-mandate)
-10. [Team & Multi-Agent Workflow](#10-team--multi-agent-workflow)
-11. [References & Data Sources](#11-references--data-sources)
-12. [Project Dossier](#12-project-dossier)
+10. [References & Data Sources](#10-references--data-sources)
 
 ---
 
