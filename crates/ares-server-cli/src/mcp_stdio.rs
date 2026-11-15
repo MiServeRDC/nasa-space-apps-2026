@@ -154,7 +154,9 @@ mod tests {
     #[test]
     fn test_explain_causal_anomaly_wraps_observations_in_xml_shield() {
         let state = sample_state();
-        let pkt = state.latest_snapshot().expect("latest packet");
+        let mut pkt = state.latest_snapshot().expect("latest packet");
+        pkt.active_playbook.causal_chain_summary =
+            vec!["<script>untrusted observation</script>".to_string()];
         let sanitizer = StrictMcpSanitizer;
 
         let req = JsonRpcRequest {

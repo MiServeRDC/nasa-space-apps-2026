@@ -1,5 +1,37 @@
 # Progress Tracking: ARES-Health (Autonomous Resilient Edge-native System for Astronaut Health)
 
+## Final frontend/backend integration qualification (2026-11-15)
+
+Baseline `origin/main` `fb70b72`; branch `work/MiServeRDC-integration-qualification`.
+Final branch rebased onto `af30a03` (intervening changes only README.md).
+Verified the actual current App/production cockpit against a real owned Rust process,
+not the historical greenfield shell. No main merge/push or hosted Actions.
+
+Fixed replay leaking modeled organ procedures into ACT (now NONE/standby unless
+detector-grounded), plus frontend overlay-off failing to change backend mode.
+New optional `overlay_active` patch explicitly controls mode and preserves replay
+clock/detector learning; serialized UI updates and reconnect synchronize it.
+Manual catalog procedures require explicit selection. Clinical thresholds unchanged.
+
+Validation: 326 default Rust tests and 331 with local SHM/native-command/voice
+features pass serially; 165 frontend tests, types, build and all-target Clippy pass.
+17 production-browser checkpoints pass: real baseline/injection/alarm/playbook,
+checklist retention, context/overlay sync, storage/audit, absent-hardware abstention,
+disconnect/restart, responsive widths and no-WebGL fallback. Main context observed
+no external requests/uncaught errors. Artifact logs remain outside the repository.
+
+Open findings: all-features fails inside optional lancedb 0.40.0 (`Error::Http`
+missing in job.rs with default features disabled); default Arrow storage is verified.
+One original parallel latency check measured 174.09 us vs 150 us, then passed in
+isolation/serial; no deadline certification or threshold relaxation. Physical
+sensors, actual native window, real LLM/voice weights and long-duration operation
+remain unqualified. Model status remains ILLUSTRATIVE_UNVALIDATED.
+
+Details/reproduction: docs/evaluation/FINAL_INTEGRATION_QUALIFICATION.md and
+scripts/verify_cockpit_live.mjs. Next: review/integrate these changes through the
+normal branch/PR process; separately repair/qualify optional LanceDB before using it.
+
+
 ## Aerospace 360 Phase 1 & Phase 2 + P0/P1 Hardening (2026-11-15) [COMPLETED (TESTED) — 323/323 Rust Workspace Tests]
 
 - [x] **P0/P1 Runtime Hardening (Phase 1):**

@@ -672,7 +672,7 @@ fn compute_mission_telemetry_tick_from_row(
         }
         candidate_playbook.actions = merged;
     }
-    let (active_playbook, extended_safety_gates) = enforce_all_clinical_safety_gates_360(
+    let (mut active_playbook, extended_safety_gates) = enforce_all_clinical_safety_gates_360(
         candidate_playbook,
         &biometrics,
         &musculo,
@@ -692,6 +692,24 @@ fn compute_mission_telemetry_tick_from_row(
         gi_ulcer_history_or_bleed,
         bmed_state.as_ref(),
     );
+
+    // Replay does not measure the inputs of the organ/scenario models. Only
+    // detector-grounded procedures may be suggested outside explicit What-If.
+    if !what_if_active {
+        let gates = active_playbook.safety_gates;
+        active_playbook = vitals
+            .report
+            .and_then(|report| {
+                ares_medops_playbooks::playbooks::select_vitals_anomaly_playbook(report, gates)
+            })
+            .unwrap_or_else(|| ares_core_types::telemetry::ActivePlaybook {
+                playbook_id: "NONE".to_string(),
+                title: "No procedure suggested".to_string(),
+                causal_chain_summary: Vec::new(),
+                safety_gates: gates,
+                actions: Vec::new(),
+            });
+    }
 
     let system_phase = if nqs_stl.has_known_violation()
         || jugular.pocus_thrombus_confirmed
@@ -2178,7 +2196,9 @@ impl SharedMissionState {
         } else if !new_scenario.lbnp_active {
             guard.lbnp_baseline = None;
         }
-        if !patch.preserve_overlay {
+        if let Some(active) = patch.overlay_active {
+            guard.what_if_active = active;
+        } else if !patch.preserve_overlay {
             guard.what_if_active = true;
         }
         let what_if_active = guard.what_if_active;
@@ -2795,10 +2815,7 @@ mod tests {
         let state =
             SharedMissionState::from_data_dir(&workspace_bidmc_dir()).expect("init mission state");
         let initial = state.latest_snapshot().expect("initial snapshot");
-        assert_eq!(
-            initial.active_playbook.playbook_id,
-            "PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED"
-        );
+        assert_eq!(initial.active_playbook.playbook_id, "NONE");
 
         // Simulate severe unloading at FD 120 without LBNP and without POCUS thrombus
         let unloaded_scenario = StressTestScenarioInput {
@@ -2830,6 +2847,64 @@ mod tests {
                 .verify_chain_integrity()
                 .expect("audit chain valid")
         );
+    }
+
+    #[test]
+    fn overlay_off_restores_replay_standby_without_restarting_detector_or_clock() {
+        let state = SharedMissionState::from_data_dir(&workspace_bidmc_dir()).expect("state");
+        for _ in 0..150 {
+            state.advance_tick(Duration::from_secs(1)).expect("tick");
+        }
+        let before = state.latest_wire_snapshot().expect("replay");
+        assert_eq!(before.active_playbook.playbook_id, "NONE");
+        assert!(before.medops.triggered_playbooks.is_empty());
+        assert!(before.active_playbook.actions.is_empty());
+        assert_eq!(before.vitals_anomaly["baseline_ready"], true);
+        let on = state
+            .apply_stress_test_patch(StressTestPatchRequest {
+                overlay_active: Some(true),
+                cabin_ppco2_mmhg: Some(2.5),
+                ..Default::default()
+            })
+            .expect("overlay on");
+        assert_eq!(
+            on.provenance_manifest.scenario_overlay_mode,
+            ScenarioOverlayMode::SimulatedWhatifScenario
+        );
+        assert!(on.hemodynamics.is_some());
+        assert_ne!(on.active_playbook.playbook_id, "NONE");
+        // Explicit false wins even without preserve_overlay, and leaves scenario
+        // values available for a future explicit activation.
+        let off = state
+            .apply_stress_test_patch(StressTestPatchRequest {
+                overlay_active: Some(false),
+                ..Default::default()
+            })
+            .expect("overlay off");
+        assert_eq!(
+            off.provenance_manifest.scenario_overlay_mode,
+            ScenarioOverlayMode::NonePureReplay
+        );
+        assert_eq!(
+            off.relative_recording_time_s,
+            before.relative_recording_time_s
+        );
+        assert_eq!(off.biometrics, before.biometrics);
+        assert_eq!(off.vitals_anomaly, before.vitals_anomaly);
+        assert!(off.hemodynamics.is_none());
+        assert!(off.environment.is_none());
+        assert_eq!(off.active_playbook.playbook_id, "NONE");
+        assert!(off.medops.priority_actions.is_empty());
+        assert!(off.medops.interventions.is_empty());
+        let context = state
+            .apply_stress_test_patch(StressTestPatchRequest {
+                preserve_overlay: true,
+                cabin_ppco2_mmhg: Some(2.2),
+                ..Default::default()
+            })
+            .expect("context only");
+        assert!(!context.what_if_overlay.active);
+        assert_eq!(context.what_if_overlay.cabin_ppco2_mmhg, 2.2);
     }
 
     #[test]
@@ -3083,10 +3158,7 @@ mod tests {
         let before = state.latest_wire_snapshot().expect("wire");
         assert_eq!(before.vitals_anomaly["baseline_ready"], true);
         assert_eq!(before.vitals_anomaly["overall"], "NORMAL");
-        assert_eq!(
-            before.active_playbook.playbook_id,
-            "PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED"
-        );
+        assert_eq!(before.active_playbook.playbook_id, "NONE");
 
         let injection = state
             .inject_anomaly(Some(InjectedAnomalyKind::DesaturationFast))
