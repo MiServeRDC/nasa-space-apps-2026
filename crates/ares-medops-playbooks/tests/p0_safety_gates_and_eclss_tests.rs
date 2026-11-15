@@ -4,11 +4,15 @@
 use ares_causal_graph::eclss_differential::{
     evaluate_coupled_habitat_crew_co2, HypercapniaRootCause,
 };
+use ares_core_types::medical_360::LbnpBaselineState;
 use ares_core_types::telemetry::{
     ActivePlaybook, Biometrics, CountermeasureAction, JugularFlowGrade, JugularHemodynamics,
-    Musculoskeletal, SafetyGates, StressTestScenarioInput,
+    Musculoskeletal, NqsStlMargins, SafetyGates, StressTestScenarioInput,
 };
-use ares_medops_playbooks::safety_gates::enforce_hard_clinical_safety_gates_ext;
+use ares_medops_playbooks::playbooks::select_candidate_playbook_ext;
+use ares_medops_playbooks::safety_gates::{
+    enforce_hard_clinical_safety_gates_ext, enforce_hard_clinical_safety_gates_with_lbnp_baseline,
+};
 
 fn sample_playbook_with_anticoag() -> ActivePlaybook {
     ActivePlaybook {
@@ -265,4 +269,264 @@ fn coupled_eclss_scrubber_saturation_distinguished_from_crew_pathology() {
             .contains(&"ECLSS_CO2_SCRUBBER_SATURATION".to_string()),
         "Causal chain must attribute anomaly to ECLSS scrubber saturation"
     );
+}
+
+#[test]
+fn gate2_dynamic_sbp_baseline_triggers_vent_and_strips_lbnp_minus_30() {
+    // Baseline SBP = 145 mmHg, current SBP = 125 mmHg -> 20 mmHg drop (> 15 mmHg limit)
+    // even though 125 mmHg > static 120 mmHg!
+    let biometrics = Biometrics {
+        heart_rate_bpm: Some(82.0),
+        sbp_mmhg: Some(125.0),
+        dbp_mmhg: Some(82.0),
+        ..Biometrics::default()
+    };
+    let jugular = JugularHemodynamics {
+        ijv_csa_mm2: 72.0,
+        ijv_vmax_cm_s: 4.5,
+        tau_w_dyn_cm2: 0.90,
+        flow_grade: JugularFlowGrade::StagnantBidirectional,
+        pocus_thrombus_confirmed: false,
+        lbnp_active: true,
+        lbnp_pressure_mmhg: -30.0,
+    };
+    let mut scenario = nominal_scenario();
+    scenario.lbnp_active = true;
+    scenario.pocus_thrombus_confirmed = false;
+    scenario.systolic_bp_drop_mmhg = 0.0;
+
+    let mut pb = sample_playbook_with_anticoag();
+    pb.actions.push(CountermeasureAction {
+        action_id: "ACT_LBNP_MINUS_30_MMHG".to_string(),
+        label: "Activate LBNP -30 mmHg".to_string(),
+        category: "PHYSICAL_HEMODYNAMIC".to_string(),
+        delta_rho_per_hour: 0.19,
+    });
+
+    let baseline = LbnpBaselineState {
+        pre_lbnp_sbp_baseline_mmhg: 145.0,
+        pre_lbnp_hr_baseline_bpm: 72.0,
+        captured_at_timestamp_ms: 1_000,
+    };
+
+    let outcome = enforce_hard_clinical_safety_gates_with_lbnp_baseline(
+        pb,
+        &biometrics,
+        &nominal_musculo(),
+        &jugular,
+        &scenario,
+        None,
+        None,
+        None,
+        Some(baseline),
+    );
+
+    assert!(outcome.safety_gates.lbnp_auto_vent_triggered);
+    assert_eq!(
+        outcome.actions[0].action_id,
+        "ACT_EMERGENCY_LBNP_AUTO_VENT_0_MMHG"
+    );
+    assert!(
+        outcome
+            .actions
+            .iter()
+            .all(|a| !a.action_id.contains("ACT_LBNP_MINUS_")),
+        "Gate 2 auto-vent must strip ACT_LBNP_MINUS_30_MMHG"
+    );
+}
+
+#[test]
+fn gate2_vasovagal_bradycardia_below_50_bpm_triggers_auto_vent() {
+    let biometrics = Biometrics {
+        heart_rate_bpm: Some(46.0), // < 50.0 bpm vasovagal floor
+        sbp_mmhg: Some(115.0),
+        dbp_mmhg: Some(72.0),
+        ..Biometrics::default()
+    };
+    let jugular = JugularHemodynamics {
+        ijv_csa_mm2: 72.0,
+        ijv_vmax_cm_s: 4.5,
+        tau_w_dyn_cm2: 0.90,
+        flow_grade: JugularFlowGrade::NormalContinuous,
+        pocus_thrombus_confirmed: false,
+        lbnp_active: true,
+        lbnp_pressure_mmhg: -30.0,
+    };
+    let mut scenario = nominal_scenario();
+    scenario.lbnp_active = true;
+    scenario.systolic_bp_drop_mmhg = 5.0;
+
+    let outcome = enforce_hard_clinical_safety_gates_with_lbnp_baseline(
+        sample_playbook_with_anticoag(),
+        &biometrics,
+        &nominal_musculo(),
+        &jugular,
+        &scenario,
+        None,
+        None,
+        None,
+        None,
+    );
+
+    assert!(outcome.safety_gates.lbnp_auto_vent_triggered);
+    assert_eq!(
+        outcome.actions[0].action_id,
+        "ACT_EMERGENCY_LBNP_AUTO_VENT_0_MMHG"
+    );
+}
+
+#[test]
+fn gate2_hr_none_during_active_lbnp_triggers_failsafe_vent() {
+    // Even if SBP is present, missing HR during active LBNP must fail-safe auto-vent
+    // (no silent 72.0 bpm fallback).
+    let biometrics = Biometrics {
+        heart_rate_bpm: None,
+        sbp_mmhg: Some(118.0),
+        dbp_mmhg: Some(76.0),
+        ..Biometrics::default()
+    };
+    let jugular = JugularHemodynamics {
+        ijv_csa_mm2: 72.0,
+        ijv_vmax_cm_s: 4.5,
+        tau_w_dyn_cm2: 0.90,
+        flow_grade: JugularFlowGrade::NormalContinuous,
+        pocus_thrombus_confirmed: false,
+        lbnp_active: true,
+        lbnp_pressure_mmhg: -30.0,
+    };
+    let mut scenario = nominal_scenario();
+    scenario.lbnp_active = true;
+    scenario.systolic_bp_drop_mmhg = 2.0;
+
+    let outcome = enforce_hard_clinical_safety_gates_with_lbnp_baseline(
+        sample_playbook_with_anticoag(),
+        &biometrics,
+        &nominal_musculo(),
+        &jugular,
+        &scenario,
+        None,
+        None,
+        None,
+        None,
+    );
+
+    assert!(outcome.safety_gates.lbnp_auto_vent_triggered);
+    assert!(outcome.actions.iter().any(|a| {
+        a.action_id == "ACT_EMERGENCY_LBNP_AUTO_VENT_0_MMHG"
+            && a.label.contains("Sensor Dropout Fail-Safe")
+    }));
+}
+
+#[test]
+fn co2_tier1_vs_tier2_and_max_cabin_helmet_never_masked() {
+    // Nominal cabin (2.2 mmHg) must NOT mask elevated helmet (5.5 mmHg) in Gate 4/ECLSS alert
+    let bio_masked_test = Biometrics {
+        heart_rate_bpm: Some(78.0),
+        sbp_mmhg: Some(120.0),
+        dbp_mmhg: Some(78.0),
+        cabin_ppco2_mmhg: Some(2.2),
+        helmet_ppco2_mmhg: Some(5.5),
+        ..Biometrics::default()
+    };
+    let jugular = JugularHemodynamics {
+        ijv_csa_mm2: 65.0,
+        ijv_vmax_cm_s: 12.0,
+        tau_w_dyn_cm2: 1.8,
+        flow_grade: JugularFlowGrade::NormalContinuous,
+        pocus_thrombus_confirmed: false,
+        lbnp_active: false,
+        lbnp_pressure_mmhg: 0.0,
+    };
+    let enforced = enforce_hard_clinical_safety_gates_ext(
+        sample_playbook_with_anticoag(),
+        &bio_masked_test,
+        &nominal_musculo(),
+        &jugular,
+        &nominal_scenario(),
+        None,
+        None,
+        None,
+    );
+    assert!(
+        enforced.safety_gates.eclss_environmental_co2_alert,
+        "max(cabin=2.2, helmet=5.5) > 4.0 must trigger eclss_environmental_co2_alert"
+    );
+
+    // Playbook #14 Tier 1 (3.4 mmHg) requires elevated SANS (rho_sans < 0.64),
+    // while Tier 2 (4.2 mmHg) triggers immediately even with nominal SANS (rho_sans = 0.85).
+    let nqs_nominal = NqsStlMargins {
+        rho_tau_w: 0.85,
+        rho_ared: 0.85,
+        rho_sost: 0.85,
+        rho_rmssd: Some(0.85),
+        rho_sans: 0.85,
+        rho_global: Some(0.85),
+        ttv_hours: Some(120.0),
+        ttv_ci95_low_hours: Some(90.0),
+        ttv_ci95_high_hours: Some(150.0),
+        mri_pct: Some(72.0),
+        ttv_interval_kind: None,
+        rho_renal: None,
+        rho_orthostatic: None,
+        rho_circadian: None,
+        rho_immune: None,
+    };
+    let bio_tier1 = Biometrics {
+        cabin_ppco2_mmhg: Some(3.4),
+        helmet_ppco2_mmhg: None,
+        ..Biometrics::default()
+    };
+    let pb_tier1_nom_sans = select_candidate_playbook_ext(
+        &bio_tier1,
+        &nominal_musculo(),
+        &jugular,
+        &nqs_nominal,
+        vec![],
+        None,
+        None,
+        None,
+        0,
+        None,
+        None,
+    );
+    assert_ne!(pb_tier1_nom_sans.playbook_id, "PLAYBOOK_14_CO2_SCRUBBER_SANS");
+
+    let nqs_elevated_sans = NqsStlMargins {
+        rho_sans: 0.55,
+        ..nqs_nominal
+    };
+    let pb_tier1_elevated = select_candidate_playbook_ext(
+        &bio_tier1,
+        &nominal_musculo(),
+        &jugular,
+        &nqs_elevated_sans,
+        vec![],
+        None,
+        None,
+        None,
+        0,
+        None,
+        None,
+    );
+    assert_eq!(pb_tier1_elevated.playbook_id, "PLAYBOOK_14_CO2_SCRUBBER_SANS");
+
+    let bio_tier2 = Biometrics {
+        cabin_ppco2_mmhg: Some(2.2),
+        helmet_ppco2_mmhg: Some(4.2),
+        ..Biometrics::default()
+    };
+    let pb_tier2 = select_candidate_playbook_ext(
+        &bio_tier2,
+        &nominal_musculo(),
+        &jugular,
+        &nqs_nominal,
+        vec![],
+        None,
+        None,
+        None,
+        0,
+        None,
+        None,
+    );
+    assert_eq!(pb_tier2.playbook_id, "PLAYBOOK_14_CO2_SCRUBBER_SANS");
 }

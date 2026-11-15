@@ -1,4 +1,7 @@
-use crate::config::{LsahStorageConfig, atomic_write_bytes, validate_airgapped_lsah_dir};
+use crate::config::{
+    CrcAlgorithmUsed, LsahStorageConfig, atomic_write_bytes, compute_crc32c,
+    validate_airgapped_lsah_dir, verify_crc32c_with_v1_ieee_fallback,
+};
 use crate::error::LsahStorageError;
 use crate::hnsw_index::{HnswFilter, HnswVectorIndex};
 use crate::pocus_signature::PocusSignatureRecord;
@@ -14,10 +17,17 @@ use arrow_ipc::reader::FileReader;
 use arrow_ipc::writer::{FileWriter, IpcWriteOptions};
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::{self, File};
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
+
+pub const WARM_MANIFEST_FORMAT_VERSION_LEGACY_V1: u8 = 1;
+pub const WARM_MANIFEST_FORMAT_VERSION_V2: u8 = 2;
+
+fn default_manifest_v1() -> u8 {
+    WARM_MANIFEST_FORMAT_VERSION_LEGACY_V1
+}
 
 /// Summary of crash-recovery actions taken when opening `ArrowIpcZstdHnswBackend`.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -26,6 +36,8 @@ pub struct WarmRecoveryReport {
     pub valid_segments_recovered: usize,
     pub quarantined_corrupt_segments: Vec<String>,
     pub pocus_signatures_recovered: usize,
+    #[serde(default)]
+    pub orphaned_segments_reclaimed: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -53,7 +65,7 @@ struct LegacySignedManifest {
     crc32c: u32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct ManifestPayload {
     next_segment_id: u64,
     pocus_dim: usize,
@@ -62,13 +74,20 @@ struct ManifestPayload {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct SignedManifest {
+    #[serde(default = "default_manifest_v1")]
+    format_version: u8,
     payload: ManifestPayload,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    canonical_entries_json: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    legacy_ieee_segment_ids: Vec<u64>,
     crc32c: u32,
 }
 
 struct WarmArrowState {
     next_segment_id: u64,
     segments: Vec<WarmSegmentMeta>,
+    legacy_ieee_segment_ids: HashSet<u64>,
     pocus_records: HashMap<u64, PocusSignatureRecord>,
     hnsw: HnswVectorIndex,
 }
@@ -120,54 +139,127 @@ impl ArrowIpcZstdHnswBackend {
         // 2) Load and CRC-verify manifest if present.
         let mut next_segment_id = 1u64;
         let mut recovered_segments = Vec::new();
+        let mut legacy_ieee_segment_ids = HashSet::new();
         if manifest_path.exists() {
             let raw = fs::read(&manifest_path)?;
-            let (next_id, segments) = match serde_json::from_slice::<SignedManifest>(&raw) {
-                Ok(signed) => {
-                    let payload_bytes = serde_json::to_vec(&signed.payload)?;
-                    let computed = crate::config::compute_storage_crc32_ieee(&payload_bytes);
-                    if computed == signed.crc32c {
-                        (signed.payload.next_segment_id, signed.payload.segments)
-                    } else {
-                        // Fallback: verify against legacy schema (v1 without min/max sol bounds)
-                        let legacy: LegacySignedManifest = serde_json::from_slice(&raw)?;
-                        let leg_bytes = serde_json::to_vec(&legacy.payload)?;
-                        let leg_computed = crate::config::compute_storage_crc32_ieee(&leg_bytes);
-                        if leg_computed != legacy.crc32c {
-                            return Err(LsahStorageError::CrcMismatch {
-                                artifact: manifest_path.display().to_string(),
-                                expected: signed.crc32c,
-                                computed,
-                            });
+            let (next_id, segments, allow_legacy_for_manifest, manifest_legacy_ids) =
+                match serde_json::from_slice::<SignedManifest>(&raw) {
+                    Ok(signed) => {
+                        if signed.format_version >= WARM_MANIFEST_FORMAT_VERSION_V2 {
+                            let raw_json = signed.canonical_entries_json.as_deref().ok_or_else(|| {
+                                LsahStorageError::InvalidConfig(
+                                    "v2 warm manifest missing canonical_entries_json".to_string(),
+                                )
+                            })?;
+                            if let Err(err) = verify_crc32c_with_v1_ieee_fallback(
+                                raw_json.as_bytes(),
+                                signed.crc32c,
+                                false,
+                            ) {
+                                return Err(match err {
+                                    LsahStorageError::CrcMismatch { expected, computed, .. } => {
+                                        LsahStorageError::CrcMismatch {
+                                            artifact: manifest_path.display().to_string(),
+                                            expected,
+                                            computed,
+                                        }
+                                    }
+                                    other => other,
+                                });
+                            }
+                            let canonical_payload: ManifestPayload = serde_json::from_str(raw_json)?;
+                            if canonical_payload != signed.payload {
+                                return Err(LsahStorageError::InvalidConfig(
+                                    "v2 warm manifest payload mismatch against canonical_entries_json"
+                                        .to_string(),
+                                ));
+                            }
+                            let leg_set: HashSet<u64> =
+                                signed.legacy_ieee_segment_ids.into_iter().collect();
+                            (
+                                signed.payload.next_segment_id,
+                                signed.payload.segments,
+                                false,
+                                leg_set,
+                            )
+                        } else if signed.format_version == WARM_MANIFEST_FORMAT_VERSION_LEGACY_V1 {
+                            let payload_bytes = serde_json::to_vec(&signed.payload)?;
+                            if verify_crc32c_with_v1_ieee_fallback(
+                                &payload_bytes,
+                                signed.crc32c,
+                                true,
+                            )
+                            .is_ok()
+                            {
+                                (
+                                    signed.payload.next_segment_id,
+                                    signed.payload.segments,
+                                    true,
+                                    HashSet::new(),
+                                )
+                            } else {
+                                // Fallback: verify against legacy schema (v1 without min/max sol bounds)
+                                let legacy: LegacySignedManifest = serde_json::from_slice(&raw)?;
+                                let leg_bytes = serde_json::to_vec(&legacy.payload)?;
+                                if let Err(err) = verify_crc32c_with_v1_ieee_fallback(
+                                    &leg_bytes,
+                                    legacy.crc32c,
+                                    true,
+                                ) {
+                                    return Err(match err {
+                                        LsahStorageError::CrcMismatch {
+                                            expected, computed, ..
+                                        } => LsahStorageError::CrcMismatch {
+                                            artifact: manifest_path.display().to_string(),
+                                            expected,
+                                            computed,
+                                        },
+                                        other => other,
+                                    });
+                                }
+                                let segs = legacy
+                                    .payload
+                                    .segments
+                                    .into_iter()
+                                    .map(|s| WarmSegmentMeta {
+                                        segment_id: s.segment_id,
+                                        mission_sol: s.mission_sol,
+                                        min_mission_sol: None,
+                                        max_mission_sol: None,
+                                        relative_path: s.relative_path,
+                                        row_count: s.row_count,
+                                        compressed_bytes: s.compressed_bytes,
+                                        crc32c: s.crc32c,
+                                        min_sequence_id: s.min_sequence_id,
+                                        max_sequence_id: s.max_sequence_id,
+                                    })
+                                    .collect();
+                                (legacy.payload.next_segment_id, segs, true, HashSet::new())
+                            }
+                        } else {
+                            return Err(LsahStorageError::InvalidConfig(format!(
+                                "unsupported warm manifest format_version {}",
+                                signed.format_version
+                            )));
                         }
-                        let segs = legacy
-                            .payload
-                            .segments
-                            .into_iter()
-                            .map(|s| WarmSegmentMeta {
-                                segment_id: s.segment_id,
-                                mission_sol: s.mission_sol,
-                                min_mission_sol: None,
-                                max_mission_sol: None,
-                                relative_path: s.relative_path,
-                                row_count: s.row_count,
-                                compressed_bytes: s.compressed_bytes,
-                                crc32c: s.crc32c,
-                                min_sequence_id: s.min_sequence_id,
-                                max_sequence_id: s.max_sequence_id,
-                            })
-                            .collect();
-                        (legacy.payload.next_segment_id, segs)
                     }
-                }
-                Err(err) => return Err(LsahStorageError::Json(err)),
-            };
+                    Err(err) => return Err(LsahStorageError::Json(err)),
+                };
             next_segment_id = next_id;
 
             for seg in segments {
                 let seg_path = warm_dir.join(&seg.relative_path);
-                match Self::verify_segment_file_crc(&seg_path, seg.crc32c) {
-                    Ok(()) => {
+                let allow_legacy =
+                    allow_legacy_for_manifest || manifest_legacy_ids.contains(&seg.segment_id);
+                match Self::verify_segment_file_crc_with_fallback(
+                    &seg_path,
+                    seg.crc32c,
+                    allow_legacy,
+                ) {
+                    Ok(algo) => {
+                        if algo == CrcAlgorithmUsed::LegacyIeeeV1 {
+                            legacy_ieee_segment_ids.insert(seg.segment_id);
+                        }
                         recovered_segments.push(seg);
                     }
                     Err(_) => {
@@ -176,6 +268,28 @@ impl ArrowIpcZstdHnswBackend {
                 }
             }
             report.valid_segments_recovered = recovered_segments.len();
+        }
+
+        // 2b) Orphan GC: delete any `sol_*_seg_*.arrow.zst` in `warm_dir` not referenced in manifest.
+        {
+            let referenced: HashSet<&str> = recovered_segments
+                .iter()
+                .map(|s| s.relative_path.as_str())
+                .collect();
+            if let Ok(entries) = fs::read_dir(&warm_dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if let Some(name) = path.file_name().and_then(|n| n.to_str())
+                        && name.starts_with("sol_")
+                        && name.contains("_seg_")
+                        && name.ends_with(".arrow.zst")
+                        && !referenced.contains(name)
+                        && fs::remove_file(&path).is_ok()
+                    {
+                        report.orphaned_segments_reclaimed += 1;
+                    }
+                }
+            }
         }
 
         // 3) Recover POCUS metadata sidecar + HNSW index if present.
@@ -215,6 +329,7 @@ impl ArrowIpcZstdHnswBackend {
             state: Mutex::new(WarmArrowState {
                 next_segment_id,
                 segments: recovered_segments,
+                legacy_ieee_segment_ids,
                 pocus_records,
                 hnsw,
             }),
@@ -235,18 +350,30 @@ impl ArrowIpcZstdHnswBackend {
         Ok(backend)
     }
 
-    /// Verifies a segment file's CRC-32 (IEEE 802.3) against its expected digest.
+    /// Verifies a segment file's CRC-32C (Castagnoli) against its expected digest.
     pub fn verify_segment_file_crc(path: &Path, expected_crc: u32) -> Result<(), LsahStorageError> {
+        Self::verify_segment_file_crc_with_fallback(path, expected_crc, false).map(|_| ())
+    }
+
+    /// Verifies a segment file's checksum with optional v1 IEEE 802.3 fallback.
+    pub fn verify_segment_file_crc_with_fallback(
+        path: &Path,
+        expected_crc: u32,
+        allow_legacy_ieee: bool,
+    ) -> Result<CrcAlgorithmUsed, LsahStorageError> {
         let bytes = fs::read(path)?;
-        if !crate::config::verify_segment_checksum(&bytes, expected_crc) {
-            let computed = crate::config::compute_storage_crc32_ieee(&bytes);
-            return Err(LsahStorageError::CrcMismatch {
-                artifact: path.display().to_string(),
-                expected: expected_crc,
-                computed,
-            });
-        }
-        Ok(())
+        verify_crc32c_with_v1_ieee_fallback(&bytes, expected_crc, allow_legacy_ieee).map_err(|err| {
+            match err {
+                LsahStorageError::CrcMismatch { expected, computed, .. } => {
+                    LsahStorageError::CrcMismatch {
+                        artifact: path.display().to_string(),
+                        expected,
+                        computed,
+                    }
+                }
+                other => other,
+            }
+        })
     }
 
     fn persist_manifest_locked(&self, state: &WarmArrowState) -> Result<(), LsahStorageError> {
@@ -255,9 +382,22 @@ impl ArrowIpcZstdHnswBackend {
             pocus_dim: self.pocus_dim,
             segments: state.segments.clone(),
         };
-        let payload_bytes = serde_json::to_vec(&payload)?;
-        let crc32c = crate::config::compute_storage_crc32_ieee(&payload_bytes);
-        let signed = SignedManifest { payload, crc32c };
+        let canonical_json = serde_json::to_string(&payload)?;
+        let crc32c = compute_crc32c(canonical_json.as_bytes());
+        let mut legacy_ids: Vec<u64> = state
+            .segments
+            .iter()
+            .filter(|s| state.legacy_ieee_segment_ids.contains(&s.segment_id))
+            .map(|s| s.segment_id)
+            .collect();
+        legacy_ids.sort_unstable();
+        let signed = SignedManifest {
+            format_version: WARM_MANIFEST_FORMAT_VERSION_V2,
+            payload,
+            canonical_entries_json: Some(canonical_json),
+            legacy_ieee_segment_ids: legacy_ids,
+            crc32c,
+        };
         let encoded = serde_json::to_vec_pretty(&signed)?;
         atomic_write_bytes(&self.manifest_path, &encoded)
     }
@@ -370,7 +510,7 @@ impl WarmColumnarVectorBackend for ArrowIpcZstdHnswBackend {
             }
 
             let encoded = Self::encode_batch_arrow_ipc_zstd(&sub_batch)?;
-            let crc32 = crate::config::compute_storage_crc32_ieee(&encoded);
+            let crc32 = compute_crc32c(&encoded);
             prepared.push(PreparedPartition {
                 sol,
                 row_count: sub_batch.num_rows(),
@@ -453,7 +593,7 @@ impl WarmColumnarVectorBackend for ArrowIpcZstdHnswBackend {
         sol_start: u16,
         sol_end: u16,
     ) -> Result<Vec<RecordBatch>, LsahStorageError> {
-        let matching_segments: Vec<WarmSegmentMeta> = {
+        let matching_segments: Vec<(WarmSegmentMeta, bool)> = {
             let guard = self.state.lock();
             guard
                 .segments
@@ -463,20 +603,26 @@ impl WarmColumnarVectorBackend for ArrowIpcZstdHnswBackend {
                     let max_ok = s.max_mission_sol.is_none_or(|max_s| max_s >= sol_start);
                     min_ok && max_ok
                 })
-                .cloned()
+                .map(|s| (s.clone(), guard.legacy_ieee_segment_ids.contains(&s.segment_id)))
                 .collect()
         };
 
         let mut batches = Vec::new();
-        for seg in matching_segments {
+        for (seg, allow_legacy) in matching_segments {
             let seg_path = self.warm_dir.join(&seg.relative_path);
             let bytes = fs::read(&seg_path)?;
-            if !crate::config::verify_segment_checksum(&bytes, seg.crc32c) {
-                let computed = crate::config::compute_storage_crc32_ieee(&bytes);
-                return Err(LsahStorageError::CrcMismatch {
-                    artifact: seg_path.display().to_string(),
-                    expected: seg.crc32c,
-                    computed,
+            if let Err(err) =
+                verify_crc32c_with_v1_ieee_fallback(&bytes, seg.crc32c, allow_legacy)
+            {
+                return Err(match err {
+                    LsahStorageError::CrcMismatch { expected, computed, .. } => {
+                        LsahStorageError::CrcMismatch {
+                            artifact: seg_path.display().to_string(),
+                            expected,
+                            computed,
+                        }
+                    }
+                    other => other,
                 });
             }
 

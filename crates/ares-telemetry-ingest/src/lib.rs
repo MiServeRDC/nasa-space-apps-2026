@@ -10,6 +10,7 @@
 
 pub mod anomaly_injection;
 pub mod bidmc_replayer;
+pub mod hardware_adapter;
 pub mod radar_csi_dsp;
 pub mod scenario_overlay;
 pub mod sqi_filter;
@@ -19,6 +20,7 @@ pub mod wearable_packet;
 
 pub use anomaly_injection::{AnomalyInjection, InjectedAnomalyKind, InjectionProfile};
 pub use bidmc_replayer::{BidmcNumericRow, BidmcReplayer, IngestError};
+pub use hardware_adapter::*;
 pub use radar_csi_dsp::{
     BiquadSos, DspError, RADAR_DECIMATED_HZ, RADAR_RING_LEN, RadarCarrierBand, RadarCsiConfig,
     RadarCsiProcessor, RadarVitalEstimate, SPEED_OF_LIGHT_M_S,

@@ -26,9 +26,13 @@ pub mod warm_lancedb;
 pub mod warm_trait;
 
 pub use cold_aead_archive::{
-    COLD_HEADER_BYTES, ColdChunkHeader, ColdSealResult, ColdTierArchiver, OpenedColdChunk,
+    COLD_FORMAT_VERSION_LEGACY_V1, COLD_FORMAT_VERSION_V2, COLD_HEADER_BYTES, ColdChunkHeader,
+    ColdSealResult, ColdTierArchiver, OpenedColdChunk,
 };
-pub use config::{LsahStorageConfig, atomic_write_bytes, compute_crc32c, validate_airgapped_lsah_dir};
+pub use config::{
+    CrcAlgorithmUsed, LsahStorageConfig, atomic_write_bytes, compute_crc32c,
+    validate_airgapped_lsah_dir, verify_crc32c_with_v1_ieee_fallback,
+};
 pub use dsn_outbox::{DsnDownlinkOutbox, DsnPriorityTier, OutboxDescriptor};
 pub use error::LsahStorageError;
 pub use flusher::{AsyncWarmBatchFlusherHandle, flush_staging_synchronously};
@@ -53,7 +57,10 @@ pub use schema::{
     lsah_pocus_signatures_schema, lsah_telemetry_schema, pocus_records_to_record_batch,
     slots_to_record_batch,
 };
-pub use warm_arrow_ipc::{ArrowIpcZstdHnswBackend, WarmRecoveryReport};
+pub use warm_arrow_ipc::{
+    ArrowIpcZstdHnswBackend, WARM_MANIFEST_FORMAT_VERSION_LEGACY_V1,
+    WARM_MANIFEST_FORMAT_VERSION_V2, WarmRecoveryReport,
+};
 pub use warm_lancedb::LANCEDB_WARM_COMPILED;
 pub use warm_trait::{
     PocusSimilarityHit, PocusSimilarityQuery, WarmColumnarVectorBackend, WarmSegmentMeta,
@@ -407,5 +414,138 @@ impl LsahStorageEngine {
         action: &str,
     ) -> Result<ares_core_types::security::AuditChainRecord, LsahStorageError> {
         Ok(self.audit_logger.append_audit_event(role, action)?)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cold_aead_archive::{COLD_CODEC_ARROW_IPC_ZSTD_L6, COLD_MAGIC};
+    use crate::config::{compute_storage_crc32_ieee, compute_storage_crc32c_castagnoli};
+    use crate::hot_ring::{VALID_HR_BPM, VALID_PULSE_BPM, VALID_RESP_RPM, VALID_SPO2_PCT};
+    use std::fs;
+    use tempfile::TempDir;
+
+    fn make_slot(seq: u64, sol: u16) -> HotLsahSlot {
+        let mut s = HotLsahSlot::zeroed();
+        s.sequence_id = seq;
+        s.timestamp_unix_ms = 1_760_000_000_000 + (seq as i64) * 1_000;
+        s.mission_sol = sol;
+        s.set_crew_id("ARES-CDR-01");
+        s.hr_bpm = 72.0;
+        s.pulse_bpm = 71.5;
+        s.resp_rpm = 14.0;
+        s.spo2_pct = 98.5;
+        s.validity_mask = VALID_HR_BPM | VALID_PULSE_BPM | VALID_RESP_RPM | VALID_SPO2_PCT;
+        s.update_crc32c();
+        s
+    }
+
+    #[test]
+    fn castagnoli_v2_and_v1_ieee_fallback_verification() {
+        let data = b"123456789";
+        let castagnoli = compute_storage_crc32c_castagnoli(data);
+        let ieee = compute_storage_crc32_ieee(data);
+        assert_eq!(castagnoli, 0xE306_9283);
+        assert_eq!(ieee, 0xCBF4_3926);
+        assert_eq!(compute_crc32c(data), castagnoli);
+
+        assert_eq!(
+            verify_crc32c_with_v1_ieee_fallback(data, castagnoli, false).expect("v2 ok"),
+            CrcAlgorithmUsed::CastagnoliV2
+        );
+        assert!(verify_crc32c_with_v1_ieee_fallback(data, ieee, false).is_err());
+        assert_eq!(
+            verify_crc32c_with_v1_ieee_fallback(data, ieee, true).expect("v1 fallback ok"),
+            CrcAlgorithmUsed::LegacyIeeeV1
+        );
+        assert!(verify_crc32c_with_v1_ieee_fallback(data, 0xDEAD_BEEF, true).is_err());
+    }
+
+    #[test]
+    fn cold_chunk_and_watermark_v2_strict_and_v1_legacy_fallback() {
+        let nonce = ColdChunkHeader::build_deterministic_nonce(1, 3, 42);
+        let mut v2 = ColdChunkHeader {
+            magic: *COLD_MAGIC,
+            format_version: u16::from(COLD_FORMAT_VERSION_V2),
+            compression_codec: COLD_CODEC_ARROW_IPC_ZSTD_L6,
+            key_epoch_id: 1,
+            mission_sol: 3,
+            chunk_seq: 42,
+            nonce_96: nonce,
+            audit_seq: 1,
+            audit_chain_hash_ascii: [b'a'; 64],
+            uncompressed_arrow_bytes: 100,
+            ciphertext_plus_tag_bytes: 64,
+            row_count: 5,
+            created_unix_ms: 1_760_000_000_000,
+            header_crc32c: 0,
+        };
+        let mut raw_v2 = v2.to_bytes();
+        assert!(ColdChunkHeader::from_bytes(&raw_v2).is_ok());
+
+        // v2 must reject IEEE CRC
+        let ieee_v2 = compute_storage_crc32_ieee(&raw_v2[0..140]);
+        raw_v2[140..144].copy_from_slice(&ieee_v2.to_le_bytes());
+        assert!(ColdChunkHeader::from_bytes(&raw_v2).is_err());
+
+        // v1 header with IEEE CRC must be accepted, while corrupt CRC is rejected
+        let mut raw_v1 = v2.to_bytes();
+        raw_v1[8..10].copy_from_slice(&u16::from(COLD_FORMAT_VERSION_LEGACY_V1).to_le_bytes());
+        let ieee_v1 = compute_storage_crc32_ieee(&raw_v1[0..140]);
+        raw_v1[140..144].copy_from_slice(&ieee_v1.to_le_bytes());
+        let parsed_v1 = ColdChunkHeader::from_bytes(&raw_v1).expect("v1 legacy header ok");
+        assert_eq!(parsed_v1.format_version, u16::from(COLD_FORMAT_VERSION_LEGACY_V1));
+
+        raw_v1[140..144].copy_from_slice(&0xDEAD_BEEFu32.to_le_bytes());
+        assert!(ColdChunkHeader::from_bytes(&raw_v1).is_err());
+
+        // v1 cold_watermark.json (without `version`) with IEEE CRC loads cleanly
+        let tmp = TempDir::new().expect("tempdir");
+        let cold_dir = tmp.path().join("cold");
+        fs::create_dir_all(&cold_dir).expect("create cold dir");
+        let wm_payload = r#"{"key_epoch_id":1,"highest_sealed_chunk_seq":7}"#;
+        let wm_crc = compute_storage_crc32_ieee(wm_payload.as_bytes());
+        let wm_json = format!(r#"{{"payload":{wm_payload},"crc32c":{wm_crc}}}"#);
+        fs::write(cold_dir.join("cold_watermark.json"), wm_json).expect("write v1 watermark");
+
+        let archiver = ColdTierArchiver::open(tmp.path(), 1, 6).expect("open v1 watermark");
+        assert_eq!(archiver.highest_sealed_chunk_seq(), 7);
+    }
+
+    #[test]
+    fn warm_v2_manifest_orphan_gc_and_v1_upgrade() {
+        let tmp = TempDir::new().expect("tempdir");
+        let cfg = LsahStorageConfig::with_root_dir(tmp.path());
+        let backend = ArrowIpcZstdHnswBackend::open(&cfg).expect("open warm");
+        let batch = slots_to_record_batch(&[make_slot(1, 1)]).expect("batch");
+        backend.append_telemetry_batch(&batch).expect("append");
+        drop(backend);
+
+        // Verify v2 manifest fields on disk
+        let manifest_path = tmp.path().join("MANIFEST.lsah.json");
+        let manifest_str = fs::read_to_string(&manifest_path).expect("read manifest");
+        let v: serde_json::Value = serde_json::from_str(&manifest_str).expect("parse manifest");
+        assert_eq!(
+            v.get("format_version").and_then(|x| x.as_u64()),
+            Some(u64::from(WARM_MANIFEST_FORMAT_VERSION_V2))
+        );
+        assert!(v.get("canonical_entries_json").and_then(|x| x.as_str()).is_some());
+
+        // Plant orphaned segment and stale .tmp file in warm_dir
+        let warm_dir = tmp.path().join("warm").join("arrow_ipc");
+        let orphan_path = warm_dir.join("sol_0099_seg_00000099.arrow.zst");
+        let tmp_path = warm_dir.join("sol_0099_seg_00000099.arrow.zst.tmp");
+        fs::write(&orphan_path, b"orphan").expect("write orphan");
+        fs::write(&tmp_path, b"stale_tmp").expect("write tmp");
+
+        let (backend2, report) =
+            ArrowIpcZstdHnswBackend::open_with_report(&cfg).expect("reopen with orphan gc");
+        assert_eq!(report.valid_segments_recovered, 1);
+        assert_eq!(report.orphaned_segments_reclaimed, 1);
+        assert_eq!(report.purged_tmp_files.len(), 1);
+        assert!(!orphan_path.exists());
+        assert!(!tmp_path.exists());
+        assert_eq!(backend2.committed_segments().len(), 1);
     }
 }

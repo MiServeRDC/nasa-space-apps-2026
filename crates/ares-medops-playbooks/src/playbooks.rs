@@ -1,6 +1,7 @@
 //! Fase 10 (E1) & Fase 41 (N4): Esecutore deterministico Type-1 Crystallized dei 15 Playbook MedOps (#01-#15).
 
 use crate::pocus_multiorgan::{PocusEfastScan, PocusRenalBladderScan};
+use ares_core_types::constants::{ECLSS_PPCO2_ACTION_LIMIT_MMHG, MAX_SAFE_CABIN_PPCO2_MMHG};
 use ares_core_types::telemetry::{
     ActivePlaybook, Biometrics, CountermeasureAction, JugularHemodynamics, Musculoskeletal,
     NqsStlMargins, SafetyGates,
@@ -113,7 +114,7 @@ pub fn select_candidate_playbook_ext(
                 CountermeasureAction {
                     action_id: "ACT_ANTICOAG_ENOXAPARIN".to_string(),
                     label: "Initiate weight-adjusted Enoxaparin / Apixaban (POCUS thrombus verified)".to_string(),
-                    category: "PHARMACOLOGICAL_UNLOCKED".to_string(),
+                    category: "PHARMACOLOGICAL_ANTICOAGULANT".to_string(),
                     delta_rho_per_hour: 0.22,
                 },
                 CountermeasureAction {
@@ -164,8 +165,18 @@ pub fn select_candidate_playbook_ext(
         };
     }
 
-    // 3C: Ipercapnia Ambientale Cabin ppCO2 > 3.0 mmHg (#14)
-    if biometrics.helmet_ppco2_mmhg.is_some_and(|co2| co2 > 3.0) {
+    // 3C: Ipercapnia Ambientale Cabin/Helmet ppCO2 (#14)
+    let effective_ppco2 = biometrics
+        .cabin_ppco2_mmhg
+        .into_iter()
+        .chain(biometrics.helmet_ppco2_mmhg)
+        .fold(None::<f64>, |acc, v| Some(acc.map_or(v, |a| a.max(v))));
+    // Tier 2 (> 4.0 mmHg) triggers immediate scrubber override regardless of SANS;
+    // Tier 1 (> 3.0 mmHg) triggers when SANS is elevated (sans_risk_index > 0.35 <=> rho_sans < 0.64).
+    let sans_elevated = nqs.rho_sans < 0.64;
+    if effective_ppco2.is_some_and(|co2| co2 > ECLSS_PPCO2_ACTION_LIMIT_MMHG)
+        || (effective_ppco2.is_some_and(|co2| co2 > MAX_SAFE_CABIN_PPCO2_MMHG) && sans_elevated)
+    {
         return ActivePlaybook {
             playbook_id: "PLAYBOOK_14_CO2_SCRUBBER_SANS".to_string(),
             title: "Playbook #14: Cabin ppCO2 Hypercapnia Scrubbing & Ocular Vasodilation Mitigation".to_string(),
@@ -752,9 +763,21 @@ mod tests {
         );
         assert_eq!(pb10.playbook_id, "PLAYBOOK_10_RENAL_LITHIASIS");
 
-        // Test Playbook #14 on cabin CO2 > 3.0 mmHg
-        let bio_co2 = Biometrics {
+        // Test Playbook #14 Tier 1 (> 3.0 mmHg + elevated SANS) and Tier 2 (> 4.0 mmHg override)
+        let bio_co2_tier1 = Biometrics {
+            cabin_ppco2_mmhg: Some(2.2),
             helmet_ppco2_mmhg: Some(3.8),
+            ..bio_nom.clone()
+        };
+        let nqs_sans_elevated = sample_nqs(0.75, 0.55);
+        let pb14_tier1 = select_candidate_playbook_ext(
+            &bio_co2_tier1, &musc, &jug, &nqs_sans_elevated, vec![], None, None, None, 0, None, None,
+        );
+        assert_eq!(pb14_tier1.playbook_id, "PLAYBOOK_14_CO2_SCRUBBER_SANS");
+
+        let bio_co2 = Biometrics {
+            cabin_ppco2_mmhg: Some(2.2),
+            helmet_ppco2_mmhg: Some(4.2),
             ..bio_nom.clone()
         };
         let pb14 = select_candidate_playbook_ext(
