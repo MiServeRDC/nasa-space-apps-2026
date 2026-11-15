@@ -3,7 +3,7 @@
 Date: 2026-11-15. Initial baseline main 56b888d; integrated subsequent UX update
 aea748b without conflicts and repeated frontend/live checks. Branch release/judges-handoff.
 **Status: native software preparation verified; public online delivery is not yet
-qualified or published.** The user declined slides and deferred the video.
+qualified or published.** The user declined slides and deferred recording the submission video. Earlier draft video/audio exports have been removed from the judging repository; internal storyboard and scripts remain available for the later recording.
 
 ## Repository-first handoff update
 
@@ -37,7 +37,7 @@ before submitting that URL. No public deployment or visibility change is implied
   It refuses to overwrite a bundle and does not include development runtimes.
 - English reviewer walkthrough and submission copy now distinguish replay, scenario
   models, NASA research context, actual BIDMC data and unqualified functionality.
-  No slide or replacement video was generated.
+  No slide or replacement video was generated. Earlier draft video and voice-over binaries were removed from the repository at the user’s request.
 - Generic Docker/Caddy/compose templates are supplied; they are not a tested Linux
   deployment. Container data recording is off and the local example binds only
   127.0.0.1 externally. No hosted Actions, paid services or public visibility changes.
