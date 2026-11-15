@@ -1,5 +1,12 @@
 # Active Context: ARES-Health (NASA Space Apps Challenge 2026)
 
+## Scrollytelling Editorial Typography & Spatial Grid Rebalancing on `work/MiServeRDC-greenfield-phase01` (2026-11-15)
+
+Refactored `ares-cockpit/src/scrollytelling/StoryShell.tsx` to eliminate left-column typographic compression across all 5 narrative chapters:
+1. **Chapter 01 (Hero & Vitals Anchor):** Removed hardcoded `<br />` break, centered and widened editorial headline container to `max-w-5xl` (`text-4xl md:text-6xl lg:text-7xl font-light tracking-tight leading-[1.08] text-balance`), widened subtitle to `max-w-3xl`, widened and centered the 3-card tabular vitals grid to `w-full max-w-5xl mx-auto` (`gap-5 lg:gap-6`), rounded floating-point HR telemetry cleanly (`Math.round`), and centered the scroll cue.
+2. **Chapters 02–05 (Cardio, Explorer, Musculoskeletal, Clinical Safety Gates):** Widened and centered section headers from `max-w-xl` to `w-full max-w-4xl mx-auto text-center` (`h2` at `text-3xl md:text-4xl lg:text-5xl`, lead copy at `max-w-3xl`), balanced clinical Bento grids (`gap-6 lg:gap-8 xl:gap-10 items-stretch`, `min-w-0` overflow guards), and prevented 44px top header wrap/clip across `1024px` and `1440px` viewports.
+3. **Verification:** `npm run lint` (`0` errors), `npm test` (`190/190` passing), `npm run build` (`0` warnings), `./scripts/agent_probe.sh --fast` (`4/4` passing), strictly zero emojis.
+
 ## Aerospace 360 Phase 1 & Phase 2 + P0/P1 Runtime Hardening Integrated on `main` (`97aeea5`, 2026-11-15)
 
 Integrated the complete Aerospace 360 architecture and P0/P1 runtime fixes across the 9 Safe Rust crates (`#323` passing workspace tests across `34` active suites, `0` Clippy warnings, `0` `.unwrap()`/`.expect()` in production, `#![forbid(unsafe_code)]`, `ModelValidationStatus::IllustrativeUnvalidated` epistemic honesty preserved):

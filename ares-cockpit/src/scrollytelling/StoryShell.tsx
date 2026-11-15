@@ -414,7 +414,7 @@ export function StoryShell({
             </div>
 
             {/* Right Column: Cabin ECLSS & Radiation Environmental Gate */}
-            <div className="flex flex-col">
+            <div className="min-w-0 flex flex-col">
               <div className="h-full rounded-xl border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-5 lg:p-6 flex flex-col justify-between gap-5">
                 <div className="space-y-4">
                   <div className="text-xs font-mono text-[#38bdf8] font-bold">
@@ -475,7 +475,7 @@ export function StoryShell({
         {/* ========================================================================= */}
         <section
           id="chapter-2"
-          className="min-h-screen py-24 px-6 sm:px-8 lg:px-12 max-w-7xl mx-auto flex flex-col justify-center"
+          className="min-h-screen py-24 px-5 sm:px-8 lg:px-12 max-w-7xl mx-auto flex flex-col justify-center"
         >
           <div className="w-full max-w-4xl mx-auto text-center space-y-3 mb-10">
             <div className="text-xs font-mono text-[#38bdf8] uppercase tracking-[0.2em]">
@@ -492,7 +492,7 @@ export function StoryShell({
 
           <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 items-stretch">
             {/* Layer Toggles & Sex Switcher */}
-            <div className="rounded-xl border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-5 lg:p-6 flex flex-col justify-between gap-4">
+            <div className="min-w-0 rounded-xl border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-5 lg:p-6 flex flex-col justify-between gap-4">
               <div className="space-y-4">
                 <span className="text-xs font-mono text-[#38bdf8] font-bold flex items-center gap-2">
                   <Layers className="w-4 h-4" />
@@ -558,7 +558,7 @@ export function StoryShell({
             </div>
 
             {/* Center: Neuro-Ocular SANS Monitor */}
-            <div className="rounded-xl border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-5 lg:p-6 flex flex-col justify-between gap-4">
+            <div className="min-w-0 rounded-xl border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-5 lg:p-6 flex flex-col justify-between gap-4">
               <div className="space-y-3">
                 <span className="text-xs font-mono text-[#38bdf8] font-bold flex items-center gap-2">
                   <Cpu className="w-4 h-4" />
@@ -582,7 +582,7 @@ export function StoryShell({
             </div>
 
             {/* Right: Trauma & Injury Scanner */}
-            <div className="md:col-span-2 lg:col-span-1 rounded-xl border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-5 lg:p-6 flex flex-col justify-between gap-4">
+            <div className="min-w-0 md:col-span-2 lg:col-span-1 rounded-xl border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-5 lg:p-6 flex flex-col justify-between gap-4">
               <div className="space-y-3">
                 <span className="text-xs font-mono text-[#38bdf8] font-bold flex items-center gap-2">
                   <ShieldAlert className="w-4 h-4" />
@@ -613,7 +613,7 @@ export function StoryShell({
         {/* ========================================================================= */}
         <section
           id="chapter-3"
-          className="min-h-screen py-24 px-6 sm:px-8 lg:px-12 max-w-7xl mx-auto flex flex-col justify-center"
+          className="min-h-screen py-24 px-5 sm:px-8 lg:px-12 max-w-7xl mx-auto flex flex-col justify-center"
         >
           <div className="w-full max-w-4xl mx-auto text-center space-y-3 mb-10">
             <div className="text-xs font-mono text-[#38bdf8] uppercase tracking-[0.2em]">
@@ -631,8 +631,8 @@ export function StoryShell({
 
           <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 xl:gap-10 items-stretch">
             {/* Left: 14-Day STL Chart & Quantile Cones */}
-            <div className="flex flex-col gap-5">
-              <div className="rounded-xl border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-5">
+            <div className="min-w-0 flex flex-col gap-5">
+              <div className="rounded-xl border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-5 overflow-hidden">
                 <div className="text-xs font-mono text-[#38bdf8] font-bold mb-2">
                   14-DAY ROBUST PREDICTION (SIGNAL TEMPORAL LOGIC)
                 </div>
@@ -643,13 +643,13 @@ export function StoryShell({
                 />
               </div>
 
-              <div className="rounded-xl border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-5">
+              <div className="rounded-xl border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-5 overflow-hidden">
                 <TimestralQuantileConePanel packet={packet} />
               </div>
             </div>
 
             {/* Right: Mechanostat Cascade & Interactive What-If ARED Slider */}
-            <div className="flex flex-col">
+            <div className="min-w-0 flex flex-col">
               <div className="h-full rounded-xl border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-5 lg:p-6 flex flex-col justify-between gap-5">
                 <div className="space-y-4">
                   <div className="text-xs font-mono text-[#38bdf8] font-bold">
@@ -710,7 +710,7 @@ export function StoryShell({
         {/* ========================================================================= */}
         <section
           id="chapter-4"
-          className="min-h-screen py-24 px-6 sm:px-8 lg:px-12 max-w-7xl mx-auto flex flex-col justify-between"
+          className="min-h-screen py-24 px-5 sm:px-8 lg:px-12 max-w-7xl mx-auto flex flex-col justify-between"
         >
           <div className="w-full max-w-4xl mx-auto text-center space-y-3 mb-10">
             <div className="text-xs font-mono text-[#38bdf8] uppercase tracking-[0.2em]">
@@ -728,7 +728,7 @@ export function StoryShell({
           <div className="w-full space-y-6 lg:space-y-8">
             {/* Safety Gates 1..7 Matrix */}
             <div className="rounded-xl border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-5 lg:p-6 space-y-4">
-              <div className="flex items-center justify-between text-xs font-mono">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
                 <span className="text-[#38bdf8] font-bold">HARDWARE CLINICAL SAFETY INTERLOCKS (GATES 1..7)</span>
                 <span className="text-[#64748b]">AEROSPACE 360 CERTIFIED</span>
               </div>
@@ -737,7 +737,7 @@ export function StoryShell({
                 {resolvedSafety?.dag.gates1To7Matrix.map((gate) => (
                   <div
                     key={gate.code}
-                    className={`p-3 rounded-lg border flex flex-col justify-between gap-1.5 ${
+                    className={`min-w-0 p-3 rounded-lg border flex flex-col justify-between gap-1.5 ${
                       gate.status === 'LOCKED'
                         ? 'border-[#f43f5e]/60 bg-[#f43f5e]/10 text-[#f43f5e]'
                         : gate.status === 'TRIGGERED'
@@ -748,9 +748,9 @@ export function StoryShell({
                     <div className="flex items-center justify-between">
                       <span className="font-bold">GATE {gate.pillCode}</span>
                       {gate.status === 'LOCKED' ? (
-                        <Lock className="w-3 h-3" />
+                        <Lock className="w-3 h-3 shrink-0" />
                       ) : (
-                        <CheckCircle2 className="w-3 h-3" />
+                        <CheckCircle2 className="w-3 h-3 shrink-0" />
                       )}
                     </div>
                     <div className="font-medium text-[9px] truncate">{gate.shortLabel}</div>
@@ -762,7 +762,7 @@ export function StoryShell({
 
             {/* Active Playbook Recommendation & Hold-To-Confirm Button */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
-              <div className="rounded-xl border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-5 lg:p-6 flex flex-col justify-between gap-4">
+              <div className="min-w-0 rounded-xl border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-5 lg:p-6 flex flex-col justify-between gap-4">
                 <div className="space-y-3">
                   <span className="text-xs font-mono text-[#38bdf8] font-bold">
                     RECOMMENDED MEDOPS PLAYBOOK

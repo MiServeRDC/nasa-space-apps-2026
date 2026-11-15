@@ -1,5 +1,10 @@
 # Progress Tracking: ARES-Health (Autonomous Resilient Edge-native System for Astronaut Health)
 
+## Scrollytelling Editorial Typography & Spatial Grid Rebalancing (2026-11-15) [COMPLETED (TESTED) — 190/190 Cockpit Tests]
+
+- [x] **Hero Typography & Vitals Stage (`StoryShell.tsx`, Chapter 01):** Removed forced `<br />`, widened display title to `max-w-5xl` (`text-4xl md:text-6xl lg:text-7xl font-light tracking-tight`), widened explanatory subtitle to `max-w-3xl`, widened and centered the 3-column vitals anchor to `w-full max-w-5xl mx-auto`, and fixed floating-point HR display rounding.
+- [x] **Chapters 02–05 Headers & Clinical Module Grids (`StoryShell.tsx`):** Widened chapter headers from `max-w-xl` to `w-full max-w-4xl mx-auto text-center` (`max-w-3xl` subtitles), harmonized 2-column/3-column/7-gate clinical grids with `min-w-0` bounds and balanced heights over the 3D stage, and verified `190/190` frontend tests, clean Vite build, and `4/4` fast probe.
+
 ## Aerospace 360 Phase 1 & Phase 2 + P0/P1 Hardening (2026-11-15) [COMPLETED (TESTED) — 323/323 Rust Workspace Tests]
 
 - [x] **P0/P1 Runtime Hardening (Phase 1):**
