@@ -5,12 +5,15 @@ use ares_core_types::binary_ipc::{
     BinaryTelemetryFrame, DEONTIC_EIMO_AUTONOMOUS, DEONTIC_EVA_FORBIDDEN,
     DEONTIC_SHELTER_MANDATORY, DEONTIC_VIOLATES_POLICY, FLAG_BEAT_INTERVALS_NOT_AVAILABLE,
     FLAG_CHANNEL_NAN_DROPOUT, FLAG_GATE1_ANTICOAG_LOCK, FLAG_GATE2_LBNP_VENT,
-    FLAG_GATE3_EVA_DAMPING, FLAG_ILLUSTRATIVE_UNVALIDATED, FLAG_LBNP_ACTIVE,
+    FLAG_GATE3_EVA_DAMPING, FLAG_GATE5_PHARMA_LOCK, FLAG_GATE6_RADIATION_INVASIVE_LOCK,
+    FLAG_GATE7_BMED_DELIRIUM_GUARD, FLAG_ILLUSTRATIVE_UNVALIDATED, FLAG_LBNP_ACTIVE,
     FLAG_SEU_RECOVERY_ACTIVE, FLAG_WHAT_IF_ACTIVE, MASK_HR_BPM, MASK_IJV_SHEAR_PA, MASK_MRI_SCORE,
     MASK_OWLT_DELAY_SEC, MASK_PULSE_BPM, MASK_RADIATION_MSV_D, MASK_RESP_BRPM, MASK_RMSSD_MS,
     MASK_SANS_RISK, MASK_SOST_PG_ML, MASK_SPO2_PCT, PARTITION_ALL_NOMINAL, compute_crc32c,
+    playbook_id_from_u16, playbook_id_to_u16,
 };
 use ares_core_types::constants::MAX_MCP_CONTEXT_MODE_BYTES;
+use ares_core_types::medical_360::{AerospaceMedical360State, ExtendedSafetyGates};
 use ares_core_types::telemetry::{
     ActivePlaybook, AlertSeverity, Biometrics, BiometricsSource, CountermeasureAction,
     HrvUnavailableReason, JugularFlowGrade, JugularHemodynamics, ModelValidationStatus,
@@ -759,5 +762,137 @@ fn test_phase_27_k3_workstation_shell_full_stack_seqlock_stress_test_fastmcp_and
     assert!(
         shell.mission.dataset_graph.time_window_slice_nodes().len() >= 27,
         "expected >= 27 BIDMC slice nodes"
+    );
+}
+
+#[test]
+fn test_phase_27_k3_playbooks_16_to_30_and_extended_safety_gates_14_to_16_parity() {
+    let mut encoded_cases = Vec::new();
+    for code in 16_u16..=30_u16 {
+        let pb_id = playbook_id_from_u16(code).expect("playbook 16..=30 must resolve");
+        assert_eq!(playbook_id_to_u16(pb_id), code);
+
+        let mut pkt = build_telemetry_packet(
+            false,
+            Some(96.0),
+            1.2,
+            true,
+            AlertSeverity::Warning,
+            pb_id,
+        );
+        let gate5 = (code % 2) == 0;
+        let gate6 = (code % 3) == 0;
+        let gate7 = (code % 5) == 0 || code == 29;
+        pkt.aerospace_360 = Some(AerospaceMedical360State {
+            extended_safety_gates: ExtendedSafetyGates {
+                gate5_nsaid_renal_bleeding_locked: gate5,
+                gate5_allergy_or_qtc_locked: false,
+                gate5_formulary_substitution_active: false,
+                gate6_radiation_neutropenic_invasive_locked: gate6,
+                gate7_bmed_delirium_or_restraint_guard_active: gate7,
+            },
+            ..AerospaceMedical360State::default()
+        });
+
+        let frame = BinaryTelemetryFrame::from_telemetry_packet(
+            &pkt,
+            None,
+            BinaryFrameMeta {
+                seq: u64::from(code),
+                timestamp_ms: 1_794_657_700_000 + u64::from(code),
+                partition_status: PARTITION_ALL_NOMINAL,
+                deontic_habitat_mask: (HabitatZoneId::MedOpsUltrasoundBay as u8)
+                    | DEONTIC_EIMO_AUTONOMOUS,
+                crs_score: Some(0.45),
+                owlt_delay_sec: 852.0,
+                ipc_latency_ns: 950,
+                conformal_abstained: false,
+                seu_recovery_active: false,
+                include_derived_models: true,
+            },
+        );
+        assert_eq!(frame.active_playbook_id, code);
+        assert_eq!(
+            (frame.quality_flags_mask & FLAG_GATE5_PHARMA_LOCK) != 0,
+            gate5,
+            "code {code} gate5 bit 14"
+        );
+        assert_eq!(
+            (frame.quality_flags_mask & FLAG_GATE6_RADIATION_INVASIVE_LOCK) != 0,
+            gate6,
+            "code {code} gate6 bit 15"
+        );
+        assert_eq!(
+            (frame.quality_flags_mask & FLAG_GATE7_BMED_DELIRIUM_GUARD) != 0,
+            gate7,
+            "code {code} gate7 bit 16"
+        );
+
+        let bytes = frame
+            .to_le_bytes()
+            .iter()
+            .map(|b| usize::from(*b))
+            .collect::<Vec<usize>>();
+        encoded_cases.push(json!({
+            "code": code,
+            "playbook_id": pb_id,
+            "gate5": gate5,
+            "gate6": gate6,
+            "gate7": gate7,
+            "bytes": bytes,
+        }));
+    }
+
+    let payload_json = serde_json::to_string(&encoded_cases).expect("serialize 16..=30 cases");
+    let ts_script = r#"
+import { strict as assert } from 'node:assert';
+import {
+  BINARY_PLAYBOOK_DEFAULTS,
+  FLAG_GATE5_PHARMA_LOCK,
+  FLAG_GATE6_RADIATION_INVASIVE_LOCK,
+  FLAG_GATE7_BMED_DELIRIUM_GUARD,
+  PLAYBOOK_ID_BY_CODE,
+  decodeBinaryTelemetryFrame,
+} from './ares-cockpit/src/lib/binaryTelemetryDecoder.ts';
+
+assert.equal(FLAG_GATE5_PHARMA_LOCK, 1 << 14);
+assert.equal(FLAG_GATE6_RADIATION_INVASIVE_LOCK, 1 << 15);
+assert.equal(FLAG_GATE7_BMED_DELIRIUM_GUARD, 1 << 16);
+
+const cases = JSON.parse(process.argv[1]);
+assert.equal(cases.length, 15);
+
+for (const item of cases) {
+  const bytes = Uint8Array.from(item.bytes);
+  const decoded = decodeBinaryTelemetryFrame(bytes);
+  assert.ok(decoded !== null, `code ${item.code} failed to decode`);
+  assert.equal(decoded.active_playbook_id, item.code);
+  assert.equal(PLAYBOOK_ID_BY_CODE[item.code], item.playbook_id);
+  const meta = BINARY_PLAYBOOK_DEFAULTS[item.code];
+  assert.ok(meta !== undefined, `BINARY_PLAYBOOK_DEFAULTS missing code ${item.code}`);
+  assert.equal(meta.playbook_id, item.playbook_id);
+  assert.ok(meta.actions.length > 0, `code ${item.code} must have default actions`);
+  assert.equal(decoded.gate5_pharma_lock, item.gate5, `code ${item.code} gate5`);
+  assert.equal(decoded.gate6_radiation_invasive_lock, item.gate6, `code ${item.code} gate6`);
+  assert.equal(decoded.gate7_bmed_delirium_guard, item.gate7, `code ${item.code} gate7`);
+}
+"#;
+
+    let out = Command::new("node")
+        .current_dir(repo_root())
+        .arg("--experimental-strip-types")
+        .arg("--input-type=module")
+        .arg("-e")
+        .arg(ts_script)
+        .arg(&payload_json)
+        .output()
+        .expect("execute node --experimental-strip-types 16..=30 parity check");
+
+    assert!(
+        out.status.success(),
+        "Node TS 16..=30 parity script failed (status={}):\nstdout={}\nstderr={}",
+        out.status,
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
     );
 }

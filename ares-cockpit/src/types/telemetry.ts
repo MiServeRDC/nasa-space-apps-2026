@@ -69,6 +69,25 @@ export type CrystallizedPlaybookId =
   | 'PLAYBOOK_14_CO2_SCRUBBER_SANS'
   | 'PLAYBOOK_15_EFAST_TRAUMA_TRIAGE';
 
+export type Aerospace360PlaybookId =
+  | 'PLAYBOOK_16_SEPSIS_SEPTIC_SHOCK'
+  | 'PLAYBOOK_17_HEMORRHAGIC_TRAUMA_TXA'
+  | 'PLAYBOOK_18_TORSO_SHOCK_PERICARDIOCENTESIS'
+  | 'PLAYBOOK_19_CONSERVATIVE_ACUTE_ABDOMEN_0G'
+  | 'PLAYBOOK_20_EVA_MUSCULOSKELETAL_SPINE_FRACTURE'
+  | 'PLAYBOOK_21_DENTAL_MAXILLOFACIAL_EMERGENCY'
+  | 'PLAYBOOK_22_OCULAR_FOREIGN_BODY_CHEMICAL_BURN'
+  | 'PLAYBOOK_23_ANAPHYLAXIS_AIRWAY_EMERGENCY'
+  | 'PLAYBOOK_24_MICROGRAVITY_CARDIAC_ARREST_CPR'
+  | 'PLAYBOOK_25_ACUTE_URINARY_RETENTION_POCUS'
+  | 'PLAYBOOK_26_ACUTE_RADIATION_SYNDROME'
+  | 'PLAYBOOK_27_AEROSPACE_TOXICOLOGY_EXPOSURE'
+  | 'PLAYBOOK_28_EVA_DCS_AND_SUIT_EMERGENCY'
+  | 'PLAYBOOK_29_BMED_PSYCHIATRIC_CRISIS'
+  | 'PLAYBOOK_30_FEMALE_PELVIC_UROGYN_POCUS';
+
+export type PlaybookId = CrystallizedPlaybookId | Aerospace360PlaybookId;
+
 export type AnomalyStatus = 'NORMAL' | 'ATTENTION' | 'ALARM';
 
 export type AnomalyDetectorKind =
@@ -335,6 +354,148 @@ export interface HypergraphSpatialSummary {
   biokg_clause?: string | null;
 }
 
+export type BiologicalSex = 'Male' | 'Female';
+
+export type ContraceptiveRegimen =
+  | 'None'
+  | 'CombinedEthinylestradiolCoc'
+  | 'ProgestinOnlyOral'
+  | 'LevonorgestrelIud'
+  | 'SubdermalImplant';
+
+export interface CrewBiologicalProfile {
+  biological_sex: BiologicalSex;
+  age_years: number;
+  body_mass_kg: number;
+  height_cm: number;
+  baseline_hematocrit_pct: number | null;
+  baseline_hemoglobin_g_dl: number | null;
+  contraceptive_regimen: ContraceptiveRegimen;
+  drug_allergies: string[];
+  g6pd_deficient: boolean;
+  baseline_qtc_ms: number | null;
+}
+
+export interface LbnpBaselineState {
+  pre_lbnp_sbp_baseline_mmhg: number;
+  pre_lbnp_hr_baseline_bpm: number;
+  captured_at_timestamp_ms: number;
+}
+
+export interface EclssCoupledSummary {
+  max_ppco2_mmhg: number;
+  cabin_ppco2_mmhg: number | null;
+  helmet_ppco2_mmhg: number | null;
+  affected_crew_count: number;
+  root_cause_label: string;
+  scrubber_override_active: boolean;
+  emergency_pba_o2_mask_required: boolean;
+  validation_status: ModelValidationStatus;
+}
+
+export interface RadiationArsState {
+  cumulative_mission_dose_msv: number;
+  estimated_acute_bfo_dose_gy: number;
+  predicted_anc_k_ul: number;
+  predicted_plt_k_ul: number;
+  severe_neutropenia: boolean;
+  febrile_neutropenia_emergency: boolean;
+  filgrastim_indicated: boolean;
+  sex_age_reid_multiplier: number;
+  days_post_spe: number;
+  validation_status: ModelValidationStatus;
+}
+
+export interface AcuteEmergencyState {
+  shock_index: number | null;
+  pulseless_cardiac_arrest: boolean;
+  anaphylaxis_suspected: boolean;
+  active_arterial_hemorrhage: boolean;
+  injury_hours_elapsed: number | null;
+  acute_abdomen_nom_suspected: boolean;
+  dental_ludwigs_angina_threat: boolean;
+  ocular_chemical_or_fb_injury: boolean;
+  seidel_perforation_positive: boolean;
+  eva_musculoskeletal_trauma: boolean;
+  acute_urinary_retention_ml: number | null;
+  pelvic_emergency_flag: boolean;
+  active_acute_playbook_code: number | null;
+  validation_status: ModelValidationStatus;
+}
+
+export interface ToxicologyDcsState {
+  nh3_ppm: number;
+  mmh_ppm: number;
+  no2_ppm: number;
+  co_ppm: number;
+  hcn_ppm: number;
+  hcl_ppm: number;
+  methemoglobin_pct: number;
+  perchlorate_exposure_mg_kg_d: number;
+  nis_thyroid_uptake_fraction: number;
+  haldane_tissue_ratio_r360: number;
+  spencer_vge_grade: number;
+  helmet_water_intrusion_detected: boolean;
+  lcvg_pump_fault: boolean;
+  eva_prebreathe_locked: boolean;
+  dcs_type2_or_age_active: boolean;
+  validation_status: ModelValidationStatus;
+}
+
+export interface PharmacologySepsisState {
+  qsofa_score: number;
+  suspected_infection: boolean;
+  sepsis_protocol_active: boolean;
+  septic_shock_active: boolean;
+  recommended_crystalloid_bolus_ml: number;
+  effective_qtc_ms: number;
+  estimated_egfr_ml_min: number | null;
+  lowest_formulary_potency_pct: number;
+  depleted_or_subpotent_drugs: string[];
+  validation_status: ModelValidationStatus;
+}
+
+export type BMedTriageClass =
+  | 'Nominal'
+  | 'MildAdjustmentOrFatigue'
+  | 'ModerateDepressionOrAnxiety'
+  | 'SecondaryOrganicToxicMetabolicDelirium'
+  | 'PrimaryAcutePsychiatricCrisis'
+  | 'ImminentSelfOrVehicleHarmCrisis';
+
+export interface BehavioralHealthState {
+  phq9_score: number | null;
+  gad7_score: number | null;
+  cssrs_suicidal_ideation_level: number | null;
+  acute_agitation_or_psychosis: boolean;
+  imminent_harm_to_self_or_vehicle: boolean;
+  organic_delirium_mimic_detected: boolean;
+  triage_classification: BMedTriageClass;
+  airlock_software_lockout_active: boolean;
+  cmrs_restraint_authorized: boolean;
+  validation_status: ModelValidationStatus;
+}
+
+export interface ExtendedSafetyGates {
+  gate5_nsaid_renal_bleeding_locked: boolean;
+  gate5_allergy_or_qtc_locked: boolean;
+  gate5_formulary_substitution_active: boolean;
+  gate6_radiation_neutropenic_invasive_locked: boolean;
+  gate7_bmed_delirium_or_restraint_guard_active: boolean;
+}
+
+export interface AerospaceMedical360State {
+  crew_profile: CrewBiologicalProfile;
+  lbnp_baseline: LbnpBaselineState | null;
+  eclss_coupled: EclssCoupledSummary | null;
+  radiation_ars: RadiationArsState | null;
+  acute_emergency: AcuteEmergencyState | null;
+  toxicology_dcs: ToxicologyDcsState | null;
+  pharmacology_sepsis: PharmacologySepsisState | null;
+  behavioral_health: BehavioralHealthState | null;
+  extended_safety_gates: ExtendedSafetyGates;
+}
+
 export interface TelemetryPacket {
   timestamp_ms: number;
   relative_recording_time_s: number;
@@ -356,6 +517,7 @@ export interface TelemetryPacket {
   timestral_quantiles?: TimestralQuantilesSummary | null;
   vitals_anomaly?: VitalsAnomalyReport | null;
   renal_nephrolithiasis?: { rsr_calcium_oxalate: number | null; renal_colic_risk_index: number | null } | null;
+  aerospace_360?: AerospaceMedical360State | null;
   is_local_simulation?: boolean;
 }
 
