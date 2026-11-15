@@ -1,0 +1,4 @@
+# Preserve byte-identical upstream sources; integrity is checked by the fast probe.
+vendor/lancedb/** linguist-vendored -whitespace
+# A blank unified-diff context line intentionally contains a single space.
+docs/dependencies/*.patch -whitespace

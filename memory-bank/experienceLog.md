@@ -231,3 +231,18 @@ inspected; no procedural or male substitution closes that coverage requirement.
   point. Qualify the production bundle against an actual owned backend process.
 - An isolated passing latency assertion does not invalidate an earlier loaded-run
   failure. Record both; do not loosen the production budget to make tests green.
+
+
+## LanceDB optional local-only build repair (2026-11-15)
+
+- A registry SDK can contain unconditional references to a feature-gated error
+  variant. Do not enable remote/cloud transport merely to compile an embedded
+  backend; preserve an audited source patch and original archive hashes/license.
+- LanceDB 0.40 Scannable requires a boxed RecordBatchReader + Send trait object;
+  boxing a concrete RecordBatchIterator is insufficient for generic create/add.
+- Compile success does not establish backend parity. Test actual writes/reopening
+  and read through an implemented SDK path, retaining nullable HRV and simulation
+  provenance; never count placeholder empty reads/searches as successful storage.
+- Patched vendor sources need complete file/hash verification plus prominent
+  modification notices; keep the vendor outside workspace membership and document
+  its upstream warnings separately from workspace lint outcomes.

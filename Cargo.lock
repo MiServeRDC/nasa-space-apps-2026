@@ -239,6 +239,7 @@ dependencies = [
  "arrow-select",
  "chacha20poly1305",
  "crc32fast",
+ "futures",
  "lance",
  "lancedb",
  "parking_lot",
@@ -3521,8 +3522,6 @@ dependencies = [
 [[package]]
 name = "lancedb"
 version = "0.40.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "078c80d326ec656d53247ca8647222dab4707b623e795a4a2de1d1063ff78e88"
 dependencies = [
  "ahash",
  "arrow",

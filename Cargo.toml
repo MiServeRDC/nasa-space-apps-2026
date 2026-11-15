@@ -1,5 +1,6 @@
 [workspace]
 resolver = "2"
+exclude = ["vendor/lancedb"]
 members = [
     "crates/ares-core-types",
     "crates/ares-telemetry-ingest",
@@ -16,3 +17,8 @@ members = [
 version = "0.1.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
+
+# Preserve embedded-only builds until upstream gates typed-job HTTP errors.
+# Source checksum and the complete two-arm patch: docs/dependencies/LANCEDB_LOCAL_PATCH.md.
+[patch.crates-io]
+lancedb = { path = "vendor/lancedb" }
