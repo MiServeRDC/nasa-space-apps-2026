@@ -1,5 +1,9 @@
 # Progress Tracking: ARES-Health (Autonomous Resilient Edge-native System for Astronaut Health)
 
+## Narrated submission demo (2026-11-15)
+
+The 29.8-second Full HD cockpit recording with the team voiceover is at [ARES_HEALTH_30S_DEMO_FULLHD.mp4](../docs/submission/ARES_HEALTH_30S_DEMO_FULLHD.mp4). It shows recorded vital signs, mission simulation, anomaly detection, the guided procedure, and the onboard audit log.
+
 ## Final README Audit Remediation (2026-11-15)
 
 - Resolved broken `#core-constraint` anchor with explicit HTML anchor tag.

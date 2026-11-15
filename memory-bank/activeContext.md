@@ -1,5 +1,9 @@
 # Active Context: ARES-Health (NASA Space Apps Challenge 2026)
 
+## Narrated submission demo (2026-11-15)
+
+The 29.8-second Full HD cockpit recording with the team voiceover is at [ARES_HEALTH_30S_DEMO_FULLHD.mp4](../docs/submission/ARES_HEALTH_30S_DEMO_FULLHD.mp4). It shows recorded vital signs, mission simulation, anomaly detection, the guided procedure, and the onboard audit log.
+
 ## Final README Audit Remediation (2026-11-15)
 
 - Fixed broken anchor for the 5th badge (`#core-constraint`) by placing an explicit HTML anchor `<a id="core-constraint"></a>` at Section 1.
