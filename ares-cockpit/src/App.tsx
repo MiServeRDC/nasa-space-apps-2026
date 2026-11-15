@@ -34,6 +34,7 @@ import { PlaybookRunner } from './modules/playbook-runner/PlaybookRunner';
 import { EcgStrip, OcularOnsd, PocusIjv } from './modules/analysis-imaging/Imaging';
 import {
   isAcuteVitalsPlaybook,
+  syntheticVitalEventLabel,
   VitalsAnomalyPanel,
 } from './modules/vitals-anomaly/VitalsAnomalyPanel';
 import { FreshnessBadge, OriginBadge, ProvenanceMenu } from './modules/provenance/ProvenanceInspector';
@@ -125,8 +126,8 @@ function UnavailableSubsystemPanel({
 }: {
   title: string;
   reason: string;
-  linkIsLive: boolean;
-  onEngageOverlay: () => void;
+  linkIsLive?: boolean;
+  onEngageOverlay?: () => void;
 }) {
   return (
     <div className="flex h-full min-h-48 flex-col items-center justify-center rounded border border-line bg-black p-6 text-center font-mono text-xs">
@@ -136,7 +137,7 @@ function UnavailableSubsystemPanel({
       </div>
       <div className="text-sm font-bold text-advisory">{title}</div>
       <p className="mt-2 max-w-lg text-gray-400">{reason}</p>
-      {linkIsLive && (
+      {linkIsLive && onEngageOverlay && (
         <button
           type="button"
           onClick={onEngageOverlay}
@@ -840,6 +841,12 @@ export default function App() {
             {/* PAGE 2: EVALUATE */}
             {activePhase === 'EVALUATE' && (
               <div className="evaluate-workbench">
+                {syntheticEvent && !status.isStale && (
+                  <aside className="simulation-context-note" aria-label="Active vital-sign simulation">
+                    <strong>{syntheticVitalEventLabel(syntheticEvent.kind)} simulation active</strong>
+                    <p>This event affects vital signs and alerts. Mission forecasts and synthetic ultrasound use the scenario conditions below.</p>
+                  </aside>
+                )}
                 <section className="scenario-panel scenario-inline" aria-label="Scenario conditions">
                   <header className="flex items-center justify-between gap-2">
                     <h2 className="sidebar-heading">Scenario conditions</h2>
@@ -982,10 +989,22 @@ export default function App() {
                 </section>
                 <section id="evaluate-ultrasound" className="evaluate-ultrasound" aria-labelledby="evaluate-ultrasound-title">
                   <h2 id="evaluate-ultrasound-title">Ultrasound</h2>
+                  {link === 'ENGINE_LIVE' && !hasHemodynamics && (
+                    <div className="simulation-ultrasound-note">
+                      <div>
+                        <strong>{whatIfOverlayActive ? 'Waiting for simulated ultrasound' : 'Synthetic ultrasound is off'}</strong>
+                        <p>{whatIfOverlayActive
+                          ? 'The images appear once the engine returns its mission estimates.'
+                          : 'The BIDMC recording contains vital signs. Mission simulation generates the ultrasound images below.'}</p>
+                      </div>
+                      {!whatIfOverlayActive && <button type="button" className="act-secondary-button"
+                        onClick={() => setWhatIfOverlayActive(true)}>Simulate mission conditions</button>}
+                    </div>
+                  )}
                     <div className="scenario-scans">
                       <Card
                         title="Neck ultrasound"
-                        tag="Synthetic image"
+                        tag={hasHemodynamics ? "Synthetic ultrasound" : undefined}
                         origin={hasHemodynamics ? packet.hemodynamics!.provenance : 'UNAVAILABLE'}
                         className="min-h-0"
                       >
@@ -993,8 +1012,6 @@ export default function App() {
                           <UnavailableSubsystemPanel
                             title="Neck ultrasound unavailable"
                             reason="Pure BIDMC replay does not carry jugular ultrasound or microgravity fluid-shift inputs."
-                            linkIsLive={link === 'ENGINE_LIVE'}
-                            onEngageOverlay={() => setWhatIfOverlayActive(true)}
                           />
                         ) : (
                           <>
@@ -1014,7 +1031,7 @@ export default function App() {
 
                       <Card
                         title="Eye ultrasound"
-                        tag="Synthetic image"
+                        tag={hasHemodynamics ? "Synthetic ultrasound" : undefined}
                         origin={hasHemodynamics ? packet.hemodynamics!.provenance : 'UNAVAILABLE'}
                         className="min-h-0"
                       >
@@ -1022,8 +1039,6 @@ export default function App() {
                           <UnavailableSubsystemPanel
                             title="Eye ultrasound unavailable"
                             reason="Pure BIDMC replay does not include optic nerve sheath diameter or cabin ppCO2."
-                            linkIsLive={link === 'ENGINE_LIVE'}
-                            onEngageOverlay={() => setWhatIfOverlayActive(true)}
                           />
                         ) : (
                           <>

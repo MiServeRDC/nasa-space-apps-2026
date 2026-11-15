@@ -26,6 +26,11 @@ const INJECTABLE: { kind: Exclude<AnomalyInjectionKind, null | 'CLEAR'>; label: 
   { kind: 'COMBINED_SUBTLE', label: 'SUBTLE COMBINATION' },
 ];
 
+export function syntheticVitalEventLabel(kind: string): string {
+  const label = INJECTABLE.find(event => event.kind === kind)?.label.toLowerCase();
+  return label ? label[0].toUpperCase() + label.slice(1) : 'Vital-sign event';
+}
+
 /** True for the acute vitals playbooks (#06-#09) selected by the anomaly detector. */
 export function isAcuteVitalsPlaybook(playbook: ActivePlaybook | null | undefined): boolean {
   return /^PLAYBOOK_0[6-9]_/.test(playbook?.playbook_id ?? '');
@@ -115,7 +120,10 @@ export function VitalsAnomalyPanel({
           )}
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-gray-500">INJECT SYNTHETIC EVENT:</span>
+          <div className="simulation-purpose">
+            <strong>Simulate a vital-sign event</strong>
+            <p>Temporarily changes the replayed vital signs, so you can test detection, alerts and recovery.</p>
+          </div>
           {INJECTABLE.map((item) => (
             <button
               key={item.kind}
@@ -144,7 +152,7 @@ export function VitalsAnomalyPanel({
 
       {injection && (
         <div role="alert" className="mt-2 rounded border border-warning/60 bg-warning/10 px-2 py-1 text-warning">
-          SYNTHETIC EVENT ACTIVE, NOT RECORDED DATA: {injection.description} ({Math.round(injection.elapsed_s)}/
+          Vital-sign simulation active · Synthetic samples · {injection.description} ({Math.round(injection.elapsed_s)}/
           {Math.round(injection.duration_s)} s)
         </div>
       )}
