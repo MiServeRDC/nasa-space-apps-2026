@@ -266,3 +266,31 @@ Primary references: Three.js r171 GLTFLoader/BufferGeometry cleanup and
 zeux/meshoptimizer v0.18 JavaScript encoder/simplifier APIs; actual package/source
 fingerprints are in the generated fixture build report. Synthetic LOD errors are
 engineering settings, not registration tolerances or clinical constants.
+
+## Greenfield phase 7: female source frames and registration (2026-11-15)
+
+HRA united-female v1.10 and v1.5 full GLBs acquired and SHA-256 locked, with original
+release metadata/license snapshots and exact selected mesh/primitive ledger.
+Authoritative records: https://doi.org/10.48539/HBM637.DWBM.744 and
+https://doi.org/10.48539/HBM352.BTSQ.586 . Selected source world transforms are
+preserved; v1.5 remains separate from v1.10. Female release naming does not prove
+individual contributor donor/sex; Allen-labelled nervous contributions remain
+unverified. No arbitrary fitting constants or male completion are imported.
+
+The development registration helper uses Horn's symmetric 4x4 quaternion solution
+for proper rotation (JOSA A, 1987, DOI 10.1364/JOSAA.4.000629; author manuscript
+https://people.csail.mit.edu/bkph/papers/Absolute_Orientation_Scanned.pdf), followed
+by least-squares uniform scale/translation as in Umeyama (IEEE TPAMI, 1991,
+DOI 10.1109/34.88573). It uses one-sided least squares for scale, not Horn's
+symmetric RMS-ratio scale variant. Independent holdout residuals remain separate;
+no anatomical acceptance threshold or real-source alignment is invented. Authoring
+policy requires 4 non-coplanar fit and 3 independent check points; the paper's
+mathematical minimum of 3 non-collinear fit points is not claimed to be 4.
+
+Source context: Andreassen et al., Scientific Data 10, 34 (2023), DOI
+10.1038/s41597-022-01905-2; original dataset DOI 10.56902/COB.vh.2022.1. Its
+institutional description documents corrected cryosection offsets and CT alignment;
+Visible Human provenance alone is insufficient for cross-package registration.
+Original Denver download remains 403 and no anatomical composite is accepted.
+See docs/anatomy/FEMALE_REGISTRATION_REVIEW.md. Scholarly API query verified
+Umeyama's canonical DOI; the author-hosted Horn manuscript supplies the method.

@@ -2,13 +2,14 @@ import type {AnatomyModelManifest,AnatomyAnnotation} from './contracts';
 import type {AnatomyChunk} from './modelSession';
 import {AnatomyRegistry} from './registry';
 export interface ReferenceTarget {id:string;label:string;nodeIds:string[];channels:string[]}
-export interface ReferenceSystem {id:string;label:string;chunk:AnatomyChunk;targets:ReferenceTarget[];defaultIds:string[];licenseReview:string}
-export interface ReferenceCatalog {schemaVersion:1;model:AnatomyModelManifest;systems:ReferenceSystem[]}
+export interface ReferenceSystem {id:string;label:string;chunk:AnatomyChunk|null;coordinateFrame?:string;targets:ReferenceTarget[];defaultIds:string[];licenseReview:string}
+export interface ReferenceCatalog {schemaVersion:1;model:AnatomyModelManifest;systems:ReferenceSystem[];sourceIssues?:{structureId:string;sourceNodeIndex:number;reason:string;layer:string;label:string}[]}
 export const NOTE_KEY='ares-reference-notes-v1';
 export function registerReferenceCatalog(data:ReferenceCatalog):AnatomyRegistry{
  const registry=new AnatomyRegistry();registry.register(data.model);
- if(data.schemaVersion!==1||data.systems.length!==5||new Set(data.systems.map(s=>s.id)).size!==5)throw Error('Invalid reference systems');
+ if(data.schemaVersion!==1||data.systems.length<1||data.systems.length>12||new Set(data.systems.map(s=>s.id)).size!==data.systems.length)throw Error('Invalid reference systems');
  for(const system of data.systems){
+  if(!system.chunk){if(system.defaultIds.length||system.targets.some(t=>t.nodeIds.length))throw Error('Unavailable system references geometry');continue;}
   const asset=data.model.assets.find(a=>a.id===system.id);
   if(!asset||system.chunk.layer!==system.id||asset.sha256!==system.chunk.sha256||asset.path!==system.chunk.path)throw Error('Mismatched reference asset');
   const nodes=system.chunk.sourceNodes;if(!nodes?.length)throw Error('Missing source mapping');

@@ -4,7 +4,7 @@ import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.j
 import { buildSemanticBatches, disposeBatches, geometryBytes, normalizeStaticMesh, type SemanticBatch, type SemanticPart } from './semanticGeometry';
 
 export interface SourceNode {nodeIndex:number;nodeName:string;structureId:string;excluded?:boolean}
-export interface AnatomyChunk { path: string; sha256: string; layer: string; lod: number; sourceNodes?:SourceNode[] }
+export interface AnatomyChunk { path: string; sha256: string; layer: string; lod: number; referenceFrameId?:string; sourceNodes?:SourceNode[] }
 export interface GeometryIssue {structureId:string;nodeId:string;reason:string}
 export interface SessionLimits { maxFileBytes: number; maxDecodedBytes: number; maxMeshCount: number }
 const DEFAULT_LIMITS:SessionLimits={maxFileBytes:16_000_000,maxDecodedBytes:64_000_000,maxMeshCount:2000};
@@ -87,6 +87,7 @@ export class AnatomyModelSession {
   }
   async load(chunks:readonly AnatomyChunk[],allowedIds:ReadonlySet<string>,visibleIds:ReadonlySet<string>,signal?:AbortSignal):Promise<void>{
     if(this.closed)throw Error('Session is closed');
+    if(new Set(chunks.map(c=>c.referenceFrameId)).size>1)throw Error('Unregistered reference frames cannot be combined');
     if(new Set(chunks.map(c=>c.lod)).size!==1||new Set(chunks.map(c=>c.path)).size!==chunks.length)throw Error('Invalid or mixed chunk set');
     this.unload();const epoch=this.epoch,controller=new AbortController();this.controller=controller;
     const cancel=()=>controller.abort();signal?.addEventListener('abort',cancel,{once:true});if(signal?.aborted)cancel();

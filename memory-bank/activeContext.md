@@ -1,5 +1,28 @@
 # Active Context: ARES-Health (NASA Space Apps Challenge 2026)
 
+## Greenfield phase 7 partial female reference/tooling delivered (2026-11-15)
+
+Dedicated work/MiServeRDC-greenfield-phase01; no main/push/hosted Actions.
+Acquired full HRA v1.10/v1.5 originals outside git with length/SHA locks and raw
+metadata snapshots. Reproducible builder ships five selected local Meshopt chunks,
+439 valid primitive identities and six explicit missing requirements. Invalid
+source primitives (49) are listed/excluded, not repaired. No simplification or
+male borrowing. Female release naming does not prove every contributor donor/sex;
+Allen-labelled nervous contribution remains source sex UNSPECIFIED/unreviewed.
+/anatomy switches reference models without changing physiological sex/What-If.
+Model switches clear coordinates/selection; notes remain revision-scoped. Separate
+v1.5 pelvic source frame cannot be combined with v1.10 in the owned session.
+Offline authored-landmark CLI binds file hashes, solves proper similarity, reports
+fit/independent residuals in metres and never auto-approves anatomical registration.
+Tests: 149 frontend; lint/build; full-source deterministic rebuild; female/male/
+fixture browser checks. Local fast probe 4/4, Cargo check and Clippy pass.
+See docs/evaluation/GREENFIELD_PHASE7_RESULTS.md.
+Phase 7 complete anatomical acceptance is OPEN: Denver STL acquisition still 403,
+soleus/calcaneus and native IJV/vagus/vestibular/sheath missing/unestablished;
+real source landmarks, cross-source registration and expert review unavailable.
+Actionable acquisition/review instructions: docs/anatomy/FEMALE_REGISTRATION_REVIEW.md.
+Phase 8 operational UX is independent; do not label this partial preview complete.
+
 ## Greenfield phase 6 reference viewer engineering delivered (2026-11-15)
 
 Branch work/MiServeRDC-greenfield-phase01; no main integration/push or hosted

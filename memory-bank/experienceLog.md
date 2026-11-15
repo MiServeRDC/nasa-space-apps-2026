@@ -193,3 +193,18 @@ Direct indexed batching avoids triangle expansion; reserve old plus replacement
 geometry against the unchanged budget and keep the old view on rejection. Browser
 load assertions must wait for the completed system identity, not a generic ready
 flag that may still belong to the previous selection.
+
+## EXP-014 — Registration evidence and female release source frames (2026-11-15)
+
+HRA united-female v1.10/v1.5 source world frames and common Visible Human naming
+do not establish cross-release/Denver registration. Keep source frames separate
+and reject mixed frame chunks without an authored accepted transform. Enclosing
+release sex does not establish contributor-specific donor sex (Allen brain labels).
+Fit/check landmarks must have explicit anatomy, laterality, units, file hashes and
+non-reused identities/coordinates. Report both residual sets; never borrow an
+ad-hoc clinical tolerance or use low fit error as anatomical acceptance. Horn's
+proper quaternion rotation (DOI 10.1364/JOSAA.4.000629) and least-squares scale
+(Umeyama, DOI 10.1109/34.88573) support a numerical tool, not an automatic review.
+Source: FEMALE_SOURCE_LOCK.json, FEMALE_REGISTRATION_REVIEW.md and implementation
+stack addendum. A 403 package stays missing until actual bytes/entries/units are
+inspected; no procedural or male substitution closes that coverage requirement.

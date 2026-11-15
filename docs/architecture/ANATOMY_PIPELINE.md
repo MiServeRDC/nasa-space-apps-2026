@@ -169,3 +169,36 @@ Playwright/Chrome paths as above. It uses the built bundle, blocked external
 network and mocked local telemetry; assertions cover real rays, keyboard anchors,
 touch, null channels, notes, failures, switching and unload. Expert anatomical
 review and source-specific commercial clearance are separate outstanding gates.
+
+## Phase 7: partial female sources and explicit frame isolation
+
+`ReferenceInspector` can switch between the existing male reference and the partial
+HRA female catalog. Model changes clear selection/coordinates and keep notes in
+revision-specific localStorage. They do not change clinical sex or What-If.
+Unavailable muscular source geometry loads no replacement; source coverage and
+invalid primitive records remain explicit. UI source lists can operate without
+WebGL. The female source exposes a v1.5 pelvis supplement as its own selection,
+not an assembled overlay.
+
+`AnatomyChunk.referenceFrameId` records authored source frame identity. A session
+rejects mixed IDs (including known + unknown); it cannot combine the new v1.10
+and v1.5 chunks into an unregistered composite. The existing legacy/fixture chunks
+retain their prior unknown/common-frame behavior. Original source frame identity
+is not patient calibration. The female nervous source includes Allen-labelled
+contributions; `sourceSex: UNSPECIFIED` avoids assigning unreviewed contributor
+sex from the enclosing release name. All source structures stay `UNVERIFIED`.
+
+The derivative builder checks original file bytes/hash and raw node identities,
+loads selected scene branches with ancestors/transforms retained, and reuses the
+strict numeric normalizer and static GLB writer. Invalid primitives are listed;
+no repair or simplification occurs. Each artifact is under the existing 16 MB
+encoded limit and fits the unchanged 64 MB owned-geometry budget. The ledger
+records full original SHA, source node/mesh/primitive, selected root, derivative
+hash/size, builder/normalizer/pipeline fingerprints, tools, credits and adaptations.
+Raw originals stay in the external cache; runtime has only local assets.
+
+Build/qualification commands and outstanding gates:
+[Female source and registration review](../anatomy/FEMALE_REGISTRATION_REVIEW.md).
+The explicit source-build verifier requires the external originals; ordinary
+frontend tests validate bundled derivatives without downloading those originals.
+The focused human acceptance sheet and Denver import remain open.
