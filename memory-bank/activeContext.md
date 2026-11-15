@@ -499,3 +499,7 @@ All 5 critical audit vulnerabilities identified by the independent Gemini Carbon
 ## Historical Merge Context (Issue #11 / PR #20 / Issue #12)
 - **PR #20 / Issue #11 (`187b933`):** Numeric-only BIDMC replay never invents RMSSD, SDNN, pNN50, or LF/HF; returns null with `BEAT_INTERVALS_NOT_AVAILABLE` and propagates unavailable full HRV assessments across HTTP, WebSocket, Timestral masking, and FastMCP tools while preserving known non-HRV violations.
 - **Issue #12 (`b4ca916`):** Added `docs/architecture/MODEL_EVIDENCE_AUDIT.md`, `ModelValidationStatus::IllustrativeUnvalidated`, and `TtvIntervalKind::IllustrativeScenarioRange` to distinguish recorded data provenance from illustrative unvalidated scenario outputs and heuristic gate acceptance.
+
+## Cockpit integration
+
+The main application now uses the LelloXV frontend lab cockpit, with the paired anatomical atlas and desktop Gather, Evaluate and Act views. The current backend and frontend wire decoders remain the source for telemetry and medical_360 compatibility.

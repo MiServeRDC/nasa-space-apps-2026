@@ -402,3 +402,7 @@ Branch `work/MiServeRDC-optimization` is pushed; this task does not merge main.
 - [x] **Issue #11 / PR #20 (`187b933`):** Remove numeric-derived/default HRV; preserve unavailable full assessments (`BEAT_INTERVALS_NOT_AVAILABLE`), degraded alarm state, and known hazard routing.
 - [x] **Issue #12 (`b4ca916`):** Output/formula/calibration evidence register (`docs/architecture/MODEL_EVIDENCE_AUDIT.md`), machine-readable `IllustrativeUnvalidated` / `IllustrativeScenarioRange` status, and dossier corrections.
 - [ ] Qualified domain review and target-population/outcome calibration (pending clinical review; scenario models remain illustrative).
+
+## Cockpit integration
+
+The main application now uses the LelloXV frontend lab cockpit, with the paired anatomical atlas and desktop Gather, Evaluate and Act views. The current backend and frontend wire decoders remain the source for telemetry and medical_360 compatibility.

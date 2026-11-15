@@ -1,11 +1,7 @@
+import { CloseButton } from '../ui-primitives/CloseButton';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { TelemetryPacket } from '../../types/telemetry';
 import type { WhatIf } from '../../lib/scenario';
-import {
-  classifyVoiceTranscript,
-  requestEdgeCopilot,
-  type CopilotAskResponse,
-} from '../../lib/voiceIntentRouter';
 import {
   IS_ARES_DESKTOP_SHELL,
   type OsStatusBarState,
@@ -27,71 +23,63 @@ export const FASTMCP_TOOLS: FastMcpToolDef[] = [
   {
     index: 1,
     rpcName: 'query_dataset_graph',
-    title: 'Query 24-Dataset BioKG',
-    description:
-      'Search across 24 cataloged datasets (OSD-51, OSD-195, OSD-818, NASA-0000100, CSA CANS, BIDMC v1.0.0), SPOKE DEGs, UBERON anatomy, LOINC biomarkers.',
+    title: 'Search research sources',
+    description: 'Find a study or dataset used by ARES. Try BIDMC or an identifier such as OSD-818.',
     normativeClauses: ['NASA-STD-3001 [V1 3002]', '[V1 3003]', '[V1 4001]'],
     hasQueryArg: true,
   },
   {
     index: 2,
     rpcName: 'explain_biomarker_path',
-    title: 'Explain Biomarker Path',
-    description:
-      'Shortest Biolink semantic/causal path across datasets (e.g. OSD-818 -> bm_hr or OSD-51 -> pheno_osteopenia).',
+    title: 'Trace a research link',
+    description: 'Enter two references to see how the research catalog links them.',
     normativeClauses: ['NASA-STD-3001 [V1 3003]', 'Biolink v4 / SPOKE'],
     hasPathArgs: true,
   },
   {
     index: 3,
     rpcName: 'get_timestral_quantile_cones',
-    title: 'Timestral Quantile Cones',
-    description:
-      'DHF non-crossing quantiles [q0.05, q0.50, q0.95] and ConformalAbstentionGate certificate.',
+    title: 'Review forecast ranges',
+    description: 'See the prediction bands available for the current session and which estimates are unavailable.',
     normativeClauses: ['NASA-STD-3001 [V1 3006]', '[V2 10022]'],
   },
   {
     index: 4,
     rpcName: 'get_hypergraph_spatial_status',
-    title: 'HyperGraph Spatial & Deontic',
-    description:
-      '3D UBERON Body Heatmap, HabitatZoneDeonticPolicy, and 16-byte ARES-BioKG descriptor.',
+    title: 'Inspect body and habitat status',
+    description: 'See the flagged body region, current habitat zone and any operating restrictions in the model.',
     normativeClauses: ['NASA-STD-3001 [V1 4001]', '[V2 10005]'],
   },
   {
     index: 5,
     rpcName: 'get_crew_health_summary',
     displayAlias: 'get_astronaut_health_summary',
-    title: 'Astronaut Health Summary',
-    description:
-      'Compact crew telemetry, NQS robustness, MRI readiness, and explicit missing/null channels.',
+    title: 'Summarize crew readings',
+    description: 'See the current measurements, readiness and any missing readings together.',
     normativeClauses: ['NASA-STD-3001 [V1 3001]', '[V1 3003]'],
   },
   {
     index: 6,
     rpcName: 'explain_causal_anomaly',
     displayAlias: 'query_causal_biomarker_state',
-    title: 'Causal Biomarker State (ADHG)',
-    description:
-      '4-hop ADHG causal biomarker chain and per-predicate NQS robustness margins.',
+    title: 'Explain a flagged reading',
+    description: 'See the measurements and modeled relationships behind the current alert.',
     normativeClauses: ['NASA-STD-3001 [V1 3003]', 'OCHMO-MTB-007'],
   },
   {
     index: 7,
     rpcName: 'simulate_countermeasure_impact',
     displayAlias: 'evaluate_stl_safety_margins',
-    title: 'Evaluate STL Safety Margins',
-    description:
-      'Deterministic delta-rho and TTV gain projection for LBNP (-30 mmHg) and ARED countermeasures.',
+    title: 'Compare scenario responses',
+    description: 'Preview how changes to the selected countermeasure could affect the modeled safety margins.',
     normativeClauses: ['NASA-STD-3001 [V1 3002]', '[V2 10022]'],
   },
   {
     index: 8,
     rpcName: 'get_medops_playbook',
     displayAlias: 'get_active_medops_playbook',
-    title: 'Active MedOps Playbook',
-    description:
-      'Active Type-1 MedOps Playbook (#01-#05) and 3 Hard Clinical Safety Gates.',
+    title: 'Show the active procedure',
+    description: 'See which procedure the system has selected and the state of its safety checks.',
     normativeClauses: ['NASA-STD-3001 [V2 10023]', '[V2 10027]'],
   },
 ];
@@ -306,7 +294,6 @@ export function OsCommandPalette({
   whatIf,
   transportMode,
   osStatus,
-  initialMode = 'TOOLS',
 }: {
   open: boolean;
   onClose: () => void;
@@ -316,9 +303,7 @@ export function OsCommandPalette({
   whatIf: WhatIf;
   transportMode: TransportMode;
   osStatus: OsStatusBarState | null;
-  initialMode?: 'TOOLS' | 'COPILOT';
 }) {
-  const [mode, setMode] = useState<'TOOLS' | 'COPILOT'>(initialMode);
   const [filterText, setFilterText] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [graphQuery, setGraphQuery] = useState('OSD-51');
@@ -326,12 +311,7 @@ export function OsCommandPalette({
   const [pathTo, setPathTo] = useState('bm_hr');
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<ExecutionResult | null>(null);
-  const [copilotPrompt, setCopilotPrompt] = useState('');
-  const [copilotBusy, setCopilotBusy] = useState(false);
-  const [copilotResult, setCopilotResult] = useState<CopilotAskResponse | null>(null);
-  const [copilotSafetyBlock, setCopilotSafetyBlock] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const copilotInputRef = useRef<HTMLInputElement | null>(null);
 
   const filteredTools = useMemo(() => {
     const q = filterText.trim().toLowerCase();
@@ -345,7 +325,7 @@ export function OsCommandPalette({
     );
   }, [filterText]);
 
-  const activeTool = filteredTools[selectedIndex] ?? filteredTools[0] ?? FASTMCP_TOOLS[0];
+  const activeTool = filteredTools[selectedIndex] ?? filteredTools[0];
 
   const executeTool = useCallback(
     async (tool: FastMcpToolDef) => {
@@ -514,51 +494,12 @@ export function OsCommandPalette({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [open, onClose, onToggle, filteredTools.length, activeTool, executeTool]);
 
-  const runCopilotAsk = useCallback(
-    async (rawQuery: string) => {
-      const q = rawQuery.trim();
-      if (!q) return;
-      const check = classifyVoiceTranscript(q);
-      if (check.kind === 'SAFETY_INTERLOCK_BLOCKED') {
-        setCopilotSafetyBlock(`${check.clause}: ${check.reason}`);
-        return;
-      }
-      setCopilotSafetyBlock(null);
-      setCopilotBusy(true);
-      try {
-        const resp = await requestEdgeCopilot({
-          query: q,
-          role: 'CMO',
-          preferredToolHint:
-            check.kind === 'CONVERSATIONAL_COPILOT_ASK' ? check.preferred_tool_hint : null,
-          whatIfActive: Boolean(packet.is_local_simulation),
-          isTauriDesktop: IS_ARES_DESKTOP_SHELL,
-          allowHttpNetwork: transportMode !== 'LOCAL_SIMULATION',
-          httpBaseUrl,
-          packet,
-          whatIf,
-        });
-        setCopilotResult(resp);
-      } finally {
-        setCopilotBusy(false);
-      }
-    },
-    [httpBaseUrl, packet, transportMode, whatIf],
-  );
-
   useEffect(() => {
-    if (open) {
-      setMode(initialMode);
-      setSelectedIndex(0);
-      window.setTimeout(() => {
-        if (initialMode === 'COPILOT') {
-          copilotInputRef.current?.focus();
-        } else {
-          inputRef.current?.focus();
-        }
-      }, 0);
-    }
-  }, [open, initialMode]);
+    if (!open) return;
+    setSelectedIndex(0);
+    const id = window.setTimeout(() => inputRef.current?.focus(), 0);
+    return () => window.clearTimeout(id);
+  }, [open]);
 
   if (!open) return null;
 
@@ -574,176 +515,46 @@ export function OsCommandPalette({
       }}
     >
       <div className="flex max-h-[84vh] w-full max-w-4xl flex-col overflow-hidden rounded-lg border border-nominal/70 bg-black shadow-2xl">
-        {/* Top Command Input Bar + Mode Tabs */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-panel px-4 py-2.5">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setMode('TOOLS')}
-              className={`min-h-[44px] min-w-[44px] cursor-pointer rounded border px-3 py-1 text-[11px] font-bold ${
-                mode === 'TOOLS'
-                  ? 'border-nominal bg-nominal/15 text-nominal'
-                  : 'border-line bg-black text-gray-400 hover:text-white'
-              }`}
-            >
-              FASTMCP TOOLS (8)
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode('COPILOT')}
-              className={`min-h-[44px] min-w-[44px] cursor-pointer rounded border px-3 py-1 text-[11px] font-bold ${
-                mode === 'COPILOT'
-                  ? 'border-nominal bg-nominal/15 text-nominal'
-                  : 'border-line bg-black text-gray-400 hover:text-white'
-              }`}
-            >
-              COPILOT ASK
-            </button>
-          </div>
-
-          {mode === 'TOOLS' && (
-            <div className="flex min-w-[200px] flex-1 items-center gap-2">
-              <input
-                ref={inputRef}
-                type="text"
-                value={filterText}
-                onChange={(e) => {
-                  setFilterText(e.target.value);
-                  setSelectedIndex(0);
-                }}
-                placeholder="Filter 8 Context-Mode FastMCP tools or 24-dataset BioKG queries..."
-                aria-label="Filter FastMCP tools"
-                className="w-full bg-transparent text-sm text-white outline-none placeholder:text-gray-500"
-              />
-            </div>
-          )}
-
-          <div className="flex items-center gap-2 text-[10px] text-gray-400">
-            <span>ESC: CLOSE</span>
-            <button
-              type="button"
-              onClick={onClose}
-              className="min-h-[44px] min-w-[44px] cursor-pointer rounded border border-line bg-black px-3 py-1 text-gray-300 hover:border-critical hover:text-critical"
-            >
-              CLOSE
-            </button>
-          </div>
+        <div className="flex flex-wrap items-center gap-3 border-b border-line bg-panel px-4 py-2.5">
+          <h2 className="text-sm font-semibold text-white">Onboard tools</h2>
+          <input
+            ref={inputRef}
+            type="search"
+            value={filterText}
+            onChange={(event) => {
+              setFilterText(event.target.value);
+              setSelectedIndex(0);
+            }}
+            placeholder="Find a tool…"
+            aria-label="Find a tool"
+            className="min-w-[140px] flex-1 rounded border border-line bg-black px-3 py-2 text-sm text-white placeholder:text-gray-500"
+          />
+          <CloseButton onClick={onClose} />
         </div>
 
-        {mode === 'COPILOT' ? (
-          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto bg-black p-4">
-            <form
-              className="flex flex-wrap gap-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void runCopilotAsk(copilotPrompt);
-              }}
-            >
-              <input
-                ref={copilotInputRef}
-                type="text"
-                value={copilotPrompt}
-                onChange={(e) => setCopilotPrompt(e.target.value)}
-                placeholder="Ask ARES Edge Copilot (read-only over 8 FastMCP tools, air-gapped)..."
-                aria-label="Ask ARES Edge Copilot"
-                className="min-h-[44px] min-w-[240px] flex-1 rounded border border-line bg-black px-3 py-2 text-xs text-white outline-none focus:border-nominal placeholder:text-gray-500"
-              />
-              <button
-                type="submit"
-                disabled={copilotBusy || !copilotPrompt.trim()}
-                className="min-h-[44px] min-w-[44px] cursor-pointer rounded border border-nominal bg-nominal px-4 py-2 font-bold text-black disabled:opacity-40"
-              >
-                {copilotBusy ? 'QUERYING...' : 'ASK COPILOT'}
-              </button>
-            </form>
-
-            {copilotSafetyBlock && (
-              <div role="alert" className="rounded border border-critical bg-critical/10 p-3 text-xs text-critical">
-                SAFETY_INTERLOCK_BLOCKED: {copilotSafetyBlock}
-              </div>
-            )}
-
-            {copilotResult ? (
-              <div className="space-y-2 rounded border border-line bg-panel p-3 text-xs">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span
-                      className={`rounded border px-2 py-0.5 font-semibold ${
-                        copilotResult.execution_mode === 'LOCAL_EDGE_LLM'
-                          ? 'border-ok text-ok'
-                          : 'border-caution text-caution'
-                      }`}
-                    >
-                      {copilotResult.execution_mode}
-                    </span>
-                    <span className="rounded border border-gray-700 px-1.5 py-0.5 text-[10px] text-gray-300">
-                      {copilotResult.validation_disclosure}
-                    </span>
-                    <span className="text-[10px] text-gray-400">{copilotResult.normative_clause}</span>
-                  </div>
-                  <span className="text-[10px] text-gray-500">
-                    {copilotResult.audit_hash_hex} | {copilotResult.total_latency_us} us
-                  </span>
-                </div>
-                <pre className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-gray-200">
-                  {copilotResult.answer_markdown}
-                </pre>
-                <div className="flex flex-wrap gap-3 text-[10px] text-gray-500">
-                  <span>PLAYBOOK: {copilotResult.active_playbook_id}</span>
-                  {copilotResult.hrv_unavailable_reason && (
-                    <span className="text-advisory">HRV: {copilotResult.hrv_unavailable_reason}</span>
-                  )}
-                  <span>
-                    TOOLS:{' '}
-                    {copilotResult.tools_invoked.map((t) => `${t.tool} (${t.byte_len}B)`).join(', ')}
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <div className="rounded border border-line/60 bg-black p-4 text-gray-500">
-                Ask about jugular shear stress, Timestral multi-horizon quantile cones, OSD datasets, or active Playbooks (#01-#05). Zero external network calls (`connect-src &apos;self&apos;`); falls back to local deterministic Type-1 synthesis when Edge LLM is offline.
-              </div>
-            )}
-          </div>
-        ) : (
-          <>
             {/* Main Split View: 8 Tools on Left, Parameters + Context-Mode Result on Right */}
             <div className="grid min-h-0 flex-1 md:grid-cols-[340px_1fr]">
           <div className="overflow-y-auto border-r border-line bg-black p-2">
             <div className="mb-1.5 px-2 text-[10px] tracking-wider text-gray-500">
-              CONTEXT-MODE TOOLS (8/8 | CAP &lt;150 TOKENS / 600B)
+              Choose a tool, then run it.
             </div>
             <div className="space-y-1">
+              {filteredTools.length === 0 && <p role="status" className="px-2 py-1 text-gray-400">No matching tools</p>}
               {filteredTools.map((tool, idx) => {
                 const isSelected = idx === selectedIndex;
                 return (
                   <button
                     key={tool.rpcName}
                     type="button"
-                    onClick={() => {
-                      setSelectedIndex(idx);
-                      void executeTool(tool);
-                    }}
+                    onClick={() => setSelectedIndex(idx)}
+                    aria-pressed={isSelected}
                     className={`w-full cursor-pointer rounded border px-2.5 py-2 text-left transition-colors ${
                       isSelected
                         ? 'border-nominal bg-nominal/10 text-white'
                         : 'border-transparent text-gray-300 hover:border-line hover:bg-panel'
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-bold text-nominal">
-                        [{tool.index}] {tool.rpcName}
-                      </span>
-                      <span className="text-[10px] text-gray-500">RUN</span>
-                    </div>
-                    {tool.displayAlias && (
-                      <div className="text-[10px] text-gray-500">
-                        alias: {tool.displayAlias}
-                      </div>
-                    )}
-                    <div className="mt-0.5 text-[11px] text-gray-400">
-                      {tool.title}
-                    </div>
+                    <span className="font-semibold">{tool.title}</span>
                   </button>
                 );
               })}
@@ -756,7 +567,7 @@ export function OsCommandPalette({
                 <div className="flex flex-wrap items-start justify-between gap-2 border-b border-line pb-2">
                   <div>
                     <div className="text-sm font-bold text-white">
-                      {activeTool.rpcName}
+                      {activeTool.title}
                     </div>
                     <p className="mt-1 text-[11px] text-gray-400">
                       {activeTool.description}
@@ -768,7 +579,7 @@ export function OsCommandPalette({
                     onClick={() => void executeTool(activeTool)}
                     className="cursor-pointer rounded border border-nominal bg-nominal px-3 py-1 text-[11px] font-bold text-black hover:opacity-90 disabled:opacity-50"
                   >
-                    {running ? 'EXECUTING...' : 'EXECUTE TOOL'}
+                    {running ? 'Running…' : 'Run tool'}
                   </button>
                 </div>
 
@@ -843,7 +654,7 @@ export function OsCommandPalette({
                   <div className="flex flex-col gap-2 rounded border border-line bg-black p-3">
                     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-2 text-[10px]">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-bold text-nominal">{result.toolName}</span>
+                        <span className="font-bold text-nominal">{FASTMCP_TOOLS.find(tool => tool.rpcName === result.toolName)?.title ?? result.toolName}</span>
                         <span
                           className={`rounded border px-1.5 py-0.5 ${
                             result.source === 'TAURI_NATIVE_IPC'
@@ -900,8 +711,7 @@ export function OsCommandPalette({
             )}
           </div>
         </div>
-          </>
-        )}
+
       </div>
     </div>
   );

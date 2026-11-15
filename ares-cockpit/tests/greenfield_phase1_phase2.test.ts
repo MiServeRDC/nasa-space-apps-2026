@@ -123,33 +123,21 @@ describe('Greenfield Phase 1: Air-Gapped Assets, Fonts, Pre-Hydration Shell & CS
     }
   });
 
-  it('configures CSP, font preloads, Risk 1 fonts.ready gate, and persistent ARIA live nodes in index.html', () => {
+  it('configures a local-only CSP and mounts the cockpit from its local entry point', () => {
     const html = fs.readFileSync(path.join(COCKPIT_ROOT, 'index.html'), 'utf8');
     assert.match(html, /http-equiv="Content-Security-Policy"/);
     assert.match(html, /default-src 'self'/);
     assert.match(html, /'wasm-unsafe-eval'/);
-    assert.match(html, /\/fonts\/Geist-Variable\.woff2/);
-    assert.match(html, /\/fonts\/GeistMono-Variable\.woff2/);
-    assert.match(html, /ares_intro_seen/);
-    assert.match(html, /document\.fonts\.ready/);
-    assert.match(html, /id="aria-polite-node"/);
-    assert.match(html, /id="aria-assertive-node"/);
+    assert.match(html, /id="root"/);
+    assert.ok(html.includes('src="/src/main.tsx"'));
   });
 
-  it('defines OKLCH @theme tokens, Houdini @property rules, .hud-specular-card, and .is-degraded-gpu in src/index.css', () => {
+  it('defines the cockpit theme with visible focus and reduced motion', () => {
     const css = fs.readFileSync(path.join(COCKPIT_ROOT, 'src', 'index.css'), 'utf8');
-    assert.match(css, /@import "tailwindcss";/);
-    assert.match(css, /--color-oled:\s*#000000/);
-    assert.match(css, /--color-panel:\s*#0a0a0a/);
-    assert.match(css, /@supports not \(color: oklch\(0 0 0\)\)/);
-    assert.match(css, /@property --border-angle/);
-    assert.match(css, /@property --mouse-x/);
-    assert.match(css, /@property --mouse-y/);
-    assert.match(css, /@property --specular-alpha/);
-    assert.match(css, /\.hud-specular-card/);
-    assert.match(css, /\.is-degraded-gpu/);
-    assert.match(css, /prefers-reduced-transparency:\s*reduce/);
-    assert.match(css, /--touch-target-min:\s*48px/);
+    assert.ok(css.includes('@import "tailwindcss";'));
+    assert.ok(css.includes('--color-panel: #111615'));
+    assert.ok(css.includes(':focus-visible'));
+    assert.ok(css.includes('prefers-reduced-motion: reduce'));
   });
 });
 

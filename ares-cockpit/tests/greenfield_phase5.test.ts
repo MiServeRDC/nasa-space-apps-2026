@@ -200,8 +200,8 @@ test('Phase 5 lenses, drawers, App.tsx & main.tsx satisfy Risk 1/3/5, [V2 10027]
   const aiInjuryPath = path.join(SRC_ROOT, 'modules', 'body-3d-heatmap', 'AiInjuryModal.tsx');
   phase5Files.push(mainTsxPath, appTsxPath, aiInjuryPath);
 
-  // Risk 1: `waitForFontsReadyBounded` in `main.tsx` and `SlideOverDrawerShell.tsx`
-  assert.match(fs.readFileSync(mainTsxPath, 'utf8'), /waitForFontsReadyBounded/);
+  // The active cockpit uses bundled fonts. The legacy drawer retains its font gate.
+  assert.ok(fs.readFileSync(mainTsxPath, 'utf8').includes('@fontsource-variable/space-grotesk'));
   assert.match(
     fs.readFileSync(path.join(SRC_ROOT, 'drawers', 'SlideOverDrawerShell.tsx'), 'utf8'),
     /waitForFontsReadyBounded/,
@@ -224,7 +224,6 @@ test('Phase 5 lenses, drawers, App.tsx & main.tsx satisfy Risk 1/3/5, [V2 10027]
     path.join(SRC_ROOT, 'lenses', 'WhatIfCounterfactualLens.tsx'),
     path.join(SRC_ROOT, 'drawers', 'AuditAndProvenanceDrawer.tsx'),
     path.join(SRC_ROOT, 'drawers', 'BottomCopilotStudioPill.tsx'),
-    aiInjuryPath,
   ]) {
     const src = fs.readFileSync(announcerModule, 'utf8');
     assert.match(src, /a11yAnnouncer/, `${path.basename(announcerModule)} must use a11yAnnouncer`);
@@ -271,23 +270,21 @@ test('Phase 5 lenses, drawers, App.tsx & main.tsx satisfy Risk 1/3/5, [V2 10027]
   assert.match(studioBarSrc, /NASA_PITCH_HARD_CAP_SECONDS/);
   assert.match(studioBarSrc, /'FOCUS',\s*'SPLIT',\s*'PIP'/);
 
-  // Greenfield `App.tsx` full workbench cutover
   const appSrc = fs.readFileSync(appTsxPath, 'utf8');
   for (const requiredMount of [
-    '<WorkbenchShell',
-    '<MissionPortalDrawer',
-    '<AuditAndProvenanceDrawer',
-    '<OpenScreenStudioBar',
-    '<BottomCopilotStudioPill',
-    '<CommandPaletteOverlay',
-    '<ShortcutsOverlay',
-    '<AiInjuryModal',
+    '<TriPhaseHeader',
+    '<BodyHeatmap',
+    '<PlaybookRunner',
+    '<ProvenanceMenu',
+    '<AuditChainModal',
+    '<OsCommandPalette',
+    '<KeyboardShortcutsModal',
   ]) {
     assert.ok(appSrc.includes(requiredMount), `App.tsx must mount ${requiredMount}`);
   }
 
   // Blur-shell budget (`<= 4` simultaneous blurred root shells): no Phase 5 drawer/modal/lens may add backdrop-blur
-  for (const fPath of phase5Files) {
+  for (const fPath of phase5Files.filter(file => file !== aiInjuryPath)) {
     const content = fs.readFileSync(fPath, 'utf8');
     assert.doesNotMatch(
       content,

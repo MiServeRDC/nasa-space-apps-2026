@@ -30,6 +30,7 @@ export interface InjuryMarker {
   summary: string;
   careSteps: string[];
   detectedAt: string;
+  placement?: { profile: 'MALE' | 'FEMALE'; point: [number, number, number] };
   photoUrl?: string; // local object URL from user-uploaded image (never uploaded)
 }
 

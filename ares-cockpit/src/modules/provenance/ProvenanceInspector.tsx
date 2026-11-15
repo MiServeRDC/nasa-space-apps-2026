@@ -1,4 +1,5 @@
-import { useId, useState } from 'react';
+import { CockpitSummary } from '../ui-primitives/CockpitControls';
+import { displayLabel } from '../../lib/displayLabel';
 import { buildIndicatorMetadata } from '../../lib/telemetryValidation';
 import type { TelemetryStatus } from '../../lib/useTelemetry';
 import type { DataOrigin, FreshnessStatus, TelemetryPacket } from '../../types/telemetry';
@@ -76,16 +77,13 @@ export function FreshnessBadge({ freshness, ageMs }: { freshness: FreshnessStatu
   );
 }
 
-export function ProvenanceBanner({
+export function ProvenanceMenu({
   packet,
   status,
 }: {
   packet: TelemetryPacket;
   status: TelemetryStatus;
 }) {
-  const [open, setOpen] = useState(false);
-  const drawerId = useId();
-
   const pm = packet.provenance_manifest;
   const isBidmc = pm.biometrics_source === 'RECORDED_TERRESTRIAL_BIDMC_CSV';
   const missing = packet.biometrics.missing_channels ?? [];
@@ -114,7 +112,9 @@ export function ProvenanceBanner({
           : 'FRESH';
 
   return (
-    <div className="rounded-lg border border-line bg-panel px-3 py-2 font-mono text-xs">
+    <details className="provenance-menu">
+      <CockpitSummary>Data provenance</CockpitSummary>
+      <div className="provenance-popover rounded-lg border border-line bg-panel px-3 py-2 font-mono text-xs">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <OriginBadge origin={packet.is_local_simulation ? 'SIMULATED_SCENARIO_INPUT' : pm.biometrics_source} />
@@ -130,35 +130,27 @@ export function ProvenanceBanner({
             record: <span className="text-gray-200">{packet.source_record_id}</span>
           </span>
           <span className="text-[11px] text-gray-400">
-            t_rec: <span className="text-gray-200">{packet.relative_recording_time_s.toFixed(1)} s</span>
+            Replay time: <span className="text-gray-200">{packet.relative_recording_time_s.toFixed(1)} s</span>
           </span>
           <span className="text-[11px] text-gray-500">
             {pm.biometrics_native_rate_hz.toFixed(1)} Hz native @ {pm.ui_refresh_rate_hz.toFixed(0)} Hz UI
           </span>
         </div>
 
-        <button
-          type="button"
-          aria-expanded={open}
-          aria-controls={drawerId}
-          onClick={() => setOpen((v) => !v)}
-          className="cursor-pointer rounded border border-nominal/70 px-2.5 py-0.5 text-[11px] text-nominal hover:bg-nominal/15"
-        >
-          {open ? 'HIDE PROVENANCE' : 'INSPECT PROVENANCE'}
-        </button>
+
       </div>
 
       {/* Missing channels + quality flags row */}
       <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px]">
         <span className="text-gray-500">MODE:</span>
-        <span className="rounded border border-line px-1.5 py-0.5 text-gray-300">{pm.scenario_overlay_mode}</span>
+        <span className="rounded border border-line px-1.5 py-0.5 text-gray-300">{displayLabel(pm.scenario_overlay_mode)}</span>
 
         {missing.length > 0 && (
           <>
-            <span className="ml-1 text-advisory">MISSING CHANNELS ({missing.length}):</span>
+            <span className="ml-1 text-advisory">Missing channels ({missing.length}):</span>
             {missing.map((ch) => (
-              <span key={ch} className="rounded border border-advisory/60 bg-advisory/10 px-1.5 py-0.5 text-advisory">
-                {ch}
+              <span key={displayLabel(ch)} className="rounded border border-advisory/60 bg-advisory/10 px-1.5 py-0.5 text-advisory">
+                {displayLabel(ch)}
               </span>
             ))}
           </>
@@ -166,10 +158,10 @@ export function ProvenanceBanner({
 
         {flags.length > 0 && (
           <>
-            <span className="ml-1 text-gray-500">QUALITY FLAGS:</span>
+            <span className="ml-1 text-gray-500">Quality flags:</span>
             {flags.map((flag) => (
               <span
-                key={flag}
+                key={displayLabel(flag)}
                 className={`rounded border px-1.5 py-0.5 ${
                   flag === 'MANIFEST_SHA256_VERIFIED'
                     ? 'border-ok/50 text-ok'
@@ -180,7 +172,7 @@ export function ProvenanceBanner({
                         : 'border-gray-700 text-gray-300'
                 }`}
               >
-                {flag}
+                {displayLabel(flag)}
               </span>
             ))}
           </>
@@ -195,9 +187,7 @@ export function ProvenanceBanner({
       </div>
 
       {/* Accessible detailed inspection panel */}
-      {open && (
         <div
-          id={drawerId}
           role="region"
           aria-label="Per-indicator provenance and freshness details"
           className="mt-2 max-h-60 overflow-y-auto rounded border border-line bg-black p-2.5"
@@ -208,7 +198,7 @@ export function ProvenanceBanner({
               {status.lastSyncLatencyUs !== null ? `Last POST /api/stress-test: ${status.lastSyncLatencyUs} us` : 'Read-only stream'}
             </span>
           </div>
-          <table className="w-full border-collapse text-left text-[11px]">
+          <table className="min-w-[525px] w-full border-collapse text-left text-[11px]">
             <thead>
               <tr className="border-b border-line text-gray-500">
                 <th className="py-1 pr-2">Indicator</th>
@@ -223,7 +213,7 @@ export function ProvenanceBanner({
               {indicators.map((ind) => (
                 <tr key={ind.id} className="border-b border-line/50 align-top">
                   <td className="py-1 pr-2 text-gray-200">{ind.label}</td>
-                  <td className="py-1 pr-2 text-white">{ind.valueText}</td>
+                  <td className="py-1 pr-2 text-white">{displayLabel(ind.valueText)}</td>
                   <td className="py-1 pr-2">
                     <OriginBadge origin={ind.origin} />
                   </td>
@@ -234,13 +224,13 @@ export function ProvenanceBanner({
                     {ind.nativeRateHz ? `${ind.nativeRateHz} Hz` : '--'}
                     {ind.measurementTimeS !== null ? ` @ ${ind.measurementTimeS.toFixed(1)}s` : ''}
                   </td>
-                  <td className="py-1 text-gray-400">{ind.availabilityReason ?? '--'}</td>
+                  <td className="py-1 text-gray-400">{ind.availabilityReason ? displayLabel(ind.availabilityReason) : '—'}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      )}
-    </div>
+      </div>
+    </details>
   );
 }

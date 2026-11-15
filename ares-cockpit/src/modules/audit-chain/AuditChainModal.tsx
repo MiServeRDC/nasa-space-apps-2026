@@ -1,3 +1,4 @@
+import { CloseButton } from '../ui-primitives/CloseButton';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ENGINE_HTTP_URL } from '../../lib/useTelemetry';
@@ -142,13 +143,7 @@ export function AuditChainModal({
             <span id="audit-modal-title" className="text-sm font-bold text-white">SHA-256 CRYPTOGRAPHIC AUDIT CHAIN</span>
             <span className="hidden text-gray-500 md:inline">| NASA-STD-3001 VOL. 1 CH. 7 NON-REPUDIATION</span>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="min-h-[44px] cursor-pointer rounded border border-gray-700 px-3 py-2 text-gray-400 hover:border-white hover:text-white"
-          >
-            [X] CLOSE
-          </button>
+          <CloseButton onClick={onClose} />
         </div>
 
         {/* Verification & Provenance Banner */}
@@ -211,13 +206,7 @@ export function AuditChainModal({
         {/* Footer info */}
         <div className="mt-3 flex items-center justify-between border-t border-gray-800 pt-3 font-mono text-[11px] text-gray-500">
           <span>Standard: NASA-STD-3001 MedOps Chain-of-Custody</span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="min-h-[44px] cursor-pointer rounded border border-gray-700 px-3 py-2 text-gray-300 hover:border-white hover:text-white"
-          >
-            DISMISS
-          </button>
+
         </div>
       </div>
     </div>,
