@@ -1,5 +1,14 @@
 # Progress Tracking: ARES-Health (Autonomous Resilient Edge-native System for Astronaut Health)
 
+## README Refinement & Upstream Synchronization (2026-11-15)
+
+- Applied approved modular refinements to README.md: stack badges, quick-bar navigation, air-gap loopback note, and responsive Mermaid architecture flowchart.
+- Omitted Point 5 per user directive, maintaining a sober, highly professional tone.
+- Enforced strict zero-emoji policy across documentation, diffs, and commit messages.
+- Verified that Gabel et al. (BJSM 2022) / T0 context was already integrated by Alessandro (@MiServeRDC) in commit 7e01a90 and kept in Section 8.1.
+- Saved local protected backups before changes.
+- Committed and pushed cleanly to origin/main (commit ed750e8).
+
 ## Scientific Grounding: Gabel et al. (2022) Integration (2026-11-15)
 
 - Added NASA Johnson Space Center study (Gabel, Liphardt, Sibonga, Smith, Boyd et al., Br J Sports Med 2022) to README.md, docs/REFERENCES.md, docs/scientific_references.md, and docs/submission/NASA_SUBMISSION_PORTAL_READY.md.

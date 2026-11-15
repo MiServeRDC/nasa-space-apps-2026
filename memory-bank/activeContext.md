@@ -1,5 +1,19 @@
 # Active Context: ARES-Health (NASA Space Apps Challenge 2026)
 
+## README Refinement & Upstream Alignment (2026-11-15)
+
+- **Approved Changes Applied to README.md:**
+  1. Compact shields badges (NASA Space Apps 2026, Rust 2024 Safe, Cockpit React 19 #000000 OLED, Dual MIT/Apache-2.0, Air-Gapped 100% Offline).
+  2. Quick Navigation bar with verified links to essential deliverables (`docs/submission/JUDGES_START_HERE.md`, `docs/architecture/MODEL_EVIDENCE_AUDIT.md`, `docs/submission/NASA_SUBMISSION_PORTAL_READY.md`).
+  3. Air-gap loopback architecture clarification (`127.0.0.1:8080` is an in-memory transport between Rust and browser; zero external packets).
+  4. Responsive Mermaid architecture flowchart replacing legacy ASCII art.
+  5. Point 5 (unvalidated simulation callout) omitted per user directive.
+  6. Strict zero-emoji policy enforced across all documentation and commit messages.
+- **Upstream Verification:**
+  - Causal grounding from Gabel, Liphardt, Sibonga, Smith et al. (BJSM 2022) verified as already integrated upstream by Alessandro (`@MiServeRDC`) in commit `7e01a90` and preserved in Section 8.1.
+- **Local Protection:** Pre-refinement backup stored at `docs/team/README_BACKUP_PRE_REFINEMENT.md` and in local scratch brain.
+- **Remote Synchronization:** Pushed cleanly to `origin/main` at commit `ed750e8`.
+
 ## Scientific Grounding: Gabel et al. (2022) Integration (2026-11-15)
 
 Integrated findings from NASA Johnson Space Center / ISS TBone cohort (Gabel, Liphardt, Sibonga, Smith, Boyd et al., Br J Sports Med 2022; 56:196-203):
