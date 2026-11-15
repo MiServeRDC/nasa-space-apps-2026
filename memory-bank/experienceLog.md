@@ -125,3 +125,20 @@
   cannot be inferred from a local scenario. Absorbed dose mGy is not equivalent dose mSv.
 - Regression evidence: greenfield_clinical_view.test.ts and the local phase01 browser
   harness. Phase 2 WebGL/confirmation/voice gaps remain explicit in the results.
+
+
+## Greenfield optional features and local action invariants (2026-11-15)
+
+- Missing/failed WebGL cannot unmount telemetry, alerts or playbooks. A Canvas
+  boundary is separate from DOM; context restoration must clear the loss notice.
+- Reduced motion changes presentation, never deliberate confirmation duration.
+  Blur/release/hidden state/source or gate changes must invalidate an active hold.
+- Browser speech is not inherently local: refuse start unless processLocally is
+  supported and forced true. Errors use text, never a server retry.
+- A local selection is not engine execution/device acknowledgement. Canonical
+  content hashing and hash-link continuity are different guarantees. Serialize
+  local appends, retain empty history honestly and never fabricate SHA-256.
+- Anatomy source coverage and clinical answerability are independent. Registry
+  validation is not anatomical review. Unknown/missing/ambiguous counterparts clear
+  selection; donor annotations do not transfer by ontology alone.
+- Evidence: GREENFIELD_PHASE23_RESULTS.md and ANATOMY_IDENTITY_AND_COVERAGE_ADR.md.

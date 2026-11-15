@@ -1,3 +1,4 @@
+import { requireLocalSpeech } from '../../lib/localSpeechPolicy';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   classifyVoiceTranscript,
@@ -185,8 +186,10 @@ export function OsVoiceCopilot({
       rec.lang = 'en-US';
       rec.continuous = false;
       rec.interimResults = false;
-      if ('processLocally' in rec) {
-        rec.processLocally = true;
+      if (!requireLocalSpeech(rec)) {
+        setListening(false);
+        setIntentNotice({blocked: false, title: 'TEXT FALLBACK READY', detail: 'On-device recognition is not supported. Type your command.'});
+        return;
       }
       rec.onresult = (ev) => {
         const transcript = ev.results?.[0]?.[0]?.transcript ?? '';

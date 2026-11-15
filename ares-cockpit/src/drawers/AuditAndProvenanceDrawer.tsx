@@ -1,3 +1,4 @@
+import { verifyLocalAudit } from '../lib/localAudit';
 // Cryptographic SHA-256 Audit Ledger, Data Provenance & NASA-STD-3001 Vol. 1 Ch. 7
 // Crew Medical Privacy Governance Drawer (`AuditAndProvenanceDrawer`).
 // Implements:
@@ -41,54 +42,10 @@ export interface AuditAndProvenanceDrawerProps {
 
 type AuditDrawerTab = 'SHA256_LEDGER' | 'DATA_PROVENANCE' | 'PRIVACY_GOVERNANCE';
 
-const PREVIEW_FALLBACK_CHAIN: readonly AuditRecord[] = [
-  {
-    sequence_index: 0,
-    timestamp_utc: '2026-11-14T06:00:00Z',
-    actor_role: 'CREW_MEDICAL_OFFICER',
-    event_action:
-      'GENESIS: ARES-Health edge cryptographic ledger initialized. Pre-flight self-test OK.',
-    prev_hash_hex: '0'.repeat(64),
-    current_hash_hex:
-      'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
-  },
-  {
-    sequence_index: 1,
-    timestamp_utc: '2026-11-14T08:15:22Z',
-    actor_role: 'CREW_MEDICAL_OFFICER',
-    event_action:
-      'SAFETY GATE 1 ENGAGED: Hard lockout on systemic anticoagulation enforced pending POCUS thrombus verification.',
-    prev_hash_hex:
-      'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
-    current_hash_hex:
-      'a4b12c8e3901b0f59c118e90a2d48bf1293c04859aef09b2318cfba190284ab9',
-  },
-  {
-    sequence_index: 2,
-    timestamp_utc: '2026-11-14T11:42:05Z',
-    actor_role: 'ASTRONAUT_SELF',
-    event_action:
-      'VOCAL JITTER & PRIVATE CREW LOG: Routine autonomic check-in recorded locally on habitat edge enclave.',
-    prev_hash_hex:
-      'a4b12c8e3901b0f59c118e90a2d48bf1293c04859aef09b2318cfba190284ab9',
-    current_hash_hex:
-      'f7c90823da56b10e3950284bcda801739f50e92819fa041b802de93845c1109a',
-  },
-  {
-    sequence_index: 3,
-    timestamp_utc: '2026-11-14T15:20:18Z',
-    actor_role: 'CREW_MEDICAL_OFFICER',
-    event_action:
-      'POCUS SCAN LOGGED: Left Internal Jugular Vein B-Mode compression exam archived.',
-    prev_hash_hex:
-      'f7c90823da56b10e3950284bcda801739f50e92819fa041b802de93845c1109a',
-    current_hash_hex:
-      '4d29a8f0c1234e89b56701a2bcdef34567890fedcba9876543210abcdef12345',
-  },
-];
-
 const AUDIT_ROW_PX = 64;
 const AUDIT_VIEWPORT_PX = 320;
+
+const PREVIEW_FALLBACK_CHAIN: readonly AuditRecord[] = [];
 
 export function AuditAndProvenanceDrawer({
   open,
@@ -103,7 +60,9 @@ export function AuditAndProvenanceDrawer({
   const setPrivacyRole = useWorkbenchStore((s) => s.setPrivacyRole);
 
   const [tab, setTab] = useState<AuditDrawerTab>('SHA256_LEDGER');
-  const [provenance, setProvenance] = useState<AuditProvenance>('OFFLINE_SIMULATION_PREVIEW');
+  const [engineProvenance, setProvenance] = useState<AuditProvenance>('OFFLINE_SIMULATION_PREVIEW');
+  const [showLocalNotes, setShowLocalNotes] = useState(false);
+  const provenance = showLocalNotes ? 'OFFLINE_SIMULATION_PREVIEW' : engineProvenance;
   const [engineRecords, setEngineRecords] = useState<AuditRecord[] | null>(null);
   const [scrollTop, setScrollTop] = useState<number>(0);
   const [verifyBanner, setVerifyBanner] = useState<string | null>(null);
@@ -116,7 +75,7 @@ export function AuditAndProvenanceDrawer({
         const res = await fetch(`${httpBaseUrl}/api/audit-log`, { signal: ctrl.signal });
         if (res.ok) {
           const data = (await res.json()) as unknown;
-          if (Array.isArray(data) && data.length > 0) {
+          if (Array.isArray(data)) {
             setEngineRecords(data as AuditRecord[]);
             setProvenance('LIVE_ENGINE_LEDGER');
             return;
@@ -195,13 +154,19 @@ export function AuditAndProvenanceDrawer({
           ? 'HOLD_LAST_VALID'
           : 'FRESH';
 
-  const handleManualVerify = (): void => {
+  const handleManualVerify = async (): Promise<void> => {
     const res = verifyAuditChainContinuity(activeLedger);
-    const msg = res.intact
-      ? `SHA-256 chain continuity verified across ${res.checkedCount} blocks (${provenance}).`
-      : `SHA-256 chain break detected at sequence ${res.brokenAtSequence}: ${res.reason}`;
+    let contentValid: boolean | null = null;
+    if (provenance === 'OFFLINE_SIMULATION_PREVIEW') {
+      try { contentValid = await verifyLocalAudit(activeLedger); } catch { contentValid = false; }
+    }
+    const msg = contentValid !== null
+      ? (contentValid ? `Local note hashes verified (${activeLedger.length}); no engine execution acknowledgement.` : 'Local note content hash verification FAILED.')
+      : res.intact
+      ? `Link continuity only; content hashes NOT verified across ${res.checkedCount} blocks (${provenance}).`
+      : `Link discontinuity detected at sequence ${res.brokenAtSequence}: ${res.reason}`;
     setVerifyBanner(msg);
-    if (res.intact) {
+    if (contentValid === true || (contentValid === null && res.intact)) {
       announcePolite(msg);
     } else {
       announceAssertive(msg);
@@ -233,7 +198,7 @@ export function AuditAndProvenanceDrawer({
             <div className="text-[9px] opacity-90">
               {provenance === 'LIVE_ENGINE_LEDGER'
                 ? 'Cryptographic records streamed from live Rust ares-security-privacy engine.'
-                : 'Engine offline: displaying local deterministic preview chain (not a live mission ledger).'}
+                : 'Local session notes only; no engine execution acknowledgement.'}
             </div>
           </div>
 
@@ -245,11 +210,15 @@ export function AuditAndProvenanceDrawer({
             }`}
           >
             {chainCheck.intact
-              ? `CHAIN INTACT (${chainCheck.checkedCount})`
-              : `TAMPER BREAK @ #${chainCheck.brokenAtSequence}`}
+              ? `LINKS CONTIGUOUS (${chainCheck.checkedCount}); CONTENT UNVERIFIED`
+              : `LINK BREAK @ #${chainCheck.brokenAtSequence}`}
           </span>
         </div>
 
+        <button type="button" className="ares-touch-target rounded border border-cyan-400 px-3 text-xs text-cyan-200"
+          onClick={() => { setShowLocalNotes(v => !v); setVerifyBanner(null); }}>
+          {showLocalNotes ? 'SHOW ENGINE LEDGER' : `SHOW LOCAL SESSION NOTES (${extraLocalAuditEntries.length})`}
+        </button>
         {/* <= 3 Sub-Tabs */}
         <div
           role="tablist"
@@ -292,7 +261,7 @@ export function AuditAndProvenanceDrawer({
                 onClick={handleManualVerify}
                 className="ares-touch-target ares-interactive flex-1 rounded-lg border border-cyan-400/60 bg-cyan-500/15 px-3 text-[10px] font-semibold text-cyan-200"
               >
-                VERIFY SHA-256 CONTINUITY
+                VERIFY LOCAL HASHES / ENGINE LINKS
               </button>
               <button
                 type="button"

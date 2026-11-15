@@ -115,6 +115,7 @@ export function SpatialCanvasRoot({
       aria-hidden="true"
     >
       <Canvas
+        fallback={<span>3D unavailable; use the 2D cockpit.</span>}
         dpr={[1, 2]}
         eventSource={resolvedEventSource}
         eventPrefix="client"

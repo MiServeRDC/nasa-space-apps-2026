@@ -1,3 +1,5 @@
+import { appendLocalAudit } from './lib/localAudit';
+import { announceAssertive } from './stores/a11yAnnouncer';
 // Greenfield ("Terra Rasa") ARES-Health Spatial Biomedical Workbench Entry (`App.tsx`).
 // Orchestrates:
 // - 20 Hz dual-transport telemetry (`useTelemetry`) + counterfactual `WhatIf` ODE state
@@ -38,29 +40,6 @@ const AVAILABLE_CREW_SUBJECTS: readonly string[] = [
   'ARES-FltSurg-04',
 ];
 
-const INITIAL_PREVIEW_HEAD_HASH =
-  '4d29a8f0c1234e89b56701a2bcdef34567890fedcba9876543210abcdef12345';
-
-async function computeSha256Hex(input: string): Promise<string> {
-  if (typeof crypto !== 'undefined' && crypto.subtle) {
-    const bytes = new TextEncoder().encode(input);
-    const buf = await crypto.subtle.digest('SHA-256', bytes);
-    return Array.from(new Uint8Array(buf))
-      .map((b) => b.toString(16).padStart(2, '0'))
-      .join('');
-  }
-  // Deterministic 64-hex fallback for non-WebCrypto environments
-  let h1 = 0x811c9dc5;
-  let h2 = 0x01000193;
-  for (let i = 0; i < input.length; i += 1) {
-    const ch = input.charCodeAt(i);
-    h1 = Math.imul(h1 ^ ch, 0x01000193) >>> 0;
-    h2 = Math.imul(h2 ^ (ch + i), 0x85ebca6b) >>> 0;
-  }
-  const seg = (h1.toString(16).padStart(8, '0') + h2.toString(16).padStart(8, '0')).slice(0, 16);
-  return seg.repeat(4);
-}
-
 export default function App() {
   const [whatIf, setWhatIf] = useState<WhatIf>(DEFAULT_WHATIF);
   const [thrombusConfirmed, setThrombusConfirmed] = useState<boolean | null>(null);
@@ -68,6 +47,9 @@ export default function App() {
   const [injuryMarkers, setInjuryMarkers] = useState<InjuryMarker[]>([]);
   const [opticalScannerOpen, setOpticalScannerOpen] = useState<boolean>(false);
   const [localAuditEntries, setLocalAuditEntries] = useState<AuditRecord[]>([]);
+
+  const localAuditRef = useRef<AuditRecord[]>([]);
+  const localAuditQueue = useRef<Promise<void>>(Promise.resolve());
 
   const captureSnapshotRef = useRef<(() => CameraSnapshot) | null>(null);
 
@@ -151,33 +133,14 @@ export default function App() {
     [whatIf.mission_day],
   );
 
-  const handleExecutePlaybookAction = useCallback(
-    (playbookId: string, action: CountermeasureAction) => {
-      void (async () => {
-        const seq = 4 + localAuditEntries.length;
-        const prevHash =
-          localAuditEntries[localAuditEntries.length - 1]?.current_hash_hex ??
-          INITIAL_PREVIEW_HEAD_HASH;
-        const timestampUtc = new Date().toISOString();
-        const eventAction = `MEDOPS EXECUTED [${playbookId}]: ${action.label} (${action.action_id})`;
-        const currentHash = await computeSha256Hex(
-          `${seq}|${timestampUtc}|CREW_MEDICAL_OFFICER|${eventAction}|${prevHash}`,
-        );
-        setLocalAuditEntries((prev) => [
-          ...prev,
-          {
-            sequence_index: seq,
-            timestamp_utc: timestampUtc,
-            actor_role: 'CREW_MEDICAL_OFFICER',
-            event_action: eventAction,
-            prev_hash_hex: prevHash,
-            current_hash_hex: currentHash,
-          },
-        ]);
-      })();
-    },
-    [localAuditEntries],
-  );
+  const handleExecutePlaybookAction = useCallback((playbookId: string, action: CountermeasureAction) => {
+    localAuditQueue.current = localAuditQueue.current.then(async () => {
+      const record = await appendLocalAudit(localAuditRef.current,
+        `LOCAL SELECTION ONLY [${packet.astronaut_id} / ${packet.source_record_id} / ${playbookId}]: ${action.label} (${action.action_id}); no engine execution acknowledgement`);
+      localAuditRef.current = [...localAuditRef.current, record];
+      setLocalAuditEntries(localAuditRef.current);
+    }).catch(() => { announceAssertive('Local note could not be hashed or saved. No engine execution occurred.'); });
+  }, [packet.astronaut_id, packet.source_record_id]);
 
   const handleChangeSex = useCallback(
     (sex: CrewSex) => {

@@ -27,11 +27,8 @@ import {
 } from '../lib/scenario';
 import { clinicalDataMode, clinicalSourceLabel } from '../lib/clinicalViewModel';
 import type { TransportMode } from '../modules/os-shell/OsSystemStatusBar';
-import { SpatialCanvasRoot } from '../stage3d/SpatialCanvasRoot';
-import {
-  BiodigitalTwinStage,
-  type LazyAnatomicalGlbToggles,
-} from '../stage3d/BiodigitalTwinStage';
+import { OptionalSpatialBoundary } from './OptionalSpatialBoundary';
+import type { LazyAnatomicalGlbToggles } from '../stage3d/BiodigitalTwinStage';
 import { telemetryRingBuffer } from '../stores/telemetryRingBuffer';
 import { useWorkbenchStore } from '../stores/workbenchStore';
 import { useStudioTimelineStore } from '../stores/studioTimelineStore';
@@ -116,6 +113,8 @@ export function WorkbenchShell({
   studioSlot,
 }: WorkbenchShellProps) {
   const phase = useWorkbenchStore((s) => s.phase);
+  const [spatialUnavailable, setSpatialUnavailable] = useState(
+    () => typeof window === 'undefined' || typeof window.WebGL2RenderingContext === 'undefined');
   const simulationMode = useWorkbenchStore((s) => s.simulationMode);
   const drawer = useWorkbenchStore((s) => s.drawer);
   const commandPaletteOpen = useWorkbenchStore((s) => s.commandPaletteOpen);
@@ -228,23 +227,17 @@ export function WorkbenchShell({
       <TelemetryIgnitionPreloader astronautId={packet.astronaut_id} />
 
       {/* Layer 0: Single Persistent WebGL2 Spatial Canvas Root */}
-      <SpatialCanvasRoot
+      <OptionalSpatialBoundary
         eventSource={stageApertureRef}
-        onContextLostChange={(lost) => {
-          if (lost) {
-            announceAssertive('WebGL2 3D context lost; attempting autonomous GPU recovery.');
-          }
-        }}
-      >
-        <BiodigitalTwinStage
-          apertureTrackRef={stageApertureRef}
-          chromeInsets={chromeInsets}
-          hypergraphSummary={packet.hypergraph_spatial}
-          injuryMarkers={injuryMarkers}
-          lazyGlbLayers={lazyGlbLayers}
-          onCaptureSnapshotRef={effectiveCaptureRef}
-        />
-      </SpatialCanvasRoot>
+        onFailure={() => setSpatialUnavailable(true)}
+        onContextLostChange={setSpatialUnavailable}
+        apertureTrackRef={stageApertureRef}
+        chromeInsets={chromeInsets}
+        hypergraphSummary={packet.hypergraph_spatial}
+        injuryMarkers={injuryMarkers}
+        lazyGlbLayers={lazyGlbLayers}
+        onCaptureSnapshotRef={effectiveCaptureRef}
+      />
 
       {/* Layer 1: Persistent 36px Top Telemetry Horizon */}
       <HorizonBar
@@ -292,6 +285,9 @@ export function WorkbenchShell({
           ref={stageApertureRef}
           className="pointer-events-auto relative min-h-[340px] w-full overflow-hidden rounded-2xl"
         >
+          {spatialUnavailable ? <p role="status" data-spatial-fallback="true" className="relative z-30 rounded border border-amber-400 bg-black p-3 text-sm text-amber-200">
+            3D unavailable. Vitals, alerts, diagnostic navigation and playbooks remain available in 2D.
+          </p> : null}
           <SpatialStageHud
             lazyGlbLayers={lazyGlbLayers}
             onToggleGlbLayer={handleToggleGlbLayer}

@@ -18,7 +18,6 @@ import {
   CRYSTALLIZED_PLAYBOOK_CATALOG,
   getCatalogEntry,
 } from '../lib/playbookCatalog';
-import { prefersReducedMotionSafe } from '../instruments/instrumentMath';
 import { useWorkbenchStore } from '../stores/workbenchStore';
 import { announceAssertive, announcePolite } from '../stores/a11yAnnouncer';
 import {
@@ -130,7 +129,7 @@ export function resolvePlaybookSafetyDag(
   };
 }
 
-function PressAndHoldCountermeasureButton({
+export function PressAndHoldCountermeasureButton({
   action,
   completed,
   onConfirm,
@@ -159,12 +158,17 @@ function PressAndHoldCountermeasureButton({
     };
   }, []);
 
+  useEffect(() => {
+    cancelHold();
+    const cancelHidden = () => { if (document.hidden) cancelHold(); };
+    window.addEventListener('blur', cancelHold);
+    document.addEventListener('visibilitychange', cancelHidden);
+    return () => { cancelHold(); window.removeEventListener('blur', cancelHold); document.removeEventListener('visibilitychange', cancelHidden); };
+  }, [action.action_id, action.label, action.category, action.delta_rho_per_hour, completed]);
+
   const beginHold = (): void => {
     if (completed) return;
-    if (prefersReducedMotionSafe() || typeof window === 'undefined') {
-      onConfirm(action);
-      return;
-    }
+    if (typeof window === 'undefined' || rafRef.current !== null) return;
     startMsRef.current = performance.now();
     const tick = (now: number): void => {
       const elapsed = now - startMsRef.current;
@@ -196,7 +200,9 @@ function PressAndHoldCountermeasureButton({
 
       <button
         type="button"
-        onPointerDown={beginHold}
+        onPointerDown={(e) => { if (e.button === 0) beginHold(); }}
+        onBlur={cancelHold}
+        disabled={completed}
         onPointerUp={cancelHold}
         onPointerLeave={cancelHold}
         onPointerCancel={cancelHold}
@@ -213,8 +219,8 @@ function PressAndHoldCountermeasureButton({
         }}
         aria-label={
           completed
-            ? `Completed: ${action.label}`
-            : `Press and hold 1.5 seconds to execute: ${action.label}`
+            ? `Local selection: ${action.label}`
+            : `Press and hold 1.5 seconds to record local selection: ${action.label}`
         }
         className={`ares-touch-target ares-interactive relative w-full overflow-hidden rounded-lg border px-3 font-mono text-[10px] font-semibold tracking-wider ${
           completed
@@ -231,10 +237,10 @@ function PressAndHoldCountermeasureButton({
         ) : null}
         <span className="relative z-10">
           {completed
-            ? 'EXECUTED & RECORDED TO SHA-256 AUDIT CHAIN'
+            ? 'LOCAL SELECTION - NO ENGINE ACKNOWLEDGEMENT'
             : holdPct > 0
               ? `HOLDING SPRING DETENT... ${Math.round(holdPct)}%`
-              : 'PRESS & HOLD 1.5S TO EXECUTE'}
+              : 'HOLD 1.5S TO RECORD LOCAL SELECTION'}
         </span>
       </button>
     </div>
@@ -272,6 +278,10 @@ export function BranchedPlaybookDagLens({
     [packet, scenario, selectedPlaybookId, thrombusConfirmed, whatIf],
   );
 
+  useEffect(() => { setCompletedIds({}); }, [packet.astronaut_id, packet.source_record_id,
+    packet.provenance_manifest.biometrics_source, packet.provenance_manifest.scenario_overlay_mode,
+    resolved.playbookId]);
+
   // Auto-vent LBNP chamber to 0 mmHg when Gate 2 pre-syncope triggers (`dSBP > 15` or `HR > 115`)
   const prevPreSyncopeRef = useRef(false);
   useEffect(() => {
@@ -281,7 +291,7 @@ export function BranchedPlaybookDagLens({
         onChangeWhatIf({ lbnp_mmhg: 0 });
       }
       announceAssertive(
-        'Hard Clinical Safety Gate 2 triggered: LBNP chamber automatically vented to 0 mmHg.',
+        'LBNP safety alert: scenario pressure reset requested; no physical device acknowledgement.',
       );
     } else if (!resolved.dag.preSyncopeTriggered) {
       prevPreSyncopeRef.current = false;
@@ -310,7 +320,7 @@ export function BranchedPlaybookDagLens({
       onChangeWhatIf({ lbnp_mmhg: 0 });
     }
     onExecuteAction?.(resolved.playbookId, action);
-    announcePolite(`Executed MedOps action ${action.label} in ${resolved.shortCode}.`);
+    announcePolite(`Selected locally: ${action.label} in ${resolved.shortCode}.`);
   };
 
   return (
@@ -437,7 +447,7 @@ export function BranchedPlaybookDagLens({
 
         {resolved.dag.unlockedActions.map((act) => (
           <PressAndHoldCountermeasureButton
-            key={act.action_id}
+            key={JSON.stringify([packet.astronaut_id, packet.source_record_id, packet.provenance_manifest, resolved.playbookId, packet.active_playbook?.safety_gates, act])}
             action={act}
             completed={Boolean(completedIds[act.action_id])}
             onConfirm={handleConfirmAction}

@@ -1,5 +1,19 @@
 # Progress Tracking: ARES-Health (Autonomous Resilient Edge-native System for Astronaut Health)
 
+## Greenfield phases 2 and 3 contract foundation (2026-11-15)
+
+Branch work/MiServeRDC-greenfield-phase01; no main merge/push. Implemented isolated
+lazy 3D with DOM fallback, deliberate 1500 ms confirmation in both motion modes,
+strict local-ASR policy, truthful local-action/engine-acknowledgement labels and
+canonical local note hashing with serialized appends. Backend gate flags remain
+authoritative and missing gait stays unavailable. Added authored anatomy contracts,
+registry, selection/coverage rules and ADR; renderer integration is still phase 5.
+Validation: 108 frontend tests, lint/build, both browser harnesses and fast Rust
+check/Clippy/probe pass locally. See docs/evaluation/GREENFIELD_PHASE23_RESULTS.md.
+Next: phase 4 exact source/license/mesh inventory, then phase 5 registry-backed
+atlas selection/picking. No new female geometry or full anatomy coverage claimed.
+
+
 ## Greenfield remediation phases 0-1 completed locally (2026-11-15)
 
 User authorized phases 0 and 1 only. Dedicated worktree /tmp/ares-greenfield-phase01,

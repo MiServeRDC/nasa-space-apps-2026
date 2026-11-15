@@ -1,3 +1,4 @@
+import { requireLocalSpeech } from '../lib/localSpeechPolicy';
 // Persistent Ambient Voice Copilot & Studio Director Pill (`BottomCopilotStudioPill`).
 // Implements:
 // - Compact bottom-center tactile bar (`0` `backdrop-filter`, `>= 48px` hit targets)
@@ -42,6 +43,7 @@ interface SpeechRecognitionEventLike {
 }
 
 interface SpeechRecognitionInstanceLike {
+  processLocally?: boolean;
   continuous: boolean;
   interimResults: boolean;
   lang: string;
@@ -78,6 +80,7 @@ export function BottomCopilotStudioPill({
   const [lastSpokenReply, setLastSpokenReply] = useState<string | null>(null);
 
   const pillRef = useRef<HTMLDivElement | null>(null);
+  const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
   const recognitionRef = useRef<SpeechRecognitionInstanceLike | null>(null);
 
   const visualState: CopilotVisualState = voiceSafetyToast?.active
@@ -166,12 +169,20 @@ export function BottomCopilotStudioPill({
     const w = window as unknown as SpeechWindowLike;
     const Ctor = w.SpeechRecognition ?? w.webkitSpeechRecognition;
     if (!Ctor) {
+      setVoiceNotice('On-device voice unavailable. Type a command.');
       // Air-gapped headless / non-SpeechRecognition browser: open local utterance bar automatically
       setConsoleExpanded(true);
+      setVoiceListening(false);
       return;
     }
     try {
       const rec = new Ctor();
+      if (!requireLocalSpeech(rec)) {
+        setVoiceNotice('On-device voice unavailable. Type a command.');
+        setConsoleExpanded(true);
+        setVoiceListening(false);
+        return;
+      }
       rec.continuous = false;
       rec.interimResults = false;
       rec.lang = 'en-US';
@@ -180,11 +191,13 @@ export function BottomCopilotStudioPill({
         setVoiceListening(false);
         void processTranscript(transcript);
       };
-      rec.onerror = () => setVoiceListening(false);
+      rec.onerror = () => { setVoiceNotice('On-device recognition failed. Type a command.'); setConsoleExpanded(true); setVoiceListening(false); };
       rec.onend = () => setVoiceListening(false);
       recognitionRef.current = rec;
+      setVoiceNotice(null);
       rec.start();
     } catch {
+      setVoiceNotice('On-device recognition unavailable. Type a command.');
       setConsoleExpanded(true);
       setVoiceListening(false);
     }
@@ -201,6 +214,7 @@ export function BottomCopilotStudioPill({
         studioBarOpen ? 'bottom-[104px]' : 'bottom-3'
       }`}
     >
+      {voiceNotice ? <p role="status" className="rounded bg-black p-2 text-amber-200">{voiceNotice}</p> : null}
       {/* Safety Interlock Toast (`NASA-STD-3001 [V2 10027]`) */}
       {voiceSafetyToast?.active ? (
         <div

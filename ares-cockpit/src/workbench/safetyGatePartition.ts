@@ -43,7 +43,7 @@ export interface AutonomousSafetyOverride {
 export interface InterlockGateSummaryItem {
   code: SafetyGateCode;
   shortLabel: string;
-  status: 'LOCKED' | 'ARMED' | 'TRIGGERED' | 'UNLOCKED';
+  status: 'LOCKED' | 'ARMED' | 'TRIGGERED' | 'UNLOCKED' | 'UNAVAILABLE';
   detail: string;
 }
 
@@ -95,10 +95,10 @@ export function partitionPlaybookActionsWithSafetyGates(
   context: SafetyDagPartitionContext = {},
 ): PartitionedSafetyDagResult {
   const pocusVerified = context.pocusThrombusConfirmed === true;
-  const anticoagLocked =
-    rawGates?.anticoagulant_lock_active !== undefined
+  const anticoagLocked = rawGates?.anticoagulant_contraindicated_bleeding_risk === true ||
+    (rawGates?.anticoagulant_lock_active !== undefined
       ? Boolean(rawGates.anticoagulant_lock_active)
-      : !pocusVerified;
+      : !pocusVerified);
 
   const invasiveLocked = rawGates?.gate4_invasive_decompression_locked !== false;
 
@@ -111,22 +111,21 @@ export function partitionPlaybookActionsWithSafetyGates(
   const sbpDrop =
     typeof context.sbpDropMmhg === 'number' && Number.isFinite(context.sbpDropMmhg)
       ? context.sbpDropMmhg
-      : 0;
+      : null;
   const hr =
     typeof context.hrBpm === 'number' && Number.isFinite(context.hrBpm)
       ? context.hrBpm
       : null;
 
-  const preSyncopeTriggered =
-    lbnpActive &&
-    (sbpDrop > GATE2_MAX_SBP_DROP_MMHG || (hr !== null && hr > GATE2_MAX_SAFE_HR_BPM));
+  const preSyncopeTriggered = Boolean(rawGates?.lbnp_auto_vent_triggered) || (lbnpActive &&
+    ((sbpDrop !== null && sbpDrop > GATE2_MAX_SBP_DROP_MMHG) || (hr !== null && hr > GATE2_MAX_SAFE_HR_BPM)));
 
   const gaiPct =
     typeof context.gaiPct === 'number' && Number.isFinite(context.gaiPct)
       ? context.gaiPct
-      : 0;
+      : null;
   const ankleDampingActive =
-    Boolean(rawGates?.eva_suit_damping_active) || gaiPct > GATE3_MAX_SAFE_GAI_PCT;
+    Boolean(rawGates?.eva_suit_damping_active) || (gaiPct !== null && gaiPct > GATE3_MAX_SAFE_GAI_PCT);
 
   const evaNoGoActive = Boolean(rawGates?.gate4_eva_fitness_no_go);
   const radDose =
@@ -177,12 +176,12 @@ export function partitionPlaybookActionsWithSafetyGates(
       gateCode: 'GATE_2_LBNP_AUTO_VENT',
       severity: 'CRITICAL',
       headline: 'GATE 2 AUTONOMOUS OVERRIDE: LBNP AUTO-VENT TO 0 MMHG',
-      detail: `Pre-syncopal threshold breached (SBP drop ${sbpDrop.toFixed(1)} mmHg > 15 mmHg or HR ${hrNote} > 115 bpm). Negative pressure chamber vented to 0 mmHg.`,
+      detail: `Vent condition reported (SBP drop ${sbpDrop?.toFixed(1) ?? 'N/A'} mmHg; HR ${hrNote}). Vent requested/reported; physical device acknowledgement is unavailable.`,
     });
     if (!unlockedActions.some((a) => a.action_id === 'ACT_EMERGENCY_LBNP_AUTO_VENT_0_MMHG')) {
       unlockedActions.unshift({
         action_id: 'ACT_EMERGENCY_LBNP_AUTO_VENT_0_MMHG',
-        label: `SAFETY GATE 2 TRIGGERED: Auto-vent LBNP chamber to 0 mmHg immediately (SBP drop ${sbpDrop.toFixed(1)} mmHg / HR ${hrNote})`,
+        label: `SAFETY GATE 2 TRIGGERED: Auto-vent LBNP chamber to 0 mmHg immediately (SBP drop ${sbpDrop?.toFixed(1) ?? 'N/A'} mmHg / HR ${hrNote})`,
         category: 'HARD_SAFETY_GATE_OVERRIDE',
         delta_rho_per_hour: 0.35,
       });
@@ -195,12 +194,12 @@ export function partitionPlaybookActionsWithSafetyGates(
       gateCode: 'GATE_3_ANKLE_DAMPING',
       severity: 'WARNING',
       headline: 'GATE 3 BIOMECHANICAL OVERRIDE: 0.38G EVA ANKLE DAMPING +25%',
-      detail: `Gait Asymmetry Index (${gaiPct.toFixed(1)}% > 12.0%) detected. High-impact plyometrics locked; Martian suit ankle stiffness boosted.`,
+      detail: `Gait Asymmetry Index (${gaiPct?.toFixed(1) ?? 'N/A'}% > 12.0%) detected. Damping restriction/request reported; physical device acknowledgement unavailable.`,
     });
     if (!unlockedActions.some((a) => a.action_id === 'ACT_EVA_SUIT_ANKLE_DAMPING_038G')) {
       unlockedActions.push({
         action_id: 'ACT_EVA_SUIT_ANKLE_DAMPING_038G',
-        label: `SAFETY GATE 3 ACTIVE: Lock plyometric impact & set Martian EVA suit ankle damping +25% (GAI = ${gaiPct.toFixed(1)}% > 12.0%)`,
+        label: `SAFETY GATE 3 ACTIVE: Lock plyometric impact & set Martian EVA suit ankle damping +25% (GAI = ${gaiPct?.toFixed(1) ?? 'N/A'}% > 12.0%)`,
         category: 'BIOMECHANICAL_SAFETY_GATE',
         delta_rho_per_hour: 0.1,
       });
@@ -233,7 +232,7 @@ export function partitionPlaybookActionsWithSafetyGates(
       shortLabel: 'GATE 1: ANTICOAG',
       status: anticoagLocked ? 'LOCKED' : 'UNLOCKED',
       detail: anticoagLocked
-        ? 'Awaiting POCUS thrombus confirmation'
+        ? rawGates?.anticoagulant_contraindicated_bleeding_risk ? 'Backend bleeding-risk contraindication' : 'Awaiting POCUS thrombus confirmation'
         : 'POCUS intraluminal thrombus verified',
     },
     {
@@ -241,16 +240,16 @@ export function partitionPlaybookActionsWithSafetyGates(
       shortLabel: 'GATE 2: LBNP VENT',
       status: preSyncopeTriggered ? 'TRIGGERED' : 'ARMED',
       detail: preSyncopeTriggered
-        ? 'Chamber vented to 0 mmHg (SBP drop >15 / HR >115)'
+        ? 'Vent condition reported; physical device acknowledgement unavailable'
         : 'Guarding dSBP <= 15 mmHg & HR <= 115 bpm',
     },
     {
       code: 'GATE_3_ANKLE_DAMPING',
       shortLabel: 'GATE 3: 0.38G SUIT',
-      status: ankleDampingActive ? 'TRIGGERED' : 'ARMED',
+      status: ankleDampingActive ? 'TRIGGERED' : gaiPct === null ? 'UNAVAILABLE' : 'ARMED',
       detail: ankleDampingActive
-        ? `GAI ${gaiPct.toFixed(1)}% > 12%: +25% ankle damping`
-        : `GAI ${gaiPct.toFixed(1)}% <= 12.0% nominal`,
+        ? `GAI ${gaiPct?.toFixed(1) ?? 'N/A'}% > 12%: +25% ankle damping`
+        : gaiPct === null ? 'GAI unavailable; no nominal gait inferred' : `GAI ${gaiPct.toFixed(1)}% <= 12.0%`,
     },
     {
       code: 'GATE_4A_THORACOSTOMY_LOCK',
@@ -264,7 +263,7 @@ export function partitionPlaybookActionsWithSafetyGates(
       code: 'GATE_4B_EVA_NO_GO',
       shortLabel: 'GATE 4B: EVA GO/NO-GO',
       status: evaNoGoActive ? 'TRIGGERED' : 'ARMED',
-      detail: evaNoGoActive ? 'EVA egress inhibited' : 'EVA physiological readiness nominal',
+      detail: evaNoGoActive ? 'EVA egress inhibited' : 'No EVA restriction reported by this gate',
     },
   ];
 
