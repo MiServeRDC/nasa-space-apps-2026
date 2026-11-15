@@ -305,7 +305,7 @@ ARES-Health is built by a cross-university team for NASA Space Apps Challenge 20
 | Name | Affiliation | Contact |
 | :--- | :--- | :--- |
 | Fabio Malaguti | Università di Bologna | fabiomalagutti27@gmail.com |
-| Alessandro Nicolini | Università di Bologna | alessandronicolini@gmail.com |
+| Alessandro Nicolini | Università di Bologna | aleeesandronicolini@gmail.com |
 | Carolina Bonafè | Università di Bologna | carolinabonafe02@gmail.com |
 | Leonardo Perrone | KU Leuven | leonardo.perrone02@gmail.com |
 | Fernando Alonzi | KU Leuven | alonzifernando209@gmail.com |
