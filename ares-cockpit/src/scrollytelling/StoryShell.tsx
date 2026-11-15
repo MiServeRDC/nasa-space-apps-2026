@@ -175,7 +175,7 @@ export function StoryShell({
   const sqiVal = packet.biometrics.sqi_score ?? scenario?.sqi ?? 0.95;
 
   return (
-    <div className="relative min-h-screen bg-[#000000] text-[#e2e8f0] font-sans selection:bg-[#38bdf8]/30">
+    <div className="relative min-h-screen overflow-x-clip bg-[#000000] text-[#e2e8f0] font-sans selection:bg-[#38bdf8]/30">
       {/* Layer 0: Fixed 3D Pinned Canvas with Spline Camera Trajectory */}
       <PinnedScrollyStage
         sex={currentSex}
@@ -184,26 +184,26 @@ export function StoryShell({
       />
 
       {/* Persistent Minimal Header (44px) - Level 1 Navigation */}
-      <header className="fixed top-0 left-0 right-0 z-50 h-11 border-b border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md px-4 flex items-center justify-between text-xs font-mono">
+      <header className="fixed top-0 left-0 right-0 z-50 h-11 border-b border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md px-3 sm:px-4 lg:px-6 flex items-center justify-between gap-2 sm:gap-3 text-xs font-mono">
         {/* Left: Branding & Mission Clock */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 whitespace-nowrap shrink-0">
           <div className="flex items-center gap-2 font-bold tracking-widest text-[#38bdf8]">
-            <span className="inline-block w-2 h-2 rounded-full bg-[#38bdf8] animate-pulse" />
+            <span className="inline-block w-2 h-2 rounded-full bg-[#38bdf8] animate-pulse shrink-0" />
             <span>ARES-HEALTH</span>
           </div>
-          <span className="text-[#64748b]">|</span>
-          <span className="text-[#94a3b8]">SOL {Math.floor(whatIf.mission_day)}</span>
-          <span className="text-[#64748b]">|</span>
-          <span className="text-[#94a3b8]">OWLT 14m 22s</span>
+          <span className="hidden sm:inline text-[#64748b]">|</span>
+          <span className="hidden sm:inline text-[#94a3b8]">SOL {Math.floor(whatIf.mission_day)}</span>
+          <span className="hidden 2xl:inline text-[#64748b]">|</span>
+          <span className="hidden 2xl:inline text-[#94a3b8]">OWLT 14m 22s</span>
         </div>
 
         {/* Center: Chapter Jump Pills */}
-        <nav className="hidden md:flex items-center gap-1">
+        <nav className="hidden xl:flex items-center gap-1 whitespace-nowrap">
           {CHAPTER_LABELS.map((label, idx) => (
             <button
               key={label}
               onClick={() => scrollToChapter(idx)}
-              className={`px-2.5 py-1 rounded transition-colors text-[10px] tracking-wider uppercase font-mono ${
+              className={`px-2.5 py-1 rounded transition-colors text-[10px] tracking-wider uppercase font-mono whitespace-nowrap ${
                 activeChapter === idx
                   ? 'bg-[#38bdf8]/20 text-[#38bdf8] border border-[#38bdf8]/50 font-bold'
                   : 'text-[#64748b] hover:text-[#94a3b8] hover:bg-[#1e293b]/40'
@@ -215,9 +215,9 @@ export function StoryShell({
         </nav>
 
         {/* Right: Controls & Drawer Triggers */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0">
           {/* Sex Switcher */}
-          <div className="flex items-center border border-[#334155] rounded overflow-hidden">
+          <div className="flex items-center border border-[#334155] rounded overflow-hidden shrink-0">
             <button
               onClick={() => {
                 setTwinSex('MALE');
@@ -249,7 +249,7 @@ export function StoryShell({
           {/* View Mode Toggle */}
           <button
             onClick={onToggleViewMode}
-            className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded border border-[#38bdf8]/40 bg-[#38bdf8]/10 text-[#38bdf8] text-[10px] font-mono hover:bg-[#38bdf8]/20 transition-colors"
+            className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded border border-[#38bdf8]/40 bg-[#38bdf8]/10 text-[#38bdf8] text-[10px] font-mono hover:bg-[#38bdf8]/20 transition-colors whitespace-nowrap"
           >
             <span>VIEW: NARRATIVE</span>
           </button>
@@ -257,7 +257,7 @@ export function StoryShell({
           {/* Command Palette Trigger */}
           <button
             onClick={onOpenCommandPalette}
-            className="flex items-center gap-1 px-2 py-1 rounded border border-[#334155] bg-[#0f172a] text-[#94a3b8] text-[10px] font-mono hover:text-[#e2e8f0] hover:border-[#475569]"
+            className="hidden md:inline-flex items-center gap-1 px-2 py-1 rounded border border-[#334155] bg-[#0f172a] text-[#94a3b8] text-[10px] font-mono hover:text-[#e2e8f0] hover:border-[#475569] whitespace-nowrap"
           >
             <span>CMD+K</span>
           </button>
@@ -265,7 +265,7 @@ export function StoryShell({
           {/* Operator Tools Sheet Trigger */}
           <button
             onClick={() => onOpenDrawer('MISSION_PORTAL')}
-            className="px-2.5 py-1 rounded bg-[#1e293b] border border-[#475569] text-[#e2e8f0] text-[10px] font-mono hover:bg-[#334155] transition-colors"
+            className="px-2 sm:px-2.5 py-1 rounded bg-[#1e293b] border border-[#475569] text-[#e2e8f0] text-[10px] font-mono hover:bg-[#334155] transition-colors whitespace-nowrap"
           >
             OPERATOR TOOLS
           </button>
@@ -279,81 +279,80 @@ export function StoryShell({
         {/* ========================================================================= */}
         <section
           id="chapter-0"
-          className="min-h-screen flex flex-col justify-between pt-24 pb-12 px-8 max-w-7xl mx-auto"
+          className="min-h-screen flex flex-col justify-between pt-24 pb-12 px-5 sm:px-8 lg:px-12 max-w-7xl mx-auto"
         >
           {/* Editorial Title Block */}
-          <div className="max-w-2xl space-y-4">
-            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border border-[#38bdf8]/30 bg-[#38bdf8]/10 text-[#38bdf8] text-xs font-mono">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#38bdf8]" />
-              MISSION TO MARS // TRANSIT PHASE // 0.00 G
+          <div className="w-full max-w-5xl mx-auto text-center flex flex-col items-center space-y-5">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#38bdf8]/30 bg-[#38bdf8]/10 text-[#38bdf8] text-[10px] sm:text-xs font-mono tracking-wider">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#38bdf8] shrink-0" />
+              <span>MISSION TO MARS // TRANSIT PHASE // 0.00 G</span>
             </div>
-            <h1 className="text-4xl md:text-6xl font-light tracking-tight text-[#ffffff]">
-              Autonomous Resilient
-              <br />
-              <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-[#38bdf8] to-[#818cf8]">
+            <h1 className="max-w-5xl text-4xl md:text-6xl lg:text-7xl font-light tracking-tight leading-[1.08] text-balance text-[#ffffff]">
+              Autonomous Resilient{' '}
+              <span className="xl:whitespace-nowrap font-semibold text-transparent bg-clip-text bg-gradient-to-r from-[#38bdf8] to-[#818cf8]">
                 Edge-Native Biodigital Twin
               </span>
             </h1>
-            <p className="text-sm md:text-base text-[#94a3b8] leading-relaxed max-w-xl">
+            <p className="max-w-3xl mx-auto text-sm md:text-base lg:text-lg text-[#94a3b8] leading-relaxed text-balance">
               Real-time physiological telemetry, causal hemodynamics, and predictive Signal Temporal
               Logic running strictly on spacecraft edge hardware under 8 to 48-minute Earth radio delay.
             </p>
           </div>
 
           {/* Large Tabular Vitals Anchor (3 Clean Numbers) */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-3xl my-8">
+          <div className="w-full max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-5 lg:gap-6 my-8">
             {/* Heart Rate */}
-            <div className="p-4 rounded-lg border border-[#334155]/60 bg-[#000000]/70 backdrop-blur-md">
-              <span className="text-[10px] font-mono uppercase tracking-widest text-[#64748b]">
+            <div className="min-w-0 p-5 lg:p-6 rounded-xl border border-[#334155]/60 bg-[#000000]/75 backdrop-blur-md flex flex-col justify-between overflow-hidden">
+              <span className="text-[11px] font-mono uppercase tracking-widest text-[#64748b]">
                 HEART RATE
               </span>
-              <div className="mt-1 flex items-baseline gap-2">
-                <span className="text-4xl md:text-5xl font-mono font-medium text-[#ffffff]">
-                  {hrVal ?? '--'}
+              <div className="mt-2 flex items-baseline gap-2.5">
+                <span className="text-4xl lg:text-5xl font-mono font-medium tabular-nums text-[#ffffff]">
+                  {hrVal !== null && Number.isFinite(hrVal) ? Math.round(hrVal) : '--'}
                 </span>
                 <span className="text-xs font-mono text-[#94a3b8]">BPM</span>
               </div>
-              <div className="mt-2 text-[10px] font-mono text-[#38bdf8]">
-                {hrVal ? 'SINUS RHYTHM // NOMINAL' : 'SENSOR DETACHED'}
+              <div className="mt-3 text-[11px] font-mono text-[#38bdf8]">
+                {hrVal !== null && Number.isFinite(hrVal) ? 'SINUS RHYTHM // NOMINAL' : 'SENSOR DETACHED'}
               </div>
             </div>
 
             {/* Blood Oxygen SpO2 */}
-            <div className="p-4 rounded-lg border border-[#334155]/60 bg-[#000000]/70 backdrop-blur-md">
-              <span className="text-[10px] font-mono uppercase tracking-widest text-[#64748b]">
+            <div className="min-w-0 p-5 lg:p-6 rounded-xl border border-[#334155]/60 bg-[#000000]/75 backdrop-blur-md flex flex-col justify-between overflow-hidden">
+              <span className="text-[11px] font-mono uppercase tracking-widest text-[#64748b]">
                 OXYGEN SATURATION
               </span>
-              <div className="mt-1 flex items-baseline gap-2">
-                <span className="text-4xl md:text-5xl font-mono font-medium text-[#ffffff]">
-                  {spo2Val ? spo2Val.toFixed(0) : '--'}
+              <div className="mt-2 flex items-baseline gap-2.5">
+                <span className="text-4xl lg:text-5xl font-mono font-medium tabular-nums text-[#ffffff]">
+                  {spo2Val !== null && Number.isFinite(spo2Val) ? spo2Val.toFixed(0) : '--'}
                 </span>
                 <span className="text-xs font-mono text-[#94a3b8]">%</span>
               </div>
-              <div className="mt-2 text-[10px] font-mono text-[#22c55e]">
+              <div className="mt-3 text-[11px] font-mono text-[#22c55e]">
                 PHYSIO SPECTRAL SQI: {sqiVal.toFixed(2)}
               </div>
             </div>
 
             {/* Blood Pressure */}
-            <div className="p-4 rounded-lg border border-[#334155]/60 bg-[#000000]/70 backdrop-blur-md">
-              <span className="text-[10px] font-mono uppercase tracking-widest text-[#64748b]">
+            <div className="min-w-0 p-5 lg:p-6 rounded-xl border border-[#334155]/60 bg-[#000000]/75 backdrop-blur-md flex flex-col justify-between overflow-hidden">
+              <span className="text-[11px] font-mono uppercase tracking-widest text-[#64748b]">
                 SYSTEMIC ARTERIAL BP
               </span>
-              <div className="mt-1 flex items-baseline gap-2">
-                <span className="text-4xl md:text-5xl font-mono font-medium text-[#ffffff]">
-                  {sbpVal ? `${sbpVal.toFixed(0)}/78` : '120/80'}
+              <div className="mt-2 flex items-baseline gap-2.5">
+                <span className="text-4xl lg:text-5xl font-mono font-medium tabular-nums text-[#ffffff]">
+                  {sbpVal !== null && Number.isFinite(sbpVal) ? `${sbpVal.toFixed(0)}/78` : '120/80'}
                 </span>
                 <span className="text-xs font-mono text-[#94a3b8]">mmHg</span>
               </div>
-              <div className="mt-2 text-[10px] font-mono text-[#94a3b8]">
-                MAP: {sbpVal ? `${Math.round(sbpVal * 0.33 + 78 * 0.67)} mmHg` : '92 mmHg'}
+              <div className="mt-3 text-[11px] font-mono text-[#94a3b8]">
+                MAP: {sbpVal !== null && Number.isFinite(sbpVal) ? `${Math.round(sbpVal * 0.33 + 78 * 0.67)} mmHg` : '92 mmHg'}
               </div>
             </div>
           </div>
 
           {/* Scroll Down Cue */}
-          <div className="flex items-center gap-3 text-xs font-mono text-[#64748b] animate-bounce">
-            <ChevronDown className="w-4 h-4 text-[#38bdf8]" />
+          <div className="mx-auto flex items-center justify-center gap-2.5 text-[10px] sm:text-xs font-mono text-[#64748b] text-center animate-bounce">
+            <ChevronDown className="w-4 h-4 text-[#38bdf8] shrink-0" />
             <span>SCROLL TO EXPLORE CEPHALAD FLUID SHIFT & CASCADE</span>
           </div>
         </section>
@@ -363,26 +362,26 @@ export function StoryShell({
         {/* ========================================================================= */}
         <section
           id="chapter-1"
-          className="min-h-screen py-24 px-8 max-w-7xl mx-auto flex flex-col justify-center"
+          className="min-h-screen py-24 px-5 sm:px-8 lg:px-12 max-w-7xl mx-auto flex flex-col justify-center"
         >
-          <div className="max-w-xl space-y-2 mb-8">
-            <div className="text-[10px] font-mono text-[#38bdf8] uppercase tracking-widest">
+          <div className="w-full max-w-4xl mx-auto text-center space-y-3 mb-10">
+            <div className="text-xs font-mono text-[#38bdf8] uppercase tracking-[0.2em]">
               CHAPTER 02 // HEMODYNAMIC SHIFT
             </div>
-            <h2 className="text-3xl font-light text-[#ffffff]">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-light tracking-tight text-[#ffffff] text-balance">
               Cardiorespiratory Axis & Venous Pooling
             </h2>
-            <p className="text-xs md:text-sm text-[#94a3b8] leading-relaxed">
+            <p className="max-w-3xl mx-auto text-sm md:text-base text-[#94a3b8] leading-relaxed text-balance">
               In microgravity, ~2,000 mL of fluid shifts headward. Jugular venous cross-sectional area
               expands while flow stagnates, driving wall shear stress below the critical 1.20 dyn/cm²
               thrombogenic threshold.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 xl:gap-10 items-stretch">
             {/* Left Column: ECG Strip & POCUS IJV */}
-            <div className="space-y-4">
-              <div className="rounded-lg border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-4">
+            <div className="min-w-0 flex flex-col gap-5">
+              <div className="rounded-xl border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-5">
                 <div className="flex items-center justify-between text-xs font-mono mb-2">
                   <span className="text-[#38bdf8] font-bold">20 Hz BEDSIDE LEAD-II ECG</span>
                   <span className="text-[#64748b]">SQI: {sqiVal.toFixed(2)}</span>
@@ -394,7 +393,7 @@ export function StoryShell({
                 />
               </div>
 
-              <div className="rounded-lg border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-4">
+              <div className="rounded-xl border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-5">
                 <div className="flex items-center justify-between text-xs font-mono mb-2">
                   <span className="text-[#38bdf8] font-bold">B-MODE POCUS // INTERNAL JUGULAR VEIN</span>
                   <span className={`text-[10px] ${thrombusConfirmed ? 'text-[#f43f5e] font-bold' : 'text-[#22c55e]'}`}>
@@ -415,49 +414,51 @@ export function StoryShell({
             </div>
 
             {/* Right Column: Cabin ECLSS & Radiation Environmental Gate */}
-            <div className="space-y-4">
-              <div className="rounded-lg border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-4 space-y-4">
-                <div className="text-xs font-mono text-[#38bdf8] font-bold">
-                  ENVIRONMENTAL ECLSS TELEMETRY
-                </div>
-                <div className="grid grid-cols-2 gap-3 text-xs font-mono">
-                  <div className="p-3 rounded border border-[#1e293b] bg-[#0a0f1d]">
-                    <span className="text-[10px] text-[#64748b]">CABIN ppCO2</span>
-                    <div className="text-xl text-[#ffffff] font-medium mt-1">
-                      {whatIf.ppco2_mmhg.toFixed(2)}{' '}
-                      <span className="text-xs text-[#94a3b8]">mmHg</span>
-                    </div>
-                    <span className="text-[9px] text-[#38bdf8]">LIMIT: 3.00 mmHg</span>
+            <div className="flex flex-col">
+              <div className="h-full rounded-xl border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-5 lg:p-6 flex flex-col justify-between gap-5">
+                <div className="space-y-4">
+                  <div className="text-xs font-mono text-[#38bdf8] font-bold">
+                    ENVIRONMENTAL ECLSS TELEMETRY
                   </div>
-
-                  <div className="p-3 rounded border border-[#1e293b] bg-[#0a0f1d]">
-                    <span className="text-[10px] text-[#64748b]">TOTAL PRESSURE</span>
-                    <div className="text-xl text-[#ffffff] font-medium mt-1">
-                      101.3 <span className="text-xs text-[#94a3b8]">kPa</span>
+                  <div className="grid grid-cols-2 gap-3.5 text-xs font-mono">
+                    <div className="p-3.5 rounded-lg border border-[#1e293b] bg-[#0a0f1d]">
+                      <span className="text-[10px] text-[#64748b]">CABIN ppCO2</span>
+                      <div className="text-xl text-[#ffffff] font-medium mt-1 tabular-nums">
+                        {whatIf.ppco2_mmhg.toFixed(2)}{' '}
+                        <span className="text-xs text-[#94a3b8]">mmHg</span>
+                      </div>
+                      <span className="text-[9px] text-[#38bdf8]">LIMIT: 3.00 mmHg</span>
                     </div>
-                    <span className="text-[9px] text-[#22c55e]">NOMINAL 101.3 kPa</span>
-                  </div>
 
-                  <div className="p-3 rounded border border-[#1e293b] bg-[#0a0f1d]">
-                    <span className="text-[10px] text-[#64748b]">O2 CONCENTRATION</span>
-                    <div className="text-xl text-[#ffffff] font-medium mt-1">
-                      {packet.environment ? (packet.environment.cabin_o2_kpa ? `${((packet.environment.cabin_o2_kpa / 101.3) * 100).toFixed(1)}%` : '21.0%') : '21.0%'}
+                    <div className="p-3.5 rounded-lg border border-[#1e293b] bg-[#0a0f1d]">
+                      <span className="text-[10px] text-[#64748b]">TOTAL PRESSURE</span>
+                      <div className="text-xl text-[#ffffff] font-medium mt-1 tabular-nums">
+                        101.3 <span className="text-xs text-[#94a3b8]">kPa</span>
+                      </div>
+                      <span className="text-[9px] text-[#22c55e]">NOMINAL 101.3 kPa</span>
                     </div>
-                    <span className="text-[9px] text-[#22c55e]">NOMINAL 21.0 %</span>
-                  </div>
 
-                  <div className="p-3 rounded border border-[#1e293b] bg-[#0a0f1d]">
-                    <span className="text-[10px] text-[#64748b]">CANS RADIATION DOSIMETER</span>
-                    <div className="text-xl text-[#ffffff] font-medium mt-1">
-                      {packet.environment?.ambient_radiation_rate_ugy_h ? (packet.environment.ambient_radiation_rate_ugy_h / 1000).toFixed(2) : '0.85'}{' '}
-                      <span className="text-xs text-[#94a3b8]">uSv/h</span>
+                    <div className="p-3.5 rounded-lg border border-[#1e293b] bg-[#0a0f1d]">
+                      <span className="text-[10px] text-[#64748b]">O2 CONCENTRATION</span>
+                      <div className="text-xl text-[#ffffff] font-medium mt-1 tabular-nums">
+                        {packet.environment ? (packet.environment.cabin_o2_kpa ? `${((packet.environment.cabin_o2_kpa / 101.3) * 100).toFixed(1)}%` : '21.0%') : '21.0%'}
+                      </div>
+                      <span className="text-[9px] text-[#22c55e]">NOMINAL 21.0 %</span>
                     </div>
-                    <span className="text-[9px] text-[#eab308]">GCR QUIET</span>
+
+                    <div className="p-3.5 rounded-lg border border-[#1e293b] bg-[#0a0f1d]">
+                      <span className="text-[10px] text-[#64748b]">CANS RADIATION DOSIMETER</span>
+                      <div className="text-xl text-[#ffffff] font-medium mt-1 tabular-nums">
+                        {packet.environment?.ambient_radiation_rate_ugy_h ? (packet.environment.ambient_radiation_rate_ugy_h / 1000).toFixed(2) : '0.85'}{' '}
+                        <span className="text-xs text-[#94a3b8]">uSv/h</span>
+                      </div>
+                      <span className="text-[9px] text-[#eab308]">GCR QUIET</span>
+                    </div>
                   </div>
                 </div>
 
                 {/* Data Honesty Notice: Issue #11 Hatch Pattern */}
-                <div className="p-3 rounded border border-[#334155]/40 bg-[#000000] text-[10px] font-mono text-[#94a3b8] flex items-center gap-2">
+                <div className="p-3.5 rounded-lg border border-[#334155]/40 bg-[#000000] text-[10px] font-mono text-[#94a3b8] flex items-center gap-3">
                   <div className="w-4 h-4 ares-missing-hatch border border-[#475569] shrink-0" />
                   <span>
                     NASA Integrity Gate: Channels marked with diagonal hatching and '--' indicate
@@ -474,52 +475,54 @@ export function StoryShell({
         {/* ========================================================================= */}
         <section
           id="chapter-2"
-          className="min-h-screen py-24 px-8 max-w-7xl mx-auto flex flex-col justify-center"
+          className="min-h-screen py-24 px-6 sm:px-8 lg:px-12 max-w-7xl mx-auto flex flex-col justify-center"
         >
-          <div className="max-w-xl space-y-2 mb-6">
-            <div className="text-[10px] font-mono text-[#38bdf8] uppercase tracking-widest">
+          <div className="w-full max-w-4xl mx-auto text-center space-y-3 mb-10">
+            <div className="text-xs font-mono text-[#38bdf8] uppercase tracking-[0.2em]">
               CHAPTER 03 // 3D ANATOMICAL DECONSTRUCTION
             </div>
-            <h2 className="text-3xl font-light text-[#ffffff]">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-light tracking-tight text-[#ffffff] text-balance">
               Interactive Multi-Layer Biodigital Explorer
             </h2>
-            <p className="text-xs md:text-sm text-[#94a3b8] leading-relaxed">
+            <p className="max-w-3xl mx-auto text-sm md:text-base text-[#94a3b8] leading-relaxed text-balance">
               Scrub across skin, muscular apparatus, visceral organ networks, and skeletal mechanostat.
               Inspect intracranial SANS pressure and cross-correlate localized traumatic injury markers.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 items-stretch">
             {/* Layer Toggles & Sex Switcher */}
-            <div className="space-y-4 rounded-lg border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-4">
-              <span className="text-xs font-mono text-[#38bdf8] font-bold flex items-center gap-2">
-                <Layers className="w-4 h-4" />
-                ANATOMICAL LAYER STRATA
-              </span>
-              <div className="space-y-2">
-                {[
-                  { id: 0, label: '0: INTEGUMENTARY SKIN', desc: 'Outer dermal boundary' },
-                  { id: 1, label: '1: MUSCULAR APPARATUS', desc: 'Soleus & postural load chains' },
-                  { id: 2, label: '2: ORGANS & VASCULATURE', desc: 'Cephalad venous pooling & heart' },
-                  { id: 3, label: '3: SKELETAL MECHANOSAT', desc: 'Calcaneus & trabecular strain' },
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => toggleLayer(item.id)}
-                    className={`w-full p-2 rounded text-left border transition-all text-xs font-mono ${
-                      activeLayers.includes(item.id)
-                        ? 'border-[#38bdf8] bg-[#38bdf8]/10 text-[#ffffff]'
-                        : 'border-[#1e293b] bg-[#0a0f1d] text-[#64748b] hover:border-[#334155]'
-                    }`}
-                  >
-                    <div className="font-semibold">{item.label}</div>
-                    <div className="text-[10px] text-[#94a3b8]">{item.desc}</div>
-                  </button>
-                ))}
+            <div className="rounded-xl border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-5 lg:p-6 flex flex-col justify-between gap-4">
+              <div className="space-y-4">
+                <span className="text-xs font-mono text-[#38bdf8] font-bold flex items-center gap-2">
+                  <Layers className="w-4 h-4" />
+                  ANATOMICAL LAYER STRATA
+                </span>
+                <div className="space-y-2">
+                  {[
+                    { id: 0, label: '0: INTEGUMENTARY SKIN', desc: 'Outer dermal boundary' },
+                    { id: 1, label: '1: MUSCULAR APPARATUS', desc: 'Soleus & postural load chains' },
+                    { id: 2, label: '2: ORGANS & VASCULATURE', desc: 'Cephalad venous pooling & heart' },
+                    { id: 3, label: '3: SKELETAL MECHANOSTAT', desc: 'Calcaneus & trabecular strain' },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => toggleLayer(item.id)}
+                      className={`w-full p-2.5 rounded-lg text-left border transition-all text-xs font-mono ${
+                        activeLayers.includes(item.id)
+                          ? 'border-[#38bdf8] bg-[#38bdf8]/10 text-[#ffffff]'
+                          : 'border-[#1e293b] bg-[#0a0f1d] text-[#64748b] hover:border-[#334155]'
+                      }`}
+                    >
+                      <div className="font-semibold">{item.label}</div>
+                      <div className="text-[10px] text-[#94a3b8]">{item.desc}</div>
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Sex Dimorphism Switch */}
-              <div className="pt-2 border-t border-[#1e293b]">
+              <div className="pt-3 border-t border-[#1e293b]">
                 <span className="text-[10px] font-mono text-[#64748b] block mb-2 uppercase">
                   ANTHROPOMETRIC PROFILE
                 </span>
@@ -529,7 +532,7 @@ export function StoryShell({
                       setTwinSex('MALE');
                       onChangeWhatIf({ sex: 'MALE' });
                     }}
-                    className={`p-2 rounded border text-center ${
+                    className={`p-2 rounded-lg border text-center ${
                       currentSex === 'MALE'
                         ? 'border-[#38bdf8] bg-[#38bdf8]/20 text-[#38bdf8] font-bold'
                         : 'border-[#1e293b] text-[#94a3b8]'
@@ -542,7 +545,7 @@ export function StoryShell({
                       setTwinSex('FEMALE');
                       onChangeWhatIf({ sex: 'FEMALE' });
                     }}
-                    className={`p-2 rounded border text-center ${
+                    className={`p-2 rounded-lg border text-center ${
                       currentSex === 'FEMALE'
                         ? 'border-[#38bdf8] bg-[#38bdf8]/20 text-[#38bdf8] font-bold'
                         : 'border-[#1e293b] text-[#94a3b8]'
@@ -555,20 +558,22 @@ export function StoryShell({
             </div>
 
             {/* Center: Neuro-Ocular SANS Monitor */}
-            <div className="rounded-lg border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-4 space-y-3">
-              <span className="text-xs font-mono text-[#38bdf8] font-bold flex items-center gap-2">
-                <Cpu className="w-4 h-4" />
-                NEURO-OCULAR SANS & ONSD CALIPER
-              </span>
-              <p className="text-[10px] font-mono text-[#94a3b8]">
-                Optic Nerve Sheath Diameter (ONSD) measured 3 mm behind the globe via high-frequency
-                ultrasound caliper. Threshold: 5.80 mm.
-              </p>
-              <OcularOnsd
-                onsd={scenario?.onsdMm ?? 5.45}
-                sigma={scenario?.onsdSigmaMm ?? 0.12}
-              />
-              <div className="flex items-center justify-between text-[10px] font-mono text-[#94a3b8]">
+            <div className="rounded-xl border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-5 lg:p-6 flex flex-col justify-between gap-4">
+              <div className="space-y-3">
+                <span className="text-xs font-mono text-[#38bdf8] font-bold flex items-center gap-2">
+                  <Cpu className="w-4 h-4" />
+                  NEURO-OCULAR SANS & ONSD CALIPER
+                </span>
+                <p className="text-xs font-mono text-[#94a3b8] leading-relaxed">
+                  Optic Nerve Sheath Diameter (ONSD) measured 3 mm behind the globe via high-frequency
+                  ultrasound caliper. Threshold: 5.80 mm.
+                </p>
+                <OcularOnsd
+                  onsd={scenario?.onsdMm ?? 5.45}
+                  sigma={scenario?.onsdSigmaMm ?? 0.12}
+                />
+              </div>
+              <div className="flex items-center justify-between text-xs font-mono text-[#94a3b8] pt-2 border-t border-[#1e293b]">
                 <span>ONSD: {(scenario?.onsdMm ?? 5.45).toFixed(2)} mm</span>
                 <span className={scenario && scenario.onsdMm > 5.8 ? 'text-[#f43f5e]' : 'text-[#22c55e]'}>
                   {scenario && scenario.onsdMm > 5.8 ? 'ICP HYPERTENSION' : 'ICP NORMAL'}
@@ -577,23 +582,27 @@ export function StoryShell({
             </div>
 
             {/* Right: Trauma & Injury Scanner */}
-            <div className="rounded-lg border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-4 space-y-4">
-              <span className="text-xs font-mono text-[#38bdf8] font-bold flex items-center gap-2">
-                <ShieldAlert className="w-4 h-4" />
-                INJURY & VLM DIAGNOSTICS
-              </span>
-              <p className="text-[10px] font-mono text-[#94a3b8]">
-                Zero-cloud local Vision-Language Model inspects crew photographic scans, maps lesions
-                onto 3D coordinates, and validates systemic shock risk.
-              </p>
-              <button
-                onClick={onOpenOpticalScanner}
-                className="w-full p-3 rounded-lg border border-[#38bdf8]/40 bg-[#38bdf8]/10 text-[#38bdf8] text-xs font-mono font-semibold hover:bg-[#38bdf8]/20 transition-colors"
-              >
-                OPEN AI INJURY INSPECTOR
-              </button>
-              <div className="p-3 rounded border border-[#1e293b] bg-[#0a0f1d] text-[10px] font-mono text-[#64748b]">
-                STATUS: OPTICAL CAMERA READY // AIR-GAPPED PRIVACY GATE CERTIFIED
+            <div className="md:col-span-2 lg:col-span-1 rounded-xl border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-5 lg:p-6 flex flex-col justify-between gap-4">
+              <div className="space-y-3">
+                <span className="text-xs font-mono text-[#38bdf8] font-bold flex items-center gap-2">
+                  <ShieldAlert className="w-4 h-4" />
+                  INJURY & VLM DIAGNOSTICS
+                </span>
+                <p className="text-xs font-mono text-[#94a3b8] leading-relaxed">
+                  Zero-cloud local Vision-Language Model inspects crew photographic scans, maps lesions
+                  onto 3D coordinates, and validates systemic shock risk.
+                </p>
+              </div>
+              <div className="space-y-3">
+                <button
+                  onClick={onOpenOpticalScanner}
+                  className="w-full p-3.5 rounded-lg border border-[#38bdf8]/40 bg-[#38bdf8]/10 text-[#38bdf8] text-xs font-mono font-semibold hover:bg-[#38bdf8]/20 transition-colors"
+                >
+                  OPEN AI INJURY INSPECTOR
+                </button>
+                <div className="p-3 rounded-lg border border-[#1e293b] bg-[#0a0f1d] text-[10px] font-mono text-[#64748b]">
+                  STATUS: OPTICAL CAMERA READY // AIR-GAPPED PRIVACY GATE CERTIFIED
+                </div>
               </div>
             </div>
           </div>
@@ -604,26 +613,26 @@ export function StoryShell({
         {/* ========================================================================= */}
         <section
           id="chapter-3"
-          className="min-h-screen py-24 px-8 max-w-7xl mx-auto flex flex-col justify-center"
+          className="min-h-screen py-24 px-6 sm:px-8 lg:px-12 max-w-7xl mx-auto flex flex-col justify-center"
         >
-          <div className="max-w-xl space-y-2 mb-8">
-            <div className="text-[10px] font-mono text-[#38bdf8] uppercase tracking-widest">
+          <div className="w-full max-w-4xl mx-auto text-center space-y-3 mb-10">
+            <div className="text-xs font-mono text-[#38bdf8] uppercase tracking-[0.2em]">
               CHAPTER 04 // FROST MECHANOSTAT & PROGNOSIS
             </div>
-            <h2 className="text-3xl font-light text-[#ffffff]">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-light tracking-tight text-[#ffffff] text-balance">
               Musculoskeletal Trajectory & 14-Day STL Forecast
             </h2>
-            <p className="text-xs md:text-sm text-[#94a3b8] leading-relaxed">
+            <p className="max-w-3xl mx-auto text-sm md:text-base text-[#94a3b8] leading-relaxed text-balance">
               Without mechanical strain, osteocytes release sclerostin, suppressing bone formation.
               Real-time Signal Temporal Logic solves future degradation envelopes under counterfactual
               ARED loads.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 xl:gap-10 items-stretch">
             {/* Left: 14-Day STL Chart & Quantile Cones */}
-            <div className="space-y-4">
-              <div className="rounded-lg border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-4">
+            <div className="flex flex-col gap-5">
+              <div className="rounded-xl border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-5">
                 <div className="text-xs font-mono text-[#38bdf8] font-bold mb-2">
                   14-DAY ROBUST PREDICTION (SIGNAL TEMPORAL LOGIC)
                 </div>
@@ -634,58 +643,60 @@ export function StoryShell({
                 />
               </div>
 
-              <div className="rounded-lg border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-4">
+              <div className="rounded-xl border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-5">
                 <TimestralQuantileConePanel packet={packet} />
               </div>
             </div>
 
             {/* Right: Mechanostat Cascade & Interactive What-If ARED Slider */}
-            <div className="space-y-4">
-              <div className="rounded-lg border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-4 space-y-4">
-                <div className="text-xs font-mono text-[#38bdf8] font-bold">
-                  WHAT-IF COUNTERFACTUAL ENGINE (ODE SOLVER)
-                </div>
-                <p className="text-[10px] font-mono text-[#94a3b8]">
-                  Adjust resistive exercise load (ARED). Loads above 1,000 microstrain trigger bone
-                  remodeling and suppress calcium extravasation.
-                </p>
-
-                {/* ARED Slider */}
-                <div className="space-y-2 font-mono text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-[#94a3b8]">ARED EXERCISE WORKLOAD</span>
-                    <span className="text-[#38bdf8] font-bold">{whatIf.ared_load_pct.toFixed(0)} %</span>
+            <div className="flex flex-col">
+              <div className="h-full rounded-xl border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-5 lg:p-6 flex flex-col justify-between gap-5">
+                <div className="space-y-4">
+                  <div className="text-xs font-mono text-[#38bdf8] font-bold">
+                    WHAT-IF COUNTERFACTUAL ENGINE (ODE SOLVER)
                   </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    step="5"
-                    value={whatIf.ared_load_pct}
-                    onChange={(e) => onChangeWhatIf({ ared_load_pct: parseFloat(e.target.value) })}
-                    className="w-full accent-[#38bdf8] cursor-pointer"
-                  />
-                  <div className="flex justify-between text-[9px] text-[#64748b]">
-                    <span>0 % (DISUSE)</span>
-                    <span>60 % (NOMINAL)</span>
-                    <span>100 % (MAX PROTOCOL)</span>
-                  </div>
-                </div>
+                  <p className="text-xs font-mono text-[#94a3b8] leading-relaxed">
+                    Adjust resistive exercise load (ARED). Loads above 1,000 microstrain trigger bone
+                    remodeling and suppress calcium extravasation.
+                  </p>
 
-                {/* Biological Cascade Diagram */}
-                <div className="p-3 rounded border border-[#1e293b] bg-[#0a0f1d] space-y-2 font-mono text-[10px]">
-                  <div className="text-[#38bdf8] font-semibold">HARGENS-FROST CAUSAL CASCADE:</div>
-                  <div className="text-[#94a3b8] space-y-1">
-                    <div>1. Soleo Micro-Strain: <span className="text-[#ffffff]">{((whatIf.ared_load_pct / 60) * 1100).toFixed(0)} uE</span> (Floor: 1000 uE)</div>
-                    <div>2. Serum Irisin: <span className="text-[#ffffff]">{(whatIf.ared_load_pct > 50 ? 'STABILIZED' : 'DEPLETED')}</span></div>
-                    <div>3. Sclerostin Surge: <span className="text-[#ffffff]">{(whatIf.ared_load_pct > 60 ? 'SUPPRESSED' : 'ELEVATED (+34%)')}</span></div>
-                    <div>4. Calciuria Risk: <span className={whatIf.ared_load_pct > 60 ? 'text-[#22c55e]' : 'text-[#f43f5e]'}>{(whatIf.ared_load_pct > 60 ? 'LOW' : 'HIGH (NEPHROLITHIASIS RISK)')}</span></div>
+                  {/* ARED Slider */}
+                  <div className="space-y-2 font-mono text-xs pt-1">
+                    <div className="flex justify-between">
+                      <span className="text-[#94a3b8]">ARED EXERCISE WORKLOAD</span>
+                      <span className="text-[#38bdf8] font-bold tabular-nums">{whatIf.ared_load_pct.toFixed(0)} %</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="5"
+                      value={whatIf.ared_load_pct}
+                      onChange={(e) => onChangeWhatIf({ ared_load_pct: parseFloat(e.target.value) })}
+                      className="w-full accent-[#38bdf8] cursor-pointer"
+                    />
+                    <div className="flex justify-between text-[9px] text-[#64748b]">
+                      <span>0 % (DISUSE)</span>
+                      <span>60 % (NOMINAL)</span>
+                      <span>100 % (MAX PROTOCOL)</span>
+                    </div>
+                  </div>
+
+                  {/* Biological Cascade Diagram */}
+                  <div className="p-4 rounded-lg border border-[#1e293b] bg-[#0a0f1d] space-y-2 font-mono text-xs">
+                    <div className="text-[#38bdf8] font-semibold">HARGENS-FROST CAUSAL CASCADE:</div>
+                    <div className="text-[#94a3b8] space-y-1.5 text-[11px]">
+                      <div>1. Soleo Micro-Strain: <span className="text-[#ffffff] tabular-nums">{((whatIf.ared_load_pct / 60) * 1100).toFixed(0)} uE</span> (Floor: 1000 uE)</div>
+                      <div>2. Serum Irisin: <span className="text-[#ffffff]">{(whatIf.ared_load_pct > 50 ? 'STABILIZED' : 'DEPLETED')}</span></div>
+                      <div>3. Sclerostin Surge: <span className="text-[#ffffff]">{(whatIf.ared_load_pct > 60 ? 'SUPPRESSED' : 'ELEVATED (+34%)')}</span></div>
+                      <div>4. Calciuria Risk: <span className={whatIf.ared_load_pct > 60 ? 'text-[#22c55e]' : 'text-[#f43f5e]'}>{(whatIf.ared_load_pct > 60 ? 'LOW' : 'HIGH (NEPHROLITHIASIS RISK)')}</span></div>
+                    </div>
                   </div>
                 </div>
 
                 <button
                   onClick={onResetWhatIf}
-                  className="w-full py-1.5 rounded border border-[#334155] text-[10px] font-mono text-[#94a3b8] hover:text-[#ffffff] hover:border-[#475569]"
+                  className="w-full py-2.5 rounded-lg border border-[#334155] text-xs font-mono text-[#94a3b8] hover:text-[#ffffff] hover:border-[#475569] transition-colors"
                 >
                   RESET COUNTERFACTUAL PARAMETERS
                 </button>
@@ -699,34 +710,34 @@ export function StoryShell({
         {/* ========================================================================= */}
         <section
           id="chapter-4"
-          className="min-h-screen py-24 px-8 max-w-7xl mx-auto flex flex-col justify-between"
+          className="min-h-screen py-24 px-6 sm:px-8 lg:px-12 max-w-7xl mx-auto flex flex-col justify-between"
         >
-          <div className="max-w-xl space-y-2 mb-6">
-            <div className="text-[10px] font-mono text-[#38bdf8] uppercase tracking-widest">
+          <div className="w-full max-w-4xl mx-auto text-center space-y-3 mb-10">
+            <div className="text-xs font-mono text-[#38bdf8] uppercase tracking-[0.2em]">
               CHAPTER 05 // HARD CLINICAL SAFETY GATES
             </div>
-            <h2 className="text-3xl font-light text-[#ffffff]">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-light tracking-tight text-[#ffffff] text-balance">
               Autonomous Clinical Decision & Guardrails
             </h2>
-            <p className="text-xs md:text-sm text-[#94a3b8] leading-relaxed">
+            <p className="max-w-3xl mx-auto text-sm md:text-base text-[#94a3b8] leading-relaxed text-balance">
               NASA Space Apps Rule: No systemic anticoagulants for slow venous flow alone. Actions
               require multi-sensor hardware interlock clearance and explicit crew confirmation.
             </p>
           </div>
 
-          <div className="space-y-6">
+          <div className="w-full space-y-6 lg:space-y-8">
             {/* Safety Gates 1..7 Matrix */}
-            <div className="rounded-lg border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-4 space-y-3">
+            <div className="rounded-xl border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-5 lg:p-6 space-y-4">
               <div className="flex items-center justify-between text-xs font-mono">
                 <span className="text-[#38bdf8] font-bold">HARDWARE CLINICAL SAFETY INTERLOCKS (GATES 1..7)</span>
                 <span className="text-[#64748b]">AEROSPACE 360 CERTIFIED</span>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 font-mono text-[10px]">
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 font-mono text-[10px]">
                 {resolvedSafety?.dag.gates1To7Matrix.map((gate) => (
                   <div
                     key={gate.code}
-                    className={`p-2.5 rounded border flex flex-col justify-between gap-1 ${
+                    className={`p-3 rounded-lg border flex flex-col justify-between gap-1.5 ${
                       gate.status === 'LOCKED'
                         ? 'border-[#f43f5e]/60 bg-[#f43f5e]/10 text-[#f43f5e]'
                         : gate.status === 'TRIGGERED'
@@ -750,23 +761,25 @@ export function StoryShell({
             </div>
 
             {/* Active Playbook Recommendation & Hold-To-Confirm Button */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="rounded-lg border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-4 space-y-3">
-                <span className="text-xs font-mono text-[#38bdf8] font-bold">
-                  RECOMMENDED MEDOPS PLAYBOOK
-                </span>
-                <div className="p-3 rounded border border-[#1e293b] bg-[#0a0f1d] font-mono text-xs space-y-1">
-                  <div className="text-[#ffffff] font-semibold">PLAYBOOK #01: VENOUS STASIS LBNP PROTOCOL</div>
-                  <div className="text-[10px] text-[#94a3b8]">
-                    Target: Reverse cephalad fluid redistribution via -25 mmHg lower body negative pressure.
-                  </div>
-                  <div className="text-[10px] text-[#38bdf8] pt-1">
-                    PRECEDENCE: P1 (ACUTE HEMODYNAMIC)
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
+              <div className="rounded-xl border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-5 lg:p-6 flex flex-col justify-between gap-4">
+                <div className="space-y-3">
+                  <span className="text-xs font-mono text-[#38bdf8] font-bold">
+                    RECOMMENDED MEDOPS PLAYBOOK
+                  </span>
+                  <div className="p-3.5 rounded-lg border border-[#1e293b] bg-[#0a0f1d] font-mono text-xs space-y-1.5">
+                    <div className="text-[#ffffff] font-semibold">PLAYBOOK #01: VENOUS STASIS LBNP PROTOCOL</div>
+                    <div className="text-[11px] text-[#94a3b8] leading-relaxed">
+                      Target: Reverse cephalad fluid redistribution via -25 mmHg lower body negative pressure.
+                    </div>
+                    <div className="text-[10px] text-[#38bdf8] pt-1">
+                      PRECEDENCE: P1 (ACUTE HEMODYNAMIC)
+                    </div>
                   </div>
                 </div>
 
                 {/* Hard Clinical Rule Notice */}
-                <div className="p-2.5 rounded border border-[#eab308]/30 bg-[#eab308]/10 text-[10px] font-mono text-[#eab308] flex items-start gap-2">
+                <div className="p-3 rounded-lg border border-[#eab308]/30 bg-[#eab308]/10 text-[11px] font-mono text-[#eab308] flex items-start gap-2.5">
                   <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                   <span>
                     ANTICOAGULANT LOCKOUT: Systemic anticoagulation strictly prohibited without positive
@@ -776,18 +789,18 @@ export function StoryShell({
               </div>
 
               {/* Action Confirmation Card with HOLD 1.5S */}
-              <div className="rounded-lg border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-4 flex flex-col justify-between space-y-4">
+              <div className="rounded-xl border border-[#334155]/60 bg-[#000000]/80 backdrop-blur-md p-5 lg:p-6 flex flex-col justify-between gap-4">
                 <div>
                   <span className="text-xs font-mono text-[#38bdf8] font-bold">
                     CREW PHYSICAL CONFIRMATION
                   </span>
-                  <p className="text-[10px] font-mono text-[#94a3b8] mt-1">
+                  <p className="text-xs font-mono text-[#94a3b8] mt-2 leading-relaxed">
                     Critical countermeasures require a continuous 1.5-second physical press-and-hold to
                     prevent accidental microgravity touch trigger.
                   </p>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   <button
                     onPointerDown={handleHoldStart}
                     onPointerUp={handleHoldEnd}
@@ -817,7 +830,7 @@ export function StoryShell({
                     </span>
                   </button>
 
-                  <div className="flex justify-between text-[9px] font-mono text-[#64748b]">
+                  <div className="flex justify-between text-[10px] font-mono text-[#64748b]">
                     <span>SAFETY INTERLOCK: ACTIVE</span>
                     <span>AUTO-VENT SYNCOPE GATE: ARMED</span>
                   </div>
@@ -827,11 +840,11 @@ export function StoryShell({
           </div>
 
           {/* Editorial Footer & Scientific Citations */}
-          <footer className="mt-12 pt-6 border-t border-[#334155]/40 flex flex-col sm:flex-row items-center justify-between text-[10px] font-mono text-[#64748b] gap-4">
+          <footer className="w-full mt-12 pt-6 border-t border-[#334155]/40 flex flex-col sm:flex-row items-center justify-between text-[10px] font-mono text-[#64748b] gap-4">
             <div>
               ARES-HEALTH // NASA SPACE APPS CHALLENGE 2026 // OPEN SOURCE (MIT OR APACHE-2.0)
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center justify-center gap-4">
               <span>NASA-STD-3001 VOL 1 CH 7</span>
               <span>FROST MECHANOSTAT (1987)</span>
               <span>HARGENS HEMODYNAMICS (2019)</span>
