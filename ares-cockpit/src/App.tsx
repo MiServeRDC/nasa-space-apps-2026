@@ -333,7 +333,16 @@ function VitalsTrend({ history, recording }: { history: RecordedHistoryPoint[]; 
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
-export default function App() {
+function getInitialParam(key: string): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return new URLSearchParams(window.location.search).get(key);
+  } catch {
+    return null;
+  }
+}
+
+function WorkbenchApp({ onSwitchToNarrative }: { onSwitchToNarrative: () => void }) {
   const workspaceRef = useRef<HTMLDivElement>(null);
 
   useGSAP(() => {
@@ -351,24 +360,6 @@ export default function App() {
     });
     return () => motion.revert();
   }, { scope: workspaceRef });
-
-  const getInitialParam = (key: string): string | null => {
-    if (typeof window === 'undefined') return null;
-    try {
-      return new URLSearchParams(window.location.search).get(key);
-    } catch {
-      return null;
-    }
-  };
-
-  const [viewMode, setViewMode] = useState<'scrolly' | 'workbench'>(() => {
-    const v = getInitialParam('view') || getInitialParam('mode');
-    return v === 'workbench' ? 'workbench' : 'scrolly';
-  });
-
-  if (viewMode === 'scrolly') {
-    return <StoryShell viewMode={viewMode} onViewModeChange={setViewMode} />;
-  }
 
   const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false);
   const [auditModalOpen, setAuditModalOpen] = useState(false);
@@ -707,7 +698,7 @@ export default function App() {
         onOpenAudit={() => setAuditModalOpen(true)}
         onOpenShortcuts={() => setShortcutsModalOpen(true)}
         onTogglePalette={() => setPaletteOpen((v) => !v)}
-        onSwitchToNarrative={() => setViewMode('scrolly')}
+        onSwitchToNarrative={onSwitchToNarrative}
       />
 
       {(showUrgentStatus || procedurePending) && (
@@ -1273,4 +1264,16 @@ export default function App() {
       />
     </div>
   );
+}
+
+export default function App() {
+  const [viewMode, setViewMode] = useState<'scrolly' | 'workbench'>(() => {
+    const v = getInitialParam('view') || getInitialParam('mode');
+    return v === 'workbench' ? 'workbench' : 'scrolly';
+  });
+
+  if (viewMode === 'scrolly') {
+    return <StoryShell viewMode={viewMode} onViewModeChange={setViewMode} />;
+  }
+  return <WorkbenchApp onSwitchToNarrative={() => setViewMode('scrolly')} />;
 }
