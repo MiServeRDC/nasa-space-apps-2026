@@ -32,7 +32,6 @@ Long-duration exploration missions expose crews to space radiation, isolation an
 | **Project** | ARES-Health (Autonomous Resilient Edge-native System for Astronaut Health) |
 | **Competition** | NASA Space Apps Challenge 2026 (November 14–15, 2026) |
 | **Challenge track** | [Create Health Monitoring Software for Astronauts on Space Missions](https://www.spaceappschallenge.org/2026/challenges/health-monitoring-software/) |
-| **Lead architect** | Fabio Malagutti — Computer Engineer, M.Sc. student, University of Bologna |
 | **Mission domain** | Earth–Mars transit (1000-day class), Lunar Gateway, Martian surface operations |
 | **Core constraint** | 100% air-gapped, zero-cloud, deterministic autonomous execution |
 
