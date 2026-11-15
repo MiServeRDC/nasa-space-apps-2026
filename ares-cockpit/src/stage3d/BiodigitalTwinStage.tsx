@@ -376,7 +376,7 @@ export function BiodigitalTwinStage({
     const res = stageResourcesRef.current;
     if (!res) return;
 
-    const elapsed = state.clock.elapsedTime;
+    const clockElapsed = state.clock.elapsedTime;
     const studioState = useStudioTimelineStore.getState();
 
     // Advance Studio timeline playhead if playing
@@ -390,6 +390,7 @@ export function BiodigitalTwinStage({
       typeof window !== 'undefined' &&
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const elapsed = reducedMotion ? 0 : clockElapsed;
 
     if (reducedMotion) {
       morphSpringRef.current.weight = targetMorph;

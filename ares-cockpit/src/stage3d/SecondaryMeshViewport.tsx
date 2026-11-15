@@ -195,7 +195,7 @@ function SecondarySpecimenScene({
   }, [assetUrl, gl, observed, scalarLoad]);
 
   useFrame((state, delta) => {
-    const t = state.clock.elapsedTime;
+    const t = reduced ? 0 : state.clock.elapsedTime;
     const fb = fallbackRefs.current;
     if (fb) {
       fb.shellMat.uniforms.uTime.value = t;
