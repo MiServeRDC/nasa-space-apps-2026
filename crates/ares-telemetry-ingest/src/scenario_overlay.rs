@@ -1,5 +1,5 @@
-//! Fase 04 (B2): Fusione tra la riga biometrica reale `BidmcNumericRow` (`RECORDED_TERRESTRIAL_BIDMC_CSV`)
-//! e gli input della What-If Stress-Test Console (`SIMULATED_SCENARIO_INPUT`).
+//! Phase 04 (B2): Fusion between the real biometric row `BidmcNumericRow` (`RECORDED_TERRESTRIAL_BIDMC_CSV`)
+//! and the What-If Stress-Test Console inputs (`SIMULATED_SCENARIO_INPUT`).
 
 use crate::bidmc_replayer::BidmcNumericRow;
 use crate::radar_csi_dsp::RadarVitalEstimate;
@@ -11,7 +11,7 @@ use ares_core_types::telemetry::{Biometrics, HrvUnavailableReason, StressTestSce
 
 const HRV_CHANNELS: [&str; 4] = ["rmssd_ms", "sdnn_ms", "pnn50_pct", "lf_hf_ratio"];
 
-/// Snapshot opzionale dei moduli DSP Level-1 GATHER da fondere con la riga telemetrica.
+/// Optional snapshot of the Level-1 GATHER DSP modules to merge with the telemetry row.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct GatherDspOverlay {
     pub radar: Option<RadarVitalEstimate>,
@@ -19,8 +19,8 @@ pub struct GatherDspOverlay {
     pub waveform_hrv: Option<TimeDomainHrvMetrics>,
 }
 
-/// Fonde una riga reale BIDMC (`RECORDED_TERRESTRIAL_BIDMC_CSV`) con gli input di scenario,
-/// mantenendo `rmssd_ms: None` e `BEAT_INTERVALS_NOT_AVAILABLE` sulle sorgenti numeriche 1 Hz.
+/// Merges a real BIDMC row (`RECORDED_TERRESTRIAL_BIDMC_CSV`) with the scenario inputs,
+/// keeping `rmssd_ms: None` and `BEAT_INTERVALS_NOT_AVAILABLE` on the 1 Hz numeric sources.
 #[inline]
 pub fn merge_biometrics_with_scenario(
     row: &BidmcNumericRow,
@@ -31,7 +31,7 @@ pub fn merge_biometrics_with_scenario(
     biometrics_with_signal_quality(row, scenario, &eval)
 }
 
-/// Fonde una riga con eventuale `rmssd_ms` da stream beat-to-beat R-R o override esplicito.
+/// Merges a row with an optional `rmssd_ms` from a beat-to-beat R-R stream or explicit override.
 #[inline]
 pub fn merge_biometrics_with_rmssd(
     row: &BidmcNumericRow,
@@ -43,8 +43,8 @@ pub fn merge_biometrics_with_rmssd(
     biometrics_with_signal_quality(row, scenario, &eval)
 }
 
-/// Applica gli input di scenario usando una valutazione `SqiEvaluation` gia calcolata
-/// sul campione nativo a 1 Hz (garantendo invarianza a tick 20 Hz e What-If).
+/// Applies the scenario inputs using an already-computed `SqiEvaluation`
+/// on the native 1 Hz sample (guaranteeing invariance across 20 Hz ticks and What-If).
 #[inline]
 pub fn biometrics_with_signal_quality(
     row: &BidmcNumericRow,
@@ -99,15 +99,15 @@ pub fn biometrics_with_signal_quality(
     }
 }
 
-/// Fonde una riga `BidmcNumericRow`, lo scenario operativo e i moduli DSP Level-1 GATHER:
-/// - Se `overlay.waveform_hrv` e `None` (es. CSV BIDMC 1 Hz), `SqiFilter::evaluate_row_with_rmssd`
-///   riceve `None` e preserva rigorosamente `rmssd_ms: None` + `BeatIntervalsNotAvailable` (Issue #11).
-/// - Se `overlay.waveform_hrv` contiene metriche beat-to-beat verificate (`rmssd_ms: Some(_)`),
-///   popola `rmssd_ms`, `sdnn_ms` e `pnn50_pct` reali (non scalati euristicamente) con `hrv_unavailable_reason: None`.
-/// - Se `overlay.vocal` e presente ma `voiced == false`, emette `vocal_f0_hz: None` e `vocal_jitter_pct: None`
-///   registrando `"vocal_f0_hz"` e `"vocal_jitter_pct"` in `missing_channels`.
-/// - Se `row.hr_bpm` o `row.resp_brpm` sono `None` ma `overlay.radar` ha `radar_sqi >= 0.70`,
-///   consente il fallback contactless per HR/RESP mantenendo intatta la nullabilita HRV.
+/// Merges a `BidmcNumericRow` row, the operational scenario, and the Level-1 GATHER DSP modules:
+/// - If `overlay.waveform_hrv` is `None` (e.g. 1 Hz BIDMC CSV), `SqiFilter::evaluate_row_with_rmssd`
+///   receives `None` and strictly preserves `rmssd_ms: None` + `BeatIntervalsNotAvailable` (Issue #11).
+/// - If `overlay.waveform_hrv` contains verified beat-to-beat metrics (`rmssd_ms: Some(_)`),
+///   it populates real `rmssd_ms`, `sdnn_ms`, and `pnn50_pct` (not heuristically scaled) with `hrv_unavailable_reason: None`.
+/// - If `overlay.vocal` is present but `voiced == false`, it emits `vocal_f0_hz: None` and `vocal_jitter_pct: None`
+///   recording `"vocal_f0_hz"` and `"vocal_jitter_pct"` in `missing_channels`.
+/// - If `row.hr_bpm` or `row.resp_brpm` are `None` but `overlay.radar` has `radar_sqi >= 0.70`,
+///   it allows the contactless fallback for HR/RESP while keeping HRV nullability intact.
 pub fn merge_biometrics_with_gather_dsp(
     row: &BidmcNumericRow,
     scenario: &StressTestScenarioInput,

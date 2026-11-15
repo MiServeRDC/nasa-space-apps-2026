@@ -1,22 +1,22 @@
-//! Fase 02 (A2): Trait disaccoppiati di sicurezza e privacy medica (NASA-STD-3001 Vol. 1 Ch. 7).
+//! Phase 02 (A2): Decoupled medical security and privacy traits (NASA-STD-3001 Vol. 1 Ch. 7).
 
 use crate::error::AresCoreError;
 use crate::telemetry::TelemetryPacket;
 use serde::{Deserialize, Serialize};
 
-/// Ruoli di accesso ai dati medici dell'equipaggio secondo NASA-STD-3001 Vol. 1 Rev C [V1 3003].
+/// Crew medical data access roles per NASA-STD-3001 Vol. 1 Rev C [V1 3003].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum CrewRole {
-    /// Singolo astronauta: vede la propria prontezza operativa e azioni guidate.
+    /// Individual astronaut: sees their own operational readiness and guided actions.
     AstronautSelf,
-    /// Crew Medical Officer (CMO): accesso clinico completo di bordo.
+    /// Crew Medical Officer (CMO): full onboard clinical access.
     CrewMedicalOfficer,
-    /// Flight Surgeon a Terra: riceve pacchetti sintetici cifrati Store-and-Forward.
+    /// Flight Surgeon on the ground: receives encrypted synthetic Store-and-Forward packets.
     GroundFlightSurgeon,
 }
 
-/// Record immutabile nella catena di audit SHA-256 per decisioni/override medici.
+/// Immutable record in the SHA-256 audit chain for medical decisions/overrides.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AuditChainRecord {
     pub sequence_index: u64,
@@ -27,7 +27,7 @@ pub struct AuditChainRecord {
     pub current_hash_hex: String,
 }
 
-/// Trait per filtrare i campi sensibili del pacchetto telemetrico in base al ruolo (`CrewRole`).
+/// Trait for filtering sensitive telemetry packet fields based on role (`CrewRole`).
 pub trait CrewPrivacyFilter: Send + Sync {
     fn filter_packet_for_role(
         &self,
@@ -36,7 +36,7 @@ pub trait CrewPrivacyFilter: Send + Sync {
     ) -> Result<TelemetryPacket, AresCoreError>;
 }
 
-/// Trait per la registrazione non ripudiabile (SHA-256 hash chain) di Playbook e override.
+/// Trait for non-repudiable logging (SHA-256 hash chain) of Playbooks and overrides.
 pub trait MedOpsAuditLogger: Send + Sync {
     fn append_audit_event(
         &self,
@@ -47,13 +47,13 @@ pub trait MedOpsAuditLogger: Send + Sync {
     fn verify_chain_integrity(&self) -> Result<bool, AresCoreError>;
 }
 
-/// Trait per la sanitizzazione degli input JSON-RPC e l'incapsulamento anti-Prompt-Injection.
+/// Trait for sanitizing JSON-RPC inputs and anti-Prompt-Injection encapsulation.
 pub trait McpInputSanitizer: Send + Sync {
     fn sanitize_mcp_query(&self, raw_input: &str) -> Result<String, AresCoreError>;
     fn wrap_untrusted_observation(&self, observation: &str) -> String;
 }
 
-/// Implementazione di default pass-through a costo zero per test isolati dei crate core.
+/// Zero-cost pass-through default implementation for isolated testing of the core crates.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct NoOpSecurity;
 

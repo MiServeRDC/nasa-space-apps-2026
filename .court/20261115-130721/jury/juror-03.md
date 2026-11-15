@@ -1,0 +1,4 @@
+VOTE: GUILTY
+REASON: As the rival team, I beat this not by matching its crate count but on the two axes it leaves open — it is over-built on the 20% engineering axis I cannot copy in a weekend, yet "submit and pitch exactly as it stands" bets 40% of the score (Presentation + a self-capped Validity) on a story it has not finished telling, so I out-present it with a sharper 30-second pitch.
+DECIDING FACT: The record describes no completed video or deck, only "Presentation/Storytelling" as a 20% axis, yet the claim is to pitch "exactly as it currently stands" — they are racing me on a deliverable that does not yet exist.
+WOULD FLIP IF: The record showed a finished, sharp 30-second pitch leading with the offline thesis and a live Gather-Evaluate-Act demo, so "as it stands" already included the one thing I could not out-present.

@@ -1,4 +1,4 @@
-//! Fase 14 (G2): Server Nativo FastMCP JSON-RPC 2.0 su `stdio` con compressione Context-Mode (< 150 token).
+//! Phase 14 (G2): Native FastMCP JSON-RPC 2.0 server on `stdio` with Context-Mode compression (< 150 tokens).
 
 pub use crate::fastmcp_router::{JsonRpcRequest, JsonRpcResponse, handle_fastmcp_jsonrpc_request};
 use crate::ws_server::{FastMcpRuntimeContext, SharedMissionState};
@@ -18,8 +18,8 @@ use serde_json::{Value, json};
 use std::io::{self, BufRead, Write};
 use std::sync::Arc;
 
-/// Gestisce una richiesta JSON-RPC 2.0 in modalita Context-Mode (< 150 token / <= 600 byte)
-/// usando un singolo `TelemetryPacket` e il grafo canonico dei 24 dataset.
+/// Handles a JSON-RPC 2.0 request in Context-Mode (< 150 tokens / <= 600 bytes)
+/// using a single `TelemetryPacket` and the canonical 24-dataset graph.
 pub fn handle_mcp_jsonrpc_request<S: McpInputSanitizer>(
     req: &JsonRpcRequest,
     latest_packet: &TelemetryPacket,
@@ -62,7 +62,7 @@ pub fn handle_mcp_jsonrpc_request<S: McpInputSanitizer>(
     handle_fastmcp_jsonrpc_request(req, &ctx, sanitizer)
 }
 
-/// Loop bloccante su `stdin`/`stdout` per il trasporto FastMCP JSON-RPC 2.0.
+/// Blocking loop on `stdin`/`stdout` for the FastMCP JSON-RPC 2.0 transport.
 pub fn run_mcp_stdio_loop(state: Arc<SharedMissionState>) -> io::Result<()> {
     let stdin = io::stdin();
     let mut stdout = io::stdout();

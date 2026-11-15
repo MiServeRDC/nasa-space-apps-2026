@@ -1,4 +1,4 @@
-//! Modulo di dinamica del volume plasmatico, viscosita ematica variabile ed emolisi spaziale MARROW (Gap 2).
+//! Plasma volume dynamics, variable blood viscosity, and MARROW spaceflight hemolysis module (Gap 2).
 
 use ares_core_types::constants::{
     BLOOD_VISCOSITY_POISE, SHOCK_INDEX_ATTENTION, SHOCK_INDEX_CRITICAL, sanitize_f64,
@@ -12,18 +12,18 @@ use serde::{Deserialize, Serialize};
 pub const MALE_ORTHOSTATIC_SUSCEPTIBILITY_FACTOR: f64 = 1.00;
 pub const FEMALE_ORTHOSTATIC_SUSCEPTIBILITY_FACTOR: f64 = 1.22;
 
-/// Viscosita cinematica/dinamica del plasma umano a 37°C in Poise.
+/// Kinematic/dynamic viscosity of human plasma at 37°C in Poise.
 pub const PLASMA_MU_POISE: f64 = 0.012;
 
-/// Coefficiente esponenziale empirico di concentrazione eritrocitaria (Rand et al. 1964).
+/// Empirical exponential coefficient of erythrocyte concentration (Rand et al. 1964).
 pub const ALPHA_HCT: f64 = 0.023;
 
-/// Baseline ematocrito ed emoglobina pre-volo nominali standard.
+/// Standard nominal pre-flight hematocrit and hemoglobin baseline.
 pub const HCT_BASELINE_PCT: f64 = 44.0;
 pub const HB_BASELINE_G_DL: f64 = 15.0;
 
-/// Calcola la viscosita apparente del sangue intero mu(Hct) in Poise.
-/// In assenza di ematocrito noto, ripiega deterministicamente sul default clinico di 0.035 Poise.
+/// Computes the apparent whole-blood viscosity mu(Hct) in Poise.
+/// In the absence of a known hematocrit, deterministically falls back to the clinical default of 0.035 Poise.
 #[inline]
 pub fn compute_apparent_blood_viscosity_poise(hematocrit_pct: Option<f64>) -> f64 {
     match hematocrit_pct {
@@ -35,8 +35,8 @@ pub fn compute_apparent_blood_viscosity_poise(hematocrit_pct: Option<f64>) -> f6
     }
 }
 
-/// Calcola la variazione percentuale del volume plasmatico (Delta PV %) secondo il riflesso di Gauer-Henry,
-/// l'emolisi da microgravita MARROW (+54%) o formula di Dill & Costill da POCT, calibrata sul profilo biologico.
+/// Computes the percentage change in plasma volume (Delta PV %) according to the Gauer-Henry reflex,
+/// MARROW microgravity hemolysis (+54%) or the Dill & Costill formula from POCT, calibrated on the biological profile.
 #[inline]
 pub fn compute_plasma_volume_delta_pct_for_profile(
     flight_day: u32,
@@ -47,7 +47,7 @@ pub fn compute_plasma_volume_delta_pct_for_profile(
     let hb_0 = profile.effective_baseline_hb_g_dl();
     let hct_0 = profile.effective_baseline_hct_pct();
 
-    // Se sono disponibili Hb e Hct misurati da POCT, applica la formula esatta di Dill & Costill (1974)
+    // If measured Hb and Hct from POCT are available, apply the exact Dill & Costill (1974) formula
     if let Some(panel) = poct
         && let (Some(hct_post), Some(hb_post)) = (panel.hematocrit_pct, panel.hemoglobin_g_dl)
         && hct_post.is_finite()
@@ -62,7 +62,7 @@ pub fn compute_plasma_volume_delta_pct_for_profile(
         return sanitize_f64(delta_measured, -12.0).clamp(-30.0, 15.0);
     }
 
-    // Altrimenti applica il modello cinetico Gauer-Henry esponenziale
+    // Otherwise apply the exponential Gauer-Henry kinetic model
     let fd = flight_day as f64;
     let gauer_henry_contraction = -13.5 * (1.0 - (-fd / 3.0).exp());
     let fluid_load_restoration = if pre_landing_fluid_load_completed {
@@ -73,7 +73,7 @@ pub fn compute_plasma_volume_delta_pct_for_profile(
     (gauer_henry_contraction + fluid_load_restoration).clamp(-25.0, 10.0)
 }
 
-/// Calcola la variazione percentuale del volume plasmatico (Delta PV %) secondo il riflesso di Gauer-Henry,
+/// Computes the percentage change in plasma volume (Delta PV %) according to the Gauer-Henry reflex,
 /// l'emolisi da microgravita MARROW (+54%) o formula di Dill & Costill da POCT.
 #[inline]
 pub fn compute_plasma_volume_delta_pct(
@@ -89,7 +89,7 @@ pub fn compute_plasma_volume_delta_pct(
     )
 }
 
-/// Calcola l'ematocrito effettivo (Hct %) calibrato sul profilo biologico, considerando l'emolisi cronica MARROW.
+/// Computes the effective hematocrit (Hct %) calibrated on the biological profile, accounting for chronic MARROW hemolysis.
 #[inline]
 pub fn compute_effective_hematocrit_pct_for_profile(
     flight_day: u32,
@@ -104,12 +104,12 @@ pub fn compute_effective_hematocrit_pct_for_profile(
         return hct.clamp(20.0, 65.0);
     }
     let fd = (flight_day as f64).min(250.0);
-    // Emolisi spaziale MARROW (Trudel et al. 2022 Nature Medicine): -0.025% per Sol di volo
+    // MARROW spaceflight hemolysis (Trudel et al. 2022 Nature Medicine): -0.025% per flight Sol
     let hemolysis_drift = -0.025 * fd;
     (profile.effective_baseline_hct_pct() + hemolysis_drift).clamp(30.0, 52.0)
 }
 
-/// Calcola l'ematocrito effettivo (Hct %), considerando l'emolisi cronica MARROW (+54% distruzione RBC).
+/// Computes the effective hematocrit (Hct %), accounting for chronic MARROW hemolysis (+54% RBC destruction).
 #[inline]
 pub fn compute_effective_hematocrit_pct(flight_day: u32, poct: Option<&SpotPoctPanel>) -> f64 {
     compute_effective_hematocrit_pct_for_profile(
@@ -119,7 +119,7 @@ pub fn compute_effective_hematocrit_pct(flight_day: u32, poct: Option<&SpotPoctP
     )
 }
 
-/// Calcola lo Shock Index (HR / SBP).
+/// Computes the Shock Index (HR / SBP).
 #[inline]
 pub fn compute_shock_index(hr_bpm: Option<f64>, sbp_mmhg: Option<f64>) -> Option<f64> {
     match (hr_bpm, sbp_mmhg) {
@@ -139,7 +139,7 @@ pub const fn orthostatic_susceptibility_factor(sex: BiologicalSex) -> f64 {
     }
 }
 
-/// Calcola lo stato ortostatico e di volemia completo `OrthostaticFluid` per un profilo biologico specifico.
+/// Computes the complete orthostatic and volemic state `OrthostaticFluid` for a specific biological profile.
 pub fn compute_orthostatic_fluid_state_for_profile(
     flight_day: u32,
     hr_bpm: Option<f64>,
@@ -159,7 +159,7 @@ pub fn compute_orthostatic_fluid_state_for_profile(
     let shock_index = compute_shock_index(hr_bpm, sbp_mmhg).unwrap_or(0.68);
     let susceptibility = orthostatic_susceptibility_factor(profile.biological_sex);
 
-    // Rischio collasso ortostatico (0..100%)
+    // Orthostatic collapse risk (0..100%)
     let mut collapse_risk = (-delta_pv * 2.5).max(5.0);
     if shock_index >= SHOCK_INDEX_CRITICAL {
         collapse_risk = collapse_risk.max(85.0);
@@ -181,7 +181,7 @@ pub fn compute_orthostatic_fluid_state_for_profile(
     }
 }
 
-/// Calcola lo stato ortostatico e di volemia completo `OrthostaticFluid`.
+/// Computes the complete orthostatic and volemic state `OrthostaticFluid`.
 pub fn compute_orthostatic_fluid_state(
     flight_day: u32,
     hr_bpm: Option<f64>,

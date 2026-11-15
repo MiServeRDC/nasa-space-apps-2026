@@ -1,4 +1,4 @@
-//! Fase 10 (E1) & Fase 41 (N4): Esecutore deterministico Type-1 Crystallized dei 15 Playbook MedOps (#01-#15).
+//! Phase 10 (E1) & Phase 41 (N4): Deterministic Type-1 Crystallized executor of the 15 MedOps Playbooks (#01-#15).
 
 use crate::playbooks_acute::{
     build_playbook_17_hemorrhagic_trauma, build_playbook_18_torso_shock,
@@ -33,11 +33,11 @@ use ares_core_types::telemetry::{
 };
 use ares_core_types::{AnomalyDetectorKind, AnomalyStatus, VitalsAnomalyReport};
 
-/// Seleziona deterministicamente il Playbook candidato secondo la gerarchia clinica rigorosa (Carbon Condition 9):
-/// 1. Trauma / Shock / Pneumotorace (#15)
-/// 2. Allarmi Fisiologici Acuti Vitals (#06, #07, #09)
-/// 3. Urgenze d'Organo (#02 Trombo IJV, #10 Litiasi Renale, #14 Ipercapnia ECLSS)
-/// 4. Rischi Subacuti / Cronici (#05 Radiazioni, #01 Stasi IJV, #04 SANS, #11 Fluid Loading Marte, #12 Circadiano Sol, #13 Immunologia, #08 Perdita Sensore, #03 ARED Base)
+/// Deterministically selects the candidate Playbook according to the strict clinical hierarchy (Carbon Condition 9):
+/// 1. Trauma / Shock / Pneumothorax (#15)
+/// 2. Acute vitals physiological alarms (#06, #07, #09)
+/// 3. Organ emergencies (#02 IJV thrombus, #10 renal lithiasis, #14 ECLSS hypercapnia)
+/// 4. Subacute / chronic risks (#05 Radiation, #01 IJV stasis, #04 SANS, #11 Mars Fluid Loading, #12 Sol Circadian, #13 Immunology, #08 Sensor Loss, #03 ARED Base)
 #[inline]
 #[allow(clippy::too_many_arguments)]
 pub fn select_candidate_playbook_ext(
@@ -62,7 +62,7 @@ pub fn select_candidate_playbook_ext(
         ..SafetyGates::default()
     };
 
-    // LIVELLO 1: Trauma, Barotrauma da Decompressione o Shock Severo (Playbook #15)
+    // LEVEL 1: Trauma, decompression barotrauma, or severe shock (Playbook #15)
     let shock_index = biometrics.sbp_mmhg.and_then(|sbp| {
         if sbp > 0.0 {
             Some(biometrics.heart_rate_bpm.unwrap_or(72.0) / sbp)
@@ -119,7 +119,7 @@ pub fn select_candidate_playbook_ext(
         };
     }
 
-    // LIVELLO 2: Allarmi Fisiologici Acuti Vitals (#06 Desaturazione, #07 Frequenza Cardiaca, #09 Multiparametrico)
+    // LEVEL 2: Acute vitals physiological alarms (#06 Desaturation, #07 Heart Rate, #09 Multiparametric)
     if let Some(acute_pb) = vitals_report
         .and_then(|report| select_vitals_anomaly_playbook(report, default_gates))
         .filter(|pb| pb.playbook_id != "PLAYBOOK_08_SENSOR_SIGNAL_LOSS")
@@ -127,8 +127,8 @@ pub fn select_candidate_playbook_ext(
         return acute_pb;
     }
 
-    // LIVELLO 3: Urgenze d'Organo (#02 Trombo IJV, #10 Litiasi Renale, #14 Ipercapnia ECLSS)
-    // 3A: Trombo giugulare confermato al POCUS B-Mode (#02)
+    // LEVEL 3: Organ emergencies (#02 IJV thrombus, #10 renal lithiasis, #14 ECLSS hypercapnia)
+    // 3A: Jugular thrombus confirmed on POCUS B-Mode (#02)
     if jugular.pocus_thrombus_confirmed {
         return ActivePlaybook {
             playbook_id: "PLAYBOOK_02_CONFIRMED_IJV_THROMBUS".to_string(),
@@ -152,7 +152,7 @@ pub fn select_candidate_playbook_ext(
         };
     }
 
-    // 3B: Rischio Litiasi Renale / Ritenzione Vescicale (#10)
+    // 3B: Renal lithiasis / bladder retention risk (#10)
     let renal_critical = nqs.rho_renal.is_some_and(|r| r < 0.20)
         || renal_pocus.is_some_and(|r| r.is_colic_risk() || r.is_urinary_retention());
     if renal_critical {
@@ -190,7 +190,7 @@ pub fn select_candidate_playbook_ext(
         };
     }
 
-    // 3C: Ipercapnia Ambientale Cabin/Helmet ppCO2 (#14)
+    // 3C: Environmental cabin/helmet ppCO2 hypercapnia (#14)
     let effective_ppco2 = biometrics
         .cabin_ppco2_mmhg
         .into_iter()
@@ -230,8 +230,8 @@ pub fn select_candidate_playbook_ext(
         };
     }
 
-    // LIVELLO 4: Rischi Subacuti / Cronici
-    // 4A: Allerta Radiazioni Solari SPE CSA CANS (#05)
+    // LEVEL 4: Subacute / chronic risks
+    // 4A: Solar radiation alert SPE CSA CANS (#05)
     if biometrics.radiation_dose_rate_msv_d > 1.5 {
         return ActivePlaybook {
             playbook_id: "PLAYBOOK_05_SPE_RADIATION_SHELTER_CANS".to_string(),
@@ -255,7 +255,7 @@ pub fn select_candidate_playbook_ext(
         };
     }
 
-    // 4B: Stasi Venosa Giugulare / Shear Stress Critico (#01)
+    // 4B: Jugular venous stasis / critical shear stress (#01)
     if nqs.rho_tau_w < 0.15 {
         return ActivePlaybook {
             playbook_id: "PLAYBOOK_01_VENOUS_STASIS_LBNP".to_string(),
@@ -279,7 +279,7 @@ pub fn select_candidate_playbook_ext(
         };
     }
 
-    // 4C: Rischio Neuro-Oculare SANS (#04)
+    // 4C: SANS neuro-ocular risk (#04)
     if nqs.rho_sans < 0.20 {
         return ActivePlaybook {
             playbook_id: "PLAYBOOK_04_SANS_TRANSLAMINAR_MITIGATION".to_string(),
@@ -295,7 +295,7 @@ pub fn select_candidate_playbook_ext(
         };
     }
 
-    // 4D: Rischio Emodinamico Collasso Ortostatico Marte 0.38g (#11)
+    // 4D: Hemodynamic orthostatic collapse risk on Mars 0.38g (#11)
     if nqs.rho_orthostatic.is_some_and(|o| o < 0.25) {
         return ActivePlaybook {
             playbook_id: "PLAYBOOK_11_MARS_ENTRY_FLUID_LOADING".to_string(),
@@ -325,7 +325,7 @@ pub fn select_candidate_playbook_ext(
         };
     }
 
-    // 4E: Desincronizzazione Circadiana Sol Marte & Fatica Cognitiva (#12)
+    // 4E: Mars Sol circadian desynchronization & cognitive fatigue (#12)
     let circadian_risk = nqs.rho_circadian.is_some_and(|c| c < 0.25)
         || fatigue_score.is_some_and(|f| f > 0.55);
     if circadian_risk {
@@ -357,7 +357,7 @@ pub fn select_candidate_playbook_ext(
         };
     }
 
-    // 4F: Disregolazione Immunitaria & Riattivazione Virale (#13)
+    // 4F: Immune dysregulation & viral reactivation (#13)
     let immune_risk = nqs.rho_immune.is_some_and(|i| i < 0.25)
         || immune_risk_pct.is_some_and(|im| im >= 60.0);
     if immune_risk {
@@ -389,14 +389,14 @@ pub fn select_candidate_playbook_ext(
         };
     }
 
-    // 4G: Segnale Sensore Perso (Playbook #08)
+    // 4G: Lost sensor signal (Playbook #08)
     if let Some(dropout_pb) =
         vitals_report.and_then(|report| select_vitals_anomaly_playbook(report, default_gates))
     {
         return dropout_pb;
     }
 
-    // 4H / Default: Ottimizzazione Meccanotrasduzione ARED & Osso (#03)
+    // 4H / Default: ARED & bone mechanotransduction optimization (#03)
     ActivePlaybook {
         playbook_id: "PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED".to_string(),
         title: "Playbook #03: Frost Mechanostat ARED Loading & Renal Stone Prevention".to_string(),
@@ -419,7 +419,7 @@ pub fn select_candidate_playbook_ext(
     }
 }
 
-/// Seleziona deterministicamente il Playbook candidato (firma standard di retrocompatibilita).
+/// Deterministically selects the candidate Playbook (standard backward-compatible signature).
 #[inline]
 pub fn select_candidate_playbook(
     biometrics: &Biometrics,

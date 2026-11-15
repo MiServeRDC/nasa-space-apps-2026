@@ -1,22 +1,22 @@
-//! Modulo di calcolo del rischio litiasico renale da supersaturazione (RSR) di ossalato di calcio,
-//! soppressione del citrato urinario indotta da ipercapnia in cabina e monitoraggio vescicale (Gap 1).
+//! Module computing renal lithiasis risk from calcium oxalate supersaturation (RSR),
+//! cabin hypercapnia-induced urinary citrate suppression, and bladder monitoring (Gap 1).
 
 use ares_core_types::constants::{
     RSR_CALCIUM_OXALATE_ATTENTION, RSR_CALCIUM_OXALATE_CRITICAL, sanitize_f64,
 };
 use ares_core_types::telemetry::{RenalNephrolithiasis, SpotPoctPanel};
 
-/// Costante di proporzionalita empirica di Tiselius per RSR di ossalato di calcio
-/// calibrata a 1.00 sui valori fisiologici nominali (Ca=140 mg/d, Cit=640 mg/d, V=2.0 L/d).
+/// Tiselius empirical proportionality constant for calcium oxalate RSR
+/// calibrated to 1.00 on nominal physiological values (Ca=140 mg/d, Cit=640 mg/d, V=2.0 L/d).
 pub const K_RSR_SCALE: f64 = 0.255;
 
-/// Baseline fisiologica nominale di escrezione giornaliera di citrato urinario (mg/d).
+/// Nominal physiological baseline of daily urinary citrate excretion (mg/d).
 pub const CITRATE_BASELINE_MG_D: f64 = 640.0;
 
-/// Apporto incrementale di citrato derivante da supplementazione di citrato di potassio orale (mg/d).
+/// Incremental citrate intake from oral potassium citrate supplementation (mg/d).
 pub const DELTA_CITRATE_K_CITRATE_MG_D: f64 = 250.0;
 
-/// Calcola il volume stimato di diuresi giornaliera (L/d) a partire dall'introito idrico.
+/// Computes the estimated daily urine output volume (L/d) from fluid intake.
 #[inline]
 pub fn estimate_urine_output_l_d(daily_fluid_intake_l: f64, poct: Option<&SpotPoctPanel>) -> f64 {
     if let Some(panel) = poct
@@ -26,12 +26,12 @@ pub fn estimate_urine_output_l_d(daily_fluid_intake_l: f64, poct: Option<&SpotPo
         return vol.clamp(0.40, 5.0);
     }
     let intake = sanitize_f64(daily_fluid_intake_l, 2.5).clamp(0.5, 6.0);
-    // Perdita insensibile di circa 0.85 L/d (respirazione e traspirazione cutanea)
+    // Insensible loss of about 0.85 L/d (respiration and cutaneous perspiration)
     (intake - 0.85).clamp(0.50, 4.0)
 }
 
-/// Calcola l'escrezione stimata di citrato urinario (mg/d), tenendo conto dell'acidosi tubulare da ipercapnia
-/// e dell'efficacia della terapia orale con citrato di potassio.
+/// Computes the estimated urinary citrate excretion (mg/d), accounting for hypercapnia-induced tubular acidosis
+/// and the efficacy of oral potassium citrate therapy.
 #[inline]
 pub fn compute_urinary_citrate_mg_d(
     cabin_ppco2_mmhg: f64,
@@ -54,7 +54,7 @@ pub fn compute_urinary_citrate_mg_d(
     (CITRATE_BASELINE_MG_D + k_citrate_bonus - hypercapnia_suppression).clamp(120.0, 950.0)
 }
 
-/// Fattore correttivo del pH urinario per il rischio di precipitazione cristallina.
+/// Urinary pH correction factor for the crystalline precipitation risk.
 #[inline]
 pub fn compute_ph_correction_factor(urinary_ph: f64) -> f64 {
     let ph = sanitize_f64(urinary_ph, 6.0).clamp(4.5, 8.5);
@@ -67,7 +67,7 @@ pub fn compute_ph_correction_factor(urinary_ph: f64) -> f64 {
     }
 }
 
-/// Calcola l'indice di supersaturazione relativa di Tiselius AP(CaOx) RSR.
+/// Computes the Tiselius relative supersaturation index AP(CaOx) RSR.
 #[inline]
 pub fn compute_rsr_calcium_oxalate(
     urinary_calcium_mg_d: f64,
@@ -87,8 +87,8 @@ pub fn compute_rsr_calcium_oxalate(
     sanitize_f64(rsr, 1.0).clamp(0.1, 15.0)
 }
 
-/// Calcola lo stato completo `RenalNephrolithiasis` integrando escrezione di calcio dal rimodellamento osseo,
-/// bilancio idrico, ipercapnia in cabina e riscontri POCUS.
+/// Computes the complete `RenalNephrolithiasis` state integrating calcium excretion from bone remodeling,
+/// fluid balance, cabin hypercapnia, and POCUS findings.
 pub fn compute_renal_nephrolithiasis_state(
     urinary_calcium_mg_d: f64,
     daily_fluid_intake_l: f64,
@@ -107,7 +107,7 @@ pub fn compute_renal_nephrolithiasis_state(
 
     let rsr = compute_rsr_calcium_oxalate(urinary_calcium_mg_d, citrate, urine_vol, ph);
 
-    // Indice di rischio colica renale (0.0..1.0)
+    // Renal colic risk index (0.0..1.0)
     let colic_risk = if pocus_hydronephrosis_confirmed {
         0.95
     } else if rsr >= RSR_CALCIUM_OXALATE_CRITICAL {

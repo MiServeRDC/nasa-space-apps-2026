@@ -1,0 +1,4 @@
+VOTE: GUILTY
+REASON: Against a base rate the case itself calls "a tiny fraction" reaching global judging, you do not improve those odds by submitting "exactly as it stands" when a fifth of the score (Presentation) rests on a pitch the record never shows exists and the Fresh Code flag is undocumented; even the defense concedes both must be fixed before submission, which is not "as-is."
+DECIDING FACT: The record describes no completed 30-second video or 7-slide deck, yet Presentation/Storytelling is a 20% scored axis and the claim is to pitch the project exactly as it currently stands.
+WOULD FLIP IF: The record showed a finished, format-compliant pitch artifact and documented in-window Fresh Code compliance, removing the two unresolved gaps that make "submit as-is" a bet against an already tiny base rate.

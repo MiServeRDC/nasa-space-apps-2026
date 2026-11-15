@@ -1,9 +1,9 @@
-//! Fase 08 (D1): Filtro di minimo mobile O(1) basato sul cuneo monotono di Lemire-Donze (Invariante Entry 007).
+//! Phase 08 (D1): O(1) sliding-minimum filter based on the Lemire-Donze monotonic wedge (Invariant Entry 007).
 
 use ares_core_types::constants::sanitize_f64;
 use std::collections::VecDeque;
 
-/// Cuneo monotono di Lemire per valutare l'operatore STL Box_[t-W, t] in tempo O(1) ammortizzato.
+/// Lemire monotonic wedge for evaluating the STL operator Box_[t-W, t] in amortized O(1) time.
 #[derive(Debug, Clone)]
 pub struct LemireMinWedge {
     window_duration_s: f64,
@@ -18,20 +18,20 @@ impl LemireMinWedge {
         }
     }
 
-    /// Inserisce un nuovo campione `(time_s, rho)` e restituisce `min_{tau in [t-W, t]} rho(tau)` in O(1).
+    /// Inserts a new sample `(time_s, rho)` and returns `min_{tau in [t-W, t]} rho(tau)` in O(1).
     #[inline]
     pub fn push_and_evaluate(&mut self, time_s: f64, rho: f64) -> f64 {
         let t = sanitize_f64(time_s, 0.0);
         let v = sanitize_f64(rho, 0.0);
 
-        // Se il tempo si resetta (es. loop del replay BIDMC o cambio scenario), svuota la finestra
+        // If time resets (e.g. BIDMC replay loop or scenario change), empty the window
         if let Some(&(last_t, _)) = self.deque.back()
             && t < last_t
         {
             self.deque.clear();
         }
 
-        // Rimuove dalla coda tutti gli elementi >= v (mantenendo la monotonia stretta)
+        // Removes from the tail all elements >= v (maintaining strict monotonicity)
         while let Some(&(_, back_val)) = self.deque.back() {
             if back_val >= v {
                 self.deque.pop_back();
@@ -41,7 +41,7 @@ impl LemireMinWedge {
         }
         self.deque.push_back((t, v));
 
-        // Rimuove dalla testa gli elementi usciti dall'orizzonte [t - W, t]
+        // Removes from the head the elements that have left the horizon [t - W, t]
         let cutoff = t - self.window_duration_s;
         while let Some(&(front_t, _)) = self.deque.front() {
             if front_t < cutoff {
@@ -102,7 +102,7 @@ mod tests {
             );
         }
 
-        // Verifica auto-reset su riavvolgimento temporale (t = 0.0 < 480.0)
+        // Verify auto-reset on temporal rewind (t = 0.0 < 480.0)
         let reset_val = wedge.push_and_evaluate(0.0, 0.88);
         assert!((reset_val - 0.88).abs() < 1e-15);
         assert_eq!(wedge.len(), 1);

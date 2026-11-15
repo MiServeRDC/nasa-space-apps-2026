@@ -1,5 +1,5 @@
-//! Fase 31 (L3): Demodulazione Doppler contactless RF 60 GHz mmWave / 5.2 GHz Wi-Fi CSI,
-//! banco SOS biquad notch IIR a 60/120 Hz per ventole ECLSS e stima cardiorespiratoria.
+//! Phase 31 (L3): Contactless Doppler demodulation RF 60 GHz mmWave / 5.2 GHz Wi-Fi CSI,
+//! 60/120 Hz SOS biquad IIR notch bank for ECLSS fans and cardiorespiratory estimation.
 
 use ares_core_types::constants::SQI_MIN_VALID_THRESHOLD;
 use ares_core_types::telemetry::ModelValidationStatus;
@@ -17,7 +17,7 @@ const RESP_MAX_HZ: f64 = 0.60;
 const CARD_MIN_HZ: f64 = 0.80;
 const CARD_MAX_HZ: f64 = 2.50;
 
-/// Errori deterministici di configurazione ed elaborazione per i moduli DSP Level-1 GATHER.
+/// Deterministic configuration and processing errors for the Level-1 GATHER DSP modules.
 #[derive(Debug, Error, Clone, PartialEq)]
 pub enum DspError {
     #[error("frequenza di campionamento radar non valida: {sample_rate_hz} Hz (atteso [50.0, 2000.0] Hz)")]
@@ -42,14 +42,14 @@ pub enum DspError {
     UnsupportedWaveformSampleRate { sample_rate_hz: f64 },
 }
 
-/// Banda portante RF per il calcolo esatto della lunghezza d'onda lambda = c / f_c.
+/// RF carrier band for the exact wavelength computation lambda = c / f_c.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum RadarCarrierBand {
-    /// Radar mmWave cabina notturna a 60.0 GHz (lambda ~= 4.9965 mm).
+    /// Night cabin mmWave radar at 60.0 GHz (lambda ~= 4.9965 mm).
     MmWave60Ghz,
-    /// Sottoportante Wi-Fi CSI 802.11a/n/ac a 5.20 GHz (lambda ~= 57.6524 mm).
+    /// Wi-Fi CSI subcarrier 802.11a/n/ac at 5.20 GHz (lambda ~= 57.6524 mm).
     WifiCsi5Ghz,
-    /// Portante personalizzata validata (> 1 MHz).
+    /// Validated custom carrier (> 1 MHz).
     Custom { carrier_hz: f64 },
 }
 
@@ -67,8 +67,8 @@ impl RadarCarrierBand {
     }
 }
 
-/// Sezione biquadratica IIR del secondo ordine in forma Direct-Form II Transposed (DF2T).
-/// Allocazione 100% stack, zero heap, stabilita polare verificata con criterio di Jury.
+/// Second-order IIR biquad section in Direct-Form II Transposed (DF2T) form.
+/// 100% stack allocation, zero heap, pole stability verified with the Jury criterion.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct BiquadSos {
     b0: f64,
@@ -119,8 +119,8 @@ impl BiquadSos {
         })
     }
 
-    /// Progetta un filtro notch IIR stretto a frequenza `notch_hz`.
-    /// Se `notch_hz >= 0.495 * sample_rate_hz` (sopra Nyquist), restituisce `identity()`.
+    /// Designs a narrow IIR notch filter at frequency `notch_hz`.
+    /// If `notch_hz >= 0.495 * sample_rate_hz` (above Nyquist), returns `identity()`.
     pub fn design_notch(
         sample_rate_hz: f64,
         notch_hz: f64,
@@ -146,7 +146,7 @@ impl BiquadSos {
         Self::from_coefficients(b0, b1, b2, a1, a2)
     }
 
-    /// Progetta un filtro Butterworth passa-banda del 2o ordine pre-deformato con trasformata bilineare.
+    /// Designs a 2nd-order Butterworth band-pass filter pre-warped with the bilinear transform.
     pub fn design_bandpass_2nd(
         sample_rate_hz: f64,
         low_hz: f64,
@@ -196,14 +196,14 @@ impl BiquadSos {
         Self::from_coefficients(b0, b1, b2, a1, a2)
     }
 
-    /// Verifica se i poli soddisfano rigorosamente |p_{1,2}| < 1.
+    /// Checks whether the poles strictly satisfy |p_{1,2}| < 1.
     #[inline]
     pub fn poles_inside_unit_circle(&self) -> bool {
         self.a2.abs() < (1.0 - STABILITY_MARGIN)
             && self.a1.abs() < (1.0 + self.a2 - STABILITY_MARGIN)
     }
 
-    /// Restituisce `true` se la sezione e configurata come bypass identita (es. guardia Nyquist).
+    /// Returns `true` if the section is configured as an identity bypass (e.g. Nyquist guard).
     #[inline]
     pub fn is_identity(&self) -> bool {
         (self.b0 - 1.0).abs() < 1e-12
@@ -213,7 +213,7 @@ impl BiquadSos {
             && self.a2.abs() < 1e-12
     }
 
-    /// Aggiornamento O(1) Direct-Form II Transposed senza allocazioni.
+    /// O(1) Direct-Form II Transposed update without allocations.
     #[inline]
     pub fn step(&mut self, x: f64) -> f64 {
         let x_safe = if x.is_finite() { x } else { 0.0 };
@@ -224,7 +224,7 @@ impl BiquadSos {
     }
 }
 
-/// Configurazione del processore Doppler contactless Level-1 GATHER.
+/// Configuration of the Level-1 GATHER contactless Doppler processor.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct RadarCsiConfig {
     pub sample_rate_hz: f64,
@@ -246,7 +246,7 @@ impl Default for RadarCsiConfig {
     }
 }
 
-/// Stima biometrica contactless prodotta dal radar Doppler con gate SQI >= 0.70.
+/// Contactless biometric estimate produced by the Doppler radar with SQI gate >= 0.70.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct RadarVitalEstimate {
     pub displacement_mm: f64,
@@ -258,7 +258,7 @@ pub struct RadarVitalEstimate {
     pub validation_status: ModelValidationStatus,
 }
 
-/// Processore streaming O(1) per radar Doppler 60 GHz mmWave e 5.2 GHz Wi-Fi CSI.
+/// O(1) streaming processor for 60 GHz mmWave and 5.2 GHz Wi-Fi CSI Doppler radar.
 #[derive(Debug, Clone)]
 pub struct RadarCsiProcessor {
     config: RadarCsiConfig,

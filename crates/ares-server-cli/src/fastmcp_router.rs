@@ -1,8 +1,8 @@
-//! Router FastMCP JSON-RPC 2.0 unificato in modalita Context-Mode (< 150 token / <= 600 byte).
-//! Espone gli 8 tool clinico-spaziali ARES-Health:
-//! - Blocco G (4 tool core): `get_crew_health_summary`, `explain_causal_anomaly`,
+//! Unified FastMCP JSON-RPC 2.0 router in Context-Mode (< 150 tokens / <= 600 bytes).
+//! Exposes the 8 ARES-Health clinical-space tools:
+//! - Block G (4 core tools): `get_crew_health_summary`, `explain_causal_anomaly`,
 //!   `simulate_countermeasure_impact`, `get_medops_playbook`
-//! - Blocchi H & I (4 tool Timestral / HyperGraph / DatasetGraph):
+//! - Blocks H & I (4 Timestral / HyperGraph / DatasetGraph tools):
 //!   `query_dataset_graph`, `explain_biomarker_path`,
 //!   `get_timestral_quantile_cones`, `get_hypergraph_spatial_status`
 
@@ -82,7 +82,7 @@ fn gate_status_code(s: ConformalGateStatus) -> &'static str {
     }
 }
 
-/// Serializza il payload JSON assicurando validita sintattica e rispetto del cap Context-Mode.
+/// Serializes the JSON payload ensuring syntactic validity and compliance with the Context-Mode cap.
 fn serialize_under_budget(mut payload: Value) -> String {
     let mut s = payload.to_string();
     if s.len() <= MAX_MCP_CONTEXT_MODE_BYTES {
@@ -225,7 +225,7 @@ fn build_domain_summary_payload(domain: &str, packet: &ares_core_types::telemetr
     }
 }
 
-/// Gestisce una richiesta JSON-RPC 2.0 FastMCP con il contesto completo Timestral + HyperGraph.
+/// Handles a FastMCP JSON-RPC 2.0 request with the full Timestral + HyperGraph context.
 pub fn handle_fastmcp_jsonrpc_request<S: McpInputSanitizer>(
     req: &JsonRpcRequest,
     ctx: &FastMcpRuntimeContext,

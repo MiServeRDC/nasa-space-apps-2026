@@ -1,5 +1,5 @@
-//! Fase 05 (C1): Meccanotrasduzione muscolo-osso, ODE RK4 di Frost-Hargens per la Sclerostina (SOST),
-//! Ultrasound Muscle Quality Index (MQI) e Gait Asymmetry Index (GAI a 0.38g).
+//! Phase 05 (C1): Muscle-bone mechanotransduction, Frost-Hargens RK4 ODE for Sclerostin (SOST),
+//! Ultrasound Muscle Quality Index (MQI) and Gait Asymmetry Index (GAI at 0.38g).
 
 use std::cell::Cell;
 
@@ -27,7 +27,7 @@ pub enum Rk4HorizonPolicy {
     AdaptiveUnbounded { max_dt_days: f64 },
 }
 
-/// Derivata temporale d[SOST]/dt (in pmol/(L * day)) secondo il modello regolarizzato di Frost-Hargens.
+/// Time derivative d[SOST]/dt (in pmol/(L * day)) according to the regularized Frost-Hargens model.
 #[inline]
 pub fn sost_ode_rhs(sost_pmol_l: f64, ared_load_kgf: f64) -> f64 {
     let load = sanitize_f64(ared_load_kgf, 0.0).max(0.0);
@@ -37,7 +37,7 @@ pub fn sost_ode_rhs(sost_pmol_l: f64, ared_load_kgf: f64) -> f64 {
     K_PROD_SOST * hill_suppression - K_DEG_SOST * sost_pmol_l.max(0.0)
 }
 
-/// Integratore Runge-Kutta di 4° ordine (RK4) a passo fisso `dt_days` per la Sclerostina.
+/// Fixed-step 4th-order Runge-Kutta (RK4) integrator with `dt_days` for Sclerostin.
 #[inline]
 pub fn step_sclerostin_rk4(current_sost: f64, ared_load_kgf: f64, dt_days: f64) -> f64 {
     let dt = sanitize_f64(dt_days, 0.1).clamp(0.0, 5.0);
@@ -51,14 +51,14 @@ pub fn step_sclerostin_rk4(current_sost: f64, ared_load_kgf: f64, dt_days: f64) 
     (y0 + (dt / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4)).clamp(12.0, 95.0)
 }
 
-/// Stima il fattore protettivo endoteliale del secretoma muscolare (Irisina / miR-126-3p) in `[0.0, 1.0]`.
+/// Estimates the endothelial protective factor of the muscle secretome (Irisin / miR-126-3p) in `[0.0, 1.0]`.
 #[inline]
 pub fn irisin_protective_factor(mqi_index: f64) -> f64 {
     sanitize_f64(mqi_index, 0.5).clamp(0.0, 1.0)
 }
 
-/// Calcola lo stato muscoloscheletrico completo (`Musculoskeletal`) in funzione del giorno di volo
-/// (`flight_day`) e del carico giornaliero `ARED` (`ared_daily_load_kgf`).
+/// Computes the complete musculoskeletal state (`Musculoskeletal`) as a function of the flight day
+/// (`flight_day`) and the daily `ARED` load (`ared_daily_load_kgf`).
 #[inline]
 pub fn compute_musculoskeletal_state(
     flight_day: u32,
@@ -105,10 +105,10 @@ pub fn compute_musculoskeletal_state_with_policy(
     let fd = (flight_day as f64).clamp(1.0, 1000.0);
     let exposure_factor = 1.0 - (-fd / 45.0).exp();
 
-    // Area trasversa del soleo (% rispetto alla baseline pre-volo)
+    // Soleus cross-sectional area (% relative to pre-flight baseline)
     let soleus_csa_pct = (100.0 - 28.0 * load_deficit_ratio * exposure_factor).clamp(65.0, 100.0);
 
-    // Ecogenicita ultrasonografica mio-steatosica (scala 0..255 AU, baseline = 48 AU)
+    // Myosteatotic ultrasound echogenicity (scale 0..255 AU, baseline = 48 AU)
     let echo_intensity_au = (48.0 + 46.0 * load_deficit_ratio * exposure_factor).clamp(40.0, 140.0);
 
     // Muscle Quality Index (MQI in [0.0, 1.0], Prof. Pegreffi)
@@ -116,7 +116,7 @@ pub fn compute_musculoskeletal_state_with_policy(
     let csa_penalty = ((100.0 - soleus_csa_pct) / (100.0 - 70.0)).clamp(0.0, 1.0);
     let mqi_index = (1.0 - 0.35 * echo_penalty - 0.65 * csa_penalty).clamp(0.15, 1.0);
 
-    // Integrazione RK4 della Sclerostina sul tempo di missione equivalente
+    // RK4 integration of Sclerostin over equivalent mission time
     let mut sost = 22.5;
     match policy {
         Rk4HorizonPolicy::Bounded60DaysLegacy => {
@@ -136,10 +136,10 @@ pub fn compute_musculoskeletal_state_with_policy(
         }
     }
 
-    // Calciuria renale secondaria al riassorbimento osseo (mg/d)
+    // Renal calciuria secondary to bone resorption (mg/d)
     let urinary_calcium_mg_d = (175.0 + 4.2 * (sost - 22.5).max(0.0)).clamp(140.0, 420.0);
 
-    // Gait Asymmetry Index (GAI %) per l'atterraggio a 0.38g (Hard Safety Gate 3 se > 12%)
+    // Gait Asymmetry Index (GAI %) for the 0.38g landing (Hard Safety Gate 3 if > 12%)
     let gai_pct = (3.5 + 16.5 * (1.0 - mqi_index)).clamp(2.0, 28.0);
 
     Musculoskeletal {
