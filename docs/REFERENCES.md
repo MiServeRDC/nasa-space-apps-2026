@@ -37,6 +37,7 @@ Reviewed November 13, 2026. This list supports preparation; it does not prescrib
 | [Zhu et al., VitalAgent, 2026](https://arxiv.org/abs/2605.29483)                                            | Signal-analysis tools, longitudinal context, and agent evaluation. | Preprint and terrestrial benchmarks, not spaceflight or clinical validation.                 |
 | [De Martino et al., interconnected physiological systems, 2026](https://doi.org/10.3389/fnetp.2026.1867627) | Context across sleep, stress, and physiology.                      | Perspective article, not a validated decision algorithm.                                     |
 | [Overbey et al., SOMA, 2024](https://doi.org/10.1038/s41586-024-07639-y)                                    | Space biomedical research and available data collections.          | Access and usability vary by collection.                                                     |
+| [Gabel et al., pre-flight exercise and bone metabolism in spaceflight, 2022](https://doi.org/10.1136/bjsports-2020-103602) | Pre-flight running volume, bone turnover (CTx, P1NP, sclerostin), and ARED resistance loading. | 17 ISS astronauts (NASA/ESA/JAXA/CSA); motivates early FD15 resorption/calciuria coupling, ARED scaling, and T0 baselines, not ARES ODE parameter validation. |
 
 ## Candidate repositories
 

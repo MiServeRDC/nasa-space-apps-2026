@@ -1,5 +1,12 @@
 # Progress Tracking: ARES-Health (Autonomous Resilient Edge-native System for Astronaut Health)
 
+## Scientific Grounding: Gabel et al. (2022) Integration (2026-11-15)
+
+- Added NASA Johnson Space Center study (Gabel, Liphardt, Sibonga, Smith, Boyd et al., Br J Sports Med 2022) to README.md, docs/REFERENCES.md, docs/scientific_references.md, and docs/submission/NASA_SUBMISSION_PORTAL_READY.md.
+- Grounded Frost-mechanostat sclerostin ODE, early FD15 hypercalciuria nephrolithiasis risk, and Playbooks #03/#10 in peer-reviewed ISS astronaut findings.
+- Formulated pre-flight T0 baseline protocol (L-30 days) as an explicit research roadmap for post-hackathon clinical calibration.
+- Maintained strict epistemic demarcation (ILLUSTRATIVE_UNVALIDATED), zero emojis, and zero broken links.
+
 ## Repository Cleanup and Audit for NASA Space Apps Judging (2026-11-15)
 
 - Completed Gemini 4 Carbon High audit and executed clean-up of obsolete root/docs files.

@@ -1,5 +1,12 @@
 # Active Context: ARES-Health (NASA Space Apps Challenge 2026)
 
+## Scientific Grounding: Gabel et al. (2022) Integration (2026-11-15)
+
+Integrated findings from NASA Johnson Space Center / ISS TBone cohort (Gabel, Liphardt, Sibonga, Smith, Boyd et al., Br J Sports Med 2022; 56:196-203):
+1. Documented physiological grounding in README.md (Section 8.1 and Section 11), docs/REFERENCES.md, docs/scientific_references.md, and docs/submission/NASA_SUBMISSION_PORTAL_READY.md.
+2. Clearly demarcated between implemented scenario coupling (ILLUSTRATIVE_UNVALIDATED Frost-mechanostat RK4 ODE in ares-causal-graph, hypercalciuria nephrolithiasis AP(CaOx), Playbooks #03 and #10) and target pre-flight T0 profile calibration protocol (L-30 days) as a post-hackathon clinical validation roadmap.
+3. Maintained strict epistemic integrity per MODEL_EVIDENCE_AUDIT.md and Issue #12, with zero unqualified claims, zero emojis, and verified link targets.
+
 ## Repository Audit and Cleanup for NASA Space Apps Judging (2026-11-15)
 
 Completed systematic repository audit via Gemini 4 Carbon High and executed safe cleanup:

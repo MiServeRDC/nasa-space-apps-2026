@@ -248,6 +248,16 @@ Developer verification: `cargo test --workspace`, `cargo clippy --workspace -- -
 - **Provenance tagging:** every value is tagged by origin; missing values are preserved as explicit `null` / `UNAVAILABLE` rather than imputed (Issue #4).
 - **Validation status:** coefficients, probabilities, readiness scores, and forecast coverage are **unvalidated**. NASA research and standards provide *context and grounding*, not validation of ARES-Health's outputs. The governing document is [`MODEL_EVIDENCE_AUDIT.md`](docs/architecture/MODEL_EVIDENCE_AUDIT.md).
 
+### 8.1 Musculoskeletal T0 Context & Early Unloading Kinetics
+
+Findings from NASA Johnson Space Center and the ISS TBone cohort (Gabel, Liphardt, Sibonga, Smith, Boyd et al., *Br J Sports Med* 2022; 56:196-203; https://doi.org/10.1136/bjsports-2020-103602) show that microgravity bone loss in astronauts is strongly conditioned by pre-flight exercise history and baseline bone turnover. Resorption markers (urinary CTx, NTx) and urinary calcium rise as early as Flight Day 15 (FD15), osteocyte sclerostin (SOST) elevates across FD30-FD60, and astronauts with higher pre-flight running volume experience steeper tibial trabecular loss unless lower-body ARED resistive loading (squats, deadlifts, heel raises) is substantially scaled.
+
+ARES-Health reflects these mechanisms across two explicitly separated layers:
+1. **Implemented Scenario Coupling (`ILLUSTRATIVE_UNVALIDATED`):** In the What-If and EVALUATE scenario overlay, `crates/ares-causal-graph` models Frost-mechanostat sclerostin kinetics (`step_sclerostin_rk4`, 1000 microstrain reference), soleus area/echogenicity proxies, and Tiselius calcium-oxalate supersaturation (`AP(CaOx)`), routing sub-threshold margins (`NQS-STL` / `TTV` scenario sensitivity horizon) to deterministic checklists in **Playbook #03** (ARED squat/heel-raise load recalibration) and **Playbook #10** (guided renal POCUS, oral hydration, and potassium citrate buffering) under Hard Clinical Safety Gates.
+2. **Target T0 Calibration Protocol (Post-Hackathon Validation Roadmap):** Because static population cutoffs cannot capture inter-individual unloading sensitivity, clinical translation requires replacing fixed scenario baselines with an individualized pre-flight **T0 profile (L-30 days)** pairing quantitative soleus ultrasound, bone turnover panels (CTx, P1NP, SOST), sex-specific physiology, and pre-flight training volume to evaluate a 14-to-15-day early-warning window across solar-conjunction blackouts.
+
+*Epistemic Notice:* Per [`MODEL_EVIDENCE_AUDIT.md`](docs/architecture/MODEL_EVIDENCE_AUDIT.md), citing Gabel et al. (2022) establishes physiological context and motivates prospective subject-disjoint calibration; it does not clinically validate the prototype's ODE coefficients, scenario trajectories, or 14-to-15-day forecast accuracy.
+
 ---
 
 ## 9. Compliance, Licensing & Clean-Room Mandate
@@ -300,6 +310,7 @@ Grounding standards, datasets, and literature. Full annotated reading list with 
 - PhysioNet — [CEBS database (ECG, breathing, seismocardiograms)](https://physionet.org/content/cebsdb/1.0.0/).
 
 ### Selected peer-reviewed literature
+- Gabel et al. (2022). Pre-flight exercise and bone metabolism predict unloading-induced bone loss due to spaceflight. *Br J Sports Med*. https://doi.org/10.1136/bjsports-2020-103602
 - Overbey et al. (2024). Space Omics and Medical Atlas (SOMA). *Nature*. https://doi.org/10.1038/s41586-024-07639-y
 - Balali et al. (2025). Wearable cardiovascular monitoring in 17 cosmonauts. *npj Microgravity*. https://doi.org/10.1038/s41526-025-00522-8
 - Davis-Wilson et al. (2025). Missing smartwatch data and HRV. *JMIR*. https://doi.org/10.2196/53645

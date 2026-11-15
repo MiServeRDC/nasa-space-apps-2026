@@ -53,6 +53,13 @@ This document catalogues the theoretical foundations, peer-reviewed scientific l
 
 ## 2. Muscle-Bone Mechanotransduction, Frost-Hargens ODE (`SOST`), Muscle Quality Index (`MQI`), and $0.38g$ Gait Asymmetry Index (`GAI`) (Block C: Phase 05)
 
+- **Pre-Flight Exercise and Bone Metabolism Predict Unloading-Induced Bone Loss in Spaceflight (ISS TBone & NASA JSC Study)**
+  - *Authors*: Leigh Gabel, Anna-Maria Liphardt, Jean D. Sibonga, Scott M. Smith, Steven K. Boyd et al. (NASA Johnson Space Center, University of Calgary, German Sport University Cologne)
+  - *Venue*: *British Journal of Sports Medicine (BJSM)*, Vol. 56, No. 4, pp. 196–203, 2022
+  - *DOI*: `10.1136/bjsports-2020-103602` | `PMCID: PMC8828062`
+  - *Related Phases*: Fase 05 (`C1`), Fase 07 (`C3`), Fase 10 (`E1`)
+  - *Application in Project*: Studio prospettico su 17 astronauti ISS (NASA, ESA, JAXA, CSA) monitorati con HR-pQCT tibiale/radiale a 61 um e biomarcatori ematici/urinari seriali. Dimostra che la perdita trabecolare è accelerata negli astronauti con elevato volume di corsa pre-volo a meno di un incremento sostanziale (3-6x) del carico su ARED (squat, stacchi, calf raise). Evidenzia l'impennata del riassorbimento osseo (CTx, NTx) e dell'ipercalciuria già a FD15 (rischio precoce di nefrolitiasi) e il picco di Sclerostina (SOST) a FD30-FD60. Motiva la modellazione del meccanostato di Frost in `crates/ares-causal-graph/src/mechanotransduction.rs`, l'accoppiamento con il rischio litogeno in `renal_nephrolithiasis.rs`, i Playbook #03 e #10, e la roadmap di calibrazione individualizzata T0 (L-30 giorni).
+
 - **The Utah Paradigm of Skeletal Physiology (Frost's Mechanostat) & Sclerostin (`SOST`) Mechanotransduction**
   - *Authors*: Harold M. Frost (*"Bone's mechanostat: a 2003 update"*, *The Anatomical Record Part A*, Vol. 275A, No. 2, pp. 1081–1101, 2003, `DOI: 10.1002/ar.a.10119`); Alexander G. Robling, P. J. Niziolek, L. A. Baldridge, K. W. Condon, M. R. Allen, I. Alam, S. M. Warman, J. M. Lowery, J. S. Turner (Indiana University), *"Mechanical stimulation of bone in vivo reduces osteocyte expression of Sost/sclerostin"*, *Journal of Biological Chemistry*, Vol. 283, No. 9, pp. 5866–5875, 2008 (`DOI: 10.1074/jbc.M705092200`); S. Al-Nuaimi, Alan R. Hargens, *"Cellular Mechanotransduction and Sclerostin Dysregulation in Spaceflight-Induced Osteopenia"*, *Bone Research*, 2025 (`DOI: 10.1016/j.boneres.2025.100412`)
   - *Mathematical Model (ODE Regolarizzata di Hill-Frost-Hargens Integrata con Runge-Kutta di 4° Ordine `RK4`)*:

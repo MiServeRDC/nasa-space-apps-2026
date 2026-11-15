@@ -62,8 +62,11 @@ optional LanceDB adapter remains experimental and is not a release dependency.
   organizing the hazards and physiological domains in the scenario models.
 - NASA OSDR: https://osdr.nasa.gov/ — cited biological research/context metadata,
   not the source of the replayed vital signs and not evidence of clinical training.
-- NASA human-system standards: https://standards.nasa.gov/ — reference context for
+- NASA-STD-3001 human-system standards: https://standards.nasa.gov/ — reference context for
   documented prototype requirements/policies. A citation does not certify ARES.
+- NASA JSC ISS bone kinetics study (Gabel, Sibonga, Smith et al., 2022; DOI 10.1136/bjsports-2020-103602):
+  peer-reviewed literature context motivating mechanostat loading thresholds and early
+  FD15 hypercalciuria coupling; does not constitute clinical trial validation of the software.
 - PhysioNet BIDMC PPG and Respiration Dataset v1.0.0:
   https://physionet.org/content/bidmc/1.0.0/ (DOI 10.13026/C2XW26) — the actual
   de-identified terrestrial numeric replay. File hashes and limits are documented
