@@ -5,8 +5,13 @@
 
 pub mod grounding;
 pub mod playbooks;
+pub mod playbooks_acute;
+pub mod playbooks_bmed;
+pub mod playbooks_sepsis_ars;
+pub mod playbooks_tox_dcs;
 pub mod pocus_multiorgan;
 pub mod safety_gates;
+pub mod safety_gates_360;
 
 pub use grounding::{
     PlaybookError, PlaybookGovernanceVerdict, PlaybookNormativeGrounding, ground_playbook_normative,
