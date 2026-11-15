@@ -45,6 +45,7 @@ import type { InjuryMarker } from './types/injury';
 import type { DataOrigin, FreshnessStatus, TelemetryPacket } from './types/telemetry';
 
 import { DeferredPanel } from './modules/ui-primitives/DeferredPanel';
+import { StoryShell } from './scrollytelling/StoryShell';
 
 const BodyHeatmap = lazy(() => import('./modules/body-3d-heatmap/BodyHeatmap').then(m => ({default:m.BodyHeatmap})));
 const KeyboardShortcutsModal = lazy(() => import('./modules/ui-primitives/KeyboardShortcutsModal').then(m => ({default:m.KeyboardShortcutsModal})));
@@ -338,6 +339,7 @@ export default function App() {
   const workspaceRef = useRef<HTMLDivElement>(null);
 
   useGSAP(() => {
+    if (!workspaceRef.current) return;
     const motion = gsap.matchMedia();
     motion.add('(prefers-reduced-motion: no-preference)', () => {
       gsap.from('.mission-masthead h1, .mission-masthead p', {
@@ -360,6 +362,15 @@ export default function App() {
       return null;
     }
   };
+
+  const [viewMode] = useState<'scrolly' | 'workbench'>(() => {
+    const v = getInitialParam('view') || getInitialParam('mode');
+    return v === 'workbench' ? 'workbench' : 'scrolly';
+  });
+
+  if (viewMode === 'scrolly') {
+    return <StoryShell />;
+  }
 
   const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false);
   const [auditModalOpen, setAuditModalOpen] = useState(false);

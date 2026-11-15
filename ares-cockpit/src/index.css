@@ -105,6 +105,16 @@
   --radius-shell: 14px;
   --radius-full: 9999px;
 
+  --container-xs: 20rem;
+  --container-sm: 24rem;
+  --container-md: 28rem;
+  --container-lg: 32rem;
+  --container-xl: 36rem;
+  --container-2xl: 42rem;
+  --container-3xl: 48rem;
+  --container-4xl: 56rem;
+  --container-5xl: 64rem;
+
   --spacing-base: 4px;
   --spacing-xs: 4px;
   --spacing-sm: 8px;
@@ -874,7 +884,6 @@ html.reduce-transparency .hud-glass {
 /* ==========================================================================
    LELLO COCKPIT WORKSPACE & FLIGHT CONTROLS INTEGRATION
    ========================================================================== */
-}
 .monitor-vital dt,
 .monitor-vital > span {
   display: block;
