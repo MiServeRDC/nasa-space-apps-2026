@@ -129,6 +129,102 @@ fn extract_str_arg<'a>(params: &'a Value, keys: &[&str]) -> Option<&'a str> {
     None
 }
 
+fn build_domain_summary_payload(domain: &str, packet: &ares_core_types::telemetry::TelemetryPacket) -> Value {
+    let a360 = packet.aerospace_360.as_ref();
+    match domain {
+        "sex_physio" => {
+            let p = a360.map(|a| &a.crew_profile);
+            json!({
+                "domain": "sex_physio",
+                "astronaut": packet.astronaut_id,
+                "sex": p.map(|c| c.biological_sex),
+                "age_y": p.map(|c| round1(c.age_years)),
+                "mass_kg": p.map(|c| round1(c.body_mass_kg)),
+                "hct_pct": p.and_then(|c| c.baseline_hematocrit_pct).map(round1),
+                "g6pd": p.map(|c| c.g6pd_deficient),
+                "qtc_ms": p.and_then(|c| c.baseline_qtc_ms).map(round1)
+            })
+        }
+        "radiation" => {
+            let rad = a360.and_then(|a| a.radiation_ars.as_ref());
+            let gate6 = a360.is_some_and(|a| a.extended_safety_gates.gate6_radiation_neutropenic_invasive_locked);
+            json!({
+                "domain": "radiation",
+                "bfo_gy": rad.map(|r| round2(r.estimated_acute_bfo_dose_gy)),
+                "cum_msv": rad.map(|r| round1(r.cumulative_mission_dose_msv)),
+                "anc_k_ul": rad.map(|r| round2(r.predicted_anc_k_ul)),
+                "plt_k_ul": rad.map(|r| round1(r.predicted_plt_k_ul)),
+                "neutropenia": rad.map(|r| r.severe_neutropenia),
+                "filgrastim": rad.map(|r| r.filgrastim_indicated),
+                "gate6_lock": gate6
+            })
+        }
+        "acute" => {
+            let ac = a360.and_then(|a| a.acute_emergency.as_ref());
+            json!({
+                "domain": "acute",
+                "pb_code": ac.and_then(|a| a.active_acute_playbook_code),
+                "si": ac.and_then(|a| a.shock_index).map(round2),
+                "cpr": ac.map(|a| a.pulseless_cardiac_arrest),
+                "anaph": ac.map(|a| a.anaphylaxis_suspected),
+                "hem": ac.map(|a| a.active_arterial_hemorrhage),
+                "abd": ac.map(|a| a.acute_abdomen_nom_suspected),
+                "pelvic": ac.map(|a| a.pelvic_emergency_flag),
+                "aur_ml": ac.and_then(|a| a.acute_urinary_retention_ml).map(round1)
+            })
+        }
+        "tox_dcs" => {
+            let tox = a360.and_then(|a| a.toxicology_dcs.as_ref());
+            json!({
+                "domain": "tox_dcs",
+                "nh3": tox.map(|t| round1(t.nh3_ppm)),
+                "mmh": tox.map(|t| round2(t.mmh_ppm)),
+                "co": tox.map(|t| round1(t.co_ppm)),
+                "hcn": tox.map(|t| round1(t.hcn_ppm)),
+                "methb_pct": tox.map(|t| round1(t.methemoglobin_pct)),
+                "r360": tox.map(|t| round2(t.haldane_tissue_ratio_r360)),
+                "spencer": tox.map(|t| t.spencer_vge_grade),
+                "dcs2": tox.map(|t| t.dcs_type2_or_age_active),
+                "water_helmet": tox.map(|t| t.helmet_water_intrusion_detected)
+            })
+        }
+        "pharma_sepsis" => {
+            let ps = a360.and_then(|a| a.pharmacology_sepsis.as_ref());
+            let gates = a360.map(|a| a.extended_safety_gates);
+            json!({
+                "domain": "pharma_sepsis",
+                "qsofa": ps.map(|p| p.qsofa_score),
+                "sepsis": ps.map(|p| p.sepsis_protocol_active),
+                "shock": ps.map(|p| p.septic_shock_active),
+                "bolus_ml": ps.map(|p| round1(p.recommended_crystalloid_bolus_ml)),
+                "egfr": ps.and_then(|p| p.estimated_egfr_ml_min).map(round1),
+                "qtc_ms": ps.map(|p| round1(p.effective_qtc_ms)),
+                "gate5_nsaid": gates.map(|g| g.gate5_nsaid_renal_bleeding_locked),
+                "gate5_qtc": gates.map(|g| g.gate5_allergy_or_qtc_locked),
+                "gate5_sub": gates.map(|g| g.gate5_formulary_substitution_active)
+            })
+        }
+        "bmed" => {
+            let bm = a360.and_then(|a| a.behavioral_health.as_ref());
+            let gate7 = a360.is_some_and(|a| a.extended_safety_gates.gate7_bmed_delirium_or_restraint_guard_active);
+            json!({
+                "domain": "bmed",
+                "triage": bm.map(|b| b.triage_classification),
+                "delirium_mimic": bm.map(|b| b.organic_delirium_mimic_detected),
+                "phq9": bm.and_then(|b| b.phq9_score),
+                "gad7": bm.and_then(|b| b.gad7_score),
+                "airlock_lock": bm.map(|b| b.airlock_software_lockout_active),
+                "cmrs": bm.map(|b| b.cmrs_restraint_authorized),
+                "gate7_guard": gate7
+            })
+        }
+        other => json!({
+            "domain": other,
+            "known_domains": ["sex_physio", "radiation", "acute", "tox_dcs", "pharma_sepsis", "bmed"]
+        }),
+    }
+}
+
 /// Gestisce una richiesta JSON-RPC 2.0 FastMCP con il contesto completo Timestral + HyperGraph.
 pub fn handle_fastmcp_jsonrpc_request<S: McpInputSanitizer>(
     req: &JsonRpcRequest,
@@ -181,20 +277,54 @@ pub fn handle_fastmcp_jsonrpc_request<S: McpInputSanitizer>(
             };
 
             let mut compact_payload = match clean_name.as_str() {
-                "get_crew_health_summary" | "get_astronaut_health_summary" => json!({
-                    "astronaut": latest_packet.astronaut_id,
-                    "fd": latest_packet.flight_day,
-                    "src": latest_packet.source_record_id,
-                    "t_rec_s": latest_packet.relative_recording_time_s,
-                    "severity": latest_packet.alert_severity,
-                    "vitals_anom": ctx.vitals_anomaly.overall,
-                    "mri_pct": latest_packet.nqs_stl.mri_pct.map(round1),
-                    "ttv_interval_kind": latest_packet.nqs_stl.ttv_interval_kind,
-                    "rho_global": latest_packet.nqs_stl.rho_global.map(round2),
-                    "ttv_h": latest_packet.nqs_stl.ttv_hours.map(round1),
-                    "hrv_unavailable_reason": latest_packet.biometrics.hrv_unavailable_reason,
-                    "missing": latest_packet.biometrics.missing_channels
-                }),
+                "get_crew_health_summary" | "get_astronaut_health_summary" => {
+                    if let Some(domain) = extract_str_arg(&req.params, &["domain"]) {
+                        build_domain_summary_payload(domain, latest_packet)
+                    } else {
+                        json!({
+                            "astronaut": latest_packet.astronaut_id,
+                            "fd": latest_packet.flight_day,
+                            "src": latest_packet.source_record_id,
+                            "t_rec_s": latest_packet.relative_recording_time_s,
+                            "severity": latest_packet.alert_severity,
+                            "vitals_anom": ctx.vitals_anomaly.overall,
+                            "mri_pct": latest_packet.nqs_stl.mri_pct.map(round1),
+                            "ttv_interval_kind": latest_packet.nqs_stl.ttv_interval_kind,
+                            "rho_global": latest_packet.nqs_stl.rho_global.map(round2),
+                            "ttv_h": latest_packet.nqs_stl.ttv_hours.map(round1),
+                            "hrv_unavailable_reason": latest_packet.biometrics.hrv_unavailable_reason,
+                            "missing": latest_packet.biometrics.missing_channels
+                        })
+                    }
+                }
+                "get_radiation_ars_biodosimetry" => {
+                    build_domain_summary_payload("radiation", latest_packet)
+                }
+                "get_toxicology_dcs_status" => {
+                    build_domain_summary_payload("tox_dcs", latest_packet)
+                }
+                "get_pharmacology_inventory_gate" => {
+                    build_domain_summary_payload("pharma_sepsis", latest_packet)
+                }
+                "get_bmed_delirium_triage" => {
+                    build_domain_summary_payload("bmed", latest_packet)
+                }
+                "get_eclss_differential" => {
+                    let eclss = latest_packet
+                        .aerospace_360
+                        .as_ref()
+                        .and_then(|a| a.eclss_coupled.as_ref());
+                    json!({
+                        "domain": "eclss",
+                        "max_ppco2": eclss.map(|e| round2(e.max_ppco2_mmhg)),
+                        "cabin_ppco2": eclss.and_then(|e| e.cabin_ppco2_mmhg).map(round2),
+                        "helmet_ppco2": eclss.and_then(|e| e.helmet_ppco2_mmhg).map(round2),
+                        "crew": eclss.map(|e| e.affected_crew_count),
+                        "root_cause": eclss.map(|e| e.root_cause_label.as_str()),
+                        "scrubber_override": eclss.map(|e| e.scrubber_override_active),
+                        "pba_o2": eclss.map(|e| e.emergency_pba_o2_mask_required)
+                    })
+                }
                 "explain_causal_anomaly"
                 | "query_organ_robustness"
                 | "query_causal_biomarker_state" => {
@@ -220,11 +350,31 @@ pub fn handle_fastmcp_jsonrpc_request<S: McpInputSanitizer>(
                 }),
                 "get_medops_playbook"
                 | "trigger_medops_action_playbook"
-                | "get_active_medops_playbook" => json!({
-                    "playbook_id": latest_packet.active_playbook.playbook_id,
-                    "gates": latest_packet.active_playbook.safety_gates,
-                    "top_action": latest_packet.active_playbook.actions.first().map(|a| &a.action_id)
-                }),
+                | "get_active_medops_playbook" => {
+                    if let Some(domain) = extract_str_arg(&req.params, &["domain"]) {
+                        let ext = latest_packet
+                            .aerospace_360
+                            .as_ref()
+                            .map(|a| a.extended_safety_gates);
+                        json!({
+                            "domain": domain,
+                            "playbook_id": latest_packet.active_playbook.playbook_id,
+                            "anticoag_lock": latest_packet.active_playbook.safety_gates.anticoagulant_lock_active,
+                            "lbnp_vent": latest_packet.active_playbook.safety_gates.lbnp_auto_vent_triggered,
+                            "gate5_nsaid": ext.map(|g| g.gate5_nsaid_renal_bleeding_locked),
+                            "gate5_qtc": ext.map(|g| g.gate5_allergy_or_qtc_locked),
+                            "gate6_rad": ext.map(|g| g.gate6_radiation_neutropenic_invasive_locked),
+                            "gate7_bmed": ext.map(|g| g.gate7_bmed_delirium_or_restraint_guard_active),
+                            "top_action": latest_packet.active_playbook.actions.first().map(|a| &a.action_id)
+                        })
+                    } else {
+                        json!({
+                            "playbook_id": latest_packet.active_playbook.playbook_id,
+                            "gates": latest_packet.active_playbook.safety_gates,
+                            "top_action": latest_packet.active_playbook.actions.first().map(|a| &a.action_id)
+                        })
+                    }
+                }
                 "query_dataset_graph" => {
                     let raw_query =
                         extract_str_arg(&req.params, &["query", "keyword", "id", "dataset"])
@@ -566,5 +716,73 @@ mod tests {
             .expect("tools array")
             .clone();
         assert_eq!(tools.len(), 8);
+    }
+
+    #[test]
+    fn test_phase2_domain_filters_and_dispatch_aliases_respect_600_byte_cap() {
+        let state = sample_state();
+        let ctx = state.fastmcp_context().expect("fastmcp context");
+        let sanitizer = StrictMcpSanitizer;
+
+        let domains = [
+            "sex_physio",
+            "radiation",
+            "acute",
+            "tox_dcs",
+            "pharma_sepsis",
+            "bmed",
+        ];
+        for domain in domains {
+            for tool in ["get_crew_health_summary", "get_medops_playbook"] {
+                let req = JsonRpcRequest {
+                    jsonrpc: "2.0".to_string(),
+                    id: Some(json!(200)),
+                    method: "tools/call".to_string(),
+                    params: json!({ "name": tool, "arguments": { "domain": domain } }),
+                };
+                let resp = handle_fastmcp_jsonrpc_request(&req, &ctx, &sanitizer);
+                assert!(resp.error.is_none(), "error on {tool}/{domain}: {:?}", resp.error);
+                let text = resp.result.expect("result")["content"][0]["text"]
+                    .as_str()
+                    .expect("text")
+                    .to_string();
+                assert!(
+                    text.len() <= MAX_MCP_CONTEXT_MODE_BYTES,
+                    "{tool}/{domain} exceeded 600B: {}",
+                    text.len()
+                );
+                let parsed: Value = serde_json::from_str(&text).expect("valid json");
+                assert_eq!(parsed["domain"], domain);
+            }
+        }
+
+        let aliases = [
+            "get_radiation_ars_biodosimetry",
+            "get_toxicology_dcs_status",
+            "get_pharmacology_inventory_gate",
+            "get_bmed_delirium_triage",
+            "get_eclss_differential",
+        ];
+        for alias in aliases {
+            let req = JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: Some(json!(201)),
+                method: "tools/call".to_string(),
+                params: json!({ "name": alias, "arguments": {} }),
+            };
+            let resp = handle_fastmcp_jsonrpc_request(&req, &ctx, &sanitizer);
+            assert!(resp.error.is_none(), "error on {alias}: {:?}", resp.error);
+            let text = resp.result.expect("result")["content"][0]["text"]
+                .as_str()
+                .expect("text")
+                .to_string();
+            assert!(
+                text.len() <= MAX_MCP_CONTEXT_MODE_BYTES,
+                "{alias} exceeded 600B: {}",
+                text.len()
+            );
+            let parsed: Value = serde_json::from_str(&text).expect("valid json");
+            assert!(parsed.is_object());
+        }
     }
 }

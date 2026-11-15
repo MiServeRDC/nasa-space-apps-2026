@@ -9,9 +9,15 @@ use crate::fastmcp_router::{JsonRpcRequest, JsonRpcResponse, handle_fastmcp_json
 use crate::wire_contract::{
     AnomalyInjectionRequest, StressTestPatchRequest, WirePacketContext, WireTelemetryPacket,
 };
+use ares_causal_graph::acute_emergencies::{
+    AcuteAbdomenNomInput, AcuteEmergencyTriageInput, AcuteUrinaryRetentionInput, AnaphylaxisInput,
+    DentalMaxillofacialInput, EvaMskSpineInput, HemorrhagicTraumaInput, MicrogravityCprInput,
+    OcularEmergencyInput, PelvicUrogynInput, TorsoShockInput, evaluate_acute_emergencies_triage,
+};
 use ares_causal_graph::adhg_graph::{AdhgCausalEngine, AdhgNodeKind};
+use ares_causal_graph::behavioral_bmed::{BMedScreeningInput, evaluate_bmed_state};
 use ares_causal_graph::biokg_reasoner::{NormativeClinicalGrounding, ground_adhg_node_o1};
-use ares_causal_graph::circadian_cognitive::MarsCircadianOscillator;
+use ares_causal_graph::circadian_cognitive::{CircadianCognitiveState, MarsCircadianOscillator};
 use ares_causal_graph::dataset_graph::AresUnifiedDatasetGraph;
 use ares_causal_graph::eclss_differential::{
     HypercapniaRootCause, evaluate_coupled_habitat_crew_co2,
@@ -25,8 +31,14 @@ use ares_causal_graph::hypergraph_spatial::{
 };
 use ares_causal_graph::mechanotransduction::compute_musculoskeletal_state;
 use ares_causal_graph::orthostatic_fluid::compute_orthostatic_fluid_state;
+use ares_causal_graph::radiation_ars::evaluate_radiation_ars_with_gates;
 use ares_causal_graph::renal_nephrolithiasis::compute_renal_nephrolithiasis_state;
+use ares_causal_graph::sex_physiology::evaluate_sex_physiology;
 use ares_causal_graph::space_immunology::compute_neuro_immune_viral_state;
+use ares_causal_graph::space_pharmacology::{
+    MedicalConsumableInventory, evaluate_pharmacology_sepsis_state,
+};
+use ares_causal_graph::toxicology_dcs::evaluate_from_scenario_input;
 use ares_core_types::anomaly::{
     AnomalyStatus, EWMA_SHORT_HORIZONS_SECONDS, ForecastMethod, ShortHorizonCone,
     VitalsAnomalyReport,
@@ -40,7 +52,8 @@ use ares_core_types::constants::{
     ECLSS_PPCO2_EMERGENCY_MMHG, MAX_SAFE_CABIN_PPCO2_MMHG, sanitize_f64,
 };
 use ares_core_types::medical_360::{
-    AerospaceMedical360State, EclssCoupledSummary, LbnpBaselineState,
+    AcuteEmergencyState, Aerospace360ScenarioInput, AerospaceMedical360State,
+    CrewBiologicalProfile, EclssCoupledSummary, LbnpBaselineState, PocusPelvicScan,
 };
 use ares_core_types::security::{AuditChainRecord, CrewRole, MedOpsAuditLogger};
 use ares_core_types::telemetry::{
@@ -48,10 +61,11 @@ use ares_core_types::telemetry::{
     ScenarioOverlayMode, SpotPoctPanel, StressTestScenarioInput, SystemPhase, TelemetryPacket,
 };
 use ares_core_types::{AbstentionCertificate, NqsQuantileForecastSnapshot};
-use ares_medops_playbooks::playbooks::select_candidate_playbook_ext;
+use ares_medops_playbooks::playbooks::{select_active_playbook_360, select_candidate_playbook_ext};
 use ares_medops_playbooks::pocus_multiorgan::{PocusEfastScan, PocusRenalBladderScan};
 use ares_medops_playbooks::safety_gates::{
-    enforce_hard_clinical_safety_gates_with_lbnp_baseline, resolve_effective_platelets_k_ul,
+    enforce_all_clinical_safety_gates_360, enforce_hard_clinical_safety_gates_with_lbnp_baseline,
+    resolve_effective_platelets_k_ul,
 };
 use ares_nqs_stl::NqsEngine;
 use ares_nqs_stl::error::NqsStlError;
@@ -278,12 +292,16 @@ struct VitalsContext<'a> {
 }
 
 /// Live Phase-1 / 360-degree runtime overrides passed into tick evaluation.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 struct Runtime360Overrides {
     helmet_ppco2_override_mmhg: Option<f64>,
     affected_crew_count: usize,
     platelet_count_k_ul: Option<f64>,
     lbnp_baseline: Option<LbnpBaselineState>,
+    crew_profile: CrewBiologicalProfile,
+    pelvic_pocus: Option<PocusPelvicScan>,
+    medical_360_scenario: Option<Aerospace360ScenarioInput>,
+    medical_inventory: MedicalConsumableInventory,
 }
 
 impl Default for Runtime360Overrides {
@@ -293,6 +311,10 @@ impl Default for Runtime360Overrides {
             affected_crew_count: 1,
             platelet_count_k_ul: None,
             lbnp_baseline: None,
+            crew_profile: CrewBiologicalProfile::default(),
+            pelvic_pocus: None,
+            medical_360_scenario: None,
+            medical_inventory: MedicalConsumableInventory::mars_exmc_baseline(),
         }
     }
 }
@@ -405,7 +427,7 @@ fn compute_mission_telemetry_tick_from_row(
         AnomalyStatus::Alarm => AlertSeverity::Warning,
     });
 
-    // 3. ACT: Selezione deterministica Playbook #01-#15, diagnosi ECLSS accoppiata e Safety Gates
+    // 3. ACT: Selezione deterministica Playbook #01-#30, diagnosi ECLSS accoppiata e Safety Gates 1-7
     let eclss_diag =
         evaluate_coupled_habitat_crew_co2(&biometrics, overrides.affected_crew_count);
     let max_ppco2_mmhg = biometrics
@@ -440,7 +462,161 @@ fn compute_mission_telemetry_tick_from_row(
             ares_core_types::telemetry::ModelValidationStatus::IllustrativeUnvalidated,
     };
 
-    let mut candidate_playbook = select_candidate_playbook_ext(
+    // Phase 2 (6 Aerospace 360 Domains)
+    let creatinine_mg_dl = spot_poct
+        .as_ref()
+        .and_then(|p| p.creatinine_mg_dl)
+        .unwrap_or(0.9);
+    let sex_physio = evaluate_sex_physiology(&overrides.crew_profile, creatinine_mg_dl);
+
+    let s360 = overrides.medical_360_scenario.as_ref();
+    let radiation_ars_state = s360.and_then(|s| s.radiation_ars.as_ref()).map(|rad_in| {
+        evaluate_radiation_ars_with_gates(
+            rad_in,
+            sex_physio.reid_multiplier,
+            biometrics.radiation_dose_rate_msv_d,
+            None,
+            effective_platelets,
+        )
+        .state
+    });
+
+    let (acute_triage_input, acute_emergency_state) =
+        if s360.is_some() || overrides.pelvic_pocus.is_some() {
+            let s_ref = s360.cloned().unwrap_or_default();
+            let acute_in = AcuteEmergencyTriageInput {
+                cpr: MicrogravityCprInput {
+                    pulseless_cardiac_arrest: s_ref.pulseless_cardiac_arrest,
+                    ..Default::default()
+                },
+                anaphylaxis: AnaphylaxisInput {
+                    post_allergen_exposure: s_ref.anaphylaxis_suspected,
+                    acute_urticaria_or_angioedema: s_ref.anaphylaxis_suspected,
+                    bronchospasm_or_stridor: s_ref.anaphylaxis_suspected,
+                },
+                hemorrhage: HemorrhagicTraumaInput {
+                    external_trauma_or_laceration: s_ref.active_arterial_hemorrhage,
+                    active_arterial_bleed: s_ref.active_arterial_hemorrhage,
+                    injury_hours_elapsed: s_ref.injury_hours_elapsed,
+                    active_intravascular_thrombosis: jugular.pocus_thrombus_confirmed,
+                },
+                torso_shock: TorsoShockInput {
+                    efast_subxiphoid_pericardial_effusion: efast_scan
+                        .is_some_and(|e| e.subxiphoid_pericardial_effusion),
+                    efast_abdominal_free_fluid: efast_scan
+                        .is_some_and(|e| e.morison_pouch_free_fluid),
+                    ..Default::default()
+                },
+                acute_abdomen: AcuteAbdomenNomInput {
+                    rlq_or_ruq_syndrome: s_ref.acute_abdomen_nom_suspected,
+                    wbc_k_ul: spot_poct.as_ref().and_then(|p| p.wbc_k_ul),
+                    core_temp_c: biometrics.core_temp_celsius,
+                    ..Default::default()
+                },
+                eva_msk: EvaMskSpineInput {
+                    eva_glove_or_hut_trauma: s_ref.eva_musculoskeletal_trauma,
+                    bmd_loss_pct: (1.0 - musculo.mqi_index).max(0.0) * 10.0,
+                    ..Default::default()
+                },
+                dental: DentalMaxillofacialInput {
+                    submandibular_airway_threat: s_ref.dental_ludwigs_angina_threat,
+                    periapical_abscess: s_ref.dental_ludwigs_angina_threat,
+                    ..Default::default()
+                },
+                ocular: OcularEmergencyInput {
+                    chemical_splash_nh3_lioh_propellant: s_ref.ocular_chemical_or_fb_injury,
+                    seidel_perforation_positive: s_ref.seidel_perforation_positive,
+                    ..Default::default()
+                },
+                aur: AcuteUrinaryRetentionInput {
+                    bladder_volume_ml: renal_pocus.map(|r| r.post_void_bladder_volume_ml),
+                    platelet_count_k_ul: effective_platelets,
+                    ..Default::default()
+                },
+                pelvic: PelvicUrogynInput {
+                    pelvic_pocus: overrides.pelvic_pocus.unwrap_or_default(),
+                    febrile_or_flank_pain: biometrics
+                        .core_temp_celsius
+                        .is_some_and(|t| t >= 38.0),
+                },
+            };
+            let acute_summary = evaluate_acute_emergencies_triage(&biometrics, &acute_in);
+            let acute_state = AcuteEmergencyState {
+                shock_index: acute_summary
+                    .hemorrhage
+                    .shock_index
+                    .or(Some(orthostatic.shock_index)),
+                pulseless_cardiac_arrest: s_ref.pulseless_cardiac_arrest,
+                anaphylaxis_suspected: s_ref.anaphylaxis_suspected,
+                active_arterial_hemorrhage: s_ref.active_arterial_hemorrhage,
+                injury_hours_elapsed: s_ref.injury_hours_elapsed,
+                acute_abdomen_nom_suspected: s_ref.acute_abdomen_nom_suspected,
+                dental_ludwigs_angina_threat: s_ref.dental_ludwigs_angina_threat,
+                ocular_chemical_or_fb_injury: s_ref.ocular_chemical_or_fb_injury,
+                seidel_perforation_positive: s_ref.seidel_perforation_positive,
+                eva_musculoskeletal_trauma: s_ref.eva_musculoskeletal_trauma,
+                acute_urinary_retention_ml: renal_pocus.map(|r| r.post_void_bladder_volume_ml),
+                pelvic_emergency_flag: acute_summary.pelvic.triggered,
+                active_acute_playbook_code: acute_summary.active_acute_playbook_code,
+                validation_status:
+                    ares_core_types::telemetry::ModelValidationStatus::IllustrativeUnvalidated,
+            };
+            (Some(acute_in), Some(acute_state))
+        } else {
+            (None, None)
+        };
+
+    let tox_assessment = s360.map(|s| {
+        evaluate_from_scenario_input(s, &biometrics, spot_poct.as_ref(), &overrides.crew_profile)
+    });
+    let toxicology_dcs_state = tox_assessment.as_ref().map(|t| t.state.clone());
+
+    let mission_sol = scenario.flight_day as f64;
+    let cumulative_habitat_gcr_gy = 0.0;
+    let current_qtc_ms = s360.and_then(|s| s.current_qtc_ms);
+    let gi_ulcer_history_or_bleed = s360.is_some_and(|s| s.gi_ulcer_history_or_bleed);
+    let sepsis_source_identified = s360.is_some_and(|s| s.suspected_infection);
+    let pharmacology_sepsis_state = evaluate_pharmacology_sepsis_state(
+        &overrides.crew_profile,
+        spot_poct.as_ref(),
+        biometrics.resp_rate_brpm,
+        effective_sbp,
+        biometrics.dbp_mmhg,
+        biometrics.core_temp_celsius,
+        Some(circadian.pvt_lapse_probability),
+        sepsis_source_identified,
+        current_qtc_ms,
+        mission_sol,
+        cumulative_habitat_gcr_gy,
+        Some(&overrides.medical_inventory),
+    );
+
+    let bmed_state = s360.map(|s| {
+        let toxicant_active = toxicology_dcs_state.as_ref().is_some_and(|t| {
+            t.nh3_ppm >= 25.0
+                || t.mmh_ppm >= 0.2
+                || t.no2_ppm >= 1.0
+                || t.co_ppm >= 35.0
+                || t.hcn_ppm >= 4.7
+                || t.methemoglobin_pct >= 10.0
+        });
+        let bmed_in = BMedScreeningInput {
+            phq9_score: s.phq9_score,
+            gad7_score: s.gad7_score,
+            cssrs_suicidal_ideation_level: s.cssrs_suicidal_ideation_level,
+            acute_agitation_or_psychosis: s.acute_agitation_or_psychosis,
+            imminent_harm_to_self_or_vehicle: s.imminent_harm_to_self_or_vehicle,
+            spo2_pct: biometrics.spo2_pct,
+            max_ppco2_mmhg: Some(max_ppco2_mmhg),
+            core_temp_c: biometrics.core_temp_celsius,
+            lactate_mmol_l: spot_poct.as_ref().and_then(|p| p.lactate_mmol_l),
+            toxicant_active,
+            circadian_cognitive: Some(CircadianCognitiveState::from(&circadian)),
+        };
+        evaluate_bmed_state(&bmed_in).state
+    });
+
+    let mut candidate_playbook = select_active_playbook_360(
         &biometrics,
         &musculo,
         &jugular,
@@ -452,7 +628,31 @@ fn compute_mission_telemetry_tick_from_row(
         scenario.flight_day,
         Some(circadian.pvt_lapse_probability),
         Some(immune.viral_reactivation_risk_pct),
-    );
+        Some(&overrides.crew_profile),
+        spot_poct.as_ref(),
+        radiation_ars_state.as_ref(),
+        acute_triage_input.as_ref(),
+        tox_assessment.as_ref(),
+        bmed_state.as_ref(),
+        true,
+        current_qtc_ms.or(Some(pharmacology_sepsis_state.effective_qtc_ms)),
+        sepsis_source_identified,
+    )
+    .unwrap_or_else(|| {
+        select_candidate_playbook_ext(
+            &biometrics,
+            &musculo,
+            &jugular,
+            &nqs_stl,
+            causal_chain.clone(),
+            efast_scan,
+            renal_pocus,
+            vitals.report,
+            scenario.flight_day,
+            Some(circadian.pvt_lapse_probability),
+            Some(immune.viral_reactivation_risk_pct),
+        )
+    });
     if scrubber_override_active && !eclss_diag.recommended_override_actions.is_empty() {
         let mut merged = Vec::with_capacity(
             eclss_diag.recommended_override_actions.len() + candidate_playbook.actions.len(),
@@ -472,7 +672,7 @@ fn compute_mission_telemetry_tick_from_row(
         }
         candidate_playbook.actions = merged;
     }
-    let active_playbook = enforce_hard_clinical_safety_gates_with_lbnp_baseline(
+    let (active_playbook, extended_safety_gates) = enforce_all_clinical_safety_gates_360(
         candidate_playbook,
         &biometrics,
         &musculo,
@@ -482,6 +682,15 @@ fn compute_mission_telemetry_tick_from_row(
         Some(circadian.pvt_lapse_probability),
         Some(orthostatic.shock_index),
         overrides.lbnp_baseline,
+        spot_poct.as_ref(),
+        Some(&overrides.crew_profile),
+        radiation_ars_state.as_ref(),
+        Some(&overrides.medical_inventory),
+        mission_sol,
+        cumulative_habitat_gcr_gy,
+        current_qtc_ms,
+        gi_ulcer_history_or_bleed,
+        bmed_state.as_ref(),
     );
 
     let system_phase = if nqs_stl.has_known_violation()
@@ -538,9 +747,15 @@ fn compute_mission_telemetry_tick_from_row(
         mars_circadian_sleep: Some(circadian),
         neuro_immune_viral: Some(immune),
         aerospace_360: Some(AerospaceMedical360State {
+            crew_profile: overrides.crew_profile.clone(),
             lbnp_baseline: overrides.lbnp_baseline,
             eclss_coupled: Some(eclss_summary),
-            ..AerospaceMedical360State::default()
+            radiation_ars: radiation_ars_state,
+            acute_emergency: acute_emergency_state,
+            toxicology_dcs: toxicology_dcs_state,
+            pharmacology_sepsis: Some(pharmacology_sepsis_state),
+            behavioral_health: bmed_state,
+            extended_safety_gates,
         }),
     };
     (packet, pocus_est.thrombus_posterior, causal_chain)
@@ -675,6 +890,10 @@ pub struct MissionRuntimeInner {
     pub last_valid_sbp_hr: (f64, f64),
     pub efast_scan: Option<PocusEfastScan>,
     pub renal_pocus: Option<PocusRenalBladderScan>,
+    pub crew_profile: CrewBiologicalProfile,
+    pub pelvic_pocus: Option<PocusPelvicScan>,
+    pub medical_360_scenario: Option<Aerospace360ScenarioInput>,
+    pub medical_inventory: MedicalConsumableInventory,
 }
 
 impl MissionRuntimeInner {
@@ -684,6 +903,10 @@ impl MissionRuntimeInner {
             affected_crew_count: self.affected_crew_count,
             platelet_count_k_ul: self.platelet_count_k_ul,
             lbnp_baseline: self.lbnp_baseline,
+            crew_profile: self.crew_profile.clone(),
+            pelvic_pocus: self.pelvic_pocus,
+            medical_360_scenario: self.medical_360_scenario.clone(),
+            medical_inventory: self.medical_inventory.clone(),
         }
     }
 
@@ -1393,6 +1616,10 @@ impl SharedMissionState {
                 last_valid_sbp_hr: initial_sbp_hr,
                 efast_scan: None,
                 renal_pocus: None,
+                crew_profile: CrewBiologicalProfile::default(),
+                pelvic_pocus: None,
+                medical_360_scenario: None,
+                medical_inventory: MedicalConsumableInventory::mars_exmc_baseline(),
             }),
             tx,
             binary_ring,
@@ -1924,12 +2151,22 @@ impl SharedMissionState {
         if patch.clear_pocus_scans == Some(true) {
             guard.efast_scan = None;
             guard.renal_pocus = None;
+            guard.pelvic_pocus = None;
         }
         if let Some(efast) = patch.efast_scan {
             guard.efast_scan = Some(efast);
         }
         if let Some(renal) = patch.renal_pocus {
             guard.renal_pocus = Some(renal);
+        }
+        if let Some(profile) = patch.crew_profile.clone() {
+            guard.crew_profile = profile;
+        }
+        if let Some(pelvic) = patch.pelvic_pocus {
+            guard.pelvic_pocus = Some(pelvic);
+        }
+        if let Some(scenario_360) = patch.medical_360_scenario.clone() {
+            guard.medical_360_scenario = Some(scenario_360);
         }
         if !was_lbnp_active && new_scenario.lbnp_active {
             let ts = (guard.mission_elapsed_s.max(0.0) * 1000.0) as u64;
@@ -3073,5 +3310,151 @@ mod tests {
         );
         assert!(pkt.active_playbook.safety_gates.lbnp_auto_vent_triggered);
         assert!(!pkt.jugular_hemodynamics.lbnp_active);
+    }
+
+    #[test]
+    fn test_phase2_360_stress_test_sepsis_16_ars_26_parmitano_28_gate5a_gate7a() {
+        let state = SharedMissionState::from_data_dir(&workspace_bidmc_dir()).expect("state");
+
+        // 1. Parmitano #28 (Suit Water Intrusion)
+        let wire_parmitano = state
+            .apply_stress_test_patch(StressTestPatchRequest {
+                medical_360_scenario: Some(Aerospace360ScenarioInput {
+                    helmet_water_intrusion_detected: true,
+                    ..Aerospace360ScenarioInput::default()
+                }),
+                ..StressTestPatchRequest::default()
+            })
+            .expect("parmitano patch");
+        assert_eq!(
+            wire_parmitano.active_playbook.playbook_id,
+            "PLAYBOOK_28_EVA_DCS_AND_SUIT_EMERGENCY"
+        );
+
+        // 2. ARS #26 (Acute Radiation Syndrome + Gate 6 lock)
+        let wire_ars = state
+            .apply_stress_test_patch(StressTestPatchRequest {
+                medical_360_scenario: Some(Aerospace360ScenarioInput {
+                    radiation_ars: Some(ares_core_types::medical_360::RadiationArsInput {
+                        alc_t_k_ul: Some(0.35),
+                        alc_hours_post_spe: Some(18.0),
+                        alc_baseline_k_ul: Some(2.0),
+                        emesis_onset_hours_post_spe: Some(1.5),
+                        cumulative_mission_dose_msv: 2800.0,
+                        days_post_spe: 18.0,
+                        core_temp_c: Some(38.2),
+                    }),
+                    ..Aerospace360ScenarioInput::default()
+                }),
+                ..StressTestPatchRequest::default()
+            })
+            .expect("ars patch");
+        assert_eq!(
+            wire_ars.active_playbook.playbook_id,
+            "PLAYBOOK_26_ACUTE_RADIATION_SYNDROME"
+        );
+        let a360_ars = wire_ars.aerospace_360.as_ref().expect("aerospace_360");
+        assert!(
+            a360_ars
+                .extended_safety_gates
+                .gate6_radiation_neutropenic_invasive_locked
+        );
+
+        // 3. Sepsis #16 (suspected_infection + elevated lactate)
+        state.inner.write().expect("lock").spot_poct = Some(SpotPoctPanel {
+            lactate_mmol_l: Some(3.2),
+            wbc_k_ul: Some(15.5),
+            creatinine_mg_dl: Some(1.9),
+            platelet_count_k_ul: Some(60.0),
+            ..Default::default()
+        });
+        let wire_sepsis = state
+            .apply_stress_test_patch(StressTestPatchRequest {
+                platelet_count_k_ul: Some(60.0),
+                medical_360_scenario: Some(Aerospace360ScenarioInput {
+                    suspected_infection: true,
+                    gi_ulcer_history_or_bleed: true,
+                    ..Aerospace360ScenarioInput::default()
+                }),
+                ..StressTestPatchRequest::default()
+            })
+            .expect("sepsis patch");
+        assert_eq!(
+            wire_sepsis.active_playbook.playbook_id,
+            "PLAYBOOK_16_SEPSIS_SEPTIC_SHOCK"
+        );
+        let a360_sep = wire_sepsis.aerospace_360.as_ref().expect("aerospace_360");
+        assert!(
+            a360_sep
+                .pharmacology_sepsis
+                .as_ref()
+                .is_some_and(|p| p.sepsis_protocol_active)
+        );
+
+        // 3b. Ketorolac Gate 5A on Renal Colic (#10) with Cr 1.9 + PLT 60 + GI ulcer history
+        state.inner.write().expect("lock").spot_poct = Some(SpotPoctPanel {
+            creatinine_mg_dl: Some(1.9),
+            platelet_count_k_ul: Some(60.0),
+            ..Default::default()
+        });
+        let wire_gate5a = state
+            .apply_stress_test_patch(StressTestPatchRequest {
+                renal_pocus: Some(PocusRenalBladderScan {
+                    hydronephrosis_grade: 2,
+                    calculus_detected: true,
+                    calculus_diameter_mm: 5.0,
+                    twinkling_artifact_present: true,
+                    post_void_bladder_volume_ml: 120.0,
+                    ..Default::default()
+                }),
+                medical_360_scenario: Some(Aerospace360ScenarioInput {
+                    suspected_infection: false,
+                    gi_ulcer_history_or_bleed: true,
+                    suit_pressure_psi: Some(14.7),
+                    prebreathe_o2_minutes: Some(150.0),
+                    ..Aerospace360ScenarioInput::default()
+                }),
+                ..StressTestPatchRequest::default()
+            })
+            .expect("gate5a patch");
+        assert_eq!(
+            wire_gate5a.active_playbook.playbook_id,
+            "PLAYBOOK_10_RENAL_LITHIASIS"
+        );
+        assert!(
+            wire_gate5a
+                .aerospace_360
+                .as_ref()
+                .expect("aerospace_360")
+                .extended_safety_gates
+                .gate5_nsaid_renal_bleeding_locked
+        );
+
+        // 4. BMed Gate 7A delirium exclusion (hypercapnia > 4.0 mmHg + acute agitation -> organic mimic)
+        state.inner.write().expect("lock").spot_poct = None;
+        let wire_bmed = state
+            .apply_stress_test_patch(StressTestPatchRequest {
+                cabin_ppco2_mmhg: Some(4.6),
+                platelet_count_k_ul: Some(250.0),
+                medical_360_scenario: Some(Aerospace360ScenarioInput {
+                    phq9_score: Some(18),
+                    acute_agitation_or_psychosis: true,
+                    ..Aerospace360ScenarioInput::default()
+                }),
+                ..StressTestPatchRequest::default()
+            })
+            .expect("bmed patch");
+        let a360_bmed = wire_bmed.aerospace_360.as_ref().expect("aerospace_360");
+        assert!(
+            a360_bmed
+                .behavioral_health
+                .as_ref()
+                .is_some_and(|b| b.organic_delirium_mimic_detected)
+        );
+        assert!(
+            a360_bmed
+                .extended_safety_gates
+                .gate7_bmed_delirium_or_restraint_guard_active
+        );
     }
 }
