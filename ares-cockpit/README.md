@@ -39,16 +39,6 @@ node --experimental-strip-types --test tests/*.test.ts
 * Null channels (`pulse_rate_bpm`, `spo2_percent`, `hrv_rmssd_ms`, `time_to_violation_days`) are rendered explicitly as `MISSING` or `UNAVAILABLE (BEAT_INTERVALS_NOT_AVAILABLE)` / `UNAVAILABLE (NO R-R)` and are never coerced to 0 or `> 100 d`.
 * Optical skin triage (`src/lib/vlmInjuryEngine.ts`) uses an offline HTML5 `<canvas>` RGB pixel heuristic (`OPTICAL_RGB_HEURISTIC_V1`), strictly tagged `ILLUSTRATIVE_UNVALIDATED` (non-diagnostic, zero cloud uploads, zero fabricated confidence percentages).
 
-## Detailed anatomical body map
-
-The body map defaults to a local Z-Anatomy / BodyParts3D atlas, with independent skeleton, muscle, cardiovascular, visceral and nervous-system layers. Use DETAILED ATLAS / ORIGINAL MODEL to compare with the procedural renderer. Both renderers use male reference geometry for both profiles; FEMALE changes existing scenario parameters only. No female geometry is bundled.
-
-Five physiological points use source-mesh anchors and open the existing detail tabs. Corresponding structures use scenario colors; the mesh is a generic reference, not a patient scan or a measured organ deformation. The existing pure-BIDMC replay availability gate remains in place, so absent hemodynamic/musculoskeletal source data do not create a fabricated heatmap.
-
-Manual region markers support local photo attachment and resolution. They do not perform automatic image diagnosis or report an AI confidence. Notes/photos are session-only; object URLs are released when notes are replaced, resolved or the App unmounts. The controls use the same geometry/anchors for both profiles.
-
-All five GLBs (about 26.8 MB total) are served from `public/anatomy/`, without runtime external downloads. Source versions/hashes are in [MANIFEST.json](public/anatomy/MANIFEST.json); separate asset credits and share-alike licence are in [ATTRIBUTION.md](public/anatomy/ATTRIBUTION.md). The code's MIT / Apache-2.0 licence does not relicense those assets.
-
 ## Safety Gates in the UI
 
 * Gate 1: Systemic anticoagulants stay LOCKED unless the POCUS finding is `CONFIRMED`.

@@ -6,8 +6,6 @@ import { Html, OrbitControls, PerformanceMonitor, QuadraticBezierLine } from '@r
 import {useRenderQuality} from './useRenderQuality';
 import type {RenderProfile} from '../../lib/renderQuality';
 import type { CrewSex, ScenarioState } from '../../lib/scenario';
-import { INJURY_REGIONS, type InjuryMarker, type InjuryRegionId } from '../../types/injury';
-import { AtlasBody, type AtlasAnchors } from './AtlasBody';
 import {
   INJURY_REGIONS,
   type InjuryMarker,
@@ -39,8 +37,6 @@ import {
 
 export type NodeId = AnatomicalRegionWireId;
 export type TargetTab = 'POCUS' | 'MUSCLE_BONE' | 'FORECAST';
-
-const INJURY_COLOR = '#a3e635'; // Neon lime: high-contrast opposite to the black/cyan OLED palette.
 
 interface LayerConfig {
   skin: boolean;
@@ -233,14 +229,10 @@ function SpatialNodePin({
           emissiveIntensity={intensity}
         />
       </mesh>
-      <Html position={[0.12, 0, 0]} style={{ pointerEvents: 'auto' }}>
+      <Html distanceFactor={5.5} position={[0.12, 0, 0]}>
         <button
           type="button"
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            onSelect();
-          }}
+          onClick={onSelect}
           style={{
             fontFamily: 'monospace',
             fontSize: 11,
@@ -992,54 +984,6 @@ function BodyHeatmapView({
                 type="button"
                 onClick={() => setSelected(null)}
                 className="min-h-[44px] min-w-[44px] cursor-pointer rounded border border-line bg-black px-3 py-2 text-gray-300 hover:text-white"
-              >
-                CLOSE
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Selected AI-detected injury details */}
-        {activeInjury && (
-          <div className="absolute right-3 bottom-3 left-3 z-30 flex flex-wrap items-start justify-between gap-3 rounded-lg border-2 border-lime-400 bg-black p-3 shadow-2xl">
-            {activeInjury.photoUrl && (
-              <img
-                src={activeInjury.photoUrl}
-                alt={activeInjury.title}
-                className="h-20 w-20 rounded border border-lime-400/50 object-cover"
-              />
-            )}
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2 font-mono text-xs">
-                <span className="rounded bg-lime-400 px-1.5 py-0.5 font-bold text-black">MANUAL INJURY NOTE</span>
-                <span className="font-bold text-lime-300">{activeInjury.title}</span>
-                <span className="text-gray-400">| Severity: {activeInjury.severity}</span>
-                <span className="text-gray-500">| {activeInjury.detectedAt}</span>
-              </div>
-              <p className="mt-1 text-xs text-gray-200">{activeInjury.summary}</p>
-              <ul className="mt-1.5 space-y-0.5 font-mono text-[11px] text-lime-200">
-                {activeInjury.careSteps.map((step, i) => (
-                  <li key={i}>{i + 1}. {step}</li>
-                ))}
-              </ul>
-            </div>
-            <div className="flex flex-col gap-1.5 font-mono text-xs">
-              {onResolveInjury && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    onResolveInjury(activeInjury.id);
-                    setSelectedInjuryId(null);
-                  }}
-                  className="cursor-pointer rounded border border-lime-400 bg-lime-400 px-2.5 py-1 font-bold text-black hover:opacity-90"
-                >
-                  MARK RESOLVED
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setSelectedInjuryId(null)}
-                className="cursor-pointer rounded border border-line px-2.5 py-1 text-gray-400 hover:text-white"
               >
                 CLOSE
               </button>

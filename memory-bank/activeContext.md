@@ -561,15 +561,3 @@ All 5 critical audit vulnerabilities identified by the independent Gemini Carbon
 ## Historical Merge Context (Issue #11 / PR #20 / Issue #12)
 - **PR #20 / Issue #11 (`187b933`):** Numeric-only BIDMC replay never invents RMSSD, SDNN, pNN50, or LF/HF; returns null with `BEAT_INTERVALS_NOT_AVAILABLE` and propagates unavailable full HRV assessments across HTTP, WebSocket, Timestral masking, and FastMCP tools while preserving known non-HRV violations.
 - **Issue #12 (`b4ca916`):** Added `docs/architecture/MODEL_EVIDENCE_AUDIT.md`, `ModelValidationStatus::IllustrativeUnvalidated`, and `TtvIntervalKind::IllustrativeScenarioRange` to distinguish recorded data provenance from illustrative unvalidated scenario outputs and heuristic gate acceptance.
-
-## Approved anatomical atlas on work/MiServeRDC (2026-11-14)
-
-The user approved the isolated local atlas preview and requested it on their working branch. Synchronized `work/MiServeRDC` from `33dcb71` to current main `08b055a` and integrated only the approved anatomical UI into that up-to-date cockpit. Existing validated telemetry/IPC transports, pure-replay gates, provenance panels and OS shell are preserved. The older temporary issue #13 implementation is excluded.
-
-The body map uses local Z-Anatomy/BodyParts3D GLBs, mesh-derived physiological/manual-region anchors, localized scenario colors, layer/opacity controls, existing detail-tab navigation, session-only manual notes/photo attachments and the procedural-renderer comparison. Both profiles use male geometry; FEMALE changes existing scenario parameters only, as explicitly requested after rejecting the experimental female model. No female files are included. Manual photo attachments do not perform image diagnosis or claim AI confidence; object URLs are released on note replacement/resolution/App unmount.
-
-All five GLBs match a pinned upstream commit and ship with source SHA-256 manifest, attribution and separate CC BY-SA asset licence. They total 26.8 MB and are served locally. Lint/build and the fast repository probe passed. Browser checks passed for profile parameter changes with unchanged geometry, detail navigation, photo resolution/URL release and renderer switching; pure-BIDMC fixture input keeps the heatmap unavailable and requests no GLBs. No new clinical validation is implied. See `docs/plans/ANATOMY_ATLAS_BRANCH_INTEGRATION.md`. Hosted Actions remain disabled.
-
-## User-requested repository references
-
-Added `getopenscreen/openscreen` and `vercel-labs/ui` to `docs/REFERENCES.md` on the user's branch. Read upstream README/licence files: OpenScreen is an MIT desktop recording/demo tool; UI SDK is an Apache-2.0 interaction-behavior library with React adapters, explicitly beta with beta terms referenced upstream. Documented potential ARES use, upstream links and reviewed README blob hashes. These are documentation references only; nothing was installed or integrated into the offline runtime.
