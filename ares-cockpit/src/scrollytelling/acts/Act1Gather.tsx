@@ -138,30 +138,30 @@ export function Act1Gather({
     <section
       ref={sectionRef}
       data-chapter="1"
-      className="relative min-h-screen px-4 py-16 sm:px-8 md:px-14 lg:py-24"
+      className="relative min-h-screen px-4 py-16 sm:px-6 md:px-10 lg:px-12 max-w-[1600px] mx-auto w-full"
       aria-labelledby="act1-heading"
     >
       {/* 1. Centered Editorial Hero Block */}
       <div className="mx-auto flex max-w-4xl flex-col items-center text-center">
         {/* Editorial Transit Badge */}
-        <div className="inline-flex items-center gap-2 rounded-full border border-sky-500/30 bg-sky-950/20 px-3.5 py-1 font-mono text-[10px] uppercase tracking-[0.25em] text-sky-400">
-          <span className="h-1.5 w-1.5 rounded-full bg-sky-400 animate-pulse" />
+        <div className="inline-flex items-center gap-2 rounded-full border border-sky-400/40 bg-sky-950/40 px-4 py-1.5 font-mono text-xs uppercase tracking-[0.25em] text-sky-300 font-semibold shadow-[0_0_10px_rgba(56,189,248,0.2)]">
+          <span className="h-2 w-2 rounded-full bg-sky-400 animate-pulse" />
           • MISSION TO MARS // TRANSIT PHASE // 0.00 G
         </div>
 
         {/* Title with Gradient Text */}
         <h1
           id="act1-heading"
-          className="mt-6 font-sans text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tight text-white leading-tight"
+          className="mt-6 font-sans text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-white leading-tight"
         >
-          Autonomous Resilient<br />
+          Continuous Clinical Telemetry &amp;<br />
           <span className="bg-gradient-to-r from-[#38bdf8] to-[#818cf8] bg-clip-text text-transparent">
-            Edge-Native Biodigital Twin
+            Autonomous Bedside Monitoring
           </span>
         </h1>
 
         {/* Balanced Editorial Subtitle */}
-        <p className="mt-4 max-w-2xl font-sans text-sm sm:text-base leading-relaxed text-slate-300">
+        <p className="mt-4 max-w-3xl font-sans text-base sm:text-lg leading-relaxed text-slate-200">
           Continuous autonomous clinical telemetry and physiological state monitoring.
           First-principles multi-system sensor fusion referenced to NASA-STD-3001
           space medicine standards for deep-space exploration.
@@ -169,23 +169,23 @@ export function Act1Gather({
       </div>
 
       {/* 2. 3 Large Bento Cards Vitals Anchor */}
-      <div className="mx-auto mt-12 grid max-w-6xl grid-cols-1 gap-6 md:grid-cols-3">
+      <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3">
         {/* Card 1: HEART RATE */}
-        <div className="flex flex-col justify-between rounded-xl border border-[#334155]/60 bg-[#000000]/75 p-6 backdrop-blur-md shadow-2xl transition-all hover:border-sky-500/40">
+        <div className="flex flex-col justify-between rounded-xl border border-[#27364b]/80 bg-[#000000]/85 p-6 backdrop-blur-md shadow-2xl transition-all hover:border-sky-500/50">
           <div>
             <div className="flex items-center justify-between">
-              <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+              <span className="font-mono text-xs font-bold uppercase tracking-widest text-slate-300">
                 HEART RATE
               </span>
               <span
-                className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider ${
+                className={`inline-flex items-center gap-1.5 rounded px-2 py-0.5 font-mono text-xs font-bold uppercase tracking-wider ${
                   hrAlarm
-                    ? 'border border-rose-500/50 bg-rose-950/40 text-rose-400'
-                    : 'border border-emerald-500/40 bg-emerald-950/30 text-emerald-400'
+                    ? 'border border-rose-500/60 bg-rose-950/50 text-rose-300'
+                    : 'border border-emerald-500/50 bg-emerald-950/40 text-emerald-300'
                 }`}
               >
                 <span
-                  className={`h-1.5 w-1.5 rounded-full ${
+                  className={`h-2 w-2 rounded-full ${
                     hrAlarm ? 'bg-rose-400 animate-ping' : 'bg-emerald-400'
                   }`}
                 />
@@ -208,7 +208,7 @@ export function Act1Gather({
               >
                 {hr === null ? '--' : Math.round(hr)}
               </span>
-              <span className="font-mono text-sm text-slate-400">bpm</span>
+              <span className="font-mono text-base font-semibold text-slate-400">bpm</span>
             </div>
           </div>
           <div className="mt-6 border-t border-slate-800 pt-3">
@@ -217,17 +217,17 @@ export function Act1Gather({
         </div>
 
         {/* Card 2: OXYGEN SATURATION */}
-        <div className="flex flex-col justify-between rounded-xl border border-[#334155]/60 bg-[#000000]/75 p-6 backdrop-blur-md shadow-2xl transition-all hover:border-sky-500/40">
+        <div className="flex flex-col justify-between rounded-xl border border-[#27364b]/80 bg-[#000000]/85 p-6 backdrop-blur-md shadow-2xl transition-all hover:border-sky-500/50">
           <div>
             <div className="flex items-center justify-between">
-              <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+              <span className="font-mono text-xs font-bold uppercase tracking-widest text-slate-300">
                 OXYGEN SATURATION
               </span>
               <span
-                className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider ${
+                className={`inline-flex items-center gap-1.5 rounded px-2 py-0.5 font-mono text-xs font-bold uppercase tracking-wider ${
                   sqiOk
-                    ? 'border border-sky-500/40 bg-sky-950/30 text-sky-400'
-                    : 'border border-amber-500/40 bg-amber-950/30 text-amber-400'
+                    ? 'border border-sky-400/50 bg-sky-950/40 text-sky-300'
+                    : 'border border-amber-500/50 bg-amber-950/40 text-amber-300'
                 }`}
               >
                 SQI {(sqi * 100).toFixed(0)}%
@@ -249,7 +249,7 @@ export function Act1Gather({
               >
                 {spo2 === null ? '--' : spo2.toFixed(1)}
               </span>
-              <span className="font-mono text-sm text-slate-400">%</span>
+              <span className="font-mono text-base font-semibold text-slate-400">%</span>
             </div>
           </div>
           <div className="mt-6 border-t border-slate-800 pt-3">
@@ -258,13 +258,13 @@ export function Act1Gather({
         </div>
 
         {/* Card 3: SYSTEMIC ARTERIAL BP */}
-        <div className="flex flex-col justify-between rounded-xl border border-[#334155]/60 bg-[#000000]/75 p-6 backdrop-blur-md shadow-2xl transition-all hover:border-sky-500/40">
+        <div className="flex flex-col justify-between rounded-xl border border-[#27364b]/80 bg-[#000000]/85 p-6 backdrop-blur-md shadow-2xl transition-all hover:border-sky-500/50">
           <div>
             <div className="flex items-center justify-between">
-              <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+              <span className="font-mono text-xs font-bold uppercase tracking-widest text-slate-300">
                 SYSTEMIC ARTERIAL BP
               </span>
-              <span className="inline-flex items-center rounded border border-slate-700 bg-slate-900/60 px-1.5 py-0.5 font-mono text-[9px] text-slate-300">
+              <span className="inline-flex items-center rounded border border-slate-700 bg-slate-900/70 px-2 py-0.5 font-mono text-xs font-semibold text-slate-200">
                 {map !== null ? `MAP ${Math.round(map)} mmHg` : 'MAP -- mmHg'}
               </span>
             </div>
@@ -278,12 +278,12 @@ export function Act1Gather({
               >
                 {sbp !== null && dbp !== null ? `${Math.round(sbp)} / ${Math.round(dbp)}` : '-- / --'}
               </span>
-              <span className="font-mono text-sm text-slate-400">mmHg</span>
+              <span className="font-mono text-base font-semibold text-slate-400">mmHg</span>
             </div>
           </div>
           <div className="mt-4">
             <div className="ares-missing-hatch rounded p-2.5 text-center">
-              <span className="font-mono text-[9px] uppercase tracking-widest text-amber-300">
+              <span className="font-mono text-xs font-bold uppercase tracking-wider text-amber-300">
                 Intermittent Cuff Telemetry // Non-Invasive Periodic Sampling
               </span>
             </div>
@@ -292,13 +292,13 @@ export function Act1Gather({
       </div>
 
       {/* 3. Crew Activity Selector */}
-      <div className="mx-auto mt-8 max-w-6xl rounded-xl border border-[#334155]/60 bg-[#000000]/75 p-4 backdrop-blur-md">
+      <div className="mt-8 rounded-xl border border-[#27364b]/80 bg-[#000000]/85 p-4 sm:p-5 backdrop-blur-md">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-400">
-              CREW ACTIVITY
+            <span className="font-mono text-xs font-bold uppercase tracking-widest text-slate-300">
+              CREW ACTIVITY:
             </span>
-            <div className="flex gap-1.5" role="group" aria-label="Crew activity selector">
+            <div className="flex gap-2" role="group" aria-label="Crew activity selector">
               {(
                 [
                   { id: 'rest', label: 'Rest' },
@@ -316,10 +316,10 @@ export function Act1Gather({
                       onActivityChange(act.id === 'eva' ? 'exercise' : act.id)
                     }
                     aria-pressed={isSelected}
-                    className={`rounded px-3 py-1 font-mono text-[10px] uppercase tracking-wider transition-all ${
+                    className={`rounded-lg px-3.5 py-1.5 font-mono text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
                       isSelected
-                        ? 'border border-sky-400 bg-sky-950/40 text-sky-300 shadow-[0_0_10px_rgba(56,189,248,0.25)]'
-                        : 'border border-slate-700 bg-slate-900/40 text-slate-400 hover:border-slate-600 hover:text-slate-200'
+                        ? 'border border-sky-400 bg-sky-950/60 text-sky-200 shadow-[0_0_12px_rgba(56,189,248,0.3)]'
+                        : 'border border-slate-700 bg-slate-900/50 text-slate-300 hover:border-slate-600 hover:text-white'
                     }`}
                   >
                     {act.label}
@@ -328,7 +328,7 @@ export function Act1Gather({
               })}
             </div>
           </div>
-          <p className="font-sans text-xs text-slate-300 max-w-xl">
+          <p className="font-sans text-sm text-slate-200 max-w-xl">
             {ACTIVITY_CONTEXT[crewActivity] ??
               'Activity context adjusts physiological alarm envelopes and metabolic rate.'}
           </p>
@@ -336,23 +336,23 @@ export function Act1Gather({
       </div>
 
       {/* 4. Bedside Monitoring Bento Grid */}
-      <div className="mx-auto mt-10 grid max-w-6xl grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* ECG Waveform Strip */}
-        <div className="rounded-xl border border-[#334155]/60 bg-[#000000]/75 p-5 backdrop-blur-md">
+        <div className="rounded-xl border border-[#27364b]/80 bg-[#000000]/85 p-5 sm:p-6 backdrop-blur-md">
           <div className="flex items-center justify-between pb-3 border-b border-slate-800">
             <div>
-              <h2 className="font-sans text-base font-semibold text-white">
+              <h2 className="font-sans text-lg font-bold text-white">
                 ECG Waveform Telemetry
               </h2>
-              <p className="font-mono text-[9px] uppercase tracking-widest text-slate-400">
+              <p className="font-mono text-xs uppercase tracking-wider text-slate-400">
                 20 Hz Live Stream // Lead II Continuous
               </p>
             </div>
             <span
-              className={`rounded px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider ${
+              className={`rounded px-2.5 py-1 font-mono text-xs font-bold uppercase tracking-wider ${
                 sqiOk
-                  ? 'border border-emerald-500/40 bg-emerald-950/20 text-emerald-400'
-                  : 'border border-rose-500/40 bg-rose-950/20 text-rose-400'
+                  ? 'border border-emerald-500/50 bg-emerald-950/30 text-emerald-300'
+                  : 'border border-rose-500/50 bg-rose-950/30 text-rose-300'
               }`}
             >
               {sqiOk ? 'SQI ACCEPT' : 'SQI REJECT'}
@@ -362,36 +362,36 @@ export function Act1Gather({
             <EcgStrip hr={hr} artifact={artifact} sqi={sqi} isRecorded={isRecorded} />
             {!sqiOk && (
               <div className="ares-missing-hatch absolute inset-0 flex items-center justify-center rounded">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-amber-300">
+                <span className="font-mono text-xs font-bold uppercase tracking-widest text-amber-300">
                   SQI Below Physiological Threshold — Waveform Unreliable
                 </span>
               </div>
             )}
           </div>
-          <div className="mt-3 flex items-center justify-between text-xs font-mono text-slate-400">
-            <span>Sampling: 20 Hz</span>
-            <span>Lead: II</span>
-            <span>Artifact Index: {artifact.toFixed(2)}</span>
-            <span>Resp: {resp !== null ? `${Math.round(resp)} brpm` : '--'}</span>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs font-mono text-slate-300">
+            <span>Sampling: <strong>20 Hz</strong></span>
+            <span>Lead: <strong>II</strong></span>
+            <span>Artifact Index: <strong>{artifact.toFixed(2)}</strong></span>
+            <span>Resp: <strong>{resp !== null ? `${Math.round(resp)} brpm` : '--'}</strong></span>
           </div>
         </div>
 
         {/* POCUS Internal Jugular Vein */}
-        <div className="rounded-xl border border-[#334155]/60 bg-[#000000]/75 p-5 backdrop-blur-md">
+        <div className="rounded-xl border border-[#27364b]/80 bg-[#000000]/85 p-5 sm:p-6 backdrop-blur-md">
           <div className="flex items-center justify-between pb-3 border-b border-slate-800">
             <div>
-              <h2 className="font-sans text-base font-semibold text-white">
+              <h2 className="font-sans text-lg font-bold text-white">
                 POCUS // Internal Jugular Vein
               </h2>
-              <p className="font-mono text-[9px] uppercase tracking-widest text-slate-400">
+              <p className="font-mono text-xs uppercase tracking-wider text-slate-400">
                 B-Mode Ultrasound &amp; Spectral Doppler Cross-Section
               </p>
             </div>
             <span
-              className={`rounded px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider ${
+              className={`rounded px-2.5 py-1 font-mono text-xs font-bold uppercase tracking-wider ${
                 thrombus
-                  ? 'border border-rose-500/50 bg-rose-950/30 text-rose-400'
-                  : 'border border-emerald-500/40 bg-emerald-950/20 text-emerald-400'
+                  ? 'border border-rose-500/60 bg-rose-950/40 text-rose-300'
+                  : 'border border-emerald-500/50 bg-emerald-950/30 text-emerald-300'
               }`}
             >
               {thrombus === true
@@ -404,29 +404,29 @@ export function Act1Gather({
           <div className="mt-4">
             <PocusIjv csa={ijvCsa} vmax={vmax} thrombus={thrombus} />
           </div>
-          <div className="mt-4 grid grid-cols-3 gap-2 border-t border-slate-800 pt-3 text-center">
-            <div className="rounded border border-slate-800 bg-slate-950/50 p-2">
-              <span className="block font-mono text-[9px] uppercase tracking-widest text-slate-400">
+          <div className="mt-4 grid grid-cols-3 gap-2.5 border-t border-slate-800 pt-3 text-center">
+            <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-2.5">
+              <span className="block font-mono text-xs uppercase tracking-wider text-slate-400">
                 CSA
               </span>
-              <span className="font-mono text-sm font-semibold tabular-nums text-white">
+              <span className="font-mono text-base font-bold tabular-nums text-white">
                 {ijvCsa.toFixed(2)} cm²
               </span>
             </div>
-            <div className="rounded border border-slate-800 bg-slate-950/50 p-2">
-              <span className="block font-mono text-[9px] uppercase tracking-widest text-slate-400">
+            <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-2.5">
+              <span className="block font-mono text-xs uppercase tracking-wider text-slate-400">
                 V<sub>max</sub>
               </span>
-              <span className="font-mono text-sm font-semibold tabular-nums text-white">
+              <span className="font-mono text-base font-bold tabular-nums text-white">
                 {vmax.toFixed(1)} cm/s
               </span>
             </div>
-            <div className="rounded border border-slate-800 bg-slate-950/50 p-2">
-              <span className="block font-mono text-[9px] uppercase tracking-widest text-slate-400">
+            <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-2.5">
+              <span className="block font-mono text-xs uppercase tracking-wider text-slate-400">
                 Wall Shear (τ<sub>w</sub>)
               </span>
               <span
-                className={`font-mono text-sm font-semibold tabular-nums ${
+                className={`font-mono text-base font-bold tabular-nums ${
                   resolvedTauW < 2.5 ? 'text-amber-300' : 'text-emerald-400'
                 }`}
               >
@@ -437,83 +437,83 @@ export function Act1Gather({
         </div>
 
         {/* ECLSS 2x2 Atmospheric Grid */}
-        <div className="rounded-xl border border-[#334155]/60 bg-[#000000]/75 p-5 backdrop-blur-md">
+        <div className="rounded-xl border border-[#27364b]/80 bg-[#000000]/85 p-5 sm:p-6 backdrop-blur-md">
           <div className="flex items-center justify-between pb-3 border-b border-slate-800">
             <div>
-              <h2 className="font-sans text-base font-semibold text-white">
+              <h2 className="font-sans text-lg font-bold text-white">
                 ECLSS Atmospheric &amp; Radiation
               </h2>
-              <p className="font-mono text-[9px] uppercase tracking-widest text-slate-400">
+              <p className="font-mono text-xs uppercase tracking-wider text-slate-400">
                 Habitat Life Support &amp; Cosmic Ray Dosimetry
               </p>
             </div>
             <span
-              className={`rounded px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider ${
+              className={`rounded px-2.5 py-1 font-mono text-xs font-bold uppercase tracking-wider ${
                 co2Alarm || radAlarm
-                  ? 'border border-amber-500/50 bg-amber-950/30 text-amber-300'
-                  : 'border border-slate-700 bg-slate-900/40 text-slate-300'
+                  ? 'border border-amber-500/60 bg-amber-950/40 text-amber-300'
+                  : 'border border-slate-700 bg-slate-900/50 text-slate-300'
               }`}
             >
               {co2Alarm || radAlarm ? 'ADVISORY' : 'NOMINAL'}
             </span>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3">
-            <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-3">
+            <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
               <div className="flex items-center justify-between">
-                <span className="font-mono text-[9px] uppercase tracking-widest text-slate-400">
+                <span className="font-mono text-xs uppercase tracking-wider text-slate-300">
                   Cabin CO₂
                 </span>
                 {co2Alarm && (
-                  <span className="font-mono text-[8px] text-amber-300 uppercase">HIGH</span>
+                  <span className="font-mono text-[10px] font-bold text-amber-300 uppercase">HIGH</span>
                 )}
               </div>
-              <p className="mt-1 font-mono text-xl font-bold tabular-nums text-white">
+              <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-white">
                 {ppco2Mmhg.toFixed(2)}{' '}
-                <span className="text-xs font-normal text-slate-400">mmHg</span>
+                <span className="text-sm font-normal text-slate-400">mmHg</span>
               </p>
-              <span className="font-mono text-[9px] text-slate-500">
+              <span className="font-mono text-xs text-slate-400">
                 {Math.round(co2Ppm).toLocaleString()} ppm (Limit: 3.8 mmHg)
               </span>
             </div>
 
-            <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-3">
-              <span className="font-mono text-[9px] uppercase tracking-widest text-slate-400">
+            <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+              <span className="font-mono text-xs uppercase tracking-wider text-slate-300">
                 O₂ Partial Pressure
               </span>
-              <p className="mt-1 font-mono text-xl font-bold tabular-nums text-white">
-                21.0 <span className="text-xs font-normal text-slate-400">kPa</span>
+              <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-white">
+                21.0 <span className="text-sm font-normal text-slate-400">kPa</span>
               </p>
-              <span className="font-mono text-[9px] text-slate-500">
+              <span className="font-mono text-xs text-slate-400">
                 Sea-level equivalent normoxic
               </span>
             </div>
 
-            <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-3">
-              <span className="font-mono text-[9px] uppercase tracking-widest text-slate-400">
+            <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+              <span className="font-mono text-xs uppercase tracking-wider text-slate-300">
                 Cabin Temperature
               </span>
-              <p className="mt-1 font-mono text-xl font-bold tabular-nums text-white">
-                21.5 <span className="text-xs font-normal text-slate-400">°C</span>
+              <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-white">
+                21.5 <span className="text-sm font-normal text-slate-400">°C</span>
               </p>
-              <span className="font-mono text-[9px] text-slate-500">
+              <span className="font-mono text-xs text-slate-400">
                 HVAC thermal loop nominal
               </span>
             </div>
 
-            <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-3">
+            <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
               <div className="flex items-center justify-between">
-                <span className="font-mono text-[9px] uppercase tracking-widest text-slate-400">
+                <span className="font-mono text-xs uppercase tracking-wider text-slate-300">
                   Radiation (CANS)
                 </span>
                 {radAlarm && (
-                  <span className="font-mono text-[8px] text-rose-400 uppercase">SPE SHELTER</span>
+                  <span className="font-mono text-[10px] font-bold text-rose-400 uppercase">SPE SHELTER</span>
                 )}
               </div>
-              <p className="mt-1 font-mono text-xl font-bold tabular-nums text-white">
+              <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-white">
                 {radiationMsvD.toFixed(3)}{' '}
-                <span className="text-xs font-normal text-slate-400">mSv/d</span>
+                <span className="text-sm font-normal text-slate-400">mSv/d</span>
               </p>
-              <span className="font-mono text-[9px] text-slate-500">
+              <span className="font-mono text-xs text-slate-400">
                 SPE Threshold: 1.500 mSv/d
               </span>
             </div>
@@ -521,7 +521,7 @@ export function Act1Gather({
         </div>
 
         {/* MeasurementContext Signal Coverage */}
-        <div className="rounded-xl border border-[#334155]/60 bg-[#000000]/75 p-5 backdrop-blur-md">
+        <div className="rounded-xl border border-[#27364b]/80 bg-[#000000]/85 p-5 sm:p-6 backdrop-blur-md">
           <MeasurementContext
             source={bioOrigin}
             sampleRate={sampleRate}
@@ -536,12 +536,12 @@ export function Act1Gather({
         <button
           type="button"
           onClick={onScrollToAct2}
-          className="group flex flex-col items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-sky-400 hover:text-sky-300 transition-colors cursor-pointer"
+          className="group flex flex-col items-center gap-2 font-mono text-xs font-bold uppercase tracking-widest text-sky-400 hover:text-sky-300 transition-colors cursor-pointer"
         >
           <span>PROCEED TO ACT 02 // EVALUATE</span>
-          <span className="flex h-9 w-9 items-center justify-center rounded-full border border-sky-400/40 bg-sky-950/30 group-hover:bg-sky-900/40 group-hover:border-sky-300 animate-bounce transition-all">
+          <span className="flex h-10 w-10 items-center justify-center rounded-full border border-sky-400/50 bg-sky-950/40 group-hover:bg-sky-900/50 group-hover:border-sky-300 animate-bounce transition-all shadow-[0_0_10px_rgba(56,189,248,0.25)]">
             <svg
-              className="h-4 w-4 text-sky-400"
+              className="h-5 w-5 text-sky-400"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"

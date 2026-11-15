@@ -43,7 +43,7 @@ function clamp01(v: number): number {
   return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0;
 }
 
-function liveMetricForNode(
+export function liveMetricForNode(
   node: ProjectedAnatomicalNode,
   s: ScenarioState | null,
 ): { badgeValue: string; detailSummary: string; tab: TargetTab; tabLabel: string } {
@@ -112,7 +112,7 @@ function liveMetricForNode(
   }
 }
 
-function SpatialNodePin({
+export function SpatialNodePin({
   node,
   worldPosition,
   selected,
@@ -148,7 +148,7 @@ function SpatialNodePin({
   );
 }
 
-function InjuryPoint({
+export function InjuryPoint({
   position,
   onClick,
 }: {

@@ -14,7 +14,7 @@ import React, {
 } from 'react';
 import { SmoothScrollProvider, useSmoothScroll } from './SmoothScrollProvider';
 import { ScrollyProvider } from './ScrollyContext';
-import { PinnedScrollyStage } from '../stage3d/PinnedScrollyStage';
+import { UnobstructedTwinHero } from '../components/anatomy/UnobstructedTwinHero';
 import { TopNavBar } from '../components/navigation/TopNavBar';
 import { Act1Gather } from './acts/Act1Gather';
 import { Act2Evaluate } from './acts/Act2Evaluate';
@@ -37,7 +37,7 @@ import {
 import { ENGINE_HTTP_URL, useTelemetry } from '../lib/useTelemetry';
 import { updateAlarmEpisode, type AlarmEpisode } from '../lib/alarmRecovery';
 import { formatNullableMetric } from '../lib/telemetryValidation';
-import type { V3 } from '../modules/body-3d-heatmap/AnatomicalLayers';
+import type { TargetTab } from '../modules/body-3d-heatmap/BodyHeatmap';
 import type { InjuryMarker, InjuryRegionId } from '../types/injury';
 import type { AuditRecord } from '../modules/audit-chain/AuditChainModal';
 import type { DataOrigin } from '../types/telemetry';
@@ -94,7 +94,6 @@ function ScrollyShellContent({ viewMode = 'scrolly', onViewModeChange }: ShellCo
 
   // 3D stage & injury state
   const [activeLayers, setActiveLayers] = useState<readonly number[]>([0, 1, 2, 3]);
-  const [surfaceClickPoint, setSurfaceClickPoint] = useState<V3 | null>(null);
   const [injuries, setInjuries] = useState<InjuryMarker[]>([]);
   const [aiInjuryModalOpen, setAiInjuryModalOpen] = useState(false);
   const [selectedInjuryRegion, setSelectedInjuryRegion] = useState<InjuryRegionId>('LEFT_FOREARM');
@@ -102,6 +101,7 @@ function ScrollyShellContent({ viewMode = 'scrolly', onViewModeChange }: ShellCo
   const [alarmEpisode, setAlarmEpisode] = useState<AlarmEpisode | null>(null);
 
   // Act DOM refs for click-to-scroll navigation
+  const twinRef = useRef<HTMLElement>(null);
   const act1Ref = useRef<HTMLElement>(null);
   const act2Ref = useRef<HTMLElement>(null);
   const act3Ref = useRef<HTMLElement>(null);
@@ -113,14 +113,31 @@ function ScrollyShellContent({ viewMode = 'scrolly', onViewModeChange }: ShellCo
 
   const { lenis } = useSmoothScroll();
 
+  const handleBodyTab = useCallback(
+    (tab: TargetTab) => {
+      if (tab === 'POCUS') {
+        const el = act1Ref.current;
+        if (!el) return;
+        if (lenis) lenis.scrollTo(el, { offset: -48, duration: 1.0 });
+        else el.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        const el = act2Ref.current;
+        if (!el) return;
+        if (lenis) lenis.scrollTo(el, { offset: -48, duration: 1.0 });
+        else el.scrollIntoView({ behavior: 'smooth' });
+      }
+    },
+    [lenis],
+  );
+
   const handleScrollToAct2 = useCallback(() => {
     const el = act2Ref.current;
     if (!el) return;
     if (lenis) {
-      lenis.scrollTo(el, { offset: -44, duration: 1.0 });
+      lenis.scrollTo(el, { offset: -48, duration: 1.0 });
     } else {
       gsap.to(window, {
-        scrollTo: { y: el, offsetY: 44 },
+        scrollTo: { y: el, offsetY: 48 },
         duration: 1.0,
         ease: 'power2.inOut',
       });
@@ -215,17 +232,7 @@ function ScrollyShellContent({ viewMode = 'scrolly', onViewModeChange }: ShellCo
 
   return (
     <div className="relative min-h-screen bg-black text-[var(--color-ink-display)] selection:bg-[var(--color-accent)]/20 selection:text-[var(--color-accent)]">
-      {/* Pinned 3D Scrolly Stage (fixed inset-0 z-0 behind HTML content) */}
-      <PinnedScrollyStage
-        sex={whatIf.sex}
-        layers={activeLayers}
-        onSurfaceClick={(pt) => {
-          setSurfaceClickPoint(pt);
-          setAiInjuryModalOpen(true);
-        }}
-      />
-
-      {/* Fixed 44px Top Navigation Bar */}
+      {/* Fixed 48px Top Navigation Bar */}
       <TopNavBar
         chapterRefs={chapterRefs}
         missionProfile={missionProfile}
@@ -239,8 +246,50 @@ function ScrollyShellContent({ viewMode = 'scrolly', onViewModeChange }: ShellCo
         onOpenOperatorTools={() => setOperatorToolsOpen(true)}
       />
 
-      {/* Narrative Acts Container (z-10 relative, transparent backdrop) */}
-      <main className="relative z-10 flex flex-col pt-11">
+      {/* Narrative Acts Container */}
+      <main className="relative z-10 flex flex-col pt-16 sm:pt-20 overflow-x-hidden">
+        {/* Unobstructed 3D Biodigital Human Twin Aperture */}
+        <section
+          ref={twinRef as React.RefObject<HTMLDivElement>}
+          data-chapter="0"
+          className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 pt-4 pb-12 max-w-[1600px] mx-auto"
+          aria-label="3D Biodigital Twin Aperture"
+        >
+          <div className="flex flex-col gap-2 pb-5 border-b border-slate-800/80 mb-6">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="font-mono text-xs uppercase tracking-[0.25em] text-sky-400 font-bold">
+                NASA TRIAD // DIGITAL TWIN CORE // 3D BIODIGITAL ANTHROPOMETRIC ATLAS
+              </span>
+              <span className="rounded border border-sky-400/40 bg-sky-950/50 px-2.5 py-0.5 font-mono text-xs text-sky-300 font-semibold shadow-[0_0_8px_rgba(56,189,248,0.2)]">
+                ZERO OVERLAY • CONTINUOUS UBERON TOPOLOGY
+              </span>
+            </div>
+            <h1 className="font-sans text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-tight">
+              Unobstructed 3D Biodigital Twin
+            </h1>
+            <p className="font-sans text-sm sm:text-base text-slate-300 max-w-4xl leading-relaxed">
+              Volumetric anthropometric digital twin with 4-strata layer decomposition for both male and female astronauts.
+              Decompose layers from skin down to the skeletal mechanostat, orbit in 360°, inspect microgravity physiological loads, and annotate clinical injuries directly on the 3D surface.
+            </p>
+          </div>
+
+          <UnobstructedTwinHero
+            sex={whatIf.sex}
+            onChangeSex={handleSexChange}
+            layers={activeLayers}
+            onChangeLayers={setActiveLayers}
+            s={packet.hemodynamics || packet.musculoskeletal ? localSim : null}
+            hypergraphSpatial={packet.hypergraph_spatial}
+            isLocalSimulation={Boolean(packet.is_local_simulation)}
+            modelValidationStatus={packet.model_validation_status}
+            injuries={injuries}
+            onAddInjury={handleSaveInjury}
+            onResolveInjury={(id) => setInjuries((prev) => prev.filter((i) => i.id !== id))}
+            onOpenAiInjury={(reg) => handleOpenAiInjury(reg)}
+            onOpenTab={handleBodyTab}
+          />
+        </section>
+
         {/* Act 1: Gather */}
         <div ref={act1Ref as React.RefObject<HTMLDivElement>}>
           <Act1Gather

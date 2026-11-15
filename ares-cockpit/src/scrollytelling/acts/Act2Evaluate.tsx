@@ -197,21 +197,21 @@ export function Act2Evaluate({
     <section
       ref={sectionRef}
       data-chapter="2"
-      className="relative min-h-screen px-4 py-16 sm:px-8 md:px-14 lg:py-24"
+      className="relative min-h-screen px-4 py-16 sm:px-6 md:px-10 lg:px-12 max-w-[1600px] mx-auto w-full"
       aria-labelledby="act2-heading"
     >
       {/* 1. Header */}
-      <div className="mx-auto max-w-6xl pb-8 border-b border-slate-800">
-        <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-sky-400">
+      <div className="pb-8 border-b border-slate-800">
+        <p className="font-mono text-xs uppercase tracking-[0.25em] text-sky-400 font-bold">
           CHAPTER 02 // EVALUATE // 3D BIODIGITAL CORE &amp; PROGNOSIS
         </p>
         <h2
           id="act2-heading"
-          className="mt-2 font-sans text-3xl sm:text-4xl font-bold tracking-tight text-white"
+          className="mt-2 font-sans text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white"
         >
           Anatomical Core &amp; Multi-Scale Prognosis
         </h2>
-        <p className="mt-2 font-sans text-sm text-slate-300 max-w-3xl">
+        <p className="mt-3 font-sans text-base sm:text-lg text-slate-200 max-w-4xl leading-relaxed">
           Volumetric microgravity digital twin with interactive anatomical layer strata,
           neuro-ocular intracranial pressure calipers, zero-shot computer vision injury diagnosis,
           and 14-day robust signal temporal logic prognosis.
@@ -219,22 +219,22 @@ export function Act2Evaluate({
       </div>
 
       {/* 2. 3-Column Bento Grid */}
-      <div className="mx-auto mt-8 grid max-w-6xl grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Card 1: Anatomical Layer Strata & Anthropometric Profile Switch */}
-        <div className="flex flex-col justify-between rounded-xl border border-[#334155]/60 bg-[#000000]/75 p-6 backdrop-blur-md shadow-2xl transition-all hover:border-sky-500/40">
+        <div className="flex flex-col justify-between rounded-xl border border-[#27364b]/80 bg-[#000000]/85 p-6 backdrop-blur-md shadow-2xl transition-all hover:border-sky-500/50">
           <div>
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              <span className="font-mono text-xs font-bold uppercase tracking-widest text-slate-300">
                 ANATOMICAL LAYER STRATA
               </span>
-              <span className="rounded bg-sky-950/40 border border-sky-500/30 px-2 py-0.5 font-mono text-[9px] text-sky-400">
+              <span className="rounded bg-sky-950/50 border border-sky-400/40 px-2 py-0.5 font-mono text-xs text-sky-300 font-semibold">
                 INTERACTIVE 3D
               </span>
             </div>
 
             {/* Anthropometric Profile Switch (MALE ATLAS / FEMALE ATLAS) */}
             <div className="mt-4">
-              <span className="font-mono text-[9px] uppercase tracking-widest text-slate-400 block mb-2">
+              <span className="font-mono text-xs uppercase tracking-wider text-slate-400 block mb-2 font-semibold">
                 Anthropometric Profile
               </span>
               <div className="grid grid-cols-2 gap-2" role="group" aria-label="Anthropometric profile">
@@ -246,14 +246,14 @@ export function Act2Evaluate({
                       type="button"
                       onClick={() => onSexChange(s)}
                       aria-pressed={isSelected}
-                      className={`flex items-center justify-center gap-1.5 rounded-lg border py-2 px-3 font-mono text-[10px] font-bold uppercase tracking-wider transition-all ${
+                      className={`flex items-center justify-center gap-1.5 rounded-lg border py-2 px-3 font-mono text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
                         isSelected
-                          ? 'border-sky-400 bg-sky-950/50 text-sky-300 shadow-[0_0_12px_rgba(56,189,248,0.3)]'
-                          : 'border-slate-800 bg-slate-900/40 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                          ? 'border-sky-400 bg-sky-950/60 text-sky-200 shadow-[0_0_12px_rgba(56,189,248,0.35)]'
+                          : 'border-slate-800 bg-slate-900/50 text-slate-400 hover:border-slate-700 hover:text-slate-200'
                       }`}
                     >
                       <span
-                        className={`h-1.5 w-1.5 rounded-full ${
+                        className={`h-2 w-2 rounded-full ${
                           isSelected ? 'bg-sky-400' : 'bg-slate-600'
                         }`}
                       />
@@ -266,7 +266,7 @@ export function Act2Evaluate({
 
             {/* 4 Anatomical Layer Toggles */}
             <div className="mt-5 space-y-2">
-              <span className="font-mono text-[9px] uppercase tracking-widest text-slate-400 block mb-1">
+              <span className="font-mono text-xs uppercase tracking-wider text-slate-400 block mb-1 font-semibold">
                 Visual Strata Depth (4 Layers)
               </span>
               {DEPTH_LAYERS.map((layer) => {
@@ -277,28 +277,28 @@ export function Act2Evaluate({
                     type="button"
                     onClick={() => toggleLayer(layer.index)}
                     aria-pressed={isActive}
-                    className={`w-full flex items-center justify-between rounded-lg border p-2.5 transition-all text-left ${
+                    className={`w-full flex items-center justify-between rounded-lg border p-2.5 transition-all text-left cursor-pointer ${
                       isActive
-                        ? 'border-sky-500/40 bg-sky-950/20 text-white'
-                        : 'border-slate-800/80 bg-slate-950/40 text-slate-500 hover:border-slate-700'
+                        ? 'border-sky-500/50 bg-sky-950/30 text-white shadow-[0_0_8px_rgba(56,189,248,0.2)]'
+                        : 'border-slate-800 bg-slate-950/50 text-slate-400 hover:border-slate-700 hover:text-slate-200'
                     }`}
                   >
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-[10px] font-bold text-sky-400">
+                        <span className="font-mono text-xs font-bold text-sky-400">
                           0{layer.index}
                         </span>
-                        <span className="font-sans text-xs font-semibold">{layer.label}</span>
+                        <span className="font-sans text-sm font-semibold">{layer.label}</span>
                       </div>
-                      <span className="font-sans text-[10px] text-slate-400">
+                      <span className="font-sans text-xs text-slate-400">
                         {layer.sublabel}
                       </span>
                     </div>
                     <span
-                      className={`font-mono text-[9px] font-bold uppercase tracking-wider rounded px-1.5 py-0.5 ${
+                      className={`font-mono text-xs font-bold uppercase tracking-wider rounded px-2 py-0.5 ${
                         isActive
-                          ? 'border border-sky-400/30 text-sky-300 bg-sky-950/40'
-                          : 'border border-slate-800 text-slate-600'
+                          ? 'border border-sky-400/40 text-sky-300 bg-sky-950/50'
+                          : 'border border-slate-800 text-slate-500'
                       }`}
                     >
                       {isActive ? 'SHOWN' : 'HIDDEN'}
@@ -307,25 +307,41 @@ export function Act2Evaluate({
                 );
               })}
             </div>
+
+            {/* Quick jump to Top 3D Twin Aperture */}
+            <button
+              type="button"
+              onClick={() => {
+                const el = document.querySelector('[data-chapter="0"]');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+                else window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="mt-4 w-full flex items-center justify-center gap-2 rounded-lg border border-sky-400/50 bg-sky-950/40 p-2.5 font-mono text-xs font-bold text-sky-200 hover:bg-sky-900/60 hover:border-sky-300 transition-all cursor-pointer shadow-[0_0_10px_rgba(56,189,248,0.2)]"
+            >
+              <span>INSPECT IN 3D TWIN APERTURE</span>
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+              </svg>
+            </button>
           </div>
 
-          <p className="mt-4 font-mono text-[9px] text-slate-500">
+          <p className="mt-4 font-mono text-xs text-slate-400">
             Click drag in 3D scene to orbit. Scroll to zoom on anatomical landmarks.
           </p>
         </div>
 
         {/* Card 2: Neuro-Ocular SANS & ONSD Caliper */}
-        <div className="flex flex-col justify-between rounded-xl border border-[#334155]/60 bg-[#000000]/75 p-6 backdrop-blur-md shadow-2xl transition-all hover:border-sky-500/40">
+        <div className="flex flex-col justify-between rounded-xl border border-[#27364b]/80 bg-[#000000]/85 p-6 backdrop-blur-md shadow-2xl transition-all hover:border-sky-500/50">
           <div>
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              <span className="font-mono text-xs font-bold uppercase tracking-widest text-slate-300">
                 NEURO-OCULAR SANS &amp; ONSD
               </span>
               <span
-                className={`rounded px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider ${
+                className={`rounded px-2.5 py-1 font-mono text-xs font-bold uppercase tracking-wider ${
                   onsdCritical
-                    ? 'border border-rose-500/50 bg-rose-950/30 text-rose-400'
-                    : 'border border-emerald-500/40 bg-emerald-950/20 text-emerald-400'
+                    ? 'border border-rose-500/60 bg-rose-950/40 text-rose-300'
+                    : 'border border-emerald-500/50 bg-emerald-950/30 text-emerald-300'
                 }`}
               >
                 {onsdCritical ? 'HYPERTENSION' : 'NORMAL ICP'}
@@ -338,50 +354,50 @@ export function Act2Evaluate({
             </div>
 
             {/* Metric Measurements */}
-            <div className="mt-5 grid grid-cols-2 gap-2 border-t border-slate-800 pt-3 text-center">
-              <div className="rounded border border-slate-800 bg-slate-950/60 p-2">
-                <span className="block font-mono text-[9px] uppercase tracking-widest text-slate-400">
+            <div className="mt-5 grid grid-cols-2 gap-2.5 border-t border-slate-800 pt-3 text-center">
+              <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-2.5">
+                <span className="block font-mono text-xs uppercase tracking-wider text-slate-400">
                   Calibrated ONSD
                 </span>
-                <span className="font-mono text-base font-bold tabular-nums text-white">
+                <span className="font-mono text-lg font-bold tabular-nums text-white">
                   {onsdMm.toFixed(2)} mm
                 </span>
               </div>
-              <div className="rounded border border-slate-800 bg-slate-950/60 p-2">
-                <span className="block font-mono text-[9px] uppercase tracking-widest text-slate-400">
+              <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-2.5">
+                <span className="block font-mono text-xs uppercase tracking-wider text-slate-400">
                   Measurement 1σ
                 </span>
-                <span className="font-mono text-base font-bold tabular-nums text-slate-300">
+                <span className="font-mono text-lg font-bold tabular-nums text-slate-200">
                   ±{onsdSigma ? onsdSigma.toFixed(2) : '0.28'} mm
                 </span>
               </div>
             </div>
 
-            <div className="mt-4 rounded-lg border border-slate-800 bg-slate-950/50 p-3">
-              <span className="font-mono text-[9px] uppercase tracking-widest text-slate-400 block mb-1">
+            <div className="mt-4 rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+              <span className="font-mono text-xs uppercase tracking-wider text-slate-300 block mb-1 font-semibold">
                 Clinical Diagnostic Status
               </span>
-              <p className="font-sans text-xs text-slate-300 leading-relaxed">
+              <p className="font-sans text-xs text-slate-200 leading-relaxed">
                 {onsdCritical
                   ? 'ONSD exceeds 5.00 mm threshold. Suggests elevated intracranial pressure (ICP) from cephalad venous stasis. SANS risk Grade 2.'
-                  : 'ONSD within normal terrestrial and microgravity baseline bounds (4.50–5.00 mm). Optic nerve sheath sheath diameter nominal.'}
+                  : 'ONSD within normal terrestrial and microgravity baseline bounds (4.50–5.00 mm). Optic nerve sheath diameter nominal.'}
               </p>
             </div>
           </div>
 
-          <p className="mt-4 font-mono text-[9px] text-slate-500">
+          <p className="mt-4 font-mono text-xs text-slate-400">
             NASA-STD-3001 Vol 1 §7.3 Neuro-Ocular Protocol MTB-009
           </p>
         </div>
 
         {/* Card 3: Injury & VLM Diagnostics */}
-        <div className="flex flex-col justify-between rounded-xl border border-[#334155]/60 bg-[#000000]/75 p-6 backdrop-blur-md shadow-2xl transition-all hover:border-sky-500/40">
+        <div className="flex flex-col justify-between rounded-xl border border-[#27364b]/80 bg-[#000000]/85 p-6 backdrop-blur-md shadow-2xl transition-all hover:border-sky-500/50">
           <div>
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              <span className="font-mono text-xs font-bold uppercase tracking-widest text-slate-300">
                 INJURY &amp; VLM DIAGNOSTICS
               </span>
-              <span className="rounded bg-sky-950/40 border border-sky-500/30 px-2 py-0.5 font-mono text-[9px] text-sky-400">
+              <span className="rounded bg-sky-950/50 border border-sky-400/40 px-2 py-0.5 font-mono text-xs text-sky-300 font-semibold">
                 {injuries.length} ANNOTATIONS
               </span>
             </div>
@@ -390,7 +406,7 @@ export function Act2Evaluate({
             <button
               type="button"
               onClick={onOpenAiInjury}
-              className="mt-4 w-full rounded-xl border border-sky-400 bg-gradient-to-r from-sky-950/60 to-indigo-950/60 p-4 text-center transition-all hover:border-sky-300 hover:from-sky-900/60 hover:to-indigo-900/60 shadow-[0_0_20px_rgba(56,189,248,0.2)] cursor-pointer"
+              className="mt-4 w-full rounded-xl border border-sky-400/70 bg-gradient-to-r from-sky-950/70 to-indigo-950/70 p-4 text-center transition-all hover:border-sky-300 hover:from-sky-900/70 hover:to-indigo-900/70 shadow-[0_0_20px_rgba(56,189,248,0.25)] cursor-pointer"
             >
               <div className="flex items-center justify-center gap-2">
                 <svg
@@ -417,38 +433,38 @@ export function Act2Evaluate({
                   OPEN AI INJURY INSPECTOR
                 </span>
               </div>
-              <p className="mt-1 font-sans text-[11px] text-sky-200">
+              <p className="mt-1 font-sans text-xs text-sky-200">
                 Zero-shot optical triage for burns, lacerations, and contusions
               </p>
             </button>
 
             {/* Active Annotations list */}
             <div className="mt-4">
-              <span className="font-mono text-[9px] uppercase tracking-widest text-slate-400 block mb-1.5">
+              <span className="font-mono text-xs uppercase tracking-wider text-slate-300 block mb-1.5 font-semibold">
                 Active Physical Annotations
               </span>
               {injuries.length === 0 ? (
                 <div className="ares-missing-hatch rounded-lg p-3 text-center">
-                  <span className="font-mono text-[9px] uppercase tracking-widest text-slate-400">
+                  <span className="font-mono text-xs uppercase tracking-wider text-slate-300 font-semibold">
                     No active trauma markers recorded
                   </span>
                 </div>
               ) : (
-                <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
+                <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
                   {injuries.map((inj) => (
                     <div
                       key={inj.id}
-                      className="rounded border border-slate-800 bg-slate-950/60 p-2 flex items-center justify-between"
+                      className="rounded-lg border border-slate-800 bg-slate-950/70 p-2.5 flex items-center justify-between"
                     >
                       <div>
-                        <span className="font-mono text-[10px] font-bold text-amber-300 uppercase">
+                        <span className="font-mono text-xs font-bold text-amber-300 uppercase">
                           {inj.region}
                         </span>
-                        <p className="font-sans text-[11px] text-slate-300 truncate max-w-xs">
+                        <p className="font-sans text-xs text-slate-200 truncate max-w-xs">
                           {inj.title}
                         </p>
                       </div>
-                      <span className="font-mono text-[9px] text-slate-500 uppercase">
+                      <span className="font-mono text-xs font-bold text-slate-400 uppercase">
                         {inj.severity}
                       </span>
                     </div>
@@ -462,13 +478,13 @@ export function Act2Evaluate({
               <button
                 type="button"
                 onClick={() => setAnomalyPanelOpen((v) => !v)}
-                className="w-full flex items-center justify-between rounded-lg border border-slate-800 bg-slate-950/80 p-2.5 font-mono text-[10px] uppercase tracking-wider text-slate-300 hover:border-slate-700"
+                className="w-full flex items-center justify-between rounded-lg border border-slate-800 bg-slate-950/80 p-2.5 font-mono text-xs uppercase tracking-wider text-slate-300 hover:border-slate-700 cursor-pointer font-semibold"
               >
                 <span>Vitals Anomaly Testbench (8 Profiles)</span>
-                <span className="text-sky-400">{anomalyPanelOpen ? 'HIDE [-]' : 'EXPAND [+]'}</span>
+                <span className="text-sky-400 font-bold">{anomalyPanelOpen ? 'HIDE [-]' : 'EXPAND [+]'}</span>
               </button>
               {anomalyPanelOpen && (
-                <div className="mt-2 rounded-lg border border-slate-800 bg-black/90 p-3">
+                <div className="mt-2 rounded-lg border border-slate-800 bg-black/95 p-3">
                   <VitalsAnomalyPanel
                     report={anomalyReport}
                     engineLive={engineLive}
@@ -479,32 +495,32 @@ export function Act2Evaluate({
             </div>
           </div>
 
-          <p className="mt-4 font-mono text-[9px] text-slate-500">
+          <p className="mt-4 font-mono text-xs text-slate-400">
             VLM Vision Protocol v1.4 // Edge-Native Offline Ingestion
           </p>
         </div>
       </div>
 
       {/* 3. Prognostic & Causal Section */}
-      <div className="mx-auto mt-10 grid max-w-6xl grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Left Column: 14-Day Robust Prediction (StlChart + TimestralQuantileConePanel) */}
         <div className="flex flex-col gap-6">
           {/* StlChart Card */}
-          <div className="rounded-xl border border-[#334155]/60 bg-[#000000]/75 p-6 backdrop-blur-md shadow-2xl">
+          <div className="rounded-xl border border-[#27364b]/80 bg-[#000000]/85 p-6 backdrop-blur-md shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div>
-                <h3 className="font-sans text-base font-semibold text-white">
+                <h3 className="font-sans text-lg font-bold text-white">
                   14-Day Robust Prediction // STL Robustness
                 </h3>
-                <p className="font-mono text-[9px] uppercase tracking-widest text-slate-400">
+                <p className="font-mono text-xs uppercase tracking-wider text-slate-400">
                   Signal Temporal Logic (ρ) &amp; Structural Bone Integrity
                 </p>
               </div>
               <span
-                className={`rounded px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider ${
+                className={`rounded px-2.5 py-1 font-mono text-xs font-bold uppercase tracking-wider ${
                   ttvDays !== null && ttvDays <= 36.0
-                    ? 'border border-rose-500/50 bg-rose-950/30 text-rose-400'
-                    : 'border border-emerald-500/40 bg-emerald-950/20 text-emerald-400'
+                    ? 'border border-rose-500/60 bg-rose-950/40 text-rose-300'
+                    : 'border border-emerald-500/50 bg-emerald-950/30 text-emerald-300'
                 }`}
               >
                 {ttvDays !== null ? `TTV ${ttvDays.toFixed(1)} d` : 'TTV NOMINAL'}
@@ -520,8 +536,8 @@ export function Act2Evaluate({
             </div>
 
             {ttvDays !== null && ttvDays <= 36.0 && (
-              <div className="mt-4 rounded-lg border border-rose-500/40 bg-rose-950/20 p-3">
-                <span className="font-mono text-[9px] uppercase tracking-widest text-rose-400 font-bold block mb-1">
+              <div className="mt-4 rounded-lg border border-rose-500/50 bg-rose-950/30 p-3.5">
+                <span className="font-mono text-xs uppercase tracking-wider text-rose-400 font-bold block mb-1">
                   Time to Violation Breach Imminent
                 </span>
                 <p className="font-sans text-xs text-rose-200 leading-relaxed">
@@ -533,12 +549,12 @@ export function Act2Evaluate({
           </div>
 
           {/* TimestralQuantileConePanel Card */}
-          <div className="rounded-xl border border-[#334155]/60 bg-[#000000]/75 p-6 backdrop-blur-md shadow-2xl">
+          <div className="rounded-xl border border-[#27364b]/80 bg-[#000000]/85 p-6 backdrop-blur-md shadow-2xl">
             <div className="pb-3 border-b border-slate-800">
-              <h3 className="font-sans text-base font-semibold text-white">
+              <h3 className="font-sans text-lg font-bold text-white">
                 Short-Term Forecast // Timestral Quantile Cone
               </h3>
-              <p className="font-mono text-[9px] uppercase tracking-widest text-slate-400">
+              <p className="font-mono text-xs uppercase tracking-wider text-slate-400">
                 Empirical Quantiles Q10-Q50-Q90 with Adaptive Drift
               </p>
             </div>
@@ -549,18 +565,18 @@ export function Act2Evaluate({
         </div>
 
         {/* Right Column: Hargens-Frost Causal Cascade + Interactive What-If ARED Slider + Reset */}
-        <div className="flex flex-col justify-between rounded-xl border border-[#334155]/60 bg-[#000000]/75 p-6 backdrop-blur-md shadow-2xl">
+        <div className="flex flex-col justify-between rounded-xl border border-[#27364b]/80 bg-[#000000]/85 p-6 backdrop-blur-md shadow-2xl">
           <div>
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div>
-                <h3 className="font-sans text-base font-semibold text-white">
+                <h3 className="font-sans text-lg font-bold text-white">
                   Hargens-Frost Causal Cascade
                 </h3>
-                <p className="font-mono text-[9px] uppercase tracking-widest text-slate-400">
+                <p className="font-mono text-xs uppercase tracking-wider text-slate-400">
                   Mechanobiological Pathway: 0g Unloading to Nephrolithiasis
                 </p>
               </div>
-              <span className="rounded bg-sky-950/40 border border-sky-500/30 px-2 py-0.5 font-mono text-[9px] text-sky-400">
+              <span className="rounded bg-sky-950/50 border border-sky-400/40 px-2 py-0.5 font-mono text-xs text-sky-300 font-semibold">
                 EVIDENCE-BASED
               </span>
             </div>
@@ -568,31 +584,31 @@ export function Act2Evaluate({
             {/* Cascade Flow */}
             <div className="mt-5 space-y-4">
               {HARGENS_FROST_CASCADE.map((node, idx) => (
-                <div key={node.id} className="relative flex items-start gap-3">
+                <div key={node.id} className="relative flex items-start gap-3.5">
                   {/* Vertical connector line */}
                   {idx < HARGENS_FROST_CASCADE.length - 1 && (
-                    <div className="absolute left-3.5 top-7 h-full w-px bg-slate-800" />
+                    <div className="absolute left-4 top-8 h-full w-px bg-slate-800" />
                   )}
                   {/* Step badge */}
                   <span
-                    className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border font-mono text-[10px] font-bold ${
+                    className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border font-mono text-xs font-bold ${
                       node.status === 'critical'
-                        ? 'border-rose-500/50 bg-rose-950/40 text-rose-400'
-                        : 'border-amber-500/50 bg-amber-950/40 text-amber-400'
+                        ? 'border-rose-500/60 bg-rose-950/50 text-rose-300'
+                        : 'border-amber-500/60 bg-amber-950/50 text-amber-300'
                     }`}
                   >
                     0{node.step}
                   </span>
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h4 className="font-mono text-xs font-semibold text-white">
+                      <h4 className="font-mono text-sm font-bold text-white">
                         {node.label}
                       </h4>
-                      <span className="font-mono text-[9px] text-slate-500">
+                      <span className="font-mono text-xs text-sky-400">
                         ({node.citation})
                       </span>
                     </div>
-                    <p className="mt-0.5 font-sans text-xs text-slate-300 leading-relaxed">
+                    <p className="mt-1 font-sans text-xs sm:text-sm text-slate-200 leading-relaxed">
                       {node.mechanism}
                     </p>
                   </div>
@@ -601,12 +617,12 @@ export function Act2Evaluate({
             </div>
 
             {/* Interactive What-If ARED Slider + Reset */}
-            <div className="mt-8 rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+            <div className="mt-8 rounded-xl border border-slate-800 bg-slate-950/80 p-5">
               <div className="flex items-center justify-between mb-2">
-                <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-slate-300">
+                <span className="font-mono text-xs font-bold uppercase tracking-widest text-slate-300">
                   ARED RESISTANCE LOAD (WHAT-IF)
                 </span>
-                <span className="font-mono text-sm font-bold tabular-nums text-sky-400">
+                <span className="font-mono text-base font-bold tabular-nums text-sky-300">
                   {Math.round(whatIf.ared_load_pct)}%
                 </span>
               </div>
@@ -620,42 +636,42 @@ export function Act2Evaluate({
                 onChange={(e) =>
                   onWhatIfChange({ ared_load_pct: parseInt(e.target.value, 10) })
                 }
-                className="w-full accent-sky-400 cursor-pointer"
+                className="w-full accent-sky-400 cursor-pointer h-2 bg-slate-800 rounded-lg"
                 aria-label="ARED resistance training load percentage"
               />
 
-              <div className="mt-1 flex justify-between font-mono text-[9px] text-slate-500">
+              <div className="mt-1.5 flex justify-between font-mono text-xs text-slate-400">
                 <span>0% — Total Deconditioning</span>
                 <span>50% — Nominal Minimum</span>
                 <span>100% — Prescribed Countermeasure</span>
               </div>
 
               {/* Dynamic Recomputed Outcomes */}
-              <div className="mt-4 grid grid-cols-2 gap-2 text-center">
-                <div className="rounded border border-slate-800 bg-black/60 p-2">
-                  <span className="block font-mono text-[9px] uppercase tracking-widest text-slate-400">
+              <div className="mt-4 grid grid-cols-2 gap-3 text-center">
+                <div className="rounded-lg border border-slate-800 bg-black/80 p-2.5">
+                  <span className="block font-mono text-xs uppercase tracking-wider text-slate-400">
                     Estimated SBP
                   </span>
-                  <span className="font-mono text-sm font-bold tabular-nums text-white">
+                  <span className="font-mono text-base font-bold tabular-nums text-white">
                     {Math.round(localSim.sbp ?? 118)} mmHg
                   </span>
                 </div>
-                <div className="rounded border border-slate-800 bg-black/60 p-2">
-                  <span className="block font-mono text-[9px] uppercase tracking-widest text-slate-400">
+                <div className="rounded-lg border border-slate-800 bg-black/80 p-2.5">
+                  <span className="block font-mono text-xs uppercase tracking-wider text-slate-400">
                     Estimated HR
                   </span>
-                  <span className="font-mono text-sm font-bold tabular-nums text-white">
+                  <span className="font-mono text-base font-bold tabular-nums text-white">
                     {Math.round(localSim.hr ?? 72)} bpm
                   </span>
                 </div>
               </div>
 
               {/* Reset Button */}
-              <div className="mt-3 flex justify-end">
+              <div className="mt-4 flex justify-end">
                 <button
                   type="button"
                   onClick={() => onWhatIfChange({ ared_load_pct: 100 })}
-                  className="rounded border border-slate-700 bg-slate-900/60 px-3 py-1 font-mono text-[9px] uppercase tracking-wider text-slate-300 hover:border-sky-400 hover:text-sky-300 transition-colors"
+                  className="rounded-lg border border-slate-700 bg-slate-900/80 px-3.5 py-1.5 font-mono text-xs font-bold uppercase tracking-wider text-slate-200 hover:border-sky-400 hover:text-sky-300 transition-colors cursor-pointer"
                 >
                   RESET COUNTERMEASURE (100%)
                 </button>
@@ -663,7 +679,7 @@ export function Act2Evaluate({
             </div>
           </div>
 
-          <p className="mt-6 font-mono text-[9px] text-slate-500">
+          <p className="mt-6 font-mono text-xs text-slate-400">
             Frost Mechanostat Theorem (1987) &amp; Hargens Microgravity Hemodynamics (2019)
           </p>
         </div>
