@@ -20,6 +20,12 @@ for 334 passing all-feature tests, network-denied local persistence tests and
 remaining experimental-adapter limits. Historical failures below record the
 original baseline, rather than the repaired build.
 
+## Later main retest
+
+The [post-merge verification](POST_MERGE_VERIFICATION_2026-11-15.md) adds same-source
+engine-restart coverage. It exposed and corrected a separate cockpit freshness
+lockout that the original source-switch reconnect check did not exercise.
+
 ## Corrections
 
 1. **Replay procedure leakage.** With What-If off, the backend hid unmeasured organ

@@ -9,6 +9,7 @@ import {
   mergeBinaryFrameIntoPacket,
 } from '../src/lib/binaryTelemetryDecoder.ts';
 import { normalizeTelemetryPacket } from '../src/lib/telemetryValidation.ts';
+import type { FreshnessGateState } from '../src/lib/freshnessGate.ts';
 import type { TelemetryPacket } from '../src/types/telemetry.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -173,11 +174,6 @@ test('Snapshot freshness guards reject out-of-order and regressive delayed respo
   );
   assert.match(
     src,
-    /normalized\.timestamp_ms\s*<\s*lastAppliedTimestampMsRef\.current/,
-    'acceptRawPayload must reject snapshots whose timestamp_ms is older than last applied',
-  );
-  assert.match(
-    src,
     /window\.clearTimeout\(timerId\)/,
     'hydrateTauriSnapshot must clear the timeout in finally to prevent timer leaks',
   );
@@ -191,7 +187,7 @@ test('Snapshot freshness guards reject out-of-order and regressive delayed respo
 test('Behavioral: evaluateFreshnessGate rejects out-of-order and prevents source-switch lockout', async () => {
   const { evaluateFreshnessGate } = await import('../src/lib/freshnessGate.ts');
 
-  let state = {
+  let state: FreshnessGateState = {
     activeSourceId: null as string | null,
     lastAppliedTimestampMs: null as number | null,
     lastAppliedRecTime: null as number | null,
@@ -239,9 +235,10 @@ test('Behavioral: evaluateFreshnessGate rejects out-of-order and prevents source
     activeSourceId: 'bidmc_01',
     lastAppliedTimestampMs: 300000,
     lastAppliedRecTime: 300.0,
+    lastAppliedEngineElapsedS: 300.0,
   };
   const r5 = evaluateFreshnessGate(
-    { timestamp_ms: 10000, relative_recording_time_s: 0.5, source_record_id: 'bidmc_01' },
+    { timestamp_ms: 10000, relative_recording_time_s: 0.5, source_record_id: 'bidmc_01', engine_elapsed_s: 300.5 },
     state,
   );
   assert.equal(r5.accepted, true, 'Replay loop wrap must reset watermark and accept initial loop packet');

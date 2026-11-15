@@ -183,6 +183,9 @@ export function isValidTelemetryPayload(data: unknown): boolean {
   const hasValidTsUtc = typeof data.timestamp_utc === 'string' && data.timestamp_utc.trim().length > 0;
   if (!hasValidTsMs && !hasValidTsUtc) return false;
 
+  const engineTime = data.engine_elapsed_s ?? data.mission_Elapsed_seconds ?? data.mission_elapsed_seconds;
+  if (engineTime !== undefined && engineTime !== null && (!isFiniteNum(engineTime) || engineTime < 0)) return false;
+
   if (!isFiniteNum(data.relative_recording_time_s) || data.relative_recording_time_s < 0) {
     return false;
   }
@@ -1003,6 +1006,7 @@ export function normalizeTelemetryPacket(data: unknown): TelemetryPacket | null 
 
   return {
     timestamp_ms: timestampMs,
+    engine_elapsed_s: asNullableNumber(d.engine_elapsed_s ?? d.mission_Elapsed_seconds ?? d.mission_elapsed_seconds),
     relative_recording_time_s: d.relative_recording_time_s as number,
     source_record_id: String(d.source_record_id),
     mission_elapsed_days: missionElapsedDays,

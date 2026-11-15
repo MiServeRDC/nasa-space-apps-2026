@@ -161,6 +161,20 @@ try {
   assert.ok(storage.status.warm_segments_committed > 0); assert.equal(storage.status.warm_flush_failures, 0);
   const audit = await json('/api/audit-log'); assert.ok(Array.isArray(audit) && audit.length > 0);
   record('real process commits telemetry storage and exposes audit records', { segments: storage.status.warm_segments_committed, auditRecords: audit.length });
+  const originalSource = (await snapshot()).source_record_id;
+  await phase('Gather');
+  await stopBackend();
+  await until(async () => /Local simulation/.test(await body()), 12000);
+  await startBackend();
+  await page.getByText('Engine connected', { exact: true }).waitFor({ timeout: 20000 });
+  await until(async () => {
+    const match = /TERRESTRIAL REPLAY t=([0-9.]+)s/.exec(await body());
+    return match && Number(match[1]) < 10;
+  }, 15000);
+  s = await snapshot();
+  assert.equal(s.source_record_id, originalSource);
+  assert.equal(s.vitals_anomaly.baseline_ready, false);
+  record('same-source restart updates the visible replay clock and starts a new detector baseline');
   await request('/api/source-mode', { mode: 'LIVE_WEARABLE_HARDWARE' });
   await until(async () => (await snapshot()).source_record_id === 'awaiting_wearable_hardware');
   s = await snapshot(); assert.equal(s.biometrics.heart_rate_bpm, null); assert.equal(s.biometrics.spo2_percent, null);
