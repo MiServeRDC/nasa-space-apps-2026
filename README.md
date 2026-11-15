@@ -4,7 +4,7 @@
 
 Long-duration exploration missions expose crews to space radiation, isolation and confinement, altered gravity, and a hostile closed environment, producing immune, musculoskeletal, cardiovascular, and behavioral deconditioning. Beyond lunar distance, the speed-of-light barrier makes real-time ground support impossible: Earth–Mars one-way latency is 4–24 minutes (an 8–48 minute round trip), and solar conjunction imposes communication blackouts of up to two weeks every ~26 months. Any architecture that depends on cloud APIs or Internet-hosted models is therefore invalid for deep space.
 
-**ARES-Health** addresses this by relocating the entire *gather -> evaluate -> act* loop onto the vehicle as a deterministic, offline edge system. A Safe-Rust engine ingests multimodal biosignals, models non-linear multi-organ coupling on an Astronaut Dynamic Health Graph (ADHG), quantifies a continuous margin of safety with Normalized Quantitative Semantics Signal Temporal Logic (NQS-STL), and emits deterministic, gated countermeasures through NASA MedOps playbooks. A microgravity-optimized React cockpit renders the results as a Mission Readiness Index, a 3D anatomical deconditioning map, and an interactive playbook runner. The system runs with zero external dependencies, under a clean-room `MIT OR Apache-2.0` mandate, in strict accordance with NASA Space Apps Fresh-Code rules.
+**ARES-Health** addresses this by relocating the entire *gather -> evaluate -> act* loop onto the vehicle as a deterministic, offline edge system. A Safe-Rust engine ingests multimodal biosignals, models non-linear multi-organ coupling on an Astronaut Dynamic Health Graph (ADHG), quantifies a continuous margin of safety with Normalized Quantitative Semantics Signal Temporal Logic (NQS-STL), and emits deterministic, gated countermeasures through NASA MedOps playbooks. A microgravity-optimized React cockpit renders the results as a Mission Readiness Index, a 3D anatomical deconditioning map, and an interactive playbook runner. The system runs with zero external dependencies.
 
 ---
 
@@ -138,13 +138,11 @@ NASA_Space_Apps_2026/
 └── README.md                # This file — project showcase and entry point
 ```
 
-> **Note on layout.** The directory tree above is the **target organization**. The 12 numbered dossier files (`00_…`–`11_…`) currently reside at the repository root and are being consolidated under `docs/dossier/`; see [Section 12](#12-project-dossier) for the live links.
-
 ---
 
 ## 6. Rust Workspace: Crate Roster
 
-The backend is partitioned into **nine decoupled Safe-Rust crates** so that teammates and their AI agents can implement, test, and verify subsystems in parallel with near-zero merge conflict. The original seven-crate core (`core-types` through `server-cli`) was later extended with `desktop-os` and `storage-lsah`.
+The backend is partitioned into **nine decoupled Safe-Rust crates** so that teammates can implement, test, and verify subsystems in parallel with near-zero merge conflict. The original seven-crate core (`core-types` through `server-cli`) was later extended with `desktop-os` and `storage-lsah`.
 
 | Crate | Phase / Role | Core responsibility |
 | :--- | :--- | :--- |
@@ -197,10 +195,6 @@ npm run build      # production build
 ## 9. Compliance, Licensing & Clean-Room Mandate
 
 ARES-Health is a standalone, clean-room, open-source project with zero external proprietary dependencies, developed fresh for the hackathon in accordance with NASA Space Apps Fresh-Code rules.
-
-- **Code license:** dual `MIT OR Apache-2.0` ([`LICENSE`](LICENSE), [`LICENSE-APACHE`](LICENSE-APACHE)).
-- **3D anatomical meshes:** `ares-cockpit/public/anatomy/*.glb` attributed under `CC-BY-SA-4.0` (Z-Anatomy / DBCLS BodyParts3D), see `public/anatomy/ATTRIBUTION.md`.
-- **Rules & judging:** see [`09_NASA_Space_Apps_Official_Rules_and_Judging_Guide.md`](09_NASA_Space_Apps_Official_Rules_and_Judging_Guide.md) and the submission package in [`11_Official_Submission_Guide_and_Ready_To_Paste_Form.md`](11_Official_Submission_Guide_and_Ready_To_Paste_Form.md).
 
 ---
 
