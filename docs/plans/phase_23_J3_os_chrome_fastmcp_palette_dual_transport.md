@@ -5,7 +5,7 @@
 - **Stato**: PIANO DEFINITIVO APPROVATO PER IMPLEMENTAZIONE (`READY FOR IMPLEMENTATION`)
 - **Target Principali**: `ares-cockpit/` (`TypeScript` + `React 19` + `Tailwind v4` + optional `@tauri-apps/api`)
 - **Studio Architetturale di Riferimento**: [`docs/architecture/RUST_OS_AND_SHELL_FEASIBILITY_STUDY.md`](../architecture/RUST_OS_AND_SHELL_FEASIBILITY_STUDY.md)
-- **Owner Principale**: `@fabiomalagutti27-droid` & `@carolina2910`
+- **Owner Principale**: `ARES-Health Team` & `ARES-Health Team`
 - **File Target Previsti**:
   1. `ares-cockpit/src/lib/binaryTelemetryDecoder.ts` *(NEW — decoder zero-copy `DataView` su `ArrayBuffer` da 128 byte)*
   2. `ares-cockpit/src/lib/useTelemetry.ts` *(UPDATE — auto-rilevazione Dual-Transport `TAURI_NATIVE_IPC` vs `BROWSER_WEBSOCKET`)*

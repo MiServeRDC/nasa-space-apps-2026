@@ -7,7 +7,7 @@ This repository is designed for collaborative, multi-agent, and multi-developer 
 ## 1. Golden Rules for Autonomous Agents
 
 1. **Adhere to the Telemetry Contract:**  
-   All data structures exchanged between the Rust backend (`ares-engine`) and the React frontend (`ares-cockpit`) must conform strictly to [contracts/telemetry_schema.json](file:///Users/fabiomalagutti/Desktop/NASA_Space_Apps_2026/contracts/telemetry_schema.json). Never alter telemetry key names or units unilaterally.
+   All data structures exchanged between the Rust backend (`ares-engine`) and the React frontend (`ares-cockpit`) must conform strictly to [contracts/telemetry_schema.json](./contracts/telemetry_schema.json). Never alter telemetry key names or units unilaterally.
 2. **100% Offline / Air-Gapped Operation:**  
    Deep space simulations execute with zero Internet access. Do not write code that fetches external cloud endpoints at runtime. All WebSockets, FastMCP transports, and HTTP endpoints must bind strictly to `localhost` or `127.0.0.1:8080`.
 3. **Safe Rust 2024 Invariant:**  

@@ -7,7 +7,7 @@
   1. [`ares-cockpit/src/modules/body-3d-heatmap/`](../../ares-cockpit/src/modules/body-3d-heatmap) *(MAJOR UPGRADE — Dual-Gender Parametric Rig, 7 Volumetric Organs, Cephalad Fluid Shift Field, 360-Degree Spring Camera Rig & Keyboard Orbit)*
   2. [`ares-cockpit/src/App.tsx`](../../ares-cockpit/src/App.tsx) *(UPDATE — Pass-through di `whatIf`, `packet.biometrics.heart_rate_bpm` e `thrombus` verso `BodyHeatmap` preservando il gate `UnavailableSubsystemPanel` per puro replay `BIDMC`)*
   3. [`ares-portal/src/modules/safety-sandbox/SafetyGatesCounterfactualLab.tsx`](../../ares-portal) *(INTEGRATION CONTRACT — Riuso diretto o sincronizzazione loopback del componente Twin 3D progettato in questa fase con la Fase 30 `M1`)*
-- **Owner Principale**: `@carolina2910` (3D R3F / Three.js Graphics & HSI), `@fabiomalagutti27-droid` (Invarianti Fisiche, UBERON Mapping & Performance Budget), `@ale` (Calibrazione Antropometrica `NASA-STD-3001` & Fisiologia Microgravitaria)
+- **Owner Principale**: `ARES-Health Team` (3D R3F / Three.js Graphics & HSI), `ARES-Health Team` (Invarianti Fisiche, UBERON Mapping & Performance Budget), `@ale` (Calibrazione Antropometrica `NASA-STD-3001` & Fisiologia Microgravitaria)
 - **Budget Prestazioni WebGL & Fattori Umani (`NASA-STD-3001 Vol. 2 Rev F`)**:
   - **Frame Rate Target (`[V2 10152]`)**: $60\text{ FPS}$ costanti ($\le 16.6\text{ ms}$ frame budget; $< 4.0\text{ ms}$ GPU draw time su GPU integrata mobile/spacecraft)
   - **Budget Geometrico Totale**: $< 24{,}000$ triangoli attivi complessivi, $< 45$ draw call (`InstancedMesh` obbligatoria per particelle venose e vertebre/trabecole ripetitive)

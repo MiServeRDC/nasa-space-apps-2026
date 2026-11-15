@@ -1,7 +1,7 @@
 # Frontend/backend integration qualification
 
 Date: 2026-11-15. Baseline: `origin/main` at `fb70b72` (includes
-`origin/work/LelloXV-frontend-lab` in its ancestry). Corrections are on
+`origin/work/ARES-Health Team-frontend-lab` in its ancestry). Corrections are on
 `work/MiServeRDC-integration-qualification`, in an isolated worktree.
 The final branch is rebased onto `origin/main` `af30a03`; the two intervening
 commits changed only README.md, with no executable-source differences.

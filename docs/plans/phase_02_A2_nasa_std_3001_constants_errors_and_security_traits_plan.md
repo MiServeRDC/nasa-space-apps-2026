@@ -4,7 +4,7 @@
 - **Fase**: Fase 02 (`A2`)
 - **Stato**: PIANO DEFINITIVO APPROVATO PER IMPLEMENTAZIONE (`READY FOR IMPLEMENTATION`)
 - **Crate Principale**: [`crates/ares-core-types`](../../crates/ares-core-types/README.md)
-- **Owner Principale**: `@fabiomalagutti27-droid` (con integrazione trait per `@MiServeRDC`)
+- **Owner Principale**: `ARES-Health Team` (con integrazione trait per `@MiServeRDC`)
 - **File Target Previsti**:
   1. `crates/ares-core-types/src/constants.rs` *(NEW)*
   2. `crates/ares-core-types/src/error.rs` *(NEW)*
@@ -17,7 +17,7 @@
 ## 1. Executive Summary, Visione d'Insieme & Grounding Scientifico (`deep-scholar`)
 
 ### 1.1 Visione Architetturale
-Per evitare "numeri magici" sparsi nei vari crate e per consentire a `@MiServeRDC` di sviluppare `crates/ares-security-privacy` in totale autonomia senza bloccare `@LelloXV` (`ares-telemetry-ingest`) o `@fertech02` (`ares-server-cli`), la **Fase 02 (`A2`)** introduce:
+Per evitare "numeri magici" sparsi nei vari crate e per consentire a `@MiServeRDC` di sviluppare `crates/ares-security-privacy` in totale autonomia senza bloccare `ARES-Health Team` (`ares-telemetry-ingest`) o `ARES-Health Team` (`ares-server-cli`), la **Fase 02 (`A2`)** introduce:
 1. **`constants.rs`**: Tutte le costanti fisiche, emodinamiche, biomeccaniche e normative derivanti da **NASA-STD-3001 Vol. 1 Rev C (`[V1 3001]–[V1 4001]`)** e **Vol. 2 Rev F (`[V2 6001]–[V2 10001]`)**, validate con `deep-scholar`.
 2. **`error.rs`**: L'enumerazione `AresCoreError` basata su `thiserror` per la gestione sicura di valori fuori range, `NaN`/`Infinity` e violazioni di schema.
 3. **`security.rs`**: I **3 Trait astratti di sicurezza e privacy medica** (`CrewPrivacyFilter`, `MedOpsAuditLogger`, `McpInputSanitizer`) con implementazione pass-through a costo zero `NoOpSecurity` (lo stesso identico pattern architetturale di `crates/core-types/src/security.rs` in `spatiotemporal-mcp-engine`).

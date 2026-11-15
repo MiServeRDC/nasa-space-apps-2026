@@ -1,7 +1,7 @@
 # Unified Multi-Dataset Knowledge Graph Feasibility & Architectural Study: `ARES-DatasetGraph` (`ARES-Unified-Dataset-Graph`)
 
 - **Document ID:** `ARES-ARCH-DKG-2026-02`
-- **Author & Lead Systems Architect:** Fabio Malagutti (Computer Engineer, M.Sc. Student @ University of Bologna)
+- **Team:** ARES-Health Engineering Team
 - **Target System:** ARES-Health (*Autonomous Resilient Edge-native System for Astronaut Health* — NASA Space Apps Challenge 2026)
 - **Target Crate & Artifact Paths:** `crates/ares-causal-graph/src/dataset_graph.rs`, `crates/ares-server-cli/src/mcp_stdio.rs`, and `data/knowledge_graph/ares_dataset_graph.json`
 - **Runtime Invariants:** 100% Pure Safe Rust (2024 Edition), Zero Python in Production Hot-Path, Zero `.unwrap()` / Zero `.expect()`, Zero Emojis, Air-Gapped Local Execution, Hot-Path Latency $< 150\,\mu\text{s}$, FastMCP Context-Mode Payload $< 150\text{ tokens}$, Native `graphify` Compatibility

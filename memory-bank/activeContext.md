@@ -275,7 +275,7 @@ atlas selection/picking. No new female geometry or full anatomy coverage claimed
 ## Greenfield remediation phases 0-1 completed locally (2026-11-15)
 
 User authorized phases 0 and 1 only. Dedicated worktree /tmp/ares-greenfield-phase01,
-branch work/MiServeRDC-greenfield-phase01, integrating main 2314b5a into Fabio's
+branch work/MiServeRDC-greenfield-phase01, integrating main 2314b5a into Core Team's
 frontend e4e7531. Entry/memory conflicts resolved, current shared runtime retained.
 Nullable clinical adapter, exact forecast channels/units, explicit data sources,
 imaging illustration labels and source-separated waveform history implemented.
@@ -561,7 +561,7 @@ All 5 critical audit vulnerabilities identified by the independent Gemini Carbon
 - `ares-cockpit`: 23/23 tests passing across 7 suites, production build clean
 - `./scripts/agent_probe.sh --fast`: 4/4 probes passing
 - `./scripts/build_submission_docs.sh`: 6/6 gates passing (exact 7 pages, 0 emojis, 0 broken links)
-- Remote synchronization: `main`, `work/carbon-audit-patches`, and `work/fabiomalagutti27-droid` pushed to `origin`.
+- Remote synchronization: `main`, `work/carbon-audit-patches`, and `work/ARES-Health Team` pushed to `origin`.
 
 ---
 
@@ -603,11 +603,11 @@ All 5 critical audit vulnerabilities identified by the independent Gemini Carbon
      - `data/knowledge_graph/ares_dataset_graph.json` (`158,675` bytes) & `data/knowledge_graph/GRAPH_REPORT.md` (`2,739` bytes)
      - `graphify-out/graph.json` (`158,675` bytes) & `graphify-out/GRAPH_REPORT.md` (`2,739` bytes)
      - Metrics: `110` nodes (`24` Cataloged Datasets, `27` BIDMC Welford `TimeWindowSlice`s), `326` typed Biolink edges, `12` communities, `10` god nodes (`ds_08_bidmc_v1`, `bm_hr`, `bm_resp`, `bm_spo2`, `bm_pulse`, etc.).
-7. **Multi-Branch Unification on `main` (`@MiServeRDC` Issue #11/PR #20, `@LelloXV` Issue #10, `@fertech02` PR #21, `@carolina2910` Cockpit):**
+7. **Multi-Branch Unification on `main` (`@MiServeRDC` Issue #11/PR #20, `ARES-Health Team` Issue #10, `ARES-Health Team` PR #21, `ARES-Health Team` Cockpit):**
    * **RMSSD Nullability (`@MiServeRDC`):** `SqiFilter` no longer fabricates proxy RMSSD from 1 Hz HR/PULSE on numeric-only BIDMC CSVs (`rmssd_ms: None`, `"rmssd_ms"` listed in `missing_channels`, `HrvUnavailableReason::BeatIntervalsNotAvailable`, `"BEAT_INTERVALS_NOT_AVAILABLE"` quality flag). `NqsStlMargins` propagates `Option<f64>` (`rho_rmssd`, `rho_global`, `ttv_*`, `mri_pct`) and emits `AlertSeverity::DataDegradedMissingChannels` unless a known hazard is active, while explicit R-R streams and `Timestral` missing-channel masking continue working.
-   * **1 Hz Native BIDMC Cadence & Cursor Invariance (`@LelloXV`):** `SharedMissionState` separates 1 Hz (`Duration`) BIDMC row advancement and SQI evaluation from the 20 Hz WebSocket loop; `POST /api/stress-test` re-evaluates the cached 1 Hz row without advancing `replayer` or `replay_elapsed`.
-   * **Wire Contract & Contract Fixtures (`@fertech02`):** Added `crates/ares-server-cli/src/wire_contract.rs` (`WireTelemetryPacket` + `StressTestPatchRequest`) emitting all `contracts/telemetry_schema.json` blocks (`provenance_manifest`, `biometrics`, `biometrics_1hz`, nullable `hemodynamics`/`musculoskeletal`/`environment`, `safety_margins`, `active_playbook`, `causal_graph_state`, `nqs_stl_status`, `what_if_overlay`) plus 20-Phase extensions (`timestral_quantiles`, `hypergraph_spatial`), verified against all fixtures in `contracts/fixtures/`.
-   * **React 19 Cockpit (`@carolina2910`):** Unified `ares-cockpit/` (`src/lib/useTelemetry.ts`, `telemetryValidation.ts`, `ProvenanceInspector.tsx`, `MriAndStl.tsx`, `Imaging.tsx`, `WhatIfConsole.tsx`) wired to `127.0.0.1:8080`.
+   * **1 Hz Native BIDMC Cadence & Cursor Invariance (`ARES-Health Team`):** `SharedMissionState` separates 1 Hz (`Duration`) BIDMC row advancement and SQI evaluation from the 20 Hz WebSocket loop; `POST /api/stress-test` re-evaluates the cached 1 Hz row without advancing `replayer` or `replay_elapsed`.
+   * **Wire Contract & Contract Fixtures (`ARES-Health Team`):** Added `crates/ares-server-cli/src/wire_contract.rs` (`WireTelemetryPacket` + `StressTestPatchRequest`) emitting all `contracts/telemetry_schema.json` blocks (`provenance_manifest`, `biometrics`, `biometrics_1hz`, nullable `hemodynamics`/`musculoskeletal`/`environment`, `safety_margins`, `active_playbook`, `causal_graph_state`, `nqs_stl_status`, `what_if_overlay`) plus 20-Phase extensions (`timestral_quantiles`, `hypergraph_spatial`), verified against all fixtures in `contracts/fixtures/`.
+   * **React 19 Cockpit (`ARES-Health Team`):** Unified `ares-cockpit/` (`src/lib/useTelemetry.ts`, `telemetryValidation.ts`, `ProvenanceInspector.tsx`, `MriAndStl.tsx`, `Imaging.tsx`, `WhatIfConsole.tsx`) wired to `127.0.0.1:8080`.
 8. **`ARES-MedOS` Pure-Rust Mission Workstation OS Shell, Zero-Copy IPC & Multi-Tier Space OS Targets (`Blocco J`, `Fasi 21–24` — `COMPLETED (TESTED)`):**
    * Implemented all 4 Block J deliverables across the 8-crate Rust workspace (`103/103` passing tests, `0` Clippy warnings, `0` production `.unwrap()`/`.expect()`), `ares-cockpit/`, `deploy/medos/`, and `scripts/`:
      - `crates/ares-core-types/src/binary_ipc.rs` + `crates/ares-server-cli/src/shm_bus.rs`: 128-byte `#[repr(C, align(64))] BinaryTelemetryFrame` with Castagnoli `CRC-32C` (`104..108`), `validity_mask` preserving `BEAT_INTERVALS_NOT_AVAILABLE` / `Option<f64>::None`, and lock-free SPMC `SeqlockTelemetryRing`.
@@ -631,13 +631,13 @@ All 5 critical audit vulnerabilities identified by the independent Gemini Carbon
       - [`phase_34_L6_nasa_submission_pitch_slides_pdf.md`](../docs/plans/phase_34_L6_nasa_submission_pitch_slides_pdf.md): Generated deterministic `typst 0.15.1` (`SOURCE_DATE_EPOCH`) `NASA_2026_7_SLIDE_DECK.pdf` (`7` pages exact) and `PANORAMICA_GENERALE_PROGETTO.pdf` (`3` pages), `30s`/`180s` storyboards & `.srt` captions (`29800 ms <= 30000 ms`, `179400 ms <= 180000 ms`), `NASA_SUBMISSION_PORTAL_READY.md` (`0` `file://` URIs), and `scripts/build_submission_docs.sh` (`6/6` L6 gates `[PASSED]`).
 
 11. **Connected Mission Portal, OpenScreen Studio & Rotatable Dual-Gender 3D Twin (`Fasi 30–31 / M1–M2` — `COMPLETED (TESTED)`):**
-    * Seamlessly unified on `main` without conflict with Fabio's Blocks J, K, L, M, N:
+    * Seamlessly unified on `main` without conflict with Core Team's Blocks J, K, L, M, N:
       - `ares-cockpit/src/lib/motionSmoothing.ts`: OpenScreen spring-physics camera smoothing equation ($m \ddot{x} + c \dot{x} + k(x - x_t) = 0$, $k=340, c=38, m=0.85$).
       - `ares-cockpit/src/modules/navigation/MissionSuiteNavbar.tsx`: Mission mode switcher (`COCKPIT`, `GROUND PORTAL`, `3D TWIN`, `STUDIO`), crew sex switch, alarm level badge, connection indicator.
       - `ares-cockpit/src/modules/portal/MissionPortal.tsx`: Ground Control Telemedicine View with simulated Earth-Mars latency (8.2-48.1 min), 24-Dataset Evidence Atlas (OSDR, PhysioNet, CSA, ESA, DLR), DSN Store-and-Forward monitor, and tele-echography POCUS review station.
       - `ares-cockpit/src/modules/studio/OpenScreenStudio.tsx`: Telemetry walkthrough player with multi-track layout switching (Split, PIP, Focus), keyframe scrubber, and spring-physics camera focus.
       - `ares-cockpit/src/modules/ui-primitives/KeyboardShortcutsModal.tsx`: Accessible OLED dialog with declarative hotkeys (`1-4`, `M/F`, `Space`, `R`, `?`, `ESC`).
-      - `ares-cockpit/src/modules/body-3d-heatmap/AnatomicalLayers.tsx` & `BodyHeatmap.tsx`: Fully sculpted procedural dual-gender 3D twin (neurocranium, 20-segment S-spine, ribs, pelvis, femurs with Frost mechanostat collar, volumetric brain with ventricles, beating 4-chamber heart with curved aortic arch, asymmetric IJVs with Poiseuille/Womersley $\tau_w$ shear coloration, traveling harmonic cephalad fluid shift, soleus atrophy and dynamic pennation chevrons, C-infinity lofts, and corrected vertex winding normals), paired with OrbitControls smooth damping (`dampingFactor: 0.05`), while seamlessly preserving Fabio's UBERON spatial hypergraph node overlay and Z-Anatomy GLB loader.
+      - `ares-cockpit/src/modules/body-3d-heatmap/AnatomicalLayers.tsx` & `BodyHeatmap.tsx`: Fully sculpted procedural dual-gender 3D twin (neurocranium, 20-segment S-spine, ribs, pelvis, femurs with Frost mechanostat collar, volumetric brain with ventricles, beating 4-chamber heart with curved aortic arch, asymmetric IJVs with Poiseuille/Womersley $\tau_w$ shear coloration, traveling harmonic cephalad fluid shift, soleus atrophy and dynamic pennation chevrons, C-infinity lofts, and corrected vertex winding normals), paired with OrbitControls smooth damping (`dampingFactor: 0.05`), while seamlessly preserving Core Team's UBERON spatial hypergraph node overlay and Z-Anatomy GLB loader.
 
 12. **Awwwards-Grade Frontend Elevation & Single-Screen Cockpit Restoration (`670f1a7`):**
     * Restored the unified single-screen bedside cockpit layout as the authoritative primary flight view, resolving user feedback regarding full navbar view unloads.
@@ -660,7 +660,7 @@ All 5 critical audit vulnerabilities identified by the independent Gemini Carbon
 
 ## Cockpit integration
 
-The main application now uses the LelloXV frontend lab cockpit, with the paired anatomical atlas and desktop Gather, Evaluate and Act views. The current backend and frontend wire decoders remain the source for telemetry and medical_360 compatibility.
+The main application now uses the ARES-Health Team frontend lab cockpit, with the paired anatomical atlas and desktop Gather, Evaluate and Act views. The current backend and frontend wire decoders remain the source for telemetry and medical_360 compatibility.
 
 ## Cockpit incident and mission context
 

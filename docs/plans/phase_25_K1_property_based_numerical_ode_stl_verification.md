@@ -6,7 +6,7 @@
 - **Architettura Master di Blocco**: [`BLOCK_K_SYSTEM_TESTING_ARCHITECTURE.md`](BLOCK_K_SYSTEM_TESTING_ARCHITECTURE.md)
 - **Crate Target**: `crates/ares-core-types`, `crates/ares-causal-graph`, `crates/ares-nqs-stl`, `crates/ares-telemetry-ingest`
 - **Piani & Studi di Riferimento**: [`phase_05_C1`](phase_05_C1_frost_hargens_rk4_sclerostin_mqi_and_gai_plan.md), [`phase_06_C2`](phase_06_C2_jugular_shear_stress_lbnp_dose_response_and_sans_plan.md), [`phase_08_D1`](phase_08_D1_nqs_stl_normalizer_and_lemire_o1_sliding_window_plan.md), [`phase_15_H1`](phase_15_H1_timestral_patch_scaler_rope_backbone.md), [`phase_16_H2`](phase_16_H2_dhf_monotone_quantiles_conformal_gate.md), [`phase_19_I2`](phase_19_I2_biokg_16byte_descriptor_epistemic_reasoner.md), [`phase_21_J1`](phase_21_J1_zero_copy_binary_ipc_shm_protocol.md), [`phase_24_J4`](phase_24_J4_asterinas_framekernel_hubris_wearable_targets.md)
-- **Owner Principale**: `@fabiomalagutti27-droid` (con verifica `@MiServeRDC` e `@LelloXV`)
+- **Owner Principale**: `ARES-Health Team` (con verifica `@MiServeRDC` e `ARES-Health Team`)
 - **File Target Previsti**:
   1. `crates/ares-core-types/tests/prop_binary_abi_invariants.rs` *(NEW — test `proptest` su `BinaryTelemetryFrame` `128 B` & bitmask nullabilita)*
   2. `crates/ares-causal-graph/tests/prop_ode_hemodynamics_biokg.rs` *(NEW — test Richardson RK4, omogeneita dimensionale $\tau_w(t)$, Welford `M2` e `BiomedicalEvidenceDescriptor` `16 B`)*

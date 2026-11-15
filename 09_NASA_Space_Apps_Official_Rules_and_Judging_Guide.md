@@ -101,7 +101,7 @@ Every team must submit a **Project Demo** accessible via a public external link 
   * `Slide 7`: Mission Impact, Scalability to Artemis/Mars, and Future Roadmap.
 
 #### Supplementary Extended Demo (Local Pitch & Technical Review)
-While the global submission form requires the 30s video or 7-slide deck, local judging panels and in-depth technical evaluators benefit from an extended **180-second (3-minute) comprehensive video walkthrough** linked inside the GitHub repository `README.md` (detailed in [08_Open_Source_Ecosystem_and_Comparative_Analysis.md](file:///Users/fabiomalagutti/Desktop/NASA_Space_Apps_2026/08_Open_Source_Ecosystem_and_Comparative_Analysis.md)).
+While the global submission form requires the 30s video or 7-slide deck, local judging panels and in-depth technical evaluators benefit from an extended **180-second (3-minute) comprehensive video walkthrough** linked inside the GitHub repository `README.md` (detailed in [08_Open_Source_Ecosystem_and_Comparative_Analysis.md](./08_Open_Source_Ecosystem_and_Comparative_Analysis.md)).
 
 ---
 

@@ -6,7 +6,7 @@
 > Evidence status (issue #12): scenario-derived physiology, risk/readiness scores and forecast ranges are illustrative and clinically unvalidated. Historical calibration, certification, universal-threshold and outcome claims below are not established. Use [the current evidence audit](docs/architecture/MODEL_EVIDENCE_AUDIT.md) for source applicability, parameters and permitted wording. Recorded terrestrial measurements remain distinct from simulation.
 ## ARES-Health: Aerospace-Grade Edge Platform for Autonomous Astronaut Care
 
-**Author:** Fabio Malagutti (Computer Engineer • M.Sc. Student @ University of Bologna)  
+**Team:** ARES-Health Engineering Team  
 **Track:** NASA Space Apps Challenge 2026 - Health Monitoring Software for Astronauts  
 **Context:** Moon-to-Mars Transit, Deep Space Habitat, Lunar Gateway  
 **Document Type:** Open-Source Landscape Survey, Hackathon Rule Compliance, and Comparative Competitive Analysis  

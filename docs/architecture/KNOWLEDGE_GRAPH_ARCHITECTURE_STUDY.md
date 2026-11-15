@@ -1,7 +1,7 @@
 # Knowledge Graph Architecture Study: From Spatiotemporal Scene Graphs to the Three-Layer `ARES-HyperGraph` for Deep Space Autonomous Medicine
 
 - **Document ID:** `ARES-ARCH-KG-2026-01`
-- **Author & Lead Systems Architect:** Fabio Malagutti (Computer Engineer, M.Sc. Student @ University of Bologna)
+- **Team:** ARES-Health Engineering Team
 - **Target System:** ARES-Health (*Autonomous Resilient Edge-native System for Astronaut Health* — NASA Space Apps Challenge 2026)
 - **Reference Codebases:** `spatiotemporal-mcp-engine-backup` (`crates/spatiotemporal-db`, `crates/core-types`, `crates/engine-cli`) & `NASA_Space_Apps_2026` (`crates/ares-causal-graph`, `crates/ares-nqs-stl`, `crates/ares-medops-playbooks`)
 - **Runtime Invariants:** 100% Pure Safe Rust (2024 Edition), Zero Python, Zero `.unwrap()` / Zero `.expect()`, Air-Gapped Execution, Hot-Path Latency $< 150\,\mu\text{s}$, FastMCP Context-Mode Payload $< 150\text{ tokens}$

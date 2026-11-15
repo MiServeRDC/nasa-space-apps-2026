@@ -3,7 +3,7 @@
 - **Architectural Block:** Block K (`Fasi 25–28` / `K1–K4`)
 - **Status:** `DESIGNED & VERIFIED AGAINST MAIN (READY FOR EXECUTION)`
 - **Baseline Commit on `main`:** `cb77d96` (Phases `01–24` / Blocks `A–J` `COMPLETED (TESTED)`, `103/103` workspace tests across `8` Rust crates + `ares-cockpit/` lint/build clean)
-- **Primary Owner:** `@fabiomalagutti27-droid` (`test-architect-verifier` coordinating with `@MiServeRDC`, `@LelloXV`, `@fertech02`, and `@carolina2910`)
+- **Primary Owner:** `ARES-Health Team` (`test-architect-verifier` coordinating with `@MiServeRDC`, `ARES-Health Team`, `ARES-Health Team`, and `ARES-Health Team`)
 - **Master Plan & Phase Blueprints:**
   - Master Plan: [`RUST_ENGINE_PHASED_MASTER_PLAN.md`](RUST_ENGINE_PHASED_MASTER_PLAN.md)
   - Phase 25 (`K1`): [`phase_25_K1_property_based_numerical_ode_stl_verification.md`](phase_25_K1_property_based_numerical_ode_stl_verification.md)

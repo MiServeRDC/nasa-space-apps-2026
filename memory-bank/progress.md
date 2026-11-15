@@ -265,7 +265,7 @@ atlas selection/picking. No new female geometry or full anatomy coverage claimed
 ## Greenfield remediation phases 0-1 completed locally (2026-11-15)
 
 User authorized phases 0 and 1 only. Dedicated worktree /tmp/ares-greenfield-phase01,
-branch work/MiServeRDC-greenfield-phase01, integrating main 2314b5a into Fabio's
+branch work/MiServeRDC-greenfield-phase01, integrating main 2314b5a into Core Team's
 frontend e4e7531. Entry/memory conflicts resolved, current shared runtime retained.
 Nullable clinical adapter, exact forecast channels/units, explicit data sources,
 imaging illustration labels and source-separated waveform history implemented.
@@ -401,37 +401,37 @@ Branch `work/MiServeRDC-optimization` is pushed; this task does not merge main.
 > **Piano di Riferimento Dettagliato:** [`docs/plans/RUST_ENGINE_PHASED_MASTER_PLAN.md`](../docs/plans/RUST_ENGINE_PHASED_MASTER_PLAN.md)  
 > **Stack & Riferimenti Scientifici (`deep-scholar`):** [`docs/architecture/IMPLEMENTATION_STACK.md`](../docs/architecture/IMPLEMENTATION_STACK.md)
 
-### Blocco A: Fondamenta Contrattuali & Costanti Normative (`crates/ares-core-types` — `@fabiomalagutti27-droid`) [COMPLETATO]
+### Blocco A: Fondamenta Contrattuali & Costanti Normative (`crates/ares-core-types` — `ARES-Health Team`) [COMPLETATO]
 - [x] **Fase 1 (`A1`):** Struct `TelemetryPacket`, `ProvenanceManifest`, `Biometrics` (con `Option<f64>` nullable e `missing_channels`), `Musculoskeletal`, `JugularHemodynamics`, `SansOcular`, `NqsStlMargins`, `ActivePlaybook` (`COMPLETATA`).
 - [x] **Fase 2 (`A2`):** Costanti fisiche e normative `NASA-STD-3001` (`constants.rs`), errori tipizzati `thiserror` (`error.rs`) e trait disaccoppiati `CrewPrivacyFilter`, `MedOpsAuditLogger`, `McpInputSanitizer` (`security.rs`) (`COMPLETATA`).
 
-### Blocco B: Replay Deterministico `BIDMC v1.0.0` & Filtro `SQI` (`crates/ares-telemetry-ingest` — `@LelloXV`) [COMPLETATO]
+### Blocco B: Replay Deterministico `BIDMC v1.0.0` & Filtro `SQI` (`crates/ares-telemetry-ingest` — `ARES-Health Team`) [COMPLETATO]
 - [x] **Fase 3 (`B1`):** Parser CSV `bidmc_01..03_Numerics.csv` (`1 Hz`, `0..480 s`) con `csv::Trim::All` / `str::trim` per gli header con spazio iniziale (`" HR"`, `" PULSE"`, `" RESP"`, `" SpO2"`) e preservazione dei 13 valori mancanti in `bidmc_01` come `None` (`COMPLETATA`).
 - [x] **Fase 4 (`B2`):** Filtro di qualità del segnale basato sull'entropia spettrale di Shannon (`SQI >= 0.70`, Zero-Order Hold su artefatti da movimento) e fusione con `StressTestScenarioInput` (`What-If Console`) (`COMPLETATA`).
 
-### Blocco C [MOTORE RUST CORE]: Fisiopatologia Differenziale & Grafo Causale `ADHG` (`crates/ares-causal-graph` — `@fabiomalagutti27-droid`) [COMPLETATO]
+### Blocco C [MOTORE RUST CORE]: Fisiopatologia Differenziale & Grafo Causale `ADHG` (`crates/ares-causal-graph` — `ARES-Health Team`) [COMPLETATO]
 - [x] **Fase 5 (`C1`):** Solutore numerico **RK4 a passo fisso** per l'ODE della Sclerostina di Frost-Hargens ($\text{SOST}$, $\varepsilon_{\text{Frost}} = 1000\ \mu\varepsilon$), Muscle Quality Index ($\text{MQI}$) e Gait Asymmetry Index ($\text{GAI}$ a $0.38g$) (`COMPLETATA`).
 - [x] **Fase 6 (`C2`):** Calcolo dimensionalmente esatto dello shear stress giugulare $\tau_w(t) = 2\mu v_{\max}(t)\sqrt{\pi/\text{IJV\_CSA}(t)}$, curva dose-risposta `LBNP` ($-30\text{ mmHg}$) e indice translaminare `SANS` (`OSD-818`) (`COMPLETATA`).
 - [x] **Fase 7 (`C3`):** Grafo causale diretto pesato `ADHG` (`petgraph::stable_graph::StableDiGraph`) e **Osservatore Bayesiano POCUS a 2 Stadi** (tetto pre-POCUS $P \le 0.45$, conferma post-POCUS $P \ge 0.92$) (`COMPLETATA`).
 
-### Blocco D [MOTORE RUST CORE]: Logica Temporale `NQS-STL`, Predittore `TTV` & `MRI` (`crates/ares-nqs-stl` — `@fabiomalagutti27-droid`) [COMPLETATO]
+### Blocco D [MOTORE RUST CORE]: Logica Temporale `NQS-STL`, Predittore `TTV` & `MRI` (`crates/ares-nqs-stl` — `ARES-Health Team`) [COMPLETATO]
 - [x] **Fase 8 (`D1`):** Normalizzatore adimensionale `NQS-STL` $\hat{\rho}_k(t) \in (-\infty, +1.0]$ e valutatore online $O(1)$ su finestra scorrevole con **cuneo monotono di Lemire-Donzé** (`sliding_window.rs`) (`COMPLETATA`).
 - [x] **Fase 9 (`D2`):** Stimatore **EWMA-OLS a 7 giorni** del *Time-To-Violation* (`TTV`) con intervallo di confidenza $\pm 1.96\sigma$ (`ttv_predictor.rs`) e calcolo del **Mission Readiness Index (`MRI`)** (`mri_index.rs`) (`COMPLETATA`).
 
-### Blocco E: Playbook Autonomi DAG & I 3 Hard Clinical Safety Gates (`crates/ares-medops-playbooks` — `@fertech02`) [COMPLETATO]
+### Blocco E: Playbook Autonomi DAG & I 3 Hard Clinical Safety Gates (`crates/ares-medops-playbooks` — `ARES-Health Team`) [COMPLETATO]
 - [x] **Fase 10 (`E1`):** Esecutore DAG *Type 1 Crystallized* (`< 20 µs`) per i Playbook `#01–#05` ordinati per impatto $\Delta\hat{\rho}/\text{ora}$ (`COMPLETATA`).
 - [x] **Fase 11 (`E2`):** Applicazione deterministica dei **3 Hard Clinical Safety Gates** (Gate 1: blocco anticoagulanti senza trombo POCUS; Gate 2: auto-vent `LBNP` a $0\text{ mmHg}$ se $\Delta\text{SBP} > 15\text{ mmHg}$ o $\text{HR} > 115\text{ bpm}$; Gate 3: smorzamento tuta EVA a $0.38g$ se $\text{GAI} > 12\%$) (`COMPLETATA`).
 
 ### Blocco F: Privacy Medica per Ruolo (`NASA-STD-3001`), Audit `SHA-256` & AEAD (`crates/ares-security-privacy` — `@MiServeRDC`) [COMPLETATO]
 - [x] **Fase 12 (`F1`):** Implementazione di `AresSecurityGuard`, `EphemeralDsnKey` (`ZeroizeOnDrop`), `EncryptedStoreAndForwardBundle`, catena hash `SHA-256` per override medici (`Sha256AuditLogger`), cifratura `ChaCha20-Poly1305` e sanitizzazione `<untrusted_telemetry_observation>` (`StrictMcpSanitizer`) (`COMPLETATA`).
 
-### Blocco G: Server Dual-Transport Isolato (`crates/ares-server-cli` — `@fertech02`) [COMPLETATO]
+### Blocco G: Server Dual-Transport Isolato (`crates/ares-server-cli` — `ARES-Health Team`) [COMPLETATO]
 - [x] **Fase 13 (`G1`):** Server HTTP/WebSocket `axum` su `127.0.0.1:8080` (`20 Hz` `/ws/telemetry`, `GET /api/snapshot` + `POST /api/stress-test` `< 1 ms`) (`COMPLETATA`).
 - [x] **Fase 14 (`G2`):** Server nativo **FastMCP JSON-RPC 2.0 su `stdio`** con i 4 tool Context-Mode (`< 150 token/risposta`, `<= 600 byte`) e log isolati su `stderr` (`COMPLETATA`).
 
 ---
 
-## Blocco H [MOTORE RUST CORE]: Co-Processore Probabilistico Multi-Orizzonte Grey-Box Pure-Rust `Timestral` (`crates/ares-nqs-stl` — `@fabiomalagutti27-droid`) [COMPLETED (TESTED) — 18/18 Tests]
+## Blocco H [MOTORE RUST CORE]: Co-Processore Probabilistico Multi-Orizzonte Grey-Box Pure-Rust `Timestral` (`crates/ares-nqs-stl` — `ARES-Health Team`) [COMPLETED (TESTED) — 18/18 Tests]
 > **Studio Architetturale:** [`docs/architecture/TIMESTRAL_INTEGRATION_STUDY.md`](../docs/architecture/TIMESTRAL_INTEGRATION_STUDY.md)
 - [x] **Fase 15 (`H1`):** Pure-Rust Timestral Backbone (`CausalScaler` `asinh`/`sinh`, `PatchRepresentation` con maschera `Option<f64>` per i 13 `None` di `bidmc_01`, `RmsNorm`, `FusedSwiGlu`, `SinCosRoPe` e `DualAxisAttention` con `SdpaSigmoid`) in `crates/ares-nqs-stl/src/timestral_backbone.rs` (`COMPLETED (TESTED)`).
 - [x] **Fase 16 (`H2`):** Direct Multi-Horizon Forecasting (DHF) Non-Crossing Monotone `QuantileHead` ($q_{0.05} \le q_{0.50} \le q_{0.95}$ tramite accumulazione triangolare `stable_softplus`) e `ConformalAbstentionGate` adattivo (Conformal PID) in `crates/ares-nqs-stl/src/timestral_quantiles.rs` (`COMPLETED (TESTED)`).
@@ -450,8 +450,8 @@ Branch `work/MiServeRDC-optimization` is pushed; this task does not merge main.
 ---
 
 ## Unificazione Frontend Astronaut Cockpit & Multi-Branch (`ares-cockpit/`, `contracts/fixtures/`, `crates/` — Full Team) [COMPLETATO]
-- [x] **Cockpit UI (`@carolina2910` `2da0989` + Fixes #8/#13/#22):** Unified `ares-cockpit/` React 19 UI wired to `ws://127.0.0.1:8080/ws/telemetry`, `GET /api/snapshot`, `POST /api/stress-test` with strict runtime schema validation, pure replay vs What-If separation, provenance/freshness inspector, null-safe TTV/RMSSD/SpO2 rendering, 3D Anatomical Heatmap, `NQS-STL` quantile cone, and `contracts/fixtures/`.
-- [x] **Multi-Branch Backend Sync (`@MiServeRDC`, `@LelloXV`, `@fertech02`):** Integrated `BEAT_INTERVALS_NOT_AVAILABLE` / `rmssd_ms: None` propagation, Issue #12 evidence audit (`IllustrativeUnvalidated` / `IllustrativeScenarioRange`), `1 Hz` BIDMC CSV replay cadence decoupled from `20 Hz` WebSocket broadcast + cursor-invariant `POST /api/stress-test`, and `WireTelemetryPacket` + `StressTestPatchRequest` verified with `./scripts/agent_probe.sh --all`, `--mode smoke-test`, and cockpit `npm run lint` + `npm run build`.
+- [x] **Cockpit UI (`ARES-Health Team` `2da0989` + Fixes #8/#13/#22):** Unified `ares-cockpit/` React 19 UI wired to `ws://127.0.0.1:8080/ws/telemetry`, `GET /api/snapshot`, `POST /api/stress-test` with strict runtime schema validation, pure replay vs What-If separation, provenance/freshness inspector, null-safe TTV/RMSSD/SpO2 rendering, 3D Anatomical Heatmap, `NQS-STL` quantile cone, and `contracts/fixtures/`.
+- [x] **Multi-Branch Backend Sync (`@MiServeRDC`, `ARES-Health Team`, `ARES-Health Team`):** Integrated `BEAT_INTERVALS_NOT_AVAILABLE` / `rmssd_ms: None` propagation, Issue #12 evidence audit (`IllustrativeUnvalidated` / `IllustrativeScenarioRange`), `1 Hz` BIDMC CSV replay cadence decoupled from `20 Hz` WebSocket broadcast + cursor-invariant `POST /api/stress-test`, and `WireTelemetryPacket` + `StressTestPatchRequest` verified with `./scripts/agent_probe.sh --all`, `--mode smoke-test`, and cockpit `npm run lint` + `npm run build`.
 
 ---
 
@@ -489,10 +489,10 @@ Branch `work/MiServeRDC-optimization` is pushed; this task does not merge main.
 > **Architettura Master & Piani:** [`docs/plans/BLOCK_M_GAP_CLOSURE_ARCHITECTURE.md`](../docs/plans/BLOCK_M_GAP_CLOSURE_ARCHITECTURE.md) | [`docs/plans/BLOCK_M_MULTI_BRANCH_MERGE_EVALUATION_AND_PATCH_PLAN.md`](../docs/plans/BLOCK_M_MULTI_BRANCH_MERGE_EVALUATION_AND_PATCH_PLAN.md)
 - [x] **Fase 35 (`M1` — Verificato):** [`phase_35_M1_lsah_3tier_persistence_issue26.md`](../docs/plans/phase_35_M1_lsah_3tier_persistence_issue26.md) — 9º crate `crates/ares-storage-lsah` (`#![forbid(unsafe_code)]`, zero `.unwrap()`/`.expect()`). Hot tier ring buffer a zero allocazioni heap (`HotLsahSlot` 256 byte, allineamento 64 bit) con staging swap wait-free (isolamento stall SSD da 180 ms); Warm tier `WarmColumnarVectorBackend` su Apache Arrow IPC v2 + Zstd + HNSW deterministico puro Rust (`Sol 180` vs `Sol 1` recall >= 0.98 in < 1 ms); Cold tier `ChaCha20-Poly1305` con nonce a 96 bit monotonico persistito e AAD legato a `Sha256AuditLogger`. Tutti i 12/12 test `phase_35_m1_lsah_persistence.rs` passati offline al 100%.
 - [x] **Fase 36 (`M2` — Verificato):** [`phase_36_M2_branch_unification_merge.md`](../docs/plans/phase_36_M2_branch_unification_merge.md) — Unificazione a 5 vie dei branch del team senza conflitti:
-  - `@fertech02` (`dce5b33`): 50 registrazioni `data/bidmc_eval/bidmc_04..53`, `VitalsAnomalyDetector` causale con CUSUM e distanza di Mahalanobis $D^2$, `EwmaResidualForecaster` a 5 orizzonti (+5..120s) coesistente con `Timestral 1 Hz`, Playbook acuti `#06..#09` mappati su binary IPC 6..=9, `POST /api/inject-anomaly` e `ipc_inject_anomaly`.
+  - `ARES-Health Team` (`dce5b33`): 50 registrazioni `data/bidmc_eval/bidmc_04..53`, `VitalsAnomalyDetector` causale con CUSUM e distanza di Mahalanobis $D^2$, `EwmaResidualForecaster` a 5 orizzonti (+5..120s) coesistente con `Timestral 1 Hz`, Playbook acuti `#06..#09` mappati su binary IPC 6..=9, `POST /api/inject-anomaly` e `ipc_inject_anomaly`.
   - `@MiServeRDC` (`05e142d`): 5 modelli 3D `.glb` Z-Anatomy in `public/anatomy/` con verifica magic `0x46546c67` + `AtlasBody.tsx` + `injury.ts` + referenze OpenScreen e Vercel UI SDK in `docs/REFERENCES.md`.
-  - `@carolina2910` (`08dd941`): triage visivo offline Canvas in `vlmInjuryEngine.ts` (`OPTICAL_RGB_HEURISTIC_V1` + `ILLUSTRATIVE_UNVALIDATED`), `AiInjuryModal.tsx` e marker anatomici a 10 regioni.
-  - `@LelloXV` (`362d1f4`): sparkline `VitalsTrend` con pen-lift SVG sui campioni null (fedeltà Issue `#11`), layout bedside monitor in `GATHER`, layer anatomici null-safe in replay puro, e touch targets 48px (`min-h-12`).
+  - `ARES-Health Team` (`08dd941`): triage visivo offline Canvas in `vlmInjuryEngine.ts` (`OPTICAL_RGB_HEURISTIC_V1` + `ILLUSTRATIVE_UNVALIDATED`), `AiInjuryModal.tsx` e marker anatomici a 10 regioni.
+  - `ARES-Health Team` (`362d1f4`): sparkline `VitalsTrend` con pen-lift SVG sui campioni null (fedeltà Issue `#11`), layout bedside monitor in `GATHER`, layer anatomici null-safe in replay puro, e touch targets 48px (`min-h-12`).
 - [x] **Fase 37 (`M3` — Verificato):** [`phase_37_M3_end_to_end_db_cockpit_verification.md`](../docs/plans/phase_37_M3_end_to_end_db_cockpit_verification.md) — Certificazione di sistema a 8 gate: tutti i crate Rust passano i test e Clippy con zero warning; `agent_probe.sh --fast` e `launch_ares_medos.sh --verify` passano al 100%; `build_submission_docs.sh` (6/6 gate) compila i PDF Typst 0.15.1; `ares-cockpit` passa `npm run lint`, `vite build` (618 moduli in 1.93s) e 21/21 test Node.
 
 ---
@@ -559,7 +559,7 @@ Branch `work/MiServeRDC-optimization` is pushed; this task does not merge main.
 
 ## Cockpit integration
 
-The main application now uses the LelloXV frontend lab cockpit, with the paired anatomical atlas and desktop Gather, Evaluate and Act views. The current backend and frontend wire decoders remain the source for telemetry and medical_360 compatibility.
+The main application now uses the ARES-Health Team frontend lab cockpit, with the paired anatomical atlas and desktop Gather, Evaluate and Act views. The current backend and frontend wire decoders remain the source for telemetry and medical_360 compatibility.
 
 ## Cockpit incident and mission context
 

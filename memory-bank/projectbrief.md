@@ -24,8 +24,8 @@ During Lunar Gateway, Artemis II+, and Mars transit/surface missions, radio comm
 
 ## 3. Team Roster & Branch Architecture (`MiServeRDC/nasa-space-apps-2026`)
 * `main`: Shared integration branch (protected by `./scripts/agent_probe.sh`).
-* `@fabiomalagutti27-droid` (`work/fabiomalagutti27-droid`): Lead Systems Architect, Rust Causal Graph & NQS-STL Engine, Clinical Biomechanics Integration.
+* `ARES-Health Team` (`work/ARES-Health Team`): Lead Systems Architect, Rust Causal Graph & NQS-STL Engine, Clinical Biomechanics Integration.
 * `@MiServeRDC` (`work/MiServeRDC`): Cybersecurity, Crew Medical Privacy Governance (`NASA-STD-3001 Vol. 1 Ch. 7`), SHA-256 Tamper-Evident Audit Log, Encrypted Store-and-Forward DSN Sync (`crates/ares-security-privacy`).
-* `@LelloXV` (`work/LelloXV`): Multi-Modal Telemetry Bus, Contactless Radar/Vocal DSP & Signal Quality Index (`crates/ares-telemetry-ingest`).
-* `@carolina2910` (`work/carolina2910`): Astronaut Cockpit UX (`ares-cockpit`), 3D Anatomical Deconditioning Heatmap & What-If Stress-Test Console.
-* `@fertech02` (`work/fertech02`): MedOps Playbook Engine (`crates/ares-medops-playbooks`), FastMCP Local AI Copilot (`crates/ares-server-cli`) & Dataset Replay Pipeline.
+* `ARES-Health Team` (`work/ARES-Health Team`): Multi-Modal Telemetry Bus, Contactless Radar/Vocal DSP & Signal Quality Index (`crates/ares-telemetry-ingest`).
+* `ARES-Health Team` (`work/ARES-Health Team`): Astronaut Cockpit UX (`ares-cockpit`), 3D Anatomical Deconditioning Heatmap & What-If Stress-Test Console.
+* `ARES-Health Team` (`work/ARES-Health Team`): MedOps Playbook Engine (`crates/ares-medops-playbooks`), FastMCP Local AI Copilot (`crates/ares-server-cli`) & Dataset Replay Pipeline.

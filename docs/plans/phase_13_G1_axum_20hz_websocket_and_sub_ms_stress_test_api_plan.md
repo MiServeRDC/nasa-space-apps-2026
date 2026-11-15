@@ -4,7 +4,7 @@
 - **Fase**: Fase 13 (`G1`)
 - **Stato**: PIANO DEFINITIVO APPROVATO PER IMPLEMENTAZIONE (`READY FOR IMPLEMENTATION`)
 - **Crate Principale**: [`crates/ares-server-cli`](../../crates/ares-server-cli/README.md)
-- **Owner Principale**: `@fertech02` (con integrazione UI `@carolina2910` e Motore Core `@fabiomalagutti27-droid`)
+- **Owner Principale**: `ARES-Health Team` (con integrazione UI `ARES-Health Team` e Motore Core `ARES-Health Team`)
 - **File Target Previsti**:
   1. `crates/ares-server-cli/Cargo.toml` *(NEW)*
   2. `crates/ares-server-cli/src/main.rs` *(NEW)*

@@ -5,7 +5,7 @@
 - **Stato**: PIANO DEFINITIVO APPROVATO PER IMPLEMENTAZIONE (`READY FOR IMPLEMENTATION`)
 - **Crate Principali**: `crates/ares-desktop-os` *(NEW — 8o crate del workspace)*, `crates/ares-server-cli` *(bridge condiviso)*
 - **Studio Architetturale di Riferimento**: [`docs/architecture/RUST_OS_AND_SHELL_FEASIBILITY_STUDY.md`](../architecture/RUST_OS_AND_SHELL_FEASIBILITY_STUDY.md)
-- **Owner Principale**: `@fabiomalagutti27-droid` & `@fertech02`
+- **Owner Principale**: `ARES-Health Team` & `ARES-Health Team`
 - **File Target Previsti**:
   1. `crates/ares-desktop-os/Cargo.toml` *(NEW — con feature `tauri-runtime` per compilazione headless CI senza dipendenze GTK/WebKit)*
   2. `crates/ares-desktop-os/tauri.conf.json` *(NEW — finestra frameless `#000000` OLED + CSP air-gapped zero-cloud)*

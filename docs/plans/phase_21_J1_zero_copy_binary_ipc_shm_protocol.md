@@ -5,7 +5,7 @@
 - **Stato**: PIANO DEFINITIVO APPROVATO PER IMPLEMENTAZIONE (`READY FOR IMPLEMENTATION`)
 - **Crate Principali**: [`crates/ares-core-types`](../../crates/ares-core-types/README.md) & [`crates/ares-server-cli`](../../crates/ares-server-cli/README.md)
 - **Studio Architetturale di Riferimento**: [`docs/architecture/RUST_OS_AND_SHELL_FEASIBILITY_STUDY.md`](../architecture/RUST_OS_AND_SHELL_FEASIBILITY_STUDY.md)
-- **Owner Principale**: `@fabiomalagutti27-droid` & `@fertech02` (con revisione sicurezza `@MiServeRDC`)
+- **Owner Principale**: `ARES-Health Team` & `ARES-Health Team` (con revisione sicurezza `@MiServeRDC`)
 - **File Target Previsti**:
   1. `crates/ares-core-types/src/binary_ipc.rs` *(NEW — `BinaryTelemetryFrame`, `validity_mask`, `flags`, `SeqlockTelemetryRing`)*
   2. `crates/ares-core-types/src/lib.rs` *(UPDATE — esportazione modulo `binary_ipc`)*

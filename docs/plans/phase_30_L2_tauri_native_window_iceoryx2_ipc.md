@@ -9,7 +9,7 @@
   - [`docs/plans/phase_22_J2_ares_desktop_os_tauri_native_shell.md`](./phase_22_J2_ares_desktop_os_tauri_native_shell.md)
   - [`docs/architecture/RUST_OS_AND_SHELL_FEASIBILITY_STUDY.md`](../architecture/RUST_OS_AND_SHELL_FEASIBILITY_STUDY.md)
   - [`docs/architecture/MODEL_EVIDENCE_AUDIT.md`](../architecture/MODEL_EVIDENCE_AUDIT.md)
-- **Owner Principale**: `@fabiomalagutti27-droid` & `@fertech02` (con revisione sicurezza CSP/ACL `@MiServeRDC` e validazione UX `@carolina2910`)
+- **Owner Principale**: `ARES-Health Team` & `ARES-Health Team` (con revisione sicurezza CSP/ACL `@MiServeRDC` e validazione UX `ARES-Health Team`)
 - **File Target Previsti**:
   1. `crates/ares-desktop-os/Cargo.toml` *(UPDATE — aggiunta feature `tauri-runtime`, `tauri-native`, `shm-ipc` e dipendenze opzionali `tauri = "2"`, `tauri-build = "2"`)*
   2. `crates/ares-desktop-os/build.rs` *(NEW — invocazione condizionale `tauri_build::build()` esclusivamente sotto `#[cfg(feature = "tauri-native")]`)*

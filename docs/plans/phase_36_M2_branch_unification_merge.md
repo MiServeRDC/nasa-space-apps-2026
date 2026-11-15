@@ -1,13 +1,13 @@
 # Phase 36 (M2): Multi-Branch Unification & Coexistence Implementation Plan
 
-* **Phase ID:** `Phase 36 (Block M / M2)` (Rev 2 — Updated for `origin/work/LelloXV` `362d1f4`)
+* **Phase ID:** `Phase 36 (Block M / M2)` (Rev 2 — Updated for `origin/work/ARES-Health Team` `362d1f4`)
 * **Parent Architecture Specification:** `docs/plans/BLOCK_M_MULTI_BRANCH_MERGE_EVALUATION_AND_PATCH_PLAN.md`
 * **Base Commit:** `main` (`9438df2`, Blocks A-L)
 * **Source Branches Integrated:**
-  - `origin/work/fertech02` (`dce5b33` & `118100c`)
+  - `origin/work/ARES-Health Team` (`dce5b33` & `118100c`)
   - `origin/work/MiServeRDC` (`05e142d` & `6abbabf`)
-  - `origin/work/carolina2910` (`08dd941` & `ab252dc`)
-  - `origin/work/LelloXV` (`362d1f4` on parent `3cf8741`, `20` files changed, `+1413/-439`)
+  - `origin/work/ARES-Health Team` (`08dd941` & `ab252dc`)
+  - `origin/work/ARES-Health Team` (`362d1f4` on parent `3cf8741`, `20` files changed, `+1413/-439`)
 * **Target Worker Model:** `gemini-4-hydrogen-high` (2 parallel disjoint-ownership workers: `Worker M2A` + `Worker M2B`, followed by `Coordinator M2-Gate` and `M3` Doc-Sync)
 
 ---
@@ -57,14 +57,14 @@ Both workers implement against the exact shared JSON & Binary ABI contract below
 **Hard Rules:** Zero `.unwrap()` / `.expect()` / `panic!()` in non-test crate code; zero Unicode emojis; **NEVER** delete `AresTemporalForecasterEngine`, `run_1hz_timestral_step`, `SafeTensors`, `shm_dispatcher`, `edge_llm_bridge`, `GatherDspOverlay`, `ares-desktop-os` loops, or sibling `Phase 35 (M1)` `crates/ares-storage-lsah` hooks; do **NOT** touch `docs/REFERENCES.md` or `docs/scientific_references.md`.
 
 ### WP-M2A.1 — Evaluation Cohort & Benchmark Documentation Checkout
-1. Check out the 50 PhysioNet BIDMC evaluation CSVs (`ODC-By-1.0`), SHA-256 manifest, README, and evaluation report from `origin/work/fertech02`:
+1. Check out the 50 PhysioNet BIDMC evaluation CSVs (`ODC-By-1.0`), SHA-256 manifest, README, and evaluation report from `origin/work/ARES-Health Team`:
    ```bash
-   git checkout origin/work/fertech02 -- data/bidmc_eval/ docs/evaluation/ANOMALY_DETECTOR_EVAL.md
+   git checkout origin/work/ARES-Health Team -- data/bidmc_eval/ docs/evaluation/ANOMALY_DETECTOR_EVAL.md
    ```
 2. Update `docs/evaluation/ANOMALY_DETECTOR_EVAL.md` (preserving all held-out metrics and zero-emoji formatting) with a concise architectural note clarifying that `EwmaResidualForecaster` (`+5s, +10s, +30s, +60s, +120s`) runs alongside `AresTemporalForecasterEngine` (`Timestral` 1 Hz `+15m, +1h, +6h, +24h` + `CQR` calibration) rather than replacing it.
 
 ### WP-M2A.2 — Core Anomaly & Dual-Horizon Forecast Types (`crates/ares-core-types`)
-1. Port `origin/work/fertech02:crates/ares-core-types/src/anomaly.rs` to `crates/ares-core-types/src/anomaly.rs` and apply these exact refinements:
+1. Port `origin/work/ARES-Health Team:crates/ares-core-types/src/anomaly.rs` to `crates/ares-core-types/src/anomaly.rs` and apply these exact refinements:
    - Export `pub const EWMA_SHORT_HORIZONS_SECONDS: [u32; 5] = [5, 10, 30, 60, 120];`.
    - Define `ForecastMethod` (`#[serde(rename_all = "SCREAMING_SNAKE_CASE")]`, `#[derive(Default)]`):
      ```rust
@@ -108,9 +108,9 @@ Both workers implement against the exact shared JSON & Binary ABI contract below
    - Extend `playbook_id_to_u16(playbook_id: &str) -> u16` (`L209-223`) so `PLAYBOOK_06` -> `6`, `PLAYBOOK_07` -> `7`, `PLAYBOOK_08` -> `8`, `PLAYBOOK_09` -> `9` (`PLAYBOOK_01..05` remain `1..=5`, unknown -> `0`). Keep the `128 B` `BinaryTelemetryFrame` layout (`offset_of!` compile-time assertions) 100% unchanged.
 
 ### WP-M2A.3 — Controlled Fault Injection (`crates/ares-telemetry-ingest`)
-1. Port `anomaly_injection.rs` directly from `origin/work/fertech02`:
+1. Port `anomaly_injection.rs` directly from `origin/work/ARES-Health Team`:
    ```bash
-   git checkout origin/work/fertech02 -- crates/ares-telemetry-ingest/src/anomaly_injection.rs
+   git checkout origin/work/ARES-Health Team -- crates/ares-telemetry-ingest/src/anomaly_injection.rs
    ```
 2. In `crates/ares-telemetry-ingest/src/lib.rs`, preserve all existing Block L3 exports (`radar_csi_dsp`, `rr_hrv_dsp`, `vocal_biomarkers_dsp`, `GatherDspOverlay`, `merge_biometrics_with_gather_dsp`) and add:
    ```rust
@@ -119,12 +119,12 @@ Both workers implement against the exact shared JSON & Binary ABI contract below
    ```
 
 ### WP-M2A.4 — Vitals Anomaly Detector & 5-120s EWMA Forecaster Coexistence (`crates/ares-nqs-stl`)
-1. Check out `vitals_anomaly.rs` from `origin/work/fertech02`:
+1. Check out `vitals_anomaly.rs` from `origin/work/ARES-Health Team`:
    ```bash
-   git checkout origin/work/fertech02 -- crates/ares-nqs-stl/src/vitals_anomaly.rs
+   git checkout origin/work/ARES-Health Team -- crates/ares-nqs-stl/src/vitals_anomaly.rs
    ```
    Verify zero `.unwrap()` / `.expect()` outside `#[cfg(test)]`.
-2. Port `origin/work/fertech02:crates/ares-nqs-stl/src/ewma_forecaster.rs` to `crates/ares-nqs-stl/src/ewma_forecaster.rs` and upgrade to 5 horizons:
+2. Port `origin/work/ARES-Health Team:crates/ares-nqs-stl/src/ewma_forecaster.rs` to `crates/ares-nqs-stl/src/ewma_forecaster.rs` and upgrade to 5 horizons:
    - Change `HORIZONS: [usize; 3] = [10, 30, 60]` to `HORIZONS: [usize; 5] = [5, 10, 30, 60, 120]` (`pending: [VecDeque<(u64, f64, f64)>; 5]`, `abs_errors: [VecDeque<f64>; 5]`).
    - Emit `ShortHorizonCone { channel_name, horizon_5s, horizon_10s, horizon_30s, horizon_60s, horizon_120s }`.
    - Provide `pub fn ingest_short_horizon_1hz(&mut self, sample: &AresMultivariateSample) -> (Vec<ShortHorizonCone>, AbstentionCertificate)` so `ws_server.rs` can merge `(short_cones, short_cert)` directly into `latest_quantile_snapshot` without wiping Timestral's `channel_cones` or top-level `abstention_certificate`.
@@ -134,15 +134,15 @@ Both workers implement against the exact shared JSON & Binary ABI contract below
 ### WP-M2A.5 — Playbooks `#06..#09` & Normative BioKG Grounding (`crates/ares-medops-playbooks`)
 1. In `crates/ares-medops-playbooks/src/playbooks.rs`:
    - Keep `select_candidate_playbook` (`#01..#05`) unchanged.
-   - Port `select_vitals_anomaly_playbook(anomaly: &VitalsAnomalyReport, biometrics: &Biometrics, hemodynamics: &JugularHemodynamics, causal_chain: Vec<String>) -> Option<ActivePlaybook>` (`PLAYBOOK_06_HYPOXEMIA_DESATURATION`, `PLAYBOOK_07_HEART_RATE_ANOMALY`, `PLAYBOOK_08_SENSOR_SIGNAL_LOSS`, `PLAYBOOK_09_MULTIPARAMETER_DETERIORATION`) and its unit tests from `origin/work/fertech02`.
+   - Port `select_vitals_anomaly_playbook(anomaly: &VitalsAnomalyReport, biometrics: &Biometrics, hemodynamics: &JugularHemodynamics, causal_chain: Vec<String>) -> Option<ActivePlaybook>` (`PLAYBOOK_06_HYPOXEMIA_DESATURATION`, `PLAYBOOK_07_HEART_RATE_ANOMALY`, `PLAYBOOK_08_SENSOR_SIGNAL_LOSS`, `PLAYBOOK_09_MULTIPARAMETER_DETERIORATION`) and its unit tests from `origin/work/ARES-Health Team`.
    - Re-export `select_vitals_anomaly_playbook` in `crates/ares-medops-playbooks/src/lib.rs`.
 2. In `crates/ares-medops-playbooks/src/grounding.rs`:
    - Extend `ground_playbook_normative(playbook_id: &str)` (`L47-68`) with arms for `"PLAYBOOK_06_HYPOXEMIA_DESATURATION"` (`6`), `"PLAYBOOK_07_HEART_RATE_ANOMALY"` (`7`), `"PLAYBOOK_08_SENSOR_SIGNAL_LOSS"` (`8`), and `"PLAYBOOK_09_MULTIPARAMETER_DETERIORATION"` (`9`) mapped to `AdhgNodeKind::AutonomicVagalRmssd` (overriding `playbook_number` and `playbook_id` on the returned `PlaybookNormativeGrounding` so `verify_crc()` remains valid and exact `playbook_id` is preserved). Unknown IDs still return `Err(PlaybookError::UnknownPlaybookId(...))`.
 
 ### WP-M2A.6 — Dual-Engine Server Runtime, FastMCP, Tauri IPC & CSP (`crates/ares-server-cli`, `crates/ares-desktop-os`, `contracts/telemetry_schema.json`)
-1. Check out `anomaly_eval.rs` from `origin/work/fertech02`:
+1. Check out `anomaly_eval.rs` from `origin/work/ARES-Health Team`:
    ```bash
-   git checkout origin/work/fertech02 -- crates/ares-server-cli/src/anomaly_eval.rs
+   git checkout origin/work/ARES-Health Team -- crates/ares-server-cli/src/anomaly_eval.rs
    ```
 2. Unify `crates/ares-server-cli/src/wire_contract.rs`:
    - Keep `main` (`9438df2`) `WireTelemetryPacket` & `WirePacketContext`; add `pub vitals_anomaly: VitalsAnomalyReport` and `pub AnomalyInjectionRequest { pub kind: InjectedAnomalyKind, pub magnitude: Option<f64> }`.
@@ -182,11 +182,11 @@ cargo run -p ares-server-cli --bin ares-server-cli -- --mode eval-anomaly --data
 **Hard Rules:** Zero Unicode emojis/dingbats anywhere (`U+2715` `\u2715` strictly banned); **NEVER** create `validateTelemetry.ts` or overwrite `main`'s `telemetryValidation.ts` / `useTelemetry.ts`; **STRICT `#000000` OLED** (`--color-oled: #000000`, `--color-panel: #0a0a0a`, `--color-nominal: #22d3ee` — reject `#0b111c` / `#141c2a` / `#a6baf1` override); `min-h-[44px]` / `min-h-12` touch targets; strict Issue #11 (`null` never `0`, unobserved `#6b7280`) and Issue #12 (`ILLUSTRATIVE_UNVALIDATED`, zero `'ARES-VLM-Edge'` or fake `88-99%` `confidencePct`); do **NOT** touch `docs/REFERENCES.md` or `docs/scientific_references.md` (deferred to `M3`).
 
 ### WP-M2B.1 — Static CC BY-SA 4.0 `.glb` Anatomy Assets & Cockpit README
-1. Check out the 5 glTF v2 `.glb` meshes (`SkeletalSystem100.glb`, `MuscularSystem100.glb`, `CardioVascular41.glb`, `VisceralSystem100.glb`, `NervousSystem100.glb`), `MANIFEST.json`, `ATTRIBUTION.md`, `LICENSE-CC-BY-SA-4.0.txt`, and integration note (`MiServeRDC` `6abbabf` and `LelloXV` `362d1f4` are byte-identical on `public/anatomy/`):
+1. Check out the 5 glTF v2 `.glb` meshes (`SkeletalSystem100.glb`, `MuscularSystem100.glb`, `CardioVascular41.glb`, `VisceralSystem100.glb`, `NervousSystem100.glb`), `MANIFEST.json`, `ATTRIBUTION.md`, `LICENSE-CC-BY-SA-4.0.txt`, and integration note (`MiServeRDC` `6abbabf` and `ARES-Health Team` `362d1f4` are byte-identical on `public/anatomy/`):
    ```bash
    git checkout origin/work/MiServeRDC -- ares-cockpit/public/anatomy/ docs/plans/ANATOMY_ATLAS_BRANCH_INTEGRATION.md
    ```
-2. Update `ares-cockpit/README.md` additively (integrating `LelloXV` `362d1f4`'s interface hierarchy attribution note for `Vercel UI SDK` Apache-2.0, `WHOOP Home`, and `Oura Vitals` — explicitly stating zero external packages, assets, or code copied — plus `Z-Anatomy / BodyParts3D` `CC BY-SA 4.0` static asset isolation and offline optical triage / vitals anomaly notes). Do **NOT** modify `docs/REFERENCES.md`.
+2. Update `ares-cockpit/README.md` additively (integrating `ARES-Health Team` `362d1f4`'s interface hierarchy attribution note for `Vercel UI SDK` Apache-2.0, `WHOOP Home`, and `Oura Vitals` — explicitly stating zero external packages, assets, or code copied — plus `Z-Anatomy / BodyParts3D` `CC BY-SA 4.0` static asset isolation and offline optical triage / vitals anomaly notes). Do **NOT** modify `docs/REFERENCES.md`.
 
 ### WP-M2B.2 — Unified Telemetry Types, Runtime Validation & Binary Decoder (`types/telemetry.ts`, `lib/telemetryValidation.ts`, `lib/binaryTelemetryDecoder.ts`, `lib/playbookCatalog.ts`, `lib/scenario.ts`, `lib/useTelemetry.ts`)
 1. **`ares-cockpit/src/types/telemetry.ts`:**
@@ -207,19 +207,19 @@ cargo run -p ares-server-cli --bin ares-server-cli -- --mode eval-anomaly --data
 ### WP-M2B.3 — `#000000` OLED CSS, Header, `EcgStrip`, Vitals Anomaly, Forecast & `PlaybookRunner` (`index.css`, `TriPhaseHeader.tsx`, `Imaging.tsx`, `VitalsAnomalyPanel.tsx`, `MriAndStl.tsx`, `PlaybookRunner.tsx`)
 1. **`ares-cockpit/src/index.css`:**
    - **KEEP `main`'s single `@theme` block untouched (`--color-oled: #000000`, `--color-panel: #0a0a0a`, `--color-line: #1f2937`, `--color-nominal: #22d3ee`, `background: #000000`).** Do **NOT** copy `362d1f4`'s second `@theme` block or `#0b111c` / `#141c2a` / `#a6baf1` colors!
-   - Append `@LelloXV`'s structural classes re-themed to `#000000` OLED: `.bedside-monitor` (`background: #000000; border: 1px solid var(--color-line);`), `.monitor-heading`, `.monitor-cardiac`, `.monitor-trace`, `.monitor-vital` (`tabular-nums`), `.monitor-heart`, `.monitor-secondary`, `.monitor-oxygen`, `.monitor-breathing`, `.monitor-pulse`, `.health-trend` (`background: var(--color-panel); border: 1px solid var(--color-line);`), `.health-choice` (`min-height: 44px;`, `aria-pressed="true"` using `rgba(34,211,238,0.15)` & `border-color: var(--color-nominal)`), `.act-current` (`background: #050505; border: 1px solid var(--color-line);`), `.anatomy-layers` (`background: var(--color-panel);`), and `:focus-visible` (`outline: 2px solid var(--color-nominal)`).
+   - Append `ARES-Health Team`'s structural classes re-themed to `#000000` OLED: `.bedside-monitor` (`background: #000000; border: 1px solid var(--color-line);`), `.monitor-heading`, `.monitor-cardiac`, `.monitor-trace`, `.monitor-vital` (`tabular-nums`), `.monitor-heart`, `.monitor-secondary`, `.monitor-oxygen`, `.monitor-breathing`, `.monitor-pulse`, `.health-trend` (`background: var(--color-panel); border: 1px solid var(--color-line);`), `.health-choice` (`min-height: 44px;`, `aria-pressed="true"` using `rgba(34,211,238,0.15)` & `border-color: var(--color-nominal)`), `.act-current` (`background: #050505; border: 1px solid var(--color-line);`), `.anatomy-layers` (`background: var(--color-panel);`), and `:focus-visible` (`outline: 2px solid var(--color-nominal)`).
 2. **`ares-cockpit/src/modules/header-triphase/TriPhaseHeader.tsx`:**
-   - Keep `main`'s `#000000` top bar, explicit `1. GATHER`, `2. EVALUATE`, `3. ACT` labels, `CRITICAL` `animate-pulse`, and `AlarmBadge` `data-alarm-level={level}`; adopt `@LelloXV`'s `aria-current={isActive ? 'page' : undefined}` and `min-h-[44px]` button/select touch heights.
+   - Keep `main`'s `#000000` top bar, explicit `1. GATHER`, `2. EVALUATE`, `3. ACT` labels, `CRITICAL` `animate-pulse`, and `AlarmBadge` `data-alarm-level={level}`; adopt `ARES-Health Team`'s `aria-current={isActive ? 'page' : undefined}` and `min-h-[44px]` button/select touch heights.
 3. **`ares-cockpit/src/modules/analysis-imaging/Imaging.tsx` (`EcgStrip`):**
-   - Preserve `main`'s `isRecorded?: boolean` prop, `SQI < 0.60` sample rejection status line, flat yellow baseline on `missingHr`, and bottom-right `'SYNTHETIC VISUALIZER (RECORDED HR)'` / `'SIMULATED'` watermark; add `@LelloXV`'s `role="img" aria-label="Synthetic ECG illustration driven by heart rate"` and centered `'Heart rate unavailable'` overlay when `missingHr` is true.
+   - Preserve `main`'s `isRecorded?: boolean` prop, `SQI < 0.60` sample rejection status line, flat yellow baseline on `missingHr`, and bottom-right `'SYNTHETIC VISUALIZER (RECORDED HR)'` / `'SIMULATED'` watermark; add `ARES-Health Team`'s `role="img" aria-label="Synthetic ECG illustration driven by heart rate"` and centered `'Heart rate unavailable'` overlay when `missingHr` is true.
 4. **`ares-cockpit/src/modules/vitals-anomaly/VitalsAnomalyPanel.tsx` & `ares-cockpit/src/modules/mri-and-stl/MriAndStl.tsx`:**
-   - Port `VitalsAnomalyPanel.tsx` from `origin/work/fertech02`, wired to `onInjectAnomaly`, `#000000` OLED cards, `min-h-[44px]` buttons, and `+5s / +10s / +30s / +60s / +120s` `ShortHorizonCone` readout.
+   - Port `VitalsAnomalyPanel.tsx` from `origin/work/ARES-Health Team`, wired to `onInjectAnomaly`, `#000000` OLED cards, `min-h-[44px]` buttons, and `+5s / +10s / +30s / +60s / +120s` `ShortHorizonCone` readout.
    - In `MriAndStl.tsx` (`TimestralQuantileConePanel`), keep `+15m / +1h / +6h / +24h` Timestral grey-box fan as default (`LONG HORIZON: +15m..+24h`) and add a toggle (`SHORT HORIZON: +5s..+120s EWMA`) rendering `short_horizon_cones` + `short_horizon_abstention` while preserving Issue #11 `BEAT_INTERVALS_NOT_AVAILABLE` suppression.
 5. **`ares-cockpit/src/modules/playbook-runner/PlaybookRunner.tsx`:**
-   - Start from `main`'s 505-line `PlaybookRunner.tsx` (using `ALL_CRYSTALLIZED_PLAYBOOK_LIST` `#01..#09`, keeping `CRYSTALLIZED_PLAYBOOK_LIST` = `#01..#05` intact in `playbookCatalog.ts` so `phase29_l1.test.ts` stays 100% green!), and integrate `@LelloXV` `362d1f4`'s `.act-current` active-step highlight card, `aria-current="step"`, and `min-h-12` (`48px`) control heights.
+   - Start from `main`'s 505-line `PlaybookRunner.tsx` (using `ALL_CRYSTALLIZED_PLAYBOOK_LIST` `#01..#09`, keeping `CRYSTALLIZED_PLAYBOOK_LIST` = `#01..#05` intact in `playbookCatalog.ts` so `phase29_l1.test.ts` stays 100% green!), and integrate `ARES-Health Team` `362d1f4`'s `.act-current` active-step highlight card, `aria-current="step"`, and `min-h-12` (`48px`) control heights.
 
 ### WP-M2B.4 — Unified 10-Region Injury Schema & Sanitized Offline Optical RGB Triage (`types/injury.ts`, `lib/vlmInjuryEngine.ts`, `AiInjuryModal.tsx`)
-1. Create `ares-cockpit/src/types/injury.ts` unifying the exact 10 `InjuryRegionId` keys shared by `MiServeRDC`, `carolina2910`, and `LelloXV` (`AtlasBody.tsx` expects these exact 10 keys in `anchors.injuries`):
+1. Create `ares-cockpit/src/types/injury.ts` unifying the exact 10 `InjuryRegionId` keys shared by `MiServeRDC`, `ARES-Health Team`, and `ARES-Health Team` (`AtlasBody.tsx` expects these exact 10 keys in `anchors.injuries`):
    ```ts
    import type { CrystallizedPlaybookId } from './telemetry';
 
@@ -270,37 +270,37 @@ cargo run -p ares-server-cli --bin ares-server-cli -- --mode eval-anomaly --data
    }
    ```
    Include `RegionMeta` and `INJURY_REGIONS` (`10` regions from `362d1f4` / `6abbabf` — zero `confidencePct` field).
-2. Create `ares-cockpit/src/lib/vlmInjuryEngine.ts` (ported from `origin/work/carolina2910`, sanitized):
+2. Create `ares-cockpit/src/lib/vlmInjuryEngine.ts` (ported from `origin/work/ARES-Health Team`, sanitized):
    - Export `analyzeSkinImageOpticalHeuristic(imageFile: File | Blob, region: InjuryRegionId): Promise<OpticalTriageAssessment>` (**zero** `'ARES-VLM-Edge'` strings or fabricated `88-99%` `confidencePct`).
    - Always call `URL.revokeObjectURL(tempObjectUrl)` inside both `img.onload` and `img.onerror`.
    - Map `recommendedPlaybookId` to valid `CrystallizedPlaybookId` values (`PLAYBOOK_04_SANS_TRANSLAMINAR_MITIGATION` for `HEAD_FOREHEAD`, `PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED` for shoulder/knee/ankle, `PLAYBOOK_06_HYPOXEMIA_DESATURATION` or `PLAYBOOK_07_HEART_RATE_ANOMALY` for `CHEST_RIBS`).
-3. Create `ares-cockpit/src/modules/body-3d-heatmap/AiInjuryModal.tsx` (ported from `origin/work/carolina2910`, sanitized):
+3. Create `ares-cockpit/src/modules/body-3d-heatmap/AiInjuryModal.tsx` (ported from `origin/work/ARES-Health Team`, sanitized):
    - Replace `U+2715` (`\u2715 CLOSE`) with ASCII `CLOSE`.
    - Track temporary `previewUrl` in a `ref`; revoke any unsaved preview `blob:` URL on re-upload or cancel; only transfer ownership to `App.tsx` when saved.
    - Display `ILLUSTRATIVE_UNVALIDATED | CLIENT-SIDE RGB PIXEL HEURISTIC (NON-DIAGNOSTIC)` and raw `Erythema / Contrast / Dark-Pixel` metrics (zero fake `88-99%` confidence badge), enforce `min-h-[44px]` on all buttons, and emit `InjuryMarker` + `onOpenPlaybook?.(assessment.recommendedPlaybookId)`.
 
 ### WP-M2B.5 — Null-Safe `AnatomicalLayers.tsx`, Air-Gapped `AtlasBody.tsx` & 5-Source `BodyHeatmap.tsx`
 1. Unify `ares-cockpit/src/modules/body-3d-heatmap/AnatomicalLayers.tsx`:
-   - Keep `main` (`9438df2`)'s `nodesByRegion?: Record<AnatomicalRegionWireId, ProjectedAnatomicalNode>` (`cnsNode`, `sansNode`, `heartNode` `#6b7280` `observed === false` guard, `ijvNode`, `soleusNode`) AND merge `@LelloXV` `362d1f4`'s `s: ScenarioState | null` null-safety across `SkeletonLayer`, `VascularNeuroLayer`, and `MusclesLayer` so procedural anatomy renders uncolored neutral reference geometry when `s === null` (`isPureReplay`).
-2. Create `ares-cockpit/src/modules/body-3d-heatmap/AtlasBody.tsx` (unifying `MiServeRDC` `6abbabf` + `LelloXV` `362d1f4` + Block L1):
+   - Keep `main` (`9438df2`)'s `nodesByRegion?: Record<AnatomicalRegionWireId, ProjectedAnatomicalNode>` (`cnsNode`, `sansNode`, `heartNode` `#6b7280` `observed === false` guard, `ijvNode`, `soleusNode`) AND merge `ARES-Health Team` `362d1f4`'s `s: ScenarioState | null` null-safety across `SkeletonLayer`, `VascularNeuroLayer`, and `MusclesLayer` so procedural anatomy renders uncolored neutral reference geometry when `s === null` (`isPureReplay`).
+2. Create `ares-cockpit/src/modules/body-3d-heatmap/AtlasBody.tsx` (unifying `MiServeRDC` `6abbabf` + `ARES-Health Team` `362d1f4` + Block L1):
    - Accept `s: ScenarioState | null` and optional `nodesByRegion?: Record<AnatomicalRegionWireId, ProjectedAnatomicalNode>`.
    - Call `useGLTF(URLS, false, true)` (`useDraco = false` so `https://www.gstatic.com/draco/...` is never referenced; `useMeshopt = true` using local `three-stdlib` `MeshoptDecoder`). Do NOT call module-top-level `useGLTF.preload(URLS)`.
    - Replace `throw new Error('Missing atlas landmark: ...')` with safe fallback coordinates from `uberonSpatialMapping.ts` / `INJURY_REGIONS`.
    - Report both the 5 canonical `UBERON:` anchors (`BrainVestibularCns` -> `'Brain.g'`, `EyeOcularSans` -> `'Optic tract.r'`, `InternalJugularVein` -> `'Internal jugular vein.r'`, `HeartCardioAutonomic` -> `'Heart.g'`, `SoleusCalcaneus` -> `'Soleus muscle.r'`/`'Calcaneus.r'`) and all 10 `InjuryRegionId` anchors (`anchors.injuries`).
    - When `s === null`, color clinical meshes neutral reference slate (`#6b7280` / `#94a3b8`); when `s !== null`, color from `nodesByRegion` so `Heart.g` stays neutral gray `#6b7280` whenever `observed === false` (`BEAT_INTERVALS_NOT_AVAILABLE`).
 3. Unify `ares-cockpit/src/modules/body-3d-heatmap/BodyHeatmap.tsx` (5-source synthesis):
-   - Preserve `100%` of Block L1's `projectHypergraphTo3D` HUD (`HOTTEST` UBERON CURIE, `ZONE` deontic policy, `BioKG` clause, `5` `SpatialNodePin` spheres, `6` `QuadraticBezierLine` conduction arcs, `min-h-[44px]` controls) when `s !== null`, and show `@LelloXV` `362d1f4`'s honest `"Data unavailable — pure terrestrial BIDMC replay does not measure microgravity organ shifting"` state when `s === null` while keeping the 3D viewport and injury markers active!
-   - Include `ATLAS 3D GLB (CC BY-SA 4.0)` vs `PROCEDURAL RIG` toggle (wrapping `<Suspense fallback={<AtlasLoading />}><AtlasBody ... /></Suspense>` inside `GlbAssetErrorBoundary` so any WebGL/WASM error falls back cleanly to `AnatomicalLayers` + `NasaGlbAssetLayer`), plus `@LelloXV`'s `<Canvas fallback={<svg ...>}>` 2D silhouette when WebGL is unavailable, `background: '#000000'` on the viewport, `MALE`/`FEMALE` profile switch, neon-lime `#a3e635` `<InjuryPoint>` 3D torus markers, `+ SCAN PHOTO (OPTICAL TRIAGE)` (`AiInjuryModal`), and `+ MANUAL MARKER` quick form.
+   - Preserve `100%` of Block L1's `projectHypergraphTo3D` HUD (`HOTTEST` UBERON CURIE, `ZONE` deontic policy, `BioKG` clause, `5` `SpatialNodePin` spheres, `6` `QuadraticBezierLine` conduction arcs, `min-h-[44px]` controls) when `s !== null`, and show `ARES-Health Team` `362d1f4`'s honest `"Data unavailable — pure terrestrial BIDMC replay does not measure microgravity organ shifting"` state when `s === null` while keeping the 3D viewport and injury markers active!
+   - Include `ATLAS 3D GLB (CC BY-SA 4.0)` vs `PROCEDURAL RIG` toggle (wrapping `<Suspense fallback={<AtlasLoading />}><AtlasBody ... /></Suspense>` inside `GlbAssetErrorBoundary` so any WebGL/WASM error falls back cleanly to `AnatomicalLayers` + `NasaGlbAssetLayer`), plus `ARES-Health Team`'s `<Canvas fallback={<svg ...>}>` 2D silhouette when WebGL is unavailable, `background: '#000000'` on the viewport, `MALE`/`FEMALE` profile switch, neon-lime `#a3e635` `<InjuryPoint>` 3D torus markers, `+ SCAN PHOTO (OPTICAL TRIAGE)` (`AiInjuryModal`), and `+ MANUAL MARKER` quick form.
 
 ### WP-M2B.6 — Top-Level `App.tsx` Unification (`ares-cockpit/src/App.tsx`)
-Start from `main` (`9438df2`) so **zero Block L capabilities are lost**, and layer in `@LelloXV` (`362d1f4`), `@fertech02`, `@MiServeRDC`, and `@carolina2910`:
+Start from `main` (`9438df2`) so **zero Block L capabilities are lost**, and layer in `ARES-Health Team` (`362d1f4`), `ARES-Health Team`, `@MiServeRDC`, and `ARES-Health Team`:
 1. Keep `<OsSystemStatusBar ... />`, `<TriPhaseHeader ... />`, `<ProvenanceBanner ... />`, and `<OsVoiceCopilot ... onExecuteIntent={handleVoiceIntent} />` **permanently visible at the top of the `#000000` OLED shell** (never hidden inside a collapsed `<details>`), and keep `<OsCommandPalette ... initialMode={paletteInitialMode} />` and right-sidebar `MriGauge` readiness card visible across phases.
 2. Wrap the right-sidebar What-If sliders in `<details open={whatIfOverlayActive || undefined}>` (from `362d1f4`) so pure BIDMC replay starts clean and auto-opens whenever What-If overlay or voice `RUN_WHAT_IF_LBNP` engages.
 3. Add `injuries` (`InjuryMarker[]`) + `injuryPhotoUrls` `useRef(new Set<string>())` with `URL.revokeObjectURL` cleanup on region replacement, `resolveInjury`, and unmount (`362d1f4` / `6abbabf`).
 4. In `activePhase === 'GATHER'`:
-   - Render `@LelloXV`'s `BedsideMonitor` (`EcgStrip` with `hr={status.isStale ? null : b.heart_rate_bpm}`, `isRecorded={isRecordedBiometrics}`, `sqi`, plus tabular-numeral HR / SpO2 / RESP / Pulse and HRV RMSSD `BEAT_INTERVALS_NOT_AVAILABLE` readout).
-   - Render `@LelloXV`'s `VitalsTrend` pen-lift SVG sparkline over `recordedHistory` (`stroke="#22d3ee"` on `#0a0a0a` OLED card).
-   - Render `@fertech02`'s `<VitalsAnomalyPanel anomaly={packet.vitals_anomaly} quantiles={packet.timestral_quantiles} isLive={link === 'ENGINE_LIVE'} onInjectAnomaly={injectAnomaly} />`.
+   - Render `ARES-Health Team`'s `BedsideMonitor` (`EcgStrip` with `hr={status.isStale ? null : b.heart_rate_bpm}`, `isRecorded={isRecordedBiometrics}`, `sqi`, plus tabular-numeral HR / SpO2 / RESP / Pulse and HRV RMSSD `BEAT_INTERVALS_NOT_AVAILABLE` readout).
+   - Render `ARES-Health Team`'s `VitalsTrend` pen-lift SVG sparkline over `recordedHistory` (`stroke="#22d3ee"` on `#0a0a0a` OLED card).
+   - Render `ARES-Health Team`'s `<VitalsAnomalyPanel anomaly={packet.vitals_anomaly} quantiles={packet.timestral_quantiles} isLive={link === 'ENGINE_LIVE'} onInjectAnomaly={injectAnomaly} />`.
 5. In `activePhase === 'EVALUATE'`:
    - On `BODY_3D`, render unified `<BodyHeatmap s={isPureReplay ? null : s} sex={whatIf.sex} hypergraphSpatial={packet.hypergraph_spatial} isLocalSimulation={Boolean(packet.is_local_simulation)} modelValidationStatus={packet.model_validation_status} injuries={injuries} onAddInjury={addInjury} onResolveInjury={resolveInjury} onChangeSex={(sex) => handleWhatIfChange({ ...whatIf, sex })} onOpenTab={setEvalTab} onOpenPlaybook={(pbId) => { setActivePhase('ACT'); setRequestedPlaybook((prev) => ({ id: pbId, seq: (prev?.seq ?? 0) + 1 })); }} />` (with an optional `"Engage What-If Overlay"` CTA banner when `isPureReplay` is true).
    - On `FORECAST`, keep `main`'s `<StlChart ... timestralQuantiles={packet.timestral_quantiles} hrvUnavailableReason={b.hrv_unavailable_reason} modelValidationStatus={packet.model_validation_status} />`.
@@ -333,7 +333,7 @@ node --experimental-strip-types --test tests/*.test.ts
 
 Once both `Worker M2A` and `Worker M2B` complete and land into the coordinator workspace:
 1. Verify `git status --short` confirms `ares-cockpit/src/lib/validateTelemetry.ts` does NOT exist and `docs/REFERENCES.md` / `docs/scientific_references.md` were NOT touched during M2.
-2. Update `memory-bank/activeContext.md` and `memory-bank/progress.md` to record Phase 36 (`M2`) multi-branch unification (`fertech02` + `MiServeRDC` + `carolina2910` + `LelloXV 362d1f4` verified unified onto `main`).
+2. Update `memory-bank/activeContext.md` and `memory-bank/progress.md` to record Phase 36 (`M2`) multi-branch unification (`ARES-Health Team` + `MiServeRDC` + `ARES-Health Team` + `ARES-Health Team 362d1f4` verified unified onto `main`).
 3. Execute the complete end-to-end verification gate:
    ```bash
    ./scripts/agent_probe.sh --all

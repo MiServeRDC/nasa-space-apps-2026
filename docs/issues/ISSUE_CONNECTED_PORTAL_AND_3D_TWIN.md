@@ -4,7 +4,7 @@
 * **Titolo Issue:** [FEAT] Connected Mission Portal, OpenScreen Studio & Rotatable Dual-Gender 3D Anatomical Twin (Fasi 30-31 / M1-M2)
 * **Branch Target:** `main`
 * **Modulo / Ambito:** `ares-cockpit/` (React 19 + TypeScript + Tailwind CSS + Three.js / React-Three-Fiber) e documentazione architetturale (`docs/plans/`, `memory-bank/`)
-* **Stato:** Implementato, verificato ed integrato senza conflitti con i Blocchi J, K, L, M, N pushati da Fabio Malagutti (`@fabiomalagutti27-droid`).
+* **Stato:** Implementato, verificato ed integrato senza conflitti con i Blocchi J, K, L, M, N pushati da ARES-Health Core Engineering Team.
 
 ---
 
@@ -79,7 +79,7 @@ L'architettura e stata progettata attingendo a fonti aperte all'avanguardia:
   - Simulazione del Cephalad Fluid Shift (`CephaladFluidShift`): flussi armonici pulsanti che evidenziano la ridistribuzione cefalica dei fluidi corporei in assenza del gradiente gravitazionale idrostatico di $1g$.
   - Integrazione OrbitControls con `enableDamping`, fattore di smorzamento `0.05`, e limiti di zoom rigorosamente compresi tra 1.2 e 6.5 metri.
   - Integrazione null-safe: parametro di scenario `s: ScenarioState | null`, che garantisce il perfetto rendering senza errori TypeScript o eccezioni a runtime anche durante il replay puro di registrazioni terrestri BIDMC (dove non sono calcolati i modelli emodinamici sintetici microgravitari).
-  - Preservazione totale degli asset 3D e dei layer introdotti da Fabio Malagutti: nodi anatomici UBERON (`uberonSpatialMapping.ts`), loader di file GLB Z-Anatomy (`NasaGlbAssetLayer.tsx`), e modale di diagnosi visiva delle lesioni (`AiInjuryModal.tsx`).
+  - Preservazione totale degli asset 3D e dei layer introdotti da ARES-Health Team: nodi anatomici UBERON (`uberonSpatialMapping.ts`), loader di file GLB Z-Anatomy (`NasaGlbAssetLayer.tsx`), e modale di diagnosi visiva delle lesioni (`AiInjuryModal.tsx`).
 
 ### 4.7 Integrazione nell'Applicazione Principale (`App.tsx`)
 * Percorso: `ares-cockpit/src/App.tsx`

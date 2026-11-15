@@ -6,7 +6,7 @@
 - **Fase**: Fase 04 (`B2`)
 - **Stato**: PIANO DEFINITIVO APPROVATO PER IMPLEMENTAZIONE (`READY FOR IMPLEMENTATION`)
 - **Crate Principale**: [`crates/ares-telemetry-ingest`](../../crates/ares-telemetry-ingest/README.md)
-- **Owner Principale**: `@LelloXV`
+- **Owner Principale**: `ARES-Health Team`
 - **File Target Previsti**:
   1. `crates/ares-telemetry-ingest/src/sqi_filter.rs` *(NEW)*
   2. `crates/ares-telemetry-ingest/src/scenario_overlay.rs` *(NEW)*

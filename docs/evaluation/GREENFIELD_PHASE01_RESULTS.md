@@ -8,13 +8,13 @@ Scope approval: user requested only phases 0 and 1 of the [implementation plan](
 
 Pinned inputs:
 
-- Fabio's `feat/cockpit-greenfield-awwwards`: `e4e753142da2517e0d12ecce4cb4cb7792bed897`.
+- Core Team's `feat/cockpit-greenfield-awwwards`: `e4e753142da2517e0d12ecce4cb4cb7792bed897`.
 - Current `origin/main`: `2314b5a`; common ancestor: `3516da4`.
 - Dedicated worktree: `/tmp/ares-greenfield-phase01`. Main clone was clean.
   Prior review worktree held uncommitted review/planning documents; they were
   preserved and the relevant artifacts copied, without replacing current main memory.
-- Integration direction: main into a dedicated branch based on Fabio's frontend.
-  App conflict retained Fabio's workbench entry. Shared telemetry hook, freshness
+- Integration direction: main into a dedicated branch based on Core Team's frontend.
+  App conflict retained Core Team's workbench entry. Shared telemetry hook, freshness
   guard, binary decoder, storage, backend and safety fixes come from current main.
   The other two conflicts were memory history; both histories were retained.
   No unresolved conflict markers remain.

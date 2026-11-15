@@ -4,7 +4,7 @@
 - **Fase**: Fase 12 (`F1`)
 - **Stato**: PIANO DEFINITIVO APPROVATO PER IMPLEMENTAZIONE (`READY FOR IMPLEMENTATION`)
 - **Crate Principale**: [`crates/ares-security-privacy`](../../crates/ares-security-privacy/README.md)
-- **Owner Principale**: `@MiServeRDC` (Alessandro)
+- **Owner Principale**: `@MiServeRDC` (ARES-Health Team)
 - **File Target Previsti**:
   1. `crates/ares-security-privacy/Cargo.toml` *(NEW)*
   2. `crates/ares-security-privacy/src/lib.rs` *(NEW)*

@@ -4,7 +4,7 @@
 - **Fase**: Fase 07 (`C3`)
 - **Stato**: PIANO DEFINITIVO APPROVATO PER IMPLEMENTAZIONE (`READY FOR IMPLEMENTATION`)
 - **Crate Principale**: [`crates/ares-causal-graph`](../../crates/ares-causal-graph/README.md)
-- **Owner Principale**: `@fabiomalagutti27-droid`
+- **Owner Principale**: `ARES-Health Team`
 - **File Target Previsti**:
   1. `crates/ares-causal-graph/src/adhg_graph.rs` *(NEW)*
   2. `crates/ares-causal-graph/src/bayesian_pocus.rs` *(NEW)*

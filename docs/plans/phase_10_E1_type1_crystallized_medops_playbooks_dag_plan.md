@@ -4,7 +4,7 @@
 - **Fase**: Fase 10 (`E1`)
 - **Stato**: PIANO DEFINITIVO APPROVATO PER IMPLEMENTAZIONE (`READY FOR IMPLEMENTATION`)
 - **Crate Principale**: [`crates/ares-medops-playbooks`](../../crates/ares-medops-playbooks/README.md)
-- **Owner Principale**: `@fertech02` (con integrazione scientifica `@fabiomalagutti27-droid`)
+- **Owner Principale**: `ARES-Health Team` (con integrazione scientifica `ARES-Health Team`)
 - **File Target Previsti**:
   1. `crates/ares-medops-playbooks/Cargo.toml` *(NEW)*
   2. `crates/ares-medops-playbooks/src/lib.rs` *(NEW)*

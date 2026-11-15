@@ -1,6 +1,6 @@
 # Piano Progettuale Master a Fasi e Blocchi — Motore & Backend Rust di ARES-Health
 
-- **Tag di Tracciabilita**: `[FABIO, IMPLEMENTATION]` | `[ARES-HEALTH, RUST-CORE-ENGINE]`
+- **Tag di Tracciabilita**: `[CORE-ENGINE, IMPLEMENTATION]` | `[ARES-HEALTH, RUST-CORE-ENGINE]`
 - **Stato**: ALL 34 PHASES / 12 BLOCKS (A-L) `COMPLETED (TESTED)` (`158/158` Default Workspace Tests Passing across `24` Active Suites & `8` Crates + Feature-Gated `tauri-runtime` `5/5`, `shm-ipc` `4/4`, `candle-safetensors` `4/4`, `parquet-ingest` `6/6`, `15/15` Cockpit Node Tests across `7` Suites, `0` Clippy Warnings, `0` Production `.unwrap()`/`.expect()`, `ares-calibrate --verify-only`, `./scripts/launch_ares_medos.sh --verify`, `./scripts/build_submission_docs.sh` `6/6` L6 Gates, `--release` 1-Tick Pipeline `p99.9=5.58 µs`, `SeqlockTelemetryRing` `p50=42 ns` / `p99.9=84 ns`) ([`BLOCK_L_GAP_CLOSURE_ARCHITECTURE.md`](BLOCK_L_GAP_CLOSURE_ARCHITECTURE.md))
 - **Ispirazione Metodologica**: Gold Standard di `spatiotemporal-mcp-engine` (`memory-bank/progress.md`, `docs/architecture/IMPLEMENTATION_STACK.md`, `docs/plans/phase_*.md`, `scripts/agent_probe.sh`)
 - **Budget Latenza Hot-Path (Valutazione Completa Grafo ADHG + ODE RK4 + NQS-STL + Playbook DAG)**: $< 150\,\mu\text{s}$ (`P99` in-memory per tick)
@@ -14,31 +14,31 @@
 
 Nel progetto **ARES-Health**, la componente Rust si distingue in:
 
-1. **Il "Motore Rust" Core (Il Cuore Matematico, Fisiopatologico, Probabilistico e Grafo Ibrido — Owner: `@fabiomalagutti27-droid`):**
+1. **Il "Motore Rust" Core (Il Cuore Matematico, Fisiopatologico, Probabilistico e Grafo Ibrido — Owner: `ARES-Health Team`):**
    È l'equivalente diretto di `core-types` + `vision-engine` + `spatiotemporal-db` + `temporal-forecaster` nel tuo progetto `spatiotemporal-mcp-engine`. Appartiene esattamente a **3 Crate** articolati su **5 Blocchi Core (`A`, `C`, `D`, `H`, `I`)**:
    * **`crates/ares-core-types`** (*Blocco A — Fasi 1–2*): Contratto tipi, costanti normative `NASA-STD-3001` e trait di sicurezza.
    * **`crates/ares-causal-graph`** (*Blocco C — Fasi 5–7 & Blocco I — Fasi 18–20*): Grafo causale `ADHG` (`petgraph`), solutore RK4 ODE Frost-Hargens, shear stress venoso giugulare $\tau_w(t)$, osservatore Bayesiano a 2 stadi POCUS, e architettura a 3 livelli **`ARES-HyperGraph` & `ARES-DatasetGraph`** (compattazione longitudinale di Welford su 900 giorni in `< 200 KB`, sottografo anatomico 3D + deontico dell'habitat spaziale con Markov $D_{\text{KL}}$, descrittore `16-byte #[repr(C)] BiomedicalEvidenceDescriptor` con `Noisy-OR` + `ClinicalAnswerabilityGate`, e grafo unificato dei 24 dataset compatibile con `graphify`).
    * **`crates/ares-nqs-stl`** (*Blocco D — Fasi 8–9 & Blocco H — Fasi 15–17*): Monitor online $O(1)$ `NQS-STL` (cuneo monotono di Lemire-Donzé), predittore `TTV` EWMA-OLS a 7 giorni con banda $\pm 1.96\sigma$, sintetizzatore `MRI`, e **Co-Processore Probabilistico Grey-Box Pure-Rust `Timestral`** (`CausalScaler` `asinh`, `PatchRepresentation` Missing-Channel Mask, `RMSNorm`, `FusedSwiGLU`, `SinCosRoPE`, `DualAxisAttention`, `QuantileHead` monotona non incrociata $q_{0.05} \le q_{0.50} \le q_{0.95}$, `ConformalAbstentionGate` e bridge asincrono `1 Hz` $\to$ `20 Hz` in `180 ns`).
 
 2. **I 4 Crate di Pipeline del Backend Rust (che alimentano ed espongono il Motore Core):**
-   * **`crates/ares-telemetry-ingest`** (*Blocco B — Fasi 3–4, Owner: `@LelloXV`*): Replay CSV deterministico `BIDMC v1.0.0` a `1 Hz`, filtro `SQI >= 0.70` e overlay di scenario.
-   * **`crates/ares-medops-playbooks`** (*Blocco E — Fasi 10–11, Owner: `@fertech02`*): Esecutore DAG *Type 1 Crystallized* dei Playbook `#01–#05` e applicazione dei **3 Hard Clinical Safety Gates**.
+   * **`crates/ares-telemetry-ingest`** (*Blocco B — Fasi 3–4, Owner: `ARES-Health Team`*): Replay CSV deterministico `BIDMC v1.0.0` a `1 Hz`, filtro `SQI >= 0.70` e overlay di scenario.
+   * **`crates/ares-medops-playbooks`** (*Blocco E — Fasi 10–11, Owner: `ARES-Health Team`*): Esecutore DAG *Type 1 Crystallized* dei Playbook `#01–#05` e applicazione dei **3 Hard Clinical Safety Gates**.
    * **`crates/ares-security-privacy`** (*Blocco F — Fase 12, Owner: `@MiServeRDC`*): Viste privacy per ruolo (`NASA-STD-3001 Vol. 1 Ch. 7`), Audit Chain `SHA-256`, cifratura `ChaCha20-Poly1305` e scudo Prompt Injection.
-   * **`crates/ares-server-cli`** (*Blocco G — Fasi 13–14, Owner: `@fertech02`*): Server WebSocket/REST `axum` a `20 Hz` (`127.0.0.1:8080`) + server `stdio` **FastMCP JSON-RPC 2.0**.
+   * **`crates/ares-server-cli`** (*Blocco G — Fasi 13–14, Owner: `ARES-Health Team`*): Server WebSocket/REST `axum` a `20 Hz` (`127.0.0.1:8080`) + server `stdio` **FastMCP JSON-RPC 2.0**.
 
 ```mermaid
 flowchart TD
-    subgraph Blocco_A["BLOCCO A: crates/ares-core-types (@fabiomalagutti27-droid)"]
+    subgraph Blocco_A["BLOCCO A: crates/ares-core-types (ARES-Health Team)"]
         F1["Fase 1 (A1): Struct TelemetryPacket, ProvenanceManifest & Nullable Fields"]
         F2["Fase 2 (A2): Costanti NASA-STD-3001, Errori thiserror & Trait Sicurezza"]
     end
 
-    subgraph Blocco_B["BLOCCO B: crates/ares-telemetry-ingest (@LelloXV)"]
+    subgraph Blocco_B["BLOCCO B: crates/ares-telemetry-ingest (ARES-Health Team)"]
         F3["Fase 3 (B1): Parser Replay BIDMC v1.0.0 (1 Hz, Trim Header, 13 Nulls in bidmc_01)"]
         F4["Fase 4 (B2): Filtro Entropia Spettrale SQI >= 0.70 & Scenario Overlay Merger"]
     end
 
-    subgraph Motore_Core["MOTORE RUST CORE: Blocchi C & D (@fabiomalagutti27-droid)"]
+    subgraph Motore_Core["MOTORE RUST CORE: Blocchi C & D (ARES-Health Team)"]
         F5["Fase 5 (C1): ODE RK4 Frost-Hargens (SOST), Indice MQI & GAI (0.38g)"]
         F6["Fase 6 (C2): Emodinamica Giugulare tau_w(t), Dose-Risposta LBNP & SANS"]
         F7["Fase 7 (C3): Grafo Causale ADHG (petgraph) & Osservatore Bayesiano POCUS 2-Stadi"]
@@ -46,24 +46,24 @@ flowchart TD
         F9["Fase 9 (D2): Predittore TTV EWMA-OLS 7-Giorni (±1.96σ) & Sintesi MRI"]
     end
 
-    subgraph Blocco_E_F["BLOCCO E & F: Playbooks & Security (@fertech02 & @MiServeRDC)"]
+    subgraph Blocco_E_F["BLOCCO E & F: Playbooks & Security (ARES-Health Team & @MiServeRDC)"]
         F10["Fase 10 (E1): DAG Type-1 Crystallized Playbooks #01-#05"]
         F11["Fase 11 (E2): I 3 Hard Clinical Safety Gates (Anticoag Lock, LBNP Vent, EVA Suit)"]
         F12["Fase 12 (F1): Role-Based Privacy Views, Audit SHA-256 & ChaCha20-Poly1305"]
     end
 
-    subgraph Blocco_G["BLOCCO G: crates/ares-server-cli (@fertech02)"]
+    subgraph Blocco_G["BLOCCO G: crates/ares-server-cli (ARES-Health Team)"]
         F13["Fase 13 (G1): Server Axum WebSocket 20 Hz & POST /api/stress-test (< 1 ms)"]
         F14["Fase 14 (G2): Server FastMCP JSON-RPC 2.0 stdio (< 150 Token Context-Mode)"]
     end
 
-    subgraph Blocco_H["BLOCCO H [CORE]: Grey-Box Timestral Forecaster in ares-nqs-stl (@fabiomalagutti27-droid)"]
+    subgraph Blocco_H["BLOCCO H [CORE]: Grey-Box Timestral Forecaster in ares-nqs-stl (ARES-Health Team)"]
         F15["Fase 15 (H1): Pure-Rust Timestral Backbone (CausalScaler asinh, Missing Mask, RoPE, DualAxisAttention)"]
         F16["Fase 16 (H2): DHF Non-Crossing Monotone QuantileHead (q05<=q50<=q95) & ConformalAbstentionGate"]
         F17["Fase 17 (H3): Async 1 Hz Forecaster + 180 ns Lock-Free Bridge into 20 Hz NQS-STL & TTV_q05"]
     end
 
-    subgraph Blocco_I["BLOCCO I [CORE]: ARES-HyperGraph & ARES-DatasetGraph in ares-causal-graph (@fabiomalagutti27-droid)"]
+    subgraph Blocco_I["BLOCCO I [CORE]: ARES-HyperGraph & ARES-DatasetGraph in ares-causal-graph (ARES-Health Team)"]
         F18["Fase 18 (I1): Welford 900-Day LongitudinalSuperNode (< 200 KB) + 3D Anatomical & Habitat Deontic Q-STL"]
         F19["Fase 19 (I2): ARES-BioKG Layer 3 (16-Byte #[repr(C)] Descriptor, Noisy-OR & AnswerabilityGate)"]
         F20["Fase 20 (I3): Unified 24-Dataset Knowledge Graph Builder, graphify JSON Exporter & FastMCP Tools"]
@@ -146,7 +146,7 @@ flowchart TD
 
 ### BLOCCO A — Fondamenta Contrattuali, Costanti Normative & Trait di Sicurezza
 * **Crate:** [`crates/ares-core-types`](../../crates/ares-core-types/README.md)
-* **Owner Principale:** `@fabiomalagutti27-droid`
+* **Owner Principale:** `ARES-Health Team`
 * **Dipendenze Esterne:** `serde`, `serde_json`, `thiserror` (zero dipendenze interne)
 
 #### Fase 1 (`A1`): Strutture Contrattuali `TelemetryPacket`, `ProvenanceManifest` e Campi Nullable
@@ -182,7 +182,7 @@ flowchart TD
 
 ### BLOCCO B — Motore di Replay Deterministico `BIDMC v1.0.0`, Filtro `SQI` & Scenario Overlay (`1. GATHER`)
 * **Crate:** [`crates/ares-telemetry-ingest`](../../crates/ares-telemetry-ingest/README.md)
-* **Owner Principale:** `@LelloXV` (con supporto contrattuale `@MiServeRDC` e `@fabiomalagutti27-droid`)
+* **Owner Principale:** `ARES-Health Team` (con supporto contrattuale `@MiServeRDC` e `ARES-Health Team`)
 * **Dipendenze:** `ares-core-types`, `csv`, `serde`, `thiserror`
 
 #### Fase 3 (`B1`): Parser CSV `BIDMC v1.0.0` (`1 Hz`, Header Trimming e Preservazione dei 13 `null` in `bidmc_01`)
@@ -214,7 +214,7 @@ flowchart TD
 
 ### BLOCCO C — Il Cuore del Motore Rust: Fisiopatologia Differenziale & Grafo Causale `ADHG` (`2. EVALUATE` - Parte 1)
 * **Crate:** [`crates/ares-causal-graph`](../../crates/ares-causal-graph/README.md)
-* **Owner Principale:** `@fabiomalagutti27-droid`
+* **Owner Principale:** `ARES-Health Team`
 * **Dipendenze:** `ares-core-types`, `petgraph`, `serde`, `thiserror`
 
 #### Fase 5 (`C1`): Solutore ODE RK4 di Frost-Hargens ($\text{SOST}$), Muscle Quality Index ($\text{MQI}$) e $\text{GAI}$ ($0.38g$)
@@ -263,7 +263,7 @@ flowchart TD
 
 ### BLOCCO D — Logica Temporale Normalizzata `NQS-STL`, Predittore `TTV` & Sintesi `MRI` (`2. EVALUATE` - Parte 2)
 * **Crate:** [`crates/ares-nqs-stl`](../../crates/ares-nqs-stl/README.md)
-* **Owner Principale:** `@fabiomalagutti27-droid`
+* **Owner Principale:** `ARES-Health Team`
 * **Dipendenze:** `ares-core-types`, `ares-causal-graph`, `serde`, `thiserror`
 
 #### Fase 8 (`D1`): Valutatore Online $O(1)$ `NQS-STL` con Cuneo Monotono di Lemire-Donzé
@@ -297,7 +297,7 @@ flowchart TD
 
 ### BLOCCO E — Motore Decisionale MedOps Playbooks & I 3 Hard Clinical Safety Gates (`3. ACT`)
 * **Crate:** [`crates/ares-medops-playbooks`](../../crates/ares-medops-playbooks/README.md)
-* **Owner Principale:** `@fertech02` (con revisione clinica/architetturale `@fabiomalagutti27-droid` e `@MiServeRDC`)
+* **Owner Principale:** `ARES-Health Team` (con revisione clinica/architetturale `ARES-Health Team` e `@MiServeRDC`)
 * **Dipendenze:** `ares-core-types`, `ares-causal-graph`, `ares-nqs-stl`, `serde`, `thiserror`
 
 #### Fase 10 (`E1`): Esecutore DAG *Type 1 Crystallized* dei Playbook `#01–#05`
@@ -324,7 +324,7 @@ flowchart TD
 
 ### BLOCCO F — Privacy dell'Equipaggio per Ruolo (`NASA-STD-3001`), Audit Chain `SHA-256` & AEAD
 * **Crate:** [`crates/ares-security-privacy`](../../crates/ares-security-privacy/README.md)
-* **Owner Principale:** `@MiServeRDC` (Alessandro)
+* **Owner Principale:** `@MiServeRDC` (ARES-Health Team)
 * **Dipendenze:** `ares-core-types`, `sha2`, `chacha20poly1305`, `zeroize`, `serde`, `thiserror`
 
 #### Fase 12 (`F1`): Implementazione Concreta dei Trait di Sicurezza, Viste Privacy e Catena Hash `SHA-256`
@@ -342,7 +342,7 @@ flowchart TD
 
 ### BLOCCO G — Server Dual-Transport Isolato (`Axum WebSocket 20 Hz` + `FastMCP stdio`)
 * **Crate:** [`crates/ares-server-cli`](../../crates/ares-server-cli/README.md)
-* **Owner Principale:** `@fertech02` (con integrazione `@fabiomalagutti27-droid` e `@carolina2910`)
+* **Owner Principale:** `ARES-Health Team` (con integrazione `ARES-Health Team` e `ARES-Health Team`)
 * **Dipendenze:** Tutti i 6 crate di libreria + `tokio`, `axum`, `clap`, `anyhow`, `tracing`
 
 #### Fase 13 (`G1`): Server `axum` WebSocket a `20 Hz` (`127.0.0.1:8080`) & Endpoint `POST /api/stress-test` (`< 1 ms`)
@@ -367,7 +367,7 @@ flowchart TD
 
 ### BLOCCO H [MOTORE RUST CORE] — Co-Processore Probabilistico Multi-Orizzonte Grey-Box Pure-Rust `Timestral` (`2. EVALUATE` - Parte 3)
 * **Crate:** [`crates/ares-nqs-stl`](../../crates/ares-nqs-stl/README.md) & [`crates/ares-core-types`](../../crates/ares-core-types/README.md)
-* **Owner Principale:** `@fabiomalagutti27-droid`
+* **Owner Principale:** `ARES-Health Team`
 * **Studio Architetturale di Riferimento:** [`docs/architecture/TIMESTRAL_INTEGRATION_STUDY.md`](../architecture/TIMESTRAL_INTEGRATION_STUDY.md)
 
 #### Fase 15 (`H1`): Pure-Rust Timestral Backbone (`CausalScaler` `asinh`, `PatchRepresentation` Missing-Channel Mask, `RMSNorm`, `FusedSwiGLU`, `SinCosRoPE` & `DualAxisAttention`)
@@ -399,7 +399,7 @@ flowchart TD
 
 ### BLOCCO I [MOTORE RUST CORE] — Architettura a 3 Livelli `ARES-HyperGraph` & Grafo Multi-Dataset `ARES-DatasetGraph` (`2. EVALUATE` & `3. ACT`)
 * **Crate:** [`crates/ares-causal-graph`](../../crates/ares-causal-graph/README.md), [`crates/ares-medops-playbooks`](../../crates/ares-medops-playbooks/README.md) & [`crates/ares-server-cli`](../../crates/ares-server-cli/README.md)
-* **Owner Principale:** `@fabiomalagutti27-droid` & `@fertech02`
+* **Owner Principale:** `ARES-Health Team` & `ARES-Health Team`
 * **Studi Architetturali di Riferimento:** [`docs/architecture/KNOWLEDGE_GRAPH_ARCHITECTURE_STUDY.md`](../architecture/KNOWLEDGE_GRAPH_ARCHITECTURE_STUDY.md) & [`docs/architecture/UNIFIED_DATASET_GRAPH_FEASIBILITY_STUDY.md`](../architecture/UNIFIED_DATASET_GRAPH_FEASIBILITY_STUDY.md)
 
 #### Fase 18 (`I1`): `ARES-HyperGraph` Layers 1 & 2 — Welford `LongitudinalSuperNode` Compaction (`< 200 KB` per 900d Mars Mission), 3D Anatomical Subgraph & Spacecraft Habitat Deontic / Markov Graph
@@ -432,7 +432,7 @@ flowchart TD
 
 ### BLOCCO J — `ARES-MedOS`: Pure-Rust Mission Workstation OS Shell, Zero-Copy IPC & Multi-Tier Space OS Partitioning (`1. GATHER` -> `3. ACT` UX & OS Layer)
 * **Crate / Target:** `crates/ares-core-types`, `crates/ares-telemetry-ingest`, `crates/ares-server-cli`, `crates/ares-desktop-os` *(NEW — 8o crate)*, `ares-cockpit/`, `deploy/medos/`
-* **Owner Principale:** `@fabiomalagutti27-droid` (con integrazione `@fertech02`, `@carolina2910`, `@LelloXV`, `@MiServeRDC`)
+* **Owner Principale:** `ARES-Health Team` (con integrazione `ARES-Health Team`, `ARES-Health Team`, `ARES-Health Team`, `@MiServeRDC`)
 * **Studio Architetturale di Riferimento:** [`docs/architecture/RUST_OS_AND_SHELL_FEASIBILITY_STUDY.md`](../architecture/RUST_OS_AND_SHELL_FEASIBILITY_STUDY.md)
 
 #### Fase 21 (`J1`): Zero-Copy Binary Telemetry Protocol (`#[repr(C, align(64))]` `BinaryTelemetryFrame`), Validity Bitmask (`BEAT_INTERVALS_NOT_AVAILABLE`), and Shared-Memory Ring Buffer (`iceoryx2` / Lock-Free SPMC Seqlock Pattern)
@@ -473,7 +473,7 @@ flowchart TD
 ### BLOCCO K — System-Wide Verification, Clinical Chaos Engineering & `NASA-STD-3001` Certification Harness (`Fasi 25–28`)
 * **Architettura Master & Matrice Cross-Crate:** [`docs/plans/BLOCK_K_SYSTEM_TESTING_ARCHITECTURE.md`](BLOCK_K_SYSTEM_TESTING_ARCHITECTURE.md)
 * **Crate / Target:** Workspace completo (8 crate Rust + `ares-cockpit/` + `contracts/fixtures/` + `deploy/medos/` + `scripts/agent_probe.sh`)
-* **Owner Principale:** `@fabiomalagutti27-droid` (`test-architect-verifier` con `@MiServeRDC`, `@LelloXV`, `@fertech02`, `@carolina2910`)
+* **Owner Principale:** `ARES-Health Team` (`test-architect-verifier` con `@MiServeRDC`, `ARES-Health Team`, `ARES-Health Team`, `ARES-Health Team`)
 
 #### Fase 25 (`K1`): Mathematical, Dimensional & Property-Based Verification Suite (`proptest` / Algebraic Invariants Across ODEs, STL, Timestral Quantiles & Binary Layouts)
 * **Stato:** `[x] COMPLETED (TESTED)` (`12` K1 tests across `ares-core-types`, `ares-causal-graph`, `ares-nqs-stl`; Piano: [`docs/plans/phase_25_K1_property_based_numerical_ode_stl_verification.md`](phase_25_K1_property_based_numerical_ode_stl_verification.md))
@@ -500,7 +500,7 @@ flowchart TD
 ### BLOCCO L — Gap Closure, Operational Deployment, Edge AI Copilot, Clinical Calibration & NASA Space Apps 2026 Submission (`Fasi 29–34`)
 * **Architettura Master & Matrice Cross-Crate:** [`docs/plans/BLOCK_L_GAP_CLOSURE_ARCHITECTURE.md`](BLOCK_L_GAP_CLOSURE_ARCHITECTURE.md)
 * **Crate / Target:** Workspace completo (`ares-core-types`, `ares-telemetry-ingest`, `ares-causal-graph`, `ares-nqs-stl`, `ares-server-cli`, `crates/ares-desktop-os`), `ares-cockpit/`, `assets/models/`, `docs/submission/`, `scripts/`
-* **Owner Principale:** `@fabiomalagutti27-droid` (coordinato con `@carolina2910`, `@fertech02`, `@LelloXV`, `@MiServeRDC`)
+* **Owner Principale:** `ARES-Health Team` (coordinato con `ARES-Health Team`, `ARES-Health Team`, `ARES-Health Team`, `@MiServeRDC`)
 
 #### Fase 29 (`L1`): Authoritative Cockpit Live-Engine Bindings, Multi-Horizon `Timestral` Quantile Cones & 3D `UBERON:` / Air-Gapped `.glb` Visualization (`ares-cockpit/`)
 * **Stato:** `[x] COMPLETED (TESTED)` (`ares-cockpit` `npm run lint` + `vite build`, `15/15` Node tests across `7` suites; Piano: [`docs/plans/phase_29_L1_cockpit_live_bindings_3d_cones.md`](phase_29_L1_cockpit_live_bindings_3d_cones.md))
@@ -554,10 +554,10 @@ flowchart TD
   * Trait `WarmColumnarVectorBackend`: backend nativo default `ArrowIpcZstdHnswBackend` (`arrow-array`/`arrow-ipc`/`arrow-schema` `58.4.0` + `zstd 0.13.3` + `HnswVectorIndex` deterministico pure-Rust; `62` crate `100%` offline, `0` crate HTTP) + backend opzionale `--features lancedb-warm` (`lancedb 0.40.0` con guardia air-gap `validate_airgapped_lsah_dir()`), bitmap `NULL` nativi per Issue `#11`, e firme POCUS `128-D`/`256-D` marcate `ProceduralBModeSimulation` + `IllustrativeUnvalidated` con **Hard Gate 1** bloccato (Issue `#12`).
   * `ColdTierArchiver` (`ChaCha20-Poly1305` nonce monotono `(key_epoch_id, mission_sol, chunk_seq)` + `AAD` bidirezionale su `Sha256AuditLogger` + `DsnDownlinkOutbox`), route Axum `/api/lsah/*`, dispatch `FastMCP` (`<= 600 B`, mantenendo `tools/list == 8`) e pannello OLED `PocusLongitudinalHistory.tsx`.
 
-#### Fase 36 (`M2`): Multi-Branch Team Unification onto `main` (`fertech02`, `MiServeRDC`, `carolina2910`, `LelloXV`)
+#### Fase 36 (`M2`): Multi-Branch Team Unification onto `main` (`ARES-Health Team`, `MiServeRDC`, `ARES-Health Team`, `ARES-Health Team`)
 * **Stato:** `[x] COMPLETED (TESTED)` (Piani: [`docs/plans/phase_36_M2_branch_unification_merge.md`](phase_36_M2_branch_unification_merge.md) & [`docs/plans/BLOCK_M_MULTI_BRANCH_MERGE_EVALUATION_AND_PATCH_PLAN.md`](BLOCK_M_MULTI_BRANCH_MERGE_EVALUATION_AND_PATCH_PLAN.md))
 * **Specifica Tecnica:**
-  * Unifica controllatamente `work/fertech02` (`vitals_anomaly.rs`, `ewma_forecaster.rs`, `VitalsAnomalyPanel.tsx`, `50` CSV `data/bidmc_eval/bidmc_04..53_Numerics.csv` + `MANIFEST.json`), `work/MiServeRDC` (`5` mesh 3D Z-Anatomy `.glb` `CC-BY-SA-4.0` in `ares-cockpit/public/anatomy/` + `MANIFEST.json` + `AtlasBody.tsx`), `work/carolina2910` (`AiInjuryModal.tsx`, `vlmInjuryEngine.ts` air-gapped, `Imaging.tsx`, `BodyHeatmap.tsx`), e `work/LelloXV` (`1 Hz` native BIDMC replay cadence), preservando tutti i binding live `L1–L6`, zero `.unwrap()` e Issue `#11`/`#12`.
+  * Unifica controllatamente `work/ARES-Health Team` (`vitals_anomaly.rs`, `ewma_forecaster.rs`, `VitalsAnomalyPanel.tsx`, `50` CSV `data/bidmc_eval/bidmc_04..53_Numerics.csv` + `MANIFEST.json`), `work/MiServeRDC` (`5` mesh 3D Z-Anatomy `.glb` `CC-BY-SA-4.0` in `ares-cockpit/public/anatomy/` + `MANIFEST.json` + `AtlasBody.tsx`), `work/ARES-Health Team` (`AiInjuryModal.tsx`, `vlmInjuryEngine.ts` air-gapped, `Imaging.tsx`, `BodyHeatmap.tsx`), e `work/ARES-Health Team` (`1 Hz` native BIDMC replay cadence), preservando tutti i binding live `L1–L6`, zero `.unwrap()` e Issue `#11`/`#12`.
 
 #### Fase 37 (`M3`): End-to-End LSAH Database, Unified Multi-Branch Cockpit, `agent_probe.sh` & Typst Submission Certification
 * **Stato:** `[x] COMPLETED (TESTED)` (Piano: [`docs/plans/phase_37_M3_end_to_end_db_cockpit_verification.md`](phase_37_M3_end_to_end_db_cockpit_verification.md))
@@ -607,47 +607,47 @@ flowchart TD
 
 | Blocco | Fase | Piano Implementativo Dedicato (`docs/plans/`) | Crate Target | Owner | Latenza / Footprint Target | Stato |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Blocco A (Core)** | **Fase 01 (`A1`)** | [`phase_01_A1_core_telemetry_contracts_and_provenance_plan.md`](phase_01_A1_core_telemetry_contracts_and_provenance_plan.md) | `crates/ares-core-types` | `@fabiomalagutti27-droid` | `< 5 µs` (serde) | `[x] COMPLETED (TESTED)` |
-| **Blocco A (Core)** | **Fase 02 (`A2`)** | [`phase_02_A2_nasa_std_3001_constants_errors_and_security_traits_plan.md`](phase_02_A2_nasa_std_3001_constants_errors_and_security_traits_plan.md) | `crates/ares-core-types` | `@fabiomalagutti27-droid` | `0 ns` (`const`) | `[x] COMPLETED (TESTED)` |
-| **Blocco B** | **Fase 03 (`B1`)** | [`phase_03_B1_bidmc_reproducible_csv_replayer_and_null_handling_plan.md`](phase_03_B1_bidmc_reproducible_csv_replayer_and_null_handling_plan.md) | `crates/ares-telemetry-ingest` | `@LelloXV` | `< 20 µs/riga` | `[x] COMPLETED (TESTED)` |
-| **Blocco B** | **Fase 04 (`B2`)** | [`phase_04_B2_shannon_spectral_entropy_sqi_and_scenario_overlay_plan.md`](phase_04_B2_shannon_spectral_entropy_sqi_and_scenario_overlay_plan.md) | `crates/ares-telemetry-ingest` | `@LelloXV` | `< 15 µs` | `[x] COMPLETED (TESTED)` |
-| **Blocco C (Core)** | **Fase 05 (`C1`)** | [`phase_05_C1_frost_hargens_rk4_sclerostin_mqi_and_gai_plan.md`](phase_05_C1_frost_hargens_rk4_sclerostin_mqi_and_gai_plan.md) | `crates/ares-causal-graph` | `@fabiomalagutti27-droid` | `< 10 µs` (RK4) | `[x] COMPLETED (TESTED)` |
-| **Blocco C (Core)** | **Fase 06 (`C2`)** | [`phase_06_C2_jugular_shear_stress_lbnp_dose_response_and_sans_plan.md`](phase_06_C2_jugular_shear_stress_lbnp_dose_response_and_sans_plan.md) | `crates/ares-causal-graph` | `@fabiomalagutti27-droid` | `< 10 µs` | `[x] COMPLETED (TESTED)` |
-| **Blocco C (Core)** | **Fase 07 (`C3`)** | [`phase_07_C3_adhg_causal_petgraph_and_two_stage_bayesian_pocus_plan.md`](phase_07_C3_adhg_causal_petgraph_and_two_stage_bayesian_pocus_plan.md) | `crates/ares-causal-graph` | `@fabiomalagutti27-droid` | `< 25 µs` (ADHG) | `[x] COMPLETED (TESTED)` |
-| **Blocco D (Core)** | **Fase 08 (`D1`)** | [`phase_08_D1_nqs_stl_normalizer_and_lemire_o1_sliding_window_plan.md`](phase_08_D1_nqs_stl_normalizer_and_lemire_o1_sliding_window_plan.md) | `crates/ares-nqs-stl` | `@fabiomalagutti27-droid` | `< 10 µs` ($O(1)$) | `[x] COMPLETED (TESTED)` |
-| **Blocco D (Core)** | **Fase 09 (`D2`)** | [`phase_09_D2_ewma_ols_ttv_predictor_and_mission_readiness_index_plan.md`](phase_09_D2_ewma_ols_ttv_predictor_and_mission_readiness_index_plan.md) | `crates/ares-nqs-stl` | `@fabiomalagutti27-droid` | `< 15 µs` | `[x] COMPLETED (TESTED)` |
-| **Blocco E** | **Fase 10 (`E1`)** | [`phase_10_E1_type1_crystallized_medops_playbooks_dag_plan.md`](phase_10_E1_type1_crystallized_medops_playbooks_dag_plan.md) | `crates/ares-medops-playbooks` | `@fertech02` | `< 20 µs` (DAG) | `[x] COMPLETED (TESTED)` |
-| **Blocco E** | **Fase 11 (`E2`)** | [`phase_11_E2_three_hard_clinical_safety_gates_state_machine_plan.md`](phase_11_E2_three_hard_clinical_safety_gates_state_machine_plan.md) | `crates/ares-medops-playbooks` | `@fertech02` | `< 5 µs` (Gates) | `[x] COMPLETED (TESTED)` |
+| **Blocco A (Core)** | **Fase 01 (`A1`)** | [`phase_01_A1_core_telemetry_contracts_and_provenance_plan.md`](phase_01_A1_core_telemetry_contracts_and_provenance_plan.md) | `crates/ares-core-types` | `ARES-Health Team` | `< 5 µs` (serde) | `[x] COMPLETED (TESTED)` |
+| **Blocco A (Core)** | **Fase 02 (`A2`)** | [`phase_02_A2_nasa_std_3001_constants_errors_and_security_traits_plan.md`](phase_02_A2_nasa_std_3001_constants_errors_and_security_traits_plan.md) | `crates/ares-core-types` | `ARES-Health Team` | `0 ns` (`const`) | `[x] COMPLETED (TESTED)` |
+| **Blocco B** | **Fase 03 (`B1`)** | [`phase_03_B1_bidmc_reproducible_csv_replayer_and_null_handling_plan.md`](phase_03_B1_bidmc_reproducible_csv_replayer_and_null_handling_plan.md) | `crates/ares-telemetry-ingest` | `ARES-Health Team` | `< 20 µs/riga` | `[x] COMPLETED (TESTED)` |
+| **Blocco B** | **Fase 04 (`B2`)** | [`phase_04_B2_shannon_spectral_entropy_sqi_and_scenario_overlay_plan.md`](phase_04_B2_shannon_spectral_entropy_sqi_and_scenario_overlay_plan.md) | `crates/ares-telemetry-ingest` | `ARES-Health Team` | `< 15 µs` | `[x] COMPLETED (TESTED)` |
+| **Blocco C (Core)** | **Fase 05 (`C1`)** | [`phase_05_C1_frost_hargens_rk4_sclerostin_mqi_and_gai_plan.md`](phase_05_C1_frost_hargens_rk4_sclerostin_mqi_and_gai_plan.md) | `crates/ares-causal-graph` | `ARES-Health Team` | `< 10 µs` (RK4) | `[x] COMPLETED (TESTED)` |
+| **Blocco C (Core)** | **Fase 06 (`C2`)** | [`phase_06_C2_jugular_shear_stress_lbnp_dose_response_and_sans_plan.md`](phase_06_C2_jugular_shear_stress_lbnp_dose_response_and_sans_plan.md) | `crates/ares-causal-graph` | `ARES-Health Team` | `< 10 µs` | `[x] COMPLETED (TESTED)` |
+| **Blocco C (Core)** | **Fase 07 (`C3`)** | [`phase_07_C3_adhg_causal_petgraph_and_two_stage_bayesian_pocus_plan.md`](phase_07_C3_adhg_causal_petgraph_and_two_stage_bayesian_pocus_plan.md) | `crates/ares-causal-graph` | `ARES-Health Team` | `< 25 µs` (ADHG) | `[x] COMPLETED (TESTED)` |
+| **Blocco D (Core)** | **Fase 08 (`D1`)** | [`phase_08_D1_nqs_stl_normalizer_and_lemire_o1_sliding_window_plan.md`](phase_08_D1_nqs_stl_normalizer_and_lemire_o1_sliding_window_plan.md) | `crates/ares-nqs-stl` | `ARES-Health Team` | `< 10 µs` ($O(1)$) | `[x] COMPLETED (TESTED)` |
+| **Blocco D (Core)** | **Fase 09 (`D2`)** | [`phase_09_D2_ewma_ols_ttv_predictor_and_mission_readiness_index_plan.md`](phase_09_D2_ewma_ols_ttv_predictor_and_mission_readiness_index_plan.md) | `crates/ares-nqs-stl` | `ARES-Health Team` | `< 15 µs` | `[x] COMPLETED (TESTED)` |
+| **Blocco E** | **Fase 10 (`E1`)** | [`phase_10_E1_type1_crystallized_medops_playbooks_dag_plan.md`](phase_10_E1_type1_crystallized_medops_playbooks_dag_plan.md) | `crates/ares-medops-playbooks` | `ARES-Health Team` | `< 20 µs` (DAG) | `[x] COMPLETED (TESTED)` |
+| **Blocco E** | **Fase 11 (`E2`)** | [`phase_11_E2_three_hard_clinical_safety_gates_state_machine_plan.md`](phase_11_E2_three_hard_clinical_safety_gates_state_machine_plan.md) | `crates/ares-medops-playbooks` | `ARES-Health Team` | `< 5 µs` (Gates) | `[x] COMPLETED (TESTED)` |
 | **Blocco F** | **Fase 12 (`F1`)** | [`phase_12_F1_role_based_crew_privacy_sha256_audit_and_aead_plan.md`](phase_12_F1_role_based_crew_privacy_sha256_audit_and_aead_plan.md) | `crates/ares-security-privacy` | `@MiServeRDC` | `< 30 µs` (SHA/AEAD)| `[x] COMPLETED (TESTED)` |
-| **Blocco G** | **Fase 13 (`G1`)** | [`phase_13_G1_axum_20hz_websocket_and_sub_ms_stress_test_api_plan.md`](phase_13_G1_axum_20hz_websocket_and_sub_ms_stress_test_api_plan.md) | `crates/ares-server-cli` | `@fertech02` | `< 1 ms` (WS 20Hz) | `[x] COMPLETED (TESTED)` |
-| **Blocco G** | **Fase 14 (`G2`)** | [`phase_14_G2_fastmcp_stdio_jsonrpc_context_mode_server_plan.md`](phase_14_G2_fastmcp_stdio_jsonrpc_context_mode_server_plan.md) | `crates/ares-server-cli` | `@fertech02` | `< 500 µs` (MCP) | `[x] COMPLETED (TESTED)` |
-| **Blocco H (Core)** | **Fase 15 (`H1`)** | [`phase_15_H1_timestral_patch_scaler_rope_backbone.md`](phase_15_H1_timestral_patch_scaler_rope_backbone.md) | `crates/ares-nqs-stl` | `@fabiomalagutti27-droid` | `< 95 µs` patch / `< 6.5 ms` `1 Hz` | `[x] COMPLETED (TESTED)` |
-| **Blocco H (Core)** | **Fase 16 (`H2`)** | [`phase_16_H2_dhf_monotone_quantiles_conformal_gate.md`](phase_16_H2_dhf_monotone_quantiles_conformal_gate.md) | `crates/ares-nqs-stl` | `@fabiomalagutti27-droid` | `< 15 µs` (DHF + Gate) | `[x] COMPLETED (TESTED)` |
-| **Blocco H (Core)** | **Fase 17 (`H3`)** | [`phase_17_H3_async_1hz_forecaster_nqs_stl_bridge.md`](phase_17_H3_async_1hz_forecaster_nqs_stl_bridge.md) | `crates/ares-nqs-stl` & `ares-core-types` | `@fabiomalagutti27-droid` | `~180 ns` lock-free bridge | `[x] COMPLETED (TESTED)` |
-| **Blocco I (Core)** | **Fase 18 (`I1`)** | [`phase_18_I1_welford_longitudinal_compaction_spatial_deontic.md`](phase_18_I1_welford_longitudinal_compaction_spatial_deontic.md) | `crates/ares-causal-graph` | `@fabiomalagutti27-droid` | `< 18 µs` / `< 200 KB` (900d) | `[x] COMPLETED (TESTED)` |
-| **Blocco I (Core)** | **Fase 19 (`I2`)** | [`phase_19_I2_biokg_16byte_descriptor_epistemic_reasoner.md`](phase_19_I2_biokg_16byte_descriptor_epistemic_reasoner.md) | `crates/ares-causal-graph` & `ares-medops-playbooks` | `@fabiomalagutti27-droid` | `< 5 µs` (`16 B #[repr(C)]`) | `[x] COMPLETED (TESTED)` |
-| **Blocco I (Core)** | **Fase 20 (`I3`)** | [`phase_20_I3_unified_dataset_graph_builder_graphify_mcp.md`](phase_20_I3_unified_dataset_graph_builder_graphify_mcp.md) | `crates/ares-causal-graph` & `ares-server-cli` | `@fabiomalagutti27-droid` & `@fertech02` | `< 12 µs` / `158,675 B` JSON | `[x] COMPLETED (TESTED)` |
-| **Blocco J (`ARES-MedOS`)** | **Fase 21 (`J1`)** | [`phase_21_J1_zero_copy_binary_ipc_shm_protocol.md`](phase_21_J1_zero_copy_binary_ipc_shm_protocol.md) | `crates/ares-core-types` & `ares-server-cli` | `@fabiomalagutti27-droid` & `@fertech02` | `< 100 ns` (`128 B` Seqlock/`iceoryx2`) | `[x] COMPLETED (TESTED)` |
-| **Blocco J (`ARES-MedOS`)** | **Fase 22 (`J2`)** | [`phase_22_J2_ares_desktop_os_tauri_native_shell.md`](phase_22_J2_ares_desktop_os_tauri_native_shell.md) | `crates/ares-desktop-os` | `@fabiomalagutti27-droid` & `@fertech02` | `< 0.05 ms` IPC / `~30–50 MB` RAM | `[x] COMPLETED (TESTED)` |
-| **Blocco J (`ARES-MedOS`)** | **Fase 23 (`J3`)** | [`phase_23_J3_os_chrome_fastmcp_palette_dual_transport.md`](phase_23_J3_os_chrome_fastmcp_palette_dual_transport.md) | `ares-cockpit/` | `@fabiomalagutti27-droid` & `@carolina2910` | `< 10 µs` `DataView` / `< 150` tok MCP | `[x] COMPLETED (TESTED)` |
-| **Blocco J (`ARES-MedOS`)** | **Fase 24 (`J4`)** | [`phase_24_J4_asterinas_framekernel_hubris_wearable_targets.md`](phase_24_J4_asterinas_framekernel_hubris_wearable_targets.md) | `crates/ares-telemetry-ingest` (`wearable_packet.rs`) & `deploy/medos/` | `@fabiomalagutti27-droid` & `@LelloXV` | `< 150 ns` CRC-16 (`32 B`) / `14%` TCB | `[x] COMPLETED (TESTED)` |
-| **Blocco K (Testing)** | **Fase 25 (`K1`)** | [`phase_25_K1_property_based_numerical_ode_stl_verification.md`](phase_25_K1_property_based_numerical_ode_stl_verification.md) | `ares-core-types`, `ares-causal-graph`, `ares-nqs-stl` | `@fabiomalagutti27-droid` (`impl-k1-k2-tests`) | `10,000` trajectories / `16B/32B/128B` | `[x] COMPLETED (TESTED)` |
-| **Blocco K (Testing)** | **Fase 26 (`K2`)** | [`phase_26_K2_clinical_chaos_sensor_dropout_seu_fault_injection.md`](phase_26_K2_clinical_chaos_sensor_dropout_seu_fault_injection.md) | `ares-telemetry-ingest`, `ares-nqs-stl`, `ares-security-privacy` | `@fabiomalagutti27-droid` (`impl-k1-k2-tests`) | `100%` SEU CRC-8/16/32C & ZOH/AEAD | `[x] COMPLETED (TESTED)` |
-| **Blocco K (Testing)** | **Fase 27 (`K3`)** | [`phase_27_K3_full_stack_contract_cockpit_ipc_mcp_e2e.md`](phase_27_K3_full_stack_contract_cockpit_ipc_mcp_e2e.md) | `ares-server-cli`, `ares-desktop-os`, `ares-cockpit/` | `@fabiomalagutti27-droid` (`impl-k3-k4-tests`) | `128 B` parity / `8` `FastMCP` `<= 600 B` | `[x] COMPLETED (TESTED)` |
-| **Blocco K (Testing)** | **Fase 28 (`K4`)** | [`phase_28_K4_nasa_std_3001_compliance_latency_memory_benchmark.md`](phase_28_K4_nasa_std_3001_compliance_latency_memory_benchmark.md) | Workspace (8 crates) & `NASA-STD-3001` | `@fabiomalagutti27-droid` (`impl-k3-k4-tests`) | `5.58 µs` `p99.9` / `167 KB` & `196 KB` | `[x] COMPLETED (TESTED)` |
-| **Blocco L (Gap Closure)** | **Fase 29 (`L1`)** | [`phase_29_L1_cockpit_live_bindings_3d_cones.md`](phase_29_L1_cockpit_live_bindings_3d_cones.md) | `ares-cockpit/` (`PlaybookRunner`, `MriAndStl`, `BodyHeatmap`) | `@carolina2910` & `@fabiomalagutti27-droid` | `< 16.6 ms` (`60 FPS`) / `< 1 ms` POCUS | `[x] COMPLETED (TESTED)` |
-| **Blocco L (Gap Closure)** | **Fase 30 (`L2`)** | [`phase_30_L2_tauri_native_window_iceoryx2_ipc.md`](phase_30_L2_tauri_native_window_iceoryx2_ipc.md) | `crates/ares-desktop-os` & `ares-server-cli` (`shm_bus.rs`) | `@fabiomalagutti27-droid` & `@fertech02` | `< 50 µs` IPC / `< 100 ns` `iceoryx2` / `< 150 ns` | `[x] COMPLETED (TESTED)` |
-| **Blocco L (Gap Closure)** | **Fase 31 (`L3`)** | [`phase_31_L3_gather_radar_vocal_waveform_dsp.md`](phase_31_L3_gather_radar_vocal_waveform_dsp.md) | `crates/ares-telemetry-ingest` (`radar_csi`, `vocal`, `rr`) | `@LelloXV` & `@fabiomalagutti27-droid` | `< 15 µs` DSP / `< 28 KB` per crew | `[x] COMPLETED (TESTED)` |
-| **Blocco L (Gap Closure)** | **Fase 32 (`L4`)** | [`phase_32_L4_edge_llm_voice_copilot_safetensors.md`](phase_32_L4_edge_llm_voice_copilot_safetensors.md) | `ares-nqs-stl`, `ares-server-cli`, `ares-desktop-os`, `ares-cockpit` | `@fabiomalagutti27-droid` & `@fertech02` | `0 ns` 20Hz / `< 2.5 s` LLM / `< 5 ms` SafeTensors | `[x] COMPLETED (TESTED)` |
-| **Blocco L (Gap Closure)** | **Fase 33 (`L5`)** | [`phase_33_L5_clinical_calibration_24dataset_parquet.md`](phase_33_L5_clinical_calibration_24dataset_parquet.md) | `ares-core-types`, `ares-causal-graph`, `ares-nqs-stl`, `ares-calibrate` | `@fabiomalagutti27-droid` & `@MiServeRDC` | `< 250 ms` CLI audit / `0` network | `[x] COMPLETED (TESTED)` |
-| **Blocco L (Gap Closure)** | **Fase 34 (`L6`)** | [`phase_34_L6_nasa_submission_pitch_slides_pdf.md`](phase_34_L6_nasa_submission_pitch_slides_pdf.md) | `docs/submission/`, `PANORAMICA_*`, `scripts/build_submission_docs.sh` | `@fabiomalagutti27-droid` (Team Review) | `< 2.5 s` Typst + 6 CI Gates | `[x] COMPLETED (TESTED)` |
-| **Blocco M (LSAH & Unification)** | **Fase 35 (`M1`)** | [`phase_35_M1_lsah_3tier_persistence_issue26.md`](phase_35_M1_lsah_3tier_persistence_issue26.md) | `crates/ares-storage-lsah`, `ares-server-cli`, `ares-cockpit` | `@MiServeRDC` & `@fabiomalagutti27-droid` | `< 330 ns` Hot (`0` alloc) / `< 260 µs` HNSW | `[x] COMPLETED (TESTED)` |
-| **Blocco M (LSAH & Unification)** | **Fase 36 (`M2`)** | [`phase_36_M2_branch_unification_merge.md`](phase_36_M2_branch_unification_merge.md) | `ares-telemetry-ingest`, `ares-nqs-stl`, `ares-cockpit/`, `data/bidmc_eval/` | `@fabiomalagutti27-droid`, `@fertech02`, `@MiServeRDC`, `@carolina2910`, `@LelloXV` | `53` BIDMC CSVs / `5` `.glb` (`26.75 MB`) | `[x] COMPLETED (TESTED)` |
-| **Blocco M (LSAH & Unification)** | **Fase 37 (`M3`)** | [`phase_37_M3_end_to_end_db_cockpit_verification.md`](phase_37_M3_end_to_end_db_cockpit_verification.md) | Workspace (`9` crates), `ares-cockpit/`, `scripts/agent_probe.sh`, `Typst` | `@fabiomalagutti27-droid` & `@MiServeRDC` (Full Team) | `p99.9 < 150 µs` (`--release` + I/O) / `8` Gates | `[x] COMPLETED (TESTED)` |
-| **Blocco N (Clinical Medicine)** | **Fase 38 (`N1`)** | [`phase_38_N1_wearable_suite_v2_poct_ingest.md`](phase_38_N1_wearable_suite_v2_poct_ingest.md) | `ares-core-types`, `ares-telemetry-ingest` | `@fabiomalagutti27-droid` & `@LelloXV` | `< 350 ns` (`64 B` V2 + `R-R` accumulator) | `[ ] PLANNED` |
-| **Blocco N (Clinical Medicine)** | **Fase 39 (`N2`)** | [`phase_39_N2_renal_stone_rsr_plasma_volume_hemodynamics.md`](phase_39_N2_renal_stone_rsr_plasma_volume_hemodynamics.md) | `ares-causal-graph` | `@fabiomalagutti27-droid` | `< 25 µs` (RSR + Gauer-Henry + $\mu(\text{Hct})$) | `[ ] PLANNED` |
-| **Blocco N (Clinical Medicine)** | **Fase 40 (`N3`)** | [`phase_40_N3_mars_sol_circadian_cognitive_immune_viral.md`](phase_40_N3_mars_sol_circadian_cognitive_immune_viral.md) | `ares-causal-graph`, `ares-nqs-stl` | `@fabiomalagutti27-droid` & `@fertech02` | `< 35 µs` (13 nodi ADHG + Lemire $O(1)$) | `[ ] PLANNED` |
-| **Blocco N (Clinical Medicine)** | **Fase 41 (`N4`)** | [`phase_41_N4_multiorgan_pocus_playbooks10_15_gate4.md`](phase_41_N4_multiorgan_pocus_playbooks10_15_gate4.md) | `ares-medops-playbooks`, `ares-storage-lsah`, `ares-cockpit` | `@fabiomalagutti27-droid`, `@carolina2910`, `@MiServeRDC` | `< 25 µs` DAG 15 Playbook / Gate 4 | `[ ] PLANNED` |
+| **Blocco G** | **Fase 13 (`G1`)** | [`phase_13_G1_axum_20hz_websocket_and_sub_ms_stress_test_api_plan.md`](phase_13_G1_axum_20hz_websocket_and_sub_ms_stress_test_api_plan.md) | `crates/ares-server-cli` | `ARES-Health Team` | `< 1 ms` (WS 20Hz) | `[x] COMPLETED (TESTED)` |
+| **Blocco G** | **Fase 14 (`G2`)** | [`phase_14_G2_fastmcp_stdio_jsonrpc_context_mode_server_plan.md`](phase_14_G2_fastmcp_stdio_jsonrpc_context_mode_server_plan.md) | `crates/ares-server-cli` | `ARES-Health Team` | `< 500 µs` (MCP) | `[x] COMPLETED (TESTED)` |
+| **Blocco H (Core)** | **Fase 15 (`H1`)** | [`phase_15_H1_timestral_patch_scaler_rope_backbone.md`](phase_15_H1_timestral_patch_scaler_rope_backbone.md) | `crates/ares-nqs-stl` | `ARES-Health Team` | `< 95 µs` patch / `< 6.5 ms` `1 Hz` | `[x] COMPLETED (TESTED)` |
+| **Blocco H (Core)** | **Fase 16 (`H2`)** | [`phase_16_H2_dhf_monotone_quantiles_conformal_gate.md`](phase_16_H2_dhf_monotone_quantiles_conformal_gate.md) | `crates/ares-nqs-stl` | `ARES-Health Team` | `< 15 µs` (DHF + Gate) | `[x] COMPLETED (TESTED)` |
+| **Blocco H (Core)** | **Fase 17 (`H3`)** | [`phase_17_H3_async_1hz_forecaster_nqs_stl_bridge.md`](phase_17_H3_async_1hz_forecaster_nqs_stl_bridge.md) | `crates/ares-nqs-stl` & `ares-core-types` | `ARES-Health Team` | `~180 ns` lock-free bridge | `[x] COMPLETED (TESTED)` |
+| **Blocco I (Core)** | **Fase 18 (`I1`)** | [`phase_18_I1_welford_longitudinal_compaction_spatial_deontic.md`](phase_18_I1_welford_longitudinal_compaction_spatial_deontic.md) | `crates/ares-causal-graph` | `ARES-Health Team` | `< 18 µs` / `< 200 KB` (900d) | `[x] COMPLETED (TESTED)` |
+| **Blocco I (Core)** | **Fase 19 (`I2`)** | [`phase_19_I2_biokg_16byte_descriptor_epistemic_reasoner.md`](phase_19_I2_biokg_16byte_descriptor_epistemic_reasoner.md) | `crates/ares-causal-graph` & `ares-medops-playbooks` | `ARES-Health Team` | `< 5 µs` (`16 B #[repr(C)]`) | `[x] COMPLETED (TESTED)` |
+| **Blocco I (Core)** | **Fase 20 (`I3`)** | [`phase_20_I3_unified_dataset_graph_builder_graphify_mcp.md`](phase_20_I3_unified_dataset_graph_builder_graphify_mcp.md) | `crates/ares-causal-graph` & `ares-server-cli` | `ARES-Health Team` & `ARES-Health Team` | `< 12 µs` / `158,675 B` JSON | `[x] COMPLETED (TESTED)` |
+| **Blocco J (`ARES-MedOS`)** | **Fase 21 (`J1`)** | [`phase_21_J1_zero_copy_binary_ipc_shm_protocol.md`](phase_21_J1_zero_copy_binary_ipc_shm_protocol.md) | `crates/ares-core-types` & `ares-server-cli` | `ARES-Health Team` & `ARES-Health Team` | `< 100 ns` (`128 B` Seqlock/`iceoryx2`) | `[x] COMPLETED (TESTED)` |
+| **Blocco J (`ARES-MedOS`)** | **Fase 22 (`J2`)** | [`phase_22_J2_ares_desktop_os_tauri_native_shell.md`](phase_22_J2_ares_desktop_os_tauri_native_shell.md) | `crates/ares-desktop-os` | `ARES-Health Team` & `ARES-Health Team` | `< 0.05 ms` IPC / `~30–50 MB` RAM | `[x] COMPLETED (TESTED)` |
+| **Blocco J (`ARES-MedOS`)** | **Fase 23 (`J3`)** | [`phase_23_J3_os_chrome_fastmcp_palette_dual_transport.md`](phase_23_J3_os_chrome_fastmcp_palette_dual_transport.md) | `ares-cockpit/` | `ARES-Health Team` & `ARES-Health Team` | `< 10 µs` `DataView` / `< 150` tok MCP | `[x] COMPLETED (TESTED)` |
+| **Blocco J (`ARES-MedOS`)** | **Fase 24 (`J4`)** | [`phase_24_J4_asterinas_framekernel_hubris_wearable_targets.md`](phase_24_J4_asterinas_framekernel_hubris_wearable_targets.md) | `crates/ares-telemetry-ingest` (`wearable_packet.rs`) & `deploy/medos/` | `ARES-Health Team` & `ARES-Health Team` | `< 150 ns` CRC-16 (`32 B`) / `14%` TCB | `[x] COMPLETED (TESTED)` |
+| **Blocco K (Testing)** | **Fase 25 (`K1`)** | [`phase_25_K1_property_based_numerical_ode_stl_verification.md`](phase_25_K1_property_based_numerical_ode_stl_verification.md) | `ares-core-types`, `ares-causal-graph`, `ares-nqs-stl` | `ARES-Health Team` (`impl-k1-k2-tests`) | `10,000` trajectories / `16B/32B/128B` | `[x] COMPLETED (TESTED)` |
+| **Blocco K (Testing)** | **Fase 26 (`K2`)** | [`phase_26_K2_clinical_chaos_sensor_dropout_seu_fault_injection.md`](phase_26_K2_clinical_chaos_sensor_dropout_seu_fault_injection.md) | `ares-telemetry-ingest`, `ares-nqs-stl`, `ares-security-privacy` | `ARES-Health Team` (`impl-k1-k2-tests`) | `100%` SEU CRC-8/16/32C & ZOH/AEAD | `[x] COMPLETED (TESTED)` |
+| **Blocco K (Testing)** | **Fase 27 (`K3`)** | [`phase_27_K3_full_stack_contract_cockpit_ipc_mcp_e2e.md`](phase_27_K3_full_stack_contract_cockpit_ipc_mcp_e2e.md) | `ares-server-cli`, `ares-desktop-os`, `ares-cockpit/` | `ARES-Health Team` (`impl-k3-k4-tests`) | `128 B` parity / `8` `FastMCP` `<= 600 B` | `[x] COMPLETED (TESTED)` |
+| **Blocco K (Testing)** | **Fase 28 (`K4`)** | [`phase_28_K4_nasa_std_3001_compliance_latency_memory_benchmark.md`](phase_28_K4_nasa_std_3001_compliance_latency_memory_benchmark.md) | Workspace (8 crates) & `NASA-STD-3001` | `ARES-Health Team` (`impl-k3-k4-tests`) | `5.58 µs` `p99.9` / `167 KB` & `196 KB` | `[x] COMPLETED (TESTED)` |
+| **Blocco L (Gap Closure)** | **Fase 29 (`L1`)** | [`phase_29_L1_cockpit_live_bindings_3d_cones.md`](phase_29_L1_cockpit_live_bindings_3d_cones.md) | `ares-cockpit/` (`PlaybookRunner`, `MriAndStl`, `BodyHeatmap`) | `ARES-Health Team` & `ARES-Health Team` | `< 16.6 ms` (`60 FPS`) / `< 1 ms` POCUS | `[x] COMPLETED (TESTED)` |
+| **Blocco L (Gap Closure)** | **Fase 30 (`L2`)** | [`phase_30_L2_tauri_native_window_iceoryx2_ipc.md`](phase_30_L2_tauri_native_window_iceoryx2_ipc.md) | `crates/ares-desktop-os` & `ares-server-cli` (`shm_bus.rs`) | `ARES-Health Team` & `ARES-Health Team` | `< 50 µs` IPC / `< 100 ns` `iceoryx2` / `< 150 ns` | `[x] COMPLETED (TESTED)` |
+| **Blocco L (Gap Closure)** | **Fase 31 (`L3`)** | [`phase_31_L3_gather_radar_vocal_waveform_dsp.md`](phase_31_L3_gather_radar_vocal_waveform_dsp.md) | `crates/ares-telemetry-ingest` (`radar_csi`, `vocal`, `rr`) | `ARES-Health Team` & `ARES-Health Team` | `< 15 µs` DSP / `< 28 KB` per crew | `[x] COMPLETED (TESTED)` |
+| **Blocco L (Gap Closure)** | **Fase 32 (`L4`)** | [`phase_32_L4_edge_llm_voice_copilot_safetensors.md`](phase_32_L4_edge_llm_voice_copilot_safetensors.md) | `ares-nqs-stl`, `ares-server-cli`, `ares-desktop-os`, `ares-cockpit` | `ARES-Health Team` & `ARES-Health Team` | `0 ns` 20Hz / `< 2.5 s` LLM / `< 5 ms` SafeTensors | `[x] COMPLETED (TESTED)` |
+| **Blocco L (Gap Closure)** | **Fase 33 (`L5`)** | [`phase_33_L5_clinical_calibration_24dataset_parquet.md`](phase_33_L5_clinical_calibration_24dataset_parquet.md) | `ares-core-types`, `ares-causal-graph`, `ares-nqs-stl`, `ares-calibrate` | `ARES-Health Team` & `@MiServeRDC` | `< 250 ms` CLI audit / `0` network | `[x] COMPLETED (TESTED)` |
+| **Blocco L (Gap Closure)** | **Fase 34 (`L6`)** | [`phase_34_L6_nasa_submission_pitch_slides_pdf.md`](phase_34_L6_nasa_submission_pitch_slides_pdf.md) | `docs/submission/`, `PANORAMICA_*`, `scripts/build_submission_docs.sh` | `ARES-Health Team` (Team Review) | `< 2.5 s` Typst + 6 CI Gates | `[x] COMPLETED (TESTED)` |
+| **Blocco M (LSAH & Unification)** | **Fase 35 (`M1`)** | [`phase_35_M1_lsah_3tier_persistence_issue26.md`](phase_35_M1_lsah_3tier_persistence_issue26.md) | `crates/ares-storage-lsah`, `ares-server-cli`, `ares-cockpit` | `@MiServeRDC` & `ARES-Health Team` | `< 330 ns` Hot (`0` alloc) / `< 260 µs` HNSW | `[x] COMPLETED (TESTED)` |
+| **Blocco M (LSAH & Unification)** | **Fase 36 (`M2`)** | [`phase_36_M2_branch_unification_merge.md`](phase_36_M2_branch_unification_merge.md) | `ares-telemetry-ingest`, `ares-nqs-stl`, `ares-cockpit/`, `data/bidmc_eval/` | `ARES-Health Team`, `ARES-Health Team`, `@MiServeRDC`, `ARES-Health Team`, `ARES-Health Team` | `53` BIDMC CSVs / `5` `.glb` (`26.75 MB`) | `[x] COMPLETED (TESTED)` |
+| **Blocco M (LSAH & Unification)** | **Fase 37 (`M3`)** | [`phase_37_M3_end_to_end_db_cockpit_verification.md`](phase_37_M3_end_to_end_db_cockpit_verification.md) | Workspace (`9` crates), `ares-cockpit/`, `scripts/agent_probe.sh`, `Typst` | `ARES-Health Team` & `@MiServeRDC` (Full Team) | `p99.9 < 150 µs` (`--release` + I/O) / `8` Gates | `[x] COMPLETED (TESTED)` |
+| **Blocco N (Clinical Medicine)** | **Fase 38 (`N1`)** | [`phase_38_N1_wearable_suite_v2_poct_ingest.md`](phase_38_N1_wearable_suite_v2_poct_ingest.md) | `ares-core-types`, `ares-telemetry-ingest` | `ARES-Health Team` & `ARES-Health Team` | `< 350 ns` (`64 B` V2 + `R-R` accumulator) | `[ ] PLANNED` |
+| **Blocco N (Clinical Medicine)** | **Fase 39 (`N2`)** | [`phase_39_N2_renal_stone_rsr_plasma_volume_hemodynamics.md`](phase_39_N2_renal_stone_rsr_plasma_volume_hemodynamics.md) | `ares-causal-graph` | `ARES-Health Team` | `< 25 µs` (RSR + Gauer-Henry + $\mu(\text{Hct})$) | `[ ] PLANNED` |
+| **Blocco N (Clinical Medicine)** | **Fase 40 (`N3`)** | [`phase_40_N3_mars_sol_circadian_cognitive_immune_viral.md`](phase_40_N3_mars_sol_circadian_cognitive_immune_viral.md) | `ares-causal-graph`, `ares-nqs-stl` | `ARES-Health Team` & `ARES-Health Team` | `< 35 µs` (13 nodi ADHG + Lemire $O(1)$) | `[ ] PLANNED` |
+| **Blocco N (Clinical Medicine)** | **Fase 41 (`N4`)** | [`phase_41_N4_multiorgan_pocus_playbooks10_15_gate4.md`](phase_41_N4_multiorgan_pocus_playbooks10_15_gate4.md) | `ares-medops-playbooks`, `ares-storage-lsah`, `ares-cockpit` | `ARES-Health Team`, `ARES-Health Team`, `@MiServeRDC` | `< 25 µs` DAG 15 Playbook / Gate 4 | `[ ] PLANNED` |
 
 ---
 

@@ -4,7 +4,7 @@
 - **Fase**: Fase 19 (`I2`)
 - **Stato**: PIANO DEFINITIVO APPROVATO PER IMPLEMENTAZIONE (`READY FOR IMPLEMENTATION`)
 - **Crate Principali**: [`crates/ares-causal-graph`](../../crates/ares-causal-graph/README.md) & [`crates/ares-medops-playbooks`](../../crates/ares-medops-playbooks/README.md)
-- **Owner Principale**: `@fabiomalagutti27-droid` (con integrazione Playbooks `@fertech02`)
+- **Owner Principale**: `ARES-Health Team` (con integrazione Playbooks `ARES-Health Team`)
 - **File Target Previsti**:
   1. `crates/ares-causal-graph/src/biokg_ontology.rs` *(NEW)*
   2. `crates/ares-causal-graph/src/lib.rs` *(UPDATE)*

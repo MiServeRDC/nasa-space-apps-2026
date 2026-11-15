@@ -6,7 +6,7 @@
 - **Architettura Master di Blocco**: [`BLOCK_K_SYSTEM_TESTING_ARCHITECTURE.md`](BLOCK_K_SYSTEM_TESTING_ARCHITECTURE.md)
 - **Crate & Directory Target**: `crates/ares-server-cli`, `crates/ares-desktop-os`, `crates/ares-causal-graph`, `ares-cockpit/`
 - **Piani & Studi di Riferimento**: [`phase_13_G1`](phase_13_G1_axum_20hz_websocket_and_sub_ms_stress_test_api_plan.md), [`phase_14_G2`](phase_14_G2_fastmcp_stdio_jsonrpc_context_mode_server_plan.md), [`phase_20_I3`](phase_20_I3_unified_dataset_graph_builder_graphify_mcp.md), [`phase_21_J1`](phase_21_J1_zero_copy_binary_ipc_shm_protocol.md), [`phase_22_J2`](phase_22_J2_ares_desktop_os_tauri_native_shell.md), [`phase_23_J3`](phase_23_J3_os_chrome_fastmcp_palette_dual_transport.md)
-- **Owner Principale**: `@fertech02` & `@carolina2910` (con supervisione `@fabiomalagutti27-droid`)
+- **Owner Principale**: `ARES-Health Team` & `ARES-Health Team` (con supervisione `ARES-Health Team`)
 - **File Target Previsti**:
   1. `crates/ares-server-cli/tests/e2e_dual_clock_http_and_mcp.rs` *(NEW — test HTTP `/api/snapshot`, `/api/binary-frame`, `/api/os-status`, `POST /api/stress-test`, `POST /api/mcp`, `WS /ws/telemetry` + invarianza doppio clock `1 Hz`/`20 Hz`)*
   2. `crates/ares-desktop-os/tests/e2e_ipc_and_binary_fixture_export.rs` *(NEW — verifica `AresMedOsWorkstationShell` / `DesktopShellConfig` in-process in `crates/ares-desktop-os/src/lib.rs` e generazione vettore binario `128 B` condiviso con TypeScript)*

@@ -32,9 +32,9 @@ No clinical threshold is introduced. Unit tests establish software behavior, not
 
 ## Integration checklist for later updates
 
-- Lello's cached native-sample SQI tuple must not reintroduce HRV through `biometrics_with_signal_quality`.
+- ARES-Health Team's cached native-sample SQI tuple must not reintroduce HRV through `biometrics_with_signal_quality`.
 - Fertech's alternate transport already uses nullable HRV; preserve that behavior and map nullable margins when integrating it.
-- Carolina's frontend must render unavailable values and handle `DATA_DEGRADED_MISSING_CHANNELS` without healthy defaults.
+- ARES-Health Team's frontend must render unavailable values and handle `DATA_DEGRADED_MISSING_CHANNELS` without healthy defaults.
 - Recheck schema, JSON field naming, null propagation and #10 cadence after each integration. The current main contains no executable cockpit, so browser acceptance remains outstanding.
 
 

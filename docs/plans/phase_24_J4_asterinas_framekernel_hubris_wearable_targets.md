@@ -5,7 +5,7 @@
 - **Stato**: PIANO DEFINITIVO APPROVATO PER IMPLEMENTAZIONE (`READY FOR IMPLEMENTATION`)
 - **Crate & Directory Target**: `crates/ares-telemetry-ingest/src/wearable_frame.rs` *(NEW)*, `deploy/medos/` *(NEW)*, `scripts/launch_ares_medos.sh` *(NEW)*
 - **Studio Architetturale di Riferimento**: [`docs/architecture/RUST_OS_AND_SHELL_FEASIBILITY_STUDY.md`](../architecture/RUST_OS_AND_SHELL_FEASIBILITY_STUDY.md)
-- **Owner Principale**: `@fabiomalagutti27-droid` & `@LelloXV` (con revisione sicurezza `@MiServeRDC`)
+- **Owner Principale**: `ARES-Health Team` & `ARES-Health Team` (con revisione sicurezza `@MiServeRDC`)
 - **File Target Previsti**:
   1. `crates/ares-telemetry-ingest/src/wearable_frame.rs` *(NEW — `#[repr(C)]` `WearableSensorPacket` da 32 byte, CRC-16-CCITT, contatore SEU `supervisor_restart_count`, decoder verso `Biometrics`)*
   2. `crates/ares-telemetry-ingest/src/lib.rs` *(UPDATE — esportazione `wearable_frame`)*

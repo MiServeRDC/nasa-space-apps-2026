@@ -6,7 +6,7 @@
 - **Fase**: Fase 01 (`A1`)
 - **Stato**: PIANO DEFINITIVO APPROVATO PER IMPLEMENTAZIONE (`READY FOR IMPLEMENTATION`)
 - **Crate Principale**: [`crates/ares-core-types`](../../crates/ares-core-types/README.md)
-- **Owner Principale**: `@fabiomalagutti27-droid` (con revisione contrattuale `@MiServeRDC`, Issue #4)
+- **Owner Principale**: `ARES-Health Team` (con revisione contrattuale `@MiServeRDC`, Issue #4)
 - **File Target Previsti**:
   1. `crates/ares-core-types/Cargo.toml` *(NEW)*
   2. `crates/ares-core-types/src/lib.rs` *(NEW)*

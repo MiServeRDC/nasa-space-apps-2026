@@ -1,13 +1,13 @@
 # Phase 35 (`M1`): 3-Tier LSAH Persistence Engine — Hot Zero-Alloc Ring Buffer, Modular Columnar/Vector Store & Tamper-Evident Cold AEAD DSN Archive (GitHub Issue `#26`)
 
 - **Phase ID:** `Phase 35 (M1)` — Block M (`Phases 35–37`: 3-Tier LSAH Persistence, Multi-Branch Unification & E2E Flight-Readiness Verification)
-- **GitHub Issue Addressed:** [`Issue #26`](https://github.com/fabiomalagutti27-droid/ARES-Health/issues/26) — *`feat(storage): Implement 3-Tier LSAH Persistence: Hot Ring Buffer, Warm Embedded Columnar/Vector Store, Cold AEAD DSN Archive`* (authored by `@MiServeRDC`)
+- **GitHub Issue Addressed:** [`Issue #26`](https://github.com/ARES-Health Team/ARES-Health/issues/26) — *`feat(storage): Implement 3-Tier LSAH Persistence: Hot Ring Buffer, Warm Embedded Columnar/Vector Store, Cold AEAD DSN Archive`* (authored by `@MiServeRDC`)
 - **Status:** `[ ] PLANNED (ARCHITECTED & ACADEMICALLY VERIFIED)`
 - **Target Crates & Modules:**
   - **New 9th Workspace Crate:** `crates/ares-storage-lsah` (`MIT OR Apache-2.0`, Rust Edition 2024)
   - **Backend Integration:** `crates/ares-core-types` (shared DTOs & provenance enums), `crates/ares-security-privacy` (`Sha256AuditLogger` bidirectional `AAD` hook & `[V1 3003]` `CrewRole` filter), `crates/ares-server-cli` (`SharedMissionState`, `/api/lsah/*` Axum routes, `FastMCP` `tools/call` dispatch), `crates/ares-desktop-os` (`Tauri v2` IPC proxy)
   - **Cockpit Integration:** `ares-cockpit/src/modules/analysis-imaging/PocusLongitudinalHistory.tsx` & `ares-cockpit/src/modules/analysis-imaging/Imaging.tsx` (`PocusIjv` longitudinal `Sol 180` vs `Sol 1` ANN comparison panel)
-- **Primary Owners:** `@MiServeRDC` & `@fabiomalagutti27-droid`
+- **Primary Owners:** `@MiServeRDC` & `ARES-Health Team`
 - **Parent Architecture & Sibling Plans:**
   - Block M Architecture: [`BLOCK_M_GAP_CLOSURE_ARCHITECTURE.md`](BLOCK_M_GAP_CLOSURE_ARCHITECTURE.md)
   - Master Plan: [`RUST_ENGINE_PHASED_MASTER_PLAN.md`](RUST_ENGINE_PHASED_MASTER_PLAN.md)
@@ -279,7 +279,7 @@ pub struct HotLsahSlot {
     pub vocal_jitter_pct: f32,          // 176..180 [V1 3003] restricted vocal biomarker
     pub vocal_shimmer_db: f32,          // 180..184 [V1 3003] restricted vocal biomarker
     pub vocal_hnr_db: f32,              // 184..188 [V1 3003] restricted vocal biomarker
-    pub vitals_anomaly_score: f32,      // 188..192 reserved for M2 fertech02 anomaly integration
+    pub vitals_anomaly_score: f32,      // 188..192 reserved for M2 ARES-Health Team anomaly integration
 
     // Cache Line 3 (64 B): Per-organ NQS-STL margins & Timestral 1 Hz bridge cone
     pub rho_cardio: f32,                // 192..196

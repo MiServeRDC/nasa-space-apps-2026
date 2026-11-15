@@ -6,7 +6,7 @@
 - **Architettura Master di Blocco**: [`BLOCK_K_SYSTEM_TESTING_ARCHITECTURE.md`](BLOCK_K_SYSTEM_TESTING_ARCHITECTURE.md)
 - **Crate Target**: `crates/ares-telemetry-ingest`, `crates/ares-core-types`, `crates/ares-causal-graph`, `crates/ares-nqs-stl`, `crates/ares-medops-playbooks`, `crates/ares-security-privacy`
 - **Piani & Studi di Riferimento**: [`phase_04_B2`](phase_04_B2_shannon_spectral_entropy_sqi_and_scenario_overlay_plan.md), [`phase_11_E2`](phase_11_E2_three_hard_clinical_safety_gates_state_machine_plan.md), [`phase_12_F1`](phase_12_F1_role_based_crew_privacy_sha256_audit_and_aead_plan.md), [`phase_16_H2`](phase_16_H2_dhf_monotone_quantiles_conformal_gate.md), [`phase_19_I2`](phase_19_I2_biokg_16byte_descriptor_epistemic_reasoner.md), [`phase_21_J1`](phase_21_J1_zero_copy_binary_ipc_shm_protocol.md), [`phase_24_J4`](phase_24_J4_asterinas_framekernel_hubris_wearable_targets.md)
-- **Owner Principale**: `@MiServeRDC` & `@LelloXV` (con revisione `@fabiomalagutti27-droid`)
+- **Owner Principale**: `@MiServeRDC` & `ARES-Health Team` (con revisione `ARES-Health Team`)
 - **File Target Previsti**:
   1. `crates/ares-telemetry-ingest/tests/chaos_sensor_dropout_and_seu.rs` *(NEW — dropout multi-canale, `ZOH` 30s timeout, `BEAT_INTERVALS_NOT_AVAILABLE`, SEU bit-flip su `WearableSensorPacket`)*
   2. `crates/ares-nqs-stl/tests/chaos_conformal_abstention_bursts.rs` *(NEW — derive di copertura Conformal PID, `AbstentionCertificate` sotto burst da artefatto motorio `ARED`)*

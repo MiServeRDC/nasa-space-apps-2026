@@ -4,7 +4,7 @@
 - **Fase**: Fase 20 (`I3`)
 - **Stato**: PIANO DEFINITIVO APPROVATO PER IMPLEMENTAZIONE (`READY FOR IMPLEMENTATION`)
 - **Crate Principali**: [`crates/ares-causal-graph`](../../crates/ares-causal-graph/README.md) & [`crates/ares-server-cli`](../../crates/ares-server-cli/README.md)
-- **Owner Principale**: `@fabiomalagutti27-droid` & `@fertech02`
+- **Owner Principale**: `ARES-Health Team` & `ARES-Health Team`
 - **File Target Previsti**:
   1. `crates/ares-causal-graph/src/unified_dataset_graph.rs` *(NEW)*
   2. `crates/ares-server-cli/src/mcp_stdio.rs` *(UPDATE — aggiunta query di provenienza grafo)*

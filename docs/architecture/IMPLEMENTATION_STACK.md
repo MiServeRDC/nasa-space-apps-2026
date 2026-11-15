@@ -1,6 +1,6 @@
 # ARES-HEALTH IMPLEMENTATION STACK: Crate Rust, Repository, Tool & Grounding Scientifico
 
-> **Tag di Tracciabilita:** `[FABIO, IMPLEMENTATION]` | `[ARES-HEALTH, RUST-ENGINE]`  
+> **Tag di Tracciabilita:** `[CORE-ENGINE, IMPLEMENTATION]` | `[ARES-HEALTH, RUST-ENGINE]`  
 > **Ruolo:** Principal Aerospace Systems Architect & Senior Rust Engineer (Core Mathematical Engine, Causal Graph ADHG, NQS-STL Online Monitor, FastMCP Server)  
 > **Data Ultimo Aggiornamento:** 2026-11-14  
 > **Ambiente di Riferimento:** macOS Apple Silicon (M1–M6 Metal) & Linux x86_64 | Rust 2024 Edition (`Zero .unwrap() / Zero .expect()`)
@@ -40,7 +40,7 @@ Questo documento traccia formalmente:
 
 Nel workspace di **ARES-Health**, la parte Rust si divide in due livelli concentrici:
 
-### Livello 1 — Il "Motore Rust" Matematico, Causale e Predittivo (Core Engine — Owner: `@fabiomalagutti27-droid`)
+### Livello 1 — Il "Motore Rust" Matematico, Causale e Predittivo (Core Engine — Owner: `ARES-Health Team`)
 È il cuore scientifico e algoritmico puro (privo di dipendenze di rete o I/O bloccante, eseguibile in $< 150\,\mu\text{s}$ per frame) ed è ripartito in **3 crate**:
 1. **`crates/ares-core-types`** (*Fondamenta Contrattuali & Costanti Normative*):
    * Definisce tutte le struct tipizzate di [`contracts/telemetry_schema.json`](../../contracts/telemetry_schema.json), i tipi di errore `thiserror`, le costanti di **NASA-STD-3001 Vol. 1 Rev C & Vol. 2 Rev F**, e i trait astratti di sicurezza (`CrewPrivacyFilter`, `MedOpsAuditLogger`, `McpInputSanitizer`).
@@ -60,14 +60,14 @@ Nel workspace di **ARES-Health**, la parte Rust si divide in due livelli concent
 
 ### Livello 2 — I 4 Crate di Pipeline, Sicurezza, Decisione e Trasporto del Backend Rust
 Si innestano direttamente sul Motore Rust Core per completare il ciclo `1. GATHER -> 2. EVALUATE -> 3. ACT`:
-4. **`crates/ares-telemetry-ingest`** (*Owner: `@LelloXV`*): Replay deterministico a `1 Hz` dei CSV reali [`data/bidmc/bidmc_01..03_Numerics.csv`](../../data/bidmc/README.md), trimming degli header con spazio iniziale, gestione `Option<f64>::None` per i 13 valori mancanti di `bidmc_01`, filtro anti-artefatto da movimento basato sull'entropia spettrale di Shannon (`SQI >= 0.70`) e fusione con gli input simulati di scenario (`What-If Console`).
-5. **`crates/ares-medops-playbooks`** (*Owner: `@fertech02`*): Esecutore DAG deterministico (*Type 1 Crystallized Playbooks*) dei Playbook `#01–#05` e applicazione inflessibile dei **3 Hard Clinical Safety Gates** (blocco anticoagulanti senza trombo POCUS confermato, auto-vent camera LBNP anti-sincope, smorzamento caviglia tuta EVA a $0.38g$).
+4. **`crates/ares-telemetry-ingest`** (*Owner: `ARES-Health Team`*): Replay deterministico a `1 Hz` dei CSV reali [`data/bidmc/bidmc_01..03_Numerics.csv`](../../data/bidmc/README.md), trimming degli header con spazio iniziale, gestione `Option<f64>::None` per i 13 valori mancanti di `bidmc_01`, filtro anti-artefatto da movimento basato sull'entropia spettrale di Shannon (`SQI >= 0.70`) e fusione con gli input simulati di scenario (`What-If Console`).
+5. **`crates/ares-medops-playbooks`** (*Owner: `ARES-Health Team`*): Esecutore DAG deterministico (*Type 1 Crystallized Playbooks*) dei Playbook `#01–#05` e applicazione inflessibile dei **3 Hard Clinical Safety Gates** (blocco anticoagulanti senza trombo POCUS confermato, auto-vent camera LBNP anti-sincope, smorzamento caviglia tuta EVA a $0.38g$).
 6. **`crates/ares-security-privacy`** (*Owner: `@MiServeRDC`*): Implementazione reale delle viste privacy per ruolo (`NASA-STD-3001 Vol. 1 Ch. 7`), catena hash `SHA-256` per ogni override clinico, cifratura `ChaCha20-Poly1305` per pacchetti Store-and-Forward e scudo Prompt Injection MCP.
-7. **`crates/ares-server-cli`** (*Owner: `@fertech02`*): Binario eseguibile unico che orchestra i 6 crate di libreria ed espone il server WebSocket/REST `axum` a `20 Hz` (`127.0.0.1:8080`) e il server `stdio` **FastMCP JSON-RPC 2.0** (`< 150 token/risposta`).
+7. **`crates/ares-server-cli`** (*Owner: `ARES-Health Team`*): Binario eseguibile unico che orchestra i 6 crate di libreria ed espone il server WebSocket/REST `axum` a `20 Hz` (`127.0.0.1:8080`) e il server `stdio` **FastMCP JSON-RPC 2.0** (`< 150 token/risposta`).
 
 ### Livello 3 — Blocco J (`ARES-MedOS`: Mission Workstation Shell, Zero-Copy IPC & Target OS Spaziali Multi-Tier — Fasi 21–24 `[COMPLETED (TESTED)]`)
 Studio di fattibilita: [`docs/architecture/RUST_OS_AND_SHELL_FEASIBILITY_STUDY.md`](RUST_OS_AND_SHELL_FEASIBILITY_STUDY.md).
-8. **`crates/ares-desktop-os`** (*Fase 22 `J2`, Owner: `@fabiomalagutti27-droid` & `@fertech02`*): Shell desktop nativa pure-Rust su **`Tauri v2`** (`tauri-apps/tauri`, `~30–50 MB` RAM su `WKWebView` Metal / `WebKitGTK` / `WebView2`, feature-gated `tauri-runtime` per CI headless) che incorpora `SharedMissionState` in-process, trasmette `BinaryTelemetryFrame` (`128 B` `#[repr(C, align(64))]`, Fase 21 `J1`) via `Channel<Response>` (`< 0.05 ms`), ed esegue i tool `FastMCP` in-process mantenendo attivo il mirror HTTP/WS `127.0.0.1:8080` (`/api/os-status`, `/api/binary-frame`, `/api/mcp`).
+8. **`crates/ares-desktop-os`** (*Fase 22 `J2`, Owner: `ARES-Health Team` & `ARES-Health Team`*): Shell desktop nativa pure-Rust su **`Tauri v2`** (`tauri-apps/tauri`, `~30–50 MB` RAM su `WKWebView` Metal / `WebKitGTK` / `WebView2`, feature-gated `tauri-runtime` per CI headless) che incorpora `SharedMissionState` in-process, trasmette `BinaryTelemetryFrame` (`128 B` `#[repr(C, align(64))]`, Fase 21 `J1`) via `Channel<Response>` (`< 0.05 ms`), ed esegue i tool `FastMCP` in-process mantenendo attivo il mirror HTTP/WS `127.0.0.1:8080` (`/api/os-status`, `/api/binary-frame`, `/api/mcp`).
 9. **Frontend Dual-Transport & OS Chrome (`ares-cockpit/`, Fase 23 `J3`):** Decoder zero-copy `DataView` (`binaryTelemetryDecoder.ts`), `ares-cockpit/src/modules/os-shell/OsSystemStatusBar.tsx` (`#000000` OLED, Martian Sol clock, OWLT Marte, partizioni `ARINC 653`, zona deontica habitat, radiazione `CANS`), `ares-cockpit/src/modules/os-shell/OsCommandPalette.tsx` (`Alt+Space` / `Cmd+K` per tutti gli 8 tool `FastMCP`), e fallback automatico `BROWSER_WEBSOCKET`.
 10. **Target Aerospaziali Tier B & Tier C (Fase 24 `J4`):** Framing `WearableSensorPacket` (`32 B` `#[repr(C)]` CRC-16-CCITT + `supervisor_restart_count` SEU) in `crates/ares-telemetry-ingest/src/wearable_packet.rs`, manifesti dichiarativi in `deploy/medos/` (`Asterinas` Framekernel `14.0%` TCB, `System76 COSMIC` Wayland Kiosk `120 Hz` `wgpu`, `Oxide Hubris` / `Embassy` wearable) e launcher `scripts/launch_ares_medos.sh`.
 
@@ -86,7 +86,7 @@ Studio di fattibilita: [`docs/architecture/RUST_OS_AND_SHELL_FEASIBILITY_STUDY.m
 ### Livello 6 — Blocco M (3-Tier LSAH Persistence Issue `#26`, Multi-Branch Team Unification & E2E Certification — Fasi 35–37 `[PLANNED]`)
 13. **Persistenza Clinica Longitudinale a 3 Tier & Unificazione Finale ([`BLOCK_M_GAP_CLOSURE_ARCHITECTURE.md`](../plans/BLOCK_M_GAP_CLOSURE_ARCHITECTURE.md), `docs/plans/phase_35_M1_*.md` .. `phase_37_M3_*.md`):**
     * **`M1` 3-Tier LSAH Persistence (`crates/ares-storage-lsah`, Issue `#26` di `@MiServeRDC`):** Nuovo 9° crate con `HotRingBuffer` (`60–300 s @ 20 Hz`, `HotLsahSlot` `256 B` zero-alloc post-init + `WarmStagingSwapBuffer` wait-free), `WarmColumnarVectorBackend` (`ArrowIpcZstdHnswBackend` default `62` crate offline + `--features lancedb-warm` `lancedb 0.40.0` opzionale) con indice `HNSW` deterministico su firme ecografiche POCUS `128-D`/`256-D` (`Sol 180` vs `Sol 1`), e `ColdTierArchiver` (`ChaCha20-Poly1305` con nonce monotono `96-bit` + `AAD` bidirezionale su `Sha256AuditLogger` + `DsnDownlinkOutbox`).
-    * **`M2` Multi-Branch Team Unification (`work/{fertech02,MiServeRDC,carolina2910,LelloXV}`):** Unificazione controllata di `vitals_anomaly.rs` + `50` CSV `BIDMC` (`bidmc_04..53`), atlante 3D Z-Anatomy `.glb` (`CC-BY-SA-4.0`) + `UBERON:`, `AiInjuryModal` air-gapped e replay nativo `1 Hz`.
+    * **`M2` Multi-Branch Team Unification (`work/{ARES-Health Team,MiServeRDC,ARES-Health Team,ARES-Health Team}`):** Unificazione controllata di `vitals_anomaly.rs` + `50` CSV `BIDMC` (`bidmc_04..53`), atlante 3D Z-Anatomy `.glb` (`CC-BY-SA-4.0`) + `UBERON:`, `AiInjuryModal` air-gapped e replay nativo `1 Hz`.
     * **`M3` End-to-End DB, Cockpit & Submission Certification:** Batteria a `8` gate (`M3-G01..M3-G08`) su 9 crate, `53` soggetti `BIDMC`, `5` layer `.glb`, `FastMCP` (`<= 600 B`) e rigenerazione deterministica `Typst 0.15.1`.
 
 ---

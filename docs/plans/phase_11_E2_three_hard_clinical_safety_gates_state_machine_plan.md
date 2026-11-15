@@ -4,7 +4,7 @@
 - **Fase**: Fase 11 (`E2`)
 - **Stato**: PIANO DEFINITIVO APPROVATO PER IMPLEMENTAZIONE (`READY FOR IMPLEMENTATION`)
 - **Crate Principale**: [`crates/ares-medops-playbooks`](../../crates/ares-medops-playbooks/README.md)
-- **Owner Principale**: `@fertech02` (con validazione Flight Surgeon `@fabiomalagutti27-droid`)
+- **Owner Principale**: `ARES-Health Team` (con validazione Flight Surgeon `ARES-Health Team`)
 - **File Target Previsti**:
   1. `crates/ares-medops-playbooks/src/safety_gates.rs` *(NEW)*
 - **Budget Latenza Hot-Path**: $< 5\,\mu\text{s}$ per applicazione deterministica dei 3 cancelli di sicurezza clinica.

@@ -7,7 +7,7 @@
   1. [`ares-portal/`](../../ares-portal) *(NEW — Ground Control Telemedicine Portal & Mission Pitch Showcase)*
   2. [`ares-cockpit/`](../../ares-cockpit/README.md) *(UPDATE — OpenScreen Spring-Zoom Timeline & Walkthrough Studio + Vercel Labs UI Headless Behavioral Primitives)*
   3. [`crates/ares-server-cli/`](../../crates/ares-server-cli/README.md) *(UPDATE — Read-Only Ground Sync & Knowledge Graph Loopback Endpoints)*
-- **Owner Principale**: `@fabiomalagutti27-droid` (Architettura & Contratti Loopback), `@carolina2910` (Cockpit UX & Portal UI), `@fertech02` (Axum Loopback Endpoints & Replay Fixtures), `@MiServeRDC` (Privacy Tiers & SHA-256 Store-and-Forward Inspector)
+- **Owner Principale**: `ARES-Health Team` (Architettura & Contratti Loopback), `ARES-Health Team` (Cockpit UX & Portal UI), `ARES-Health Team` (Axum Loopback Endpoints & Replay Fixtures), `@MiServeRDC` (Privacy Tiers & SHA-256 Store-and-Forward Inspector)
 - **Budget Latenza & Prestazioni (`NASA-STD-3001 Vol. 2 Rev F`)**:
   - **Feedback Controlli Discreti (`[V2 10022]`)**: $\le 16\text{ ms}$ (limite standard $\le 100\text{ ms}$)
   - **Latenza Display Continuo / Spring Zoom (`[V2 10152]`)**: $60\text{ FPS}$ costanti ($\le 16.6\text{ ms}$, limite standard $\le 50\text{ ms}$)

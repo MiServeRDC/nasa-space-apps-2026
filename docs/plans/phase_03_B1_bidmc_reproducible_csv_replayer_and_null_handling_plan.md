@@ -4,7 +4,7 @@
 - **Fase**: Fase 03 (`B1`)
 - **Stato**: PIANO DEFINITIVO APPROVATO PER IMPLEMENTAZIONE (`READY FOR IMPLEMENTATION`)
 - **Crate Principale**: [`crates/ares-telemetry-ingest`](../../crates/ares-telemetry-ingest/README.md)
-- **Owner Principale**: `@LelloXV` (con specifica di provenienza `@MiServeRDC` Issue #4 e skill `telemetry-replay-verifier`)
+- **Owner Principale**: `ARES-Health Team` (con specifica di provenienza `@MiServeRDC` Issue #4 e skill `telemetry-replay-verifier`)
 - **File Target Previsti**:
   1. `crates/ares-telemetry-ingest/Cargo.toml` *(NEW)*
   2. `crates/ares-telemetry-ingest/src/lib.rs` *(NEW)*

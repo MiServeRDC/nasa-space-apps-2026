@@ -4,7 +4,7 @@
 - **Fase**: Fase 06 (`C2`)
 - **Stato**: PIANO DEFINITIVO APPROVATO PER IMPLEMENTAZIONE (`READY FOR IMPLEMENTATION`)
 - **Crate Principale**: [`crates/ares-causal-graph`](../../crates/ares-causal-graph/README.md)
-- **Owner Principale**: `@fabiomalagutti27-droid`
+- **Owner Principale**: `ARES-Health Team`
 - **File Target Previsti**:
   1. `crates/ares-causal-graph/src/hemodynamics.rs` *(NEW)*
 - **Budget Latenza Hot-Path**: $< 10\,\mu\text{s}$ per valutazione emodinamica giugulare e oculare `SANS` (zero allocazioni heap).

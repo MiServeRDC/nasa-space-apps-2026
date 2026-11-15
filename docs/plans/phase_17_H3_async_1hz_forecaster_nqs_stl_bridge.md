@@ -4,7 +4,7 @@
 - **Fase**: Fase 17 (`H3`)
 - **Stato**: PIANO DEFINITIVO APPROVATO PER IMPLEMENTAZIONE (`READY FOR IMPLEMENTATION`)
 - **Crate Principali**: [`crates/ares-nqs-stl`](../../crates/ares-nqs-stl/README.md) & [`crates/ares-core-types`](../../crates/ares-core-types/README.md)
-- **Owner Principale**: `@fabiomalagutti27-droid`
+- **Owner Principale**: `ARES-Health Team`
 - **File Target Previsti**:
   1. `crates/ares-nqs-stl/src/async_forecaster_bridge.rs` *(NEW)*
   2. `crates/ares-nqs-stl/src/ttv_predictor.rs` *(UPDATE)*

@@ -7,7 +7,7 @@
   - `crates/ares-causal-graph`: `renal_nephrolithiasis.rs` (new module), `orthostatic_fluid.rs` (new module), `hemodynamics.rs` (Patch N0-B hypercapnia coupling + variable blood viscosity $\mu(\text{Hct})$), `lib.rs`, `adhg_graph.rs` (causal graph expansion).
   - `crates/ares-medops-playbooks`: `safety_gates.rs` (Patch N0-A Gate 1 surgical fix for non-anticoagulant pharmacology; Gate 2 real SBP-drop evaluation).
   - `crates/ares-server-cli`: `wire_contract.rs` (promote `cabin_ppco2_mmhg` from dead JSON field to live causal parameter), `ws_server.rs`, `fastmcp_router.rs`.
-- **Primary Owners:** `@fabiomalagutti27-droid` & `@MiServeRDC`
+- **Primary Owners:** `ARES-Health Team` & `@MiServeRDC`
 - **Parent Architecture:**
   - Block N Architecture: [`BLOCK_N_CLINICAL_MEDICINE_ARCHITECTURE.md`](BLOCK_N_CLINICAL_MEDICINE_ARCHITECTURE.md)
   - Master Plan: [`RUST_ENGINE_PHASED_MASTER_PLAN.md`](RUST_ENGINE_PHASED_MASTER_PLAN.md)

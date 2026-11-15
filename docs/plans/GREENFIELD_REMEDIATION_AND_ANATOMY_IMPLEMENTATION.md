@@ -162,7 +162,7 @@ No additional agents or delegation are required by this plan.
 
 **Dependency:** none. **Output:** reproducible baseline and integration checklist.
 
-- Refresh main and Fabio's branch; record exact SHAs and clean/dirty states.
+- Refresh main and Core Team's branch; record exact SHAs and clean/dirty states.
 - Start a dedicated integration branch/worktree. Preserve all current backend,
   transport, storage, source-mode and gate fixes. Resolve App deliberately.
 - Keep review reproduction artifacts outside git; add persistent regression cases.

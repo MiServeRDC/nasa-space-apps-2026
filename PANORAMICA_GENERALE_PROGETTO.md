@@ -4,12 +4,21 @@
 
 ## Unified Master Blueprint (NASA Space Apps Challenge 2026)
 
+<<<<<<< Updated upstream
 - **Project Name:** **ARES-Health** (*Autonomous Resilient Edge-native System for Astronaut Health*) / **`ARES-MedOS v0.1`** Workstation
 - **Project team:** [ARES-Health contributors](README.md#10-team)
 - **Team (`MiServeRDC/nasa-space-apps-2026`):** `@fabiomalagutti27-droid`, `@carolina2910`, `@fertech02`, `@LelloXV`, `@MiServeRDC`
 - **Official NASA Challenge:** *"Create Health Monitoring Software for Astronauts on Space Missions"* (`https://www.spaceappschallenge.org/2026/challenges/health-monitoring-software/`)
 - **Operational Domain:** Earth-to-Mars Transit, Deep Space Habitat, Lunar Gateway, Martian Surface (`0.38g`)
 - **Operational Principles:** 100% Offline, Air-Gapped, Zero Cloud Dependencies, Safe Rust 2024 (`8` crates, zero `.unwrap()`/`.expect()` in production code), **`MIT OR Apache-2.0`** Dual License
+=======
+- **Progetto:** **ARES-Health** (*Autonomous Resilient Edge-native System for Astronaut Health*) / Workstation **`ARES-MedOS v0.1`**
+- **Team:** ARES-Health Engineering Team
+- **Team (`MiServeRDC/nasa-space-apps-2026`):** `ARES-Health Team`, `ARES-Health Team`, `ARES-Health Team`, `ARES-Health Team`, `@MiServeRDC`
+- **Sfida Ufficiale NASA:** *"Create Health Monitoring Software for Astronauts on Space Missions"* (`https://www.spaceappschallenge.org/2026/challenges/health-monitoring-software/`)
+- **Dominio Operativo:** Transito Terra-Marte, Deep Space Habitat, Lunar Gateway, Superficie Marziana (`0.38g`)
+- **Principi Operativi:** 100% Offline, Air-Gapped, Zero Dipendenze Cloud, Safe Rust 2024 (`8` crate, `0` `.unwrap()`/`.expect()` in produzione), Licenza **`MIT OR Apache-2.0`**
+>>>>>>> Stashed changes
 
 ---
 

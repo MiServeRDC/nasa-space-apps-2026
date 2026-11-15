@@ -4,7 +4,7 @@
 - **Fase**: Fase 14 (`G2`)
 - **Stato**: PIANO DEFINITIVO APPROVATO PER IMPLEMENTAZIONE (`READY FOR IMPLEMENTATION`)
 - **Crate Principale**: [`crates/ares-server-cli`](../../crates/ares-server-cli/README.md)
-- **Owner Principale**: `@fertech02` (con architettura Context-Mode `@fabiomalagutti27-droid` e sanitizzazione `@MiServeRDC`)
+- **Owner Principale**: `ARES-Health Team` (con architettura Context-Mode `ARES-Health Team` e sanitizzazione `@MiServeRDC`)
 - **File Target Previsti**:
   1. `crates/ares-server-cli/src/mcp_stdio.rs` *(NEW)*
 - **Budget Latenza Hot-Path**: $< 500\,\mu\text{s}$ per dispatch e serializzazione risposta JSON-RPC 2.0.

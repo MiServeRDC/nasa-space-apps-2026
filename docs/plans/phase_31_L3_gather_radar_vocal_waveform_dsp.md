@@ -9,7 +9,7 @@
   - [`docs/architecture/CRATES_AND_MODULES_BLUEPRINT.md`](../architecture/CRATES_AND_MODULES_BLUEPRINT.md)
   - [`docs/architecture/MODEL_EVIDENCE_AUDIT.md`](../architecture/MODEL_EVIDENCE_AUDIT.md) *(Issue `#12`)*
   - [`docs/plans/ISSUE_11_HRV_VALIDITY_PLAN.md`](ISSUE_11_HRV_VALIDITY_PLAN.md) *(Issue `#11` / PR `#20`)*
-- **Owner Principale**: `@LelloXV` (`work/LelloXV`) con supervisione architetturale `@fabiomalagutti27-droid` e revisione d'integrita `@MiServeRDC`
+- **Owner Principale**: `ARES-Health Team` (`work/ARES-Health Team`) con supervisione architetturale `ARES-Health Team` e revisione d'integrita `@MiServeRDC`
 - **File Target Previsti**:
   1. `crates/ares-telemetry-ingest/src/radar_csi_dsp.rs` *(NEW — Demodulazione di fase Doppler RF `60 GHz` mmWave / `5.2 GHz` Wi-Fi CSI $\Delta\phi(t) = 4\pi d(t)/\lambda$, rimozione clutter statico $I/Q$, banco SOS biquad notch IIR a `60/120 Hz` per ventole ECLSS in Direct-Form II Transposed con verifica analitica dei poli nel cerchio unitario, separazione sub-banda cardiaca/respiratoria e gate `SQI >= 0.70`)*
   2. `crates/ares-telemetry-ingest/src/vocal_acoustic_dsp.rs` *(NEW — Stimatore di frequenza fondamentale `YIN` su audio PCM mono `16/48 kHz`, jitter locale `%`, shimmer locale `% / dB`, `HNR` in `dB`, inclinazione spettrale e `pause_ratio` VAD con emissione rigorosa `Option<f64>::None` su frame silenti o non vocalizzati)*

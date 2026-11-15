@@ -6,7 +6,7 @@
   - `crates/ares-core-types`: `telemetry.rs` (expanded `Biometrics`, `SleepStageCode`, `SpotPoctPanel`, `HematologyPanel`, `UrinalysisPanel`, `SalivaryCognitivePanel`), `constants.rs` (`WEARABLE_V2_SYNC_WORD = 0xAA56`, extended channel bitmasks).
   - `crates/ares-telemetry-ingest`: `wearable_packet.rs` (`ExplorationWearablePacketV2`, `WearableRrWindowAccumulator` [Patch N0-D], dual-framing decoder supporting `0xAA55` and `0xAA56`), `bidmc_replayer.rs` (null-honesty invariant enforcement).
   - `crates/ares-server-cli`: `wire_contract.rs` (optional V2 wearable & POCT wire representations), `ws_server.rs` (live telemetry broadcast).
-- **Primary Owners:** `@fabiomalagutti27-droid` & `@MiServeRDC`
+- **Primary Owners:** `ARES-Health Team` & `@MiServeRDC`
 - **Parent Architecture:**
   - Block N Architecture: [`BLOCK_N_CLINICAL_MEDICINE_ARCHITECTURE.md`](BLOCK_N_CLINICAL_MEDICINE_ARCHITECTURE.md)
   - Master Plan: [`RUST_ENGINE_PHASED_MASTER_PLAN.md`](RUST_ENGINE_PHASED_MASTER_PLAN.md)

@@ -6,7 +6,7 @@
 - **Fase**: Fase 08 (`D1`)
 - **Stato**: PIANO DEFINITIVO APPROVATO PER IMPLEMENTAZIONE (`READY FOR IMPLEMENTATION`)
 - **Crate Principale**: [`crates/ares-nqs-stl`](../../crates/ares-nqs-stl/README.md)
-- **Owner Principale**: `@fabiomalagutti27-droid`
+- **Owner Principale**: `ARES-Health Team`
 - **File Target Previsti**:
   1. `crates/ares-nqs-stl/Cargo.toml` *(NEW)*
   2. `crates/ares-nqs-stl/src/lib.rs` *(NEW)*

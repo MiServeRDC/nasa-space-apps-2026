@@ -4,7 +4,7 @@
 - **Fase**: Fase 18 (`I1`)
 - **Stato**: PIANO DEFINITIVO APPROVATO PER IMPLEMENTAZIONE (`READY FOR IMPLEMENTATION`)
 - **Crate Principale**: [`crates/ares-causal-graph`](../../crates/ares-causal-graph/README.md)
-- **Owner Principale**: `@fabiomalagutti27-droid`
+- **Owner Principale**: `ARES-Health Team`
 - **File Target Previsti**:
   1. `crates/ares-causal-graph/src/welford_compactor.rs` *(NEW)*
   2. `crates/ares-causal-graph/src/spatial_habitat_graph.rs` *(NEW)*

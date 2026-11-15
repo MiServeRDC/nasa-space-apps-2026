@@ -10,7 +10,16 @@ Reviewers can follow the [README run instructions](../../README.md#run-the-demo)
 and [judge walkthrough](JUDGES_START_HERE.md) to launch the cockpit and engine
 locally. The online video is a separate submission link.
 
+<<<<<<< Updated upstream
 ## Project title
+=======
+- **Project Title:** `ARES-Health: Autonomous Resilient Edge-native System for Astronaut Health`
+- **Official Challenge Track:** *Create Health Monitoring Software for Astronauts on Space Missions*
+- **Challenge Portal:** https://www.spaceappschallenge.org/2026/challenges/health-monitoring-software/
+- **Open-Source Repository:** https://github.com/MiServeRDC/nasa-space-apps-2026
+- **License:** `MIT OR Apache-2.0` (OSI-approved dual permissive license)
+- **Team (`MiServeRDC/nasa-space-apps-2026`):** ARES-Health Core Engineering Team, `ARES-Health Team`, `ARES-Health Team`, `ARES-Health Team`, `@MiServeRDC`
+>>>>>>> Stashed changes
 
 ARES-Health: offline astronaut health monitoring and guided response
 

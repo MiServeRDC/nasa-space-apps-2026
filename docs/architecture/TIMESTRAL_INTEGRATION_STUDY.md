@@ -1,6 +1,6 @@
 # Studio Architetturale e Scientifico: Integrazione Pure-Rust Timestral in ARES-Health
 
-- **Tag di Tracciabilita**: `[FABIO, ARCHITECTURE-STUDY]` | `[ARES-HEALTH, TIMESTRAL-FORECASTER]` | `[FASE-59-PORTING]`
+- **Tag di Tracciabilita**: `[CORE-ENGINE, ARCHITECTURE-STUDY]` | `[ARES-HEALTH, TIMESTRAL-FORECASTER]` | `[FASE-59-PORTING]`
 - **Stato**: STUDIO ARCHITETTURALE E BLUEPRINT ESECUTIVO (`VERIFIED`)
 - **Riferimento Implementazione Madre**: `spatiotemporal-mcp-engine-backup/crates/temporal-forecaster` (Blocco I, Fasi 59--63, Issue #117)
 - **Target Integrazione ARES-Health**: `crates/ares-nqs-stl` (estensione predittore `TTV`) e `crates/ares-temporal-forecaster` (co-processore probabilistico opzionale)

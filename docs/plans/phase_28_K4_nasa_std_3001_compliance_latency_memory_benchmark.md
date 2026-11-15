@@ -6,7 +6,7 @@
 - **Architettura Master di Blocco**: [`BLOCK_K_SYSTEM_TESTING_ARCHITECTURE.md`](BLOCK_K_SYSTEM_TESTING_ARCHITECTURE.md)
 - **Crate Target**: Tutti gli 8 crate del workspace (`ares-core-types` .. `ares-desktop-os`) + `scripts/agent_probe.sh`
 - **Piani & Studi di Riferimento**: [`phase_02_A2`](phase_02_A2_nasa_std_3001_constants_errors_and_security_traits_plan.md), [`phase_18_I1`](phase_18_I1_welford_longitudinal_compaction_spatial_deontic.md), [`phase_19_I2`](phase_19_I2_biokg_16byte_descriptor_epistemic_reasoner.md), [`phase_20_I3`](phase_20_I3_unified_dataset_graph_builder_graphify_mcp.md), [`phase_21_J1`](phase_21_J1_zero_copy_binary_ipc_shm_protocol.md), [`phase_22_J2`](phase_22_J2_ares_desktop_os_tauri_native_shell.md), [`RUST_OS_AND_SHELL_FEASIBILITY_STUDY.md`](../architecture/RUST_OS_AND_SHELL_FEASIBILITY_STUDY.md)
-- **Owner Principale**: `@fabiomalagutti27-droid` & `@MiServeRDC` (con verifica `@fertech02` e `@LelloXV`)
+- **Owner Principale**: `ARES-Health Team` & `@MiServeRDC` (con verifica `ARES-Health Team` e `ARES-Health Team`)
 - **File Target Previsti**:
   1. `crates/ares-server-cli/tests/cert_nasa_std_3001_and_rt_budgets.rs` *(NEW — harness automatizzato di tracciabilita normativa `[V1 3001]`–`[V2 10152]` e benchmark percentili `p50`/`p99`/`p99.9`)*
   2. `crates/ares-causal-graph/tests/cert_memory_footprint_900sol.rs` *(NEW — certificazione footprint RAM `< 200 KB` per `MissionLongitudinalCompactor` su `900` Sol e `< 10 MB` per `AresUnifiedDatasetGraph`)*

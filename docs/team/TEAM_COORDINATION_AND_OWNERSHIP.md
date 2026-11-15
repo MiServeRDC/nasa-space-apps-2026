@@ -26,11 +26,11 @@ We eliminate all three failure modes via:
 
 | Team Member | GitHub Handle | Working Branch | Primary Owned Crates / Directories | Secondary / Review Scope |
 | :--- | :--- | :--- | :--- | :--- |
-| **Fabio Malagutti** | `@fabiomalagutti27-droid` | `work/fabiomalagutti27-droid` | `crates/ares-core-types/`<br>`crates/ares-causal-graph/`<br>`crates/ares-nqs-stl/`<br>`contracts/telemetry_schema.json` | Overall System Architecture, Clinical Biomechanics ODEs, Final Integration |
-| **Alessandro** | `@MiServeRDC` | `work/MiServeRDC` | `crates/ares-security-privacy/`<br>`docs/REFERENCES.md`<br>`.github/` | Crew Medical Privacy Governance (`NASA-STD-3001 Vol. 1 Ch. 7`), SHA-256 Audit Chain, Encrypted Store-and-Forward DSN Sync, Security Review |
-| **Lello** | `@LelloXV` | `work/LelloXV` | `crates/ares-telemetry-ingest/` | Multi-Modal Telemetry Ring Buffer, Contactless Doppler Radar & Vocal DSP, `CSA CANS` Neutron Dosimetry, Spectral Entropy `SQI >= 0.70` Filter |
-| **Carolina** | `@carolina2910` | `work/carolina2910` | `ares-cockpit/`<br>`diagrams/` | React 19 OLED `#000000` Cockpit UX, Tri-Phase Mandate Header, Three.js 3D Anatomical Heatmap, What-If Stress-Test Console |
-| **Fertech** | `@fertech02` | `work/fertech02` | `crates/ares-medops-playbooks/`<br>`crates/ares-server-cli/` | NASA MedOps Playbooks #01–#05 DAG State Machines, Hard Clinical Safety Gates, `axum` $20\text{ Hz}$ WebSocket + `stdio` FastMCP Copilot |
+| **ARES-Health Team** | `ARES-Health Team` | `work/ARES-Health Team` | `crates/ares-core-types/`<br>`crates/ares-causal-graph/`<br>`crates/ares-nqs-stl/`<br>`contracts/telemetry_schema.json` | Overall System Architecture, Clinical Biomechanics ODEs, Final Integration |
+| **ARES-Health Team** | `@MiServeRDC` | `work/MiServeRDC` | `crates/ares-security-privacy/`<br>`docs/REFERENCES.md`<br>`.github/` | Crew Medical Privacy Governance (`NASA-STD-3001 Vol. 1 Ch. 7`), SHA-256 Audit Chain, Encrypted Store-and-Forward DSN Sync, Security Review |
+| **ARES-Health Team** | `ARES-Health Team` | `work/ARES-Health Team` | `crates/ares-telemetry-ingest/` | Multi-Modal Telemetry Ring Buffer, Contactless Doppler Radar & Vocal DSP, `CSA CANS` Neutron Dosimetry, Spectral Entropy `SQI >= 0.70` Filter |
+| **ARES-Health Team** | `ARES-Health Team` | `work/ARES-Health Team` | `ares-cockpit/`<br>`diagrams/` | React 19 OLED `#000000` Cockpit UX, Tri-Phase Mandate Header, Three.js 3D Anatomical Heatmap, What-If Stress-Test Console |
+| **Fertech** | `ARES-Health Team` | `work/ARES-Health Team` | `crates/ares-medops-playbooks/`<br>`crates/ares-server-cli/` | NASA MedOps Playbooks #01–#05 DAG State Machines, Hard Clinical Safety Gates, `axum` $20\text{ Hz}$ WebSocket + `stdio` FastMCP Copilot |
 
 ---
 

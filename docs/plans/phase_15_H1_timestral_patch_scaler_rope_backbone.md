@@ -4,7 +4,7 @@
 - **Fase**: Fase 15 (`H1`)
 - **Stato**: PIANO DEFINITIVO APPROVATO PER IMPLEMENTAZIONE (`READY FOR IMPLEMENTATION`)
 - **Crate Principale**: [`crates/ares-nqs-stl`](../../crates/ares-nqs-stl/README.md)
-- **Owner Principale**: `@fabiomalagutti27-droid`
+- **Owner Principale**: `ARES-Health Team`
 - **File Target Previsti**:
   1. `crates/ares-nqs-stl/src/timestral_backbone.rs` *(NEW)*
   2. `crates/ares-nqs-stl/src/lib.rs` *(UPDATE)*
