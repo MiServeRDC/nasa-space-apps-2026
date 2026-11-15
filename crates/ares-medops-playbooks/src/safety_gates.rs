@@ -3,23 +3,70 @@
 use crate::pocus_multiorgan::PocusEfastScan;
 use ares_core_types::constants::{
     GAI_MAX_SAFE_PCT, LBNP_MAX_SAFE_HR_BPM, LBNP_MAX_SYS_BP_DROP_MMHG,
-    SHOCK_INDEX_ATTENTION, SHOCK_INDEX_CRITICAL,
+    LBNP_MAX_VASOVAGAL_HR_DROP_BPM, LBNP_MIN_SAFE_HR_BRADYCARDIA_BPM, SHOCK_INDEX_ATTENTION,
+    SHOCK_INDEX_CRITICAL, sanitize_f64,
 };
+use ares_core_types::medical_360::LbnpBaselineState;
 use ares_core_types::telemetry::{
     ActivePlaybook, Biometrics, CountermeasureAction, JugularHemodynamics, Musculoskeletal,
-    SafetyGates, StressTestScenarioInput,
+    SafetyGates, SpotPoctPanel, StressTestScenarioInput,
 };
+
+pub use ares_core_types::constants::ECLSS_PPCO2_ACTION_LIMIT_MMHG;
 
 pub const PLATELET_ABSOLUTE_CONTRAINDICATION_K_UL: f64 = 75.0;
 pub const RADIATION_ACUTE_THRESHOLD_MSV_D: f64 = 10.0;
 pub const PLATELET_RADIATION_SAFE_FLOOR_K_UL: f64 = 100.0;
 pub const LBNP_MIN_SAFE_PULSE_PRESSURE_MMHG: f64 = 25.0;
-pub const ECLSS_PPCO2_ACTION_LIMIT_MMHG: f64 = 4.0;
 
-/// Applica in modo inflessibile i 4 Hard Clinical Safety Gates al Playbook candidato.
+/// Restituisce `true` se l'azione rappresenta una terapia anticoagulante sistemica
+/// (escludendo le azioni di override di sicurezza clinica).
+#[inline]
+pub fn is_systemic_anticoagulant_action(a: &CountermeasureAction) -> bool {
+    let cat = a.category.as_str();
+    if cat == "CLINICAL_SAFETY_GATE_OVERRIDE" {
+        return false;
+    }
+    let id = a.action_id.as_str();
+    cat == "PHARMACOLOGICAL_ANTICOAGULANT"
+        || id.contains("ANTICOAG")
+        || id.contains("ENOXAPARIN")
+        || id.contains("APX")
+        || id.contains("APIXABAN")
+        || id.contains("RIVAROXABAN")
+        || id.contains("HEPARIN")
+}
+
+/// Risolve deterministicamente la conta piastrinica effettiva (k/uL) secondo la gerarchia
+/// di sicurezza clinica: override esplicito stress-test, altrimenti il minimo conservativo
+/// tra POCT, biometria corrente e predizione nadir ARS.
+#[inline]
+pub fn resolve_effective_platelets_k_ul(
+    stress_override: Option<f64>,
+    poct: Option<&SpotPoctPanel>,
+    bio_current: Option<f64>,
+    ars_predicted_plt: Option<f64>,
+) -> Option<f64> {
+    if let Some(v) = stress_override.filter(|v| v.is_finite() && *v >= 0.0) {
+        return Some(sanitize_f64(v, 0.0).clamp(0.0, 1500.0));
+    }
+    [
+        poct.and_then(|p| p.platelet_count_k_ul),
+        bio_current,
+        ars_predicted_plt,
+    ]
+    .into_iter()
+    .flatten()
+    .filter(|v| v.is_finite() && *v >= 0.0)
+    .map(|v| sanitize_f64(v, 0.0).clamp(0.0, 1500.0))
+    .reduce(f64::min)
+}
+
+/// Applica in modo inflessibile i 4 Hard Clinical Safety Gates al Playbook candidato
+/// con supporto per la baseline emodinamica pre-LBNP dinamica.
 #[inline]
 #[allow(clippy::too_many_arguments)]
-pub fn enforce_hard_clinical_safety_gates_ext(
+pub fn enforce_hard_clinical_safety_gates_with_lbnp_baseline(
     mut playbook: ActivePlaybook,
     biometrics: &Biometrics,
     musculo: &Musculoskeletal,
@@ -28,6 +75,7 @@ pub fn enforce_hard_clinical_safety_gates_ext(
     efast: Option<&PocusEfastScan>,
     fatigue_index: Option<f64>,
     shock_index: Option<f64>,
+    lbnp_baseline: Option<LbnpBaselineState>,
 ) -> ActivePlaybook {
     let platelet_contraindicated = biometrics
         .platelet_count_k_ul
@@ -40,9 +88,9 @@ pub fn enforce_hard_clinical_safety_gates_ext(
     let bleeding_risk_active = platelet_contraindicated || acute_radiation_contraindicated;
     let anticoagulant_lock_active = !jugular.pocus_thrombus_confirmed || bleeding_risk_active;
 
-    let hr = biometrics.heart_rate_bpm.unwrap_or(72.0);
+    let ref_sbp = lbnp_baseline.map_or(120.0, |b| b.pre_lbnp_sbp_baseline_mmhg);
     let sbp_drop = biometrics.sbp_mmhg.map_or(scenario.systolic_bp_drop_mmhg, |sbp| {
-        (120.0 - sbp).max(scenario.systolic_bp_drop_mmhg)
+        (ref_sbp - sbp).max(scenario.systolic_bp_drop_mmhg)
     });
     let pulse_pressure_narrowed = match (biometrics.sbp_mmhg, biometrics.dbp_mmhg) {
         (Some(sbp), Some(dbp)) if sbp > 0.0 => (sbp - dbp) < LBNP_MIN_SAFE_PULSE_PRESSURE_MMHG,
@@ -53,11 +101,28 @@ pub fn enforce_hard_clinical_safety_gates_ext(
         .iter()
         .any(|ch| ch == "wearable_sensor_loss" || ch == "sensor_dropout");
     let dual_vital_blackout = biometrics.heart_rate_bpm.is_none() && biometrics.sbp_mmhg.is_none();
-    let sensor_dropout_critical = explicit_sensor_loss || dual_vital_blackout;
+    let single_vital_missing_under_lbnp = jugular.lbnp_active
+        && (biometrics.heart_rate_bpm.is_none()
+            || (biometrics.sbp_mmhg.is_none()
+                && scenario.systolic_bp_drop_mmhg <= 0.0
+                && lbnp_baseline.is_some()));
+    let sensor_dropout_critical =
+        explicit_sensor_loss || dual_vital_blackout || single_vital_missing_under_lbnp;
+    let hr_exceeded = biometrics
+        .heart_rate_bpm
+        .is_some_and(|hr_val| hr_val > LBNP_MAX_SAFE_HR_BPM);
+    let vasovagal_bradycardia = jugular.lbnp_active
+        && biometrics.heart_rate_bpm.is_some_and(|hr_val| {
+            hr_val < LBNP_MIN_SAFE_HR_BRADYCARDIA_BPM
+                || lbnp_baseline.is_some_and(|b| {
+                    (b.pre_lbnp_hr_baseline_bpm - hr_val) > LBNP_MAX_VASOVAGAL_HR_DROP_BPM
+                })
+        });
 
     let pre_syncope_detected = jugular.lbnp_active
         && (sbp_drop > LBNP_MAX_SYS_BP_DROP_MMHG
-            || hr > LBNP_MAX_SAFE_HR_BPM
+            || hr_exceeded
+            || vasovagal_bradycardia
             || pulse_pressure_narrowed
             || sensor_dropout_critical);
     let eva_suit_damping_active = musculo.gai_pct > GAI_MAX_SAFE_PCT;
@@ -90,8 +155,13 @@ pub fn enforce_hard_clinical_safety_gates_ext(
     let si_elevated = computed_si.is_some_and(|si| si >= SHOCK_INDEX_ATTENTION);
     let gate4_eva_fitness_no_go = eva_suit_damping_active || cognitive_fatigued || si_elevated;
 
-    let cabin_co2 = biometrics.cabin_ppco2_mmhg.or(biometrics.helmet_ppco2_mmhg);
-    let eclss_alert = cabin_co2.is_some_and(|ppco2| ppco2 > ECLSS_PPCO2_ACTION_LIMIT_MMHG);
+    let max_co2 = match (biometrics.cabin_ppco2_mmhg, biometrics.helmet_ppco2_mmhg) {
+        (Some(c), Some(h)) => Some(c.max(h)),
+        (Some(c), None) => Some(c),
+        (None, Some(h)) => Some(h),
+        (None, None) => None,
+    };
+    let eclss_alert = max_co2.is_some_and(|ppco2| ppco2 > ECLSS_PPCO2_ACTION_LIMIT_MMHG);
 
     playbook.safety_gates = SafetyGates {
         anticoagulant_lock_active,
@@ -107,9 +177,7 @@ pub fn enforce_hard_clinical_safety_gates_ext(
     // Gate 1: Rimuove categoricamente qualsiasi farmaco anticoagulante se POCUS non conferma trombo
     // o se sussiste controindicazione emorragica / trombocitopenia
     if anticoagulant_lock_active {
-        playbook.actions.retain(|a| {
-            !a.action_id.contains("ANTICOAG") && !a.category.contains("PHARMACOLOGICAL_ANTICOAGULANT")
-        });
+        playbook.actions.retain(|a| !is_systemic_anticoagulant_action(a));
 
         if bleeding_risk_active && jugular.pocus_thrombus_confirmed {
             playbook.actions.insert(
@@ -169,7 +237,14 @@ pub fn enforce_hard_clinical_safety_gates_ext(
 
     // Gate 2: Se viene rilevato rischio pre-sincopale durante LBNP, sfiata immediatamente a 0 mmHg (priorita assoluta al vertice)
     if pre_syncope_detected {
-        playbook.actions.retain(|a| !a.action_id.contains("LBNP_MAINTAIN") && !a.action_id.contains("LBNP_ESCALATE"));
+        playbook.actions.retain(|a| {
+            !a.action_id.contains("LBNP_MAINTAIN")
+                && !a.action_id.contains("LBNP_ESCALATE")
+                && !a.action_id.contains("ACT_LBNP_MINUS_")
+        });
+        let hr_display = biometrics
+            .heart_rate_bpm
+            .map_or_else(|| "N/A".to_string(), |v| format!("{v:.0} bpm"));
         let vent_label = if sensor_dropout_critical {
             "SAFETY GATE 2 TRIGGERED: Emergency LBNP Auto-Vent to 0 mmHg (Sensor Dropout Fail-Safe)".to_string()
         } else if pulse_pressure_narrowed {
@@ -177,10 +252,15 @@ pub fn enforce_hard_clinical_safety_gates_ext(
                 "SAFETY GATE 2 TRIGGERED: Auto-vent LBNP chamber to 0 mmHg immediately (Pulse Pressure Narrowing < 25 mmHg, SBP drop {:.1} mmHg)",
                 sbp_drop
             )
+        } else if vasovagal_bradycardia {
+            format!(
+                "SAFETY GATE 2 TRIGGERED: Auto-vent LBNP chamber to 0 mmHg immediately (Vasovagal Bradycardia HR {} / SBP drop {:.1} mmHg)",
+                hr_display, sbp_drop
+            )
         } else {
             format!(
-                "SAFETY GATE 2 TRIGGERED: Auto-vent LBNP chamber to 0 mmHg immediately (SBP drop {:.1} mmHg / HR {:.0} bpm)",
-                sbp_drop, hr
+                "SAFETY GATE 2 TRIGGERED: Auto-vent LBNP chamber to 0 mmHg immediately (SBP drop {:.1} mmHg / HR {})",
+                sbp_drop, hr_display
             )
         };
         playbook.actions.insert(
@@ -195,6 +275,32 @@ pub fn enforce_hard_clinical_safety_gates_ext(
     }
 
     playbook
+}
+
+/// Applica in modo inflessibile i 4 Hard Clinical Safety Gates al Playbook candidato.
+#[inline]
+#[allow(clippy::too_many_arguments)]
+pub fn enforce_hard_clinical_safety_gates_ext(
+    playbook: ActivePlaybook,
+    biometrics: &Biometrics,
+    musculo: &Musculoskeletal,
+    jugular: &JugularHemodynamics,
+    scenario: &StressTestScenarioInput,
+    efast: Option<&PocusEfastScan>,
+    fatigue_index: Option<f64>,
+    shock_index: Option<f64>,
+) -> ActivePlaybook {
+    enforce_hard_clinical_safety_gates_with_lbnp_baseline(
+        playbook,
+        biometrics,
+        musculo,
+        jugular,
+        scenario,
+        efast,
+        fatigue_index,
+        shock_index,
+        None,
+    )
 }
 
 /// Applica in modo inflessibile i 4 Hard Clinical Safety Gates al Playbook candidato (firma standard).
@@ -329,8 +435,7 @@ mod tests {
             enforced
                 .actions
                 .iter()
-                .all(|a| !a.action_id.contains("ANTICOAG")
-                    && !a.category.contains("PHARMACOLOGICAL"))
+                .all(|a| !is_systemic_anticoagulant_action(a))
         );
         assert_eq!(enforced.actions.len(), 1);
         assert_eq!(enforced.actions[0].action_id, "ACT_LBNP_MINUS_30_MMHG");

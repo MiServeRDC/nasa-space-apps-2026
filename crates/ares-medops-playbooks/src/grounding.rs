@@ -1,6 +1,7 @@
 //! Fase 19/20 (Blocco I): Grounding normativo `NASA-STD-3001`, `ClinicalAnswerabilityGate`
 //! e verifica deontica dell'habitat (`HabitatZoneDeonticPolicy`) sui Playbook MedOps (`#01-#05`).
 
+use crate::safety_gates::is_systemic_anticoagulant_action;
 use ares_causal_graph::adhg_graph::AdhgNodeKind;
 use ares_causal_graph::biokg_reasoner::{
     BiomedicalEvidenceDescriptor, ClinicalAnswerabilityGate, EpistemicProvenance,
@@ -123,9 +124,10 @@ pub fn verify_playbook_governance(
     habitat_policy: &HabitatZoneDeonticPolicy,
 ) -> Result<PlaybookGovernanceVerdict, PlaybookError> {
     let grounding = ground_playbook_normative(&playbook.playbook_id)?;
-    let requests_anticoagulation = playbook.actions.iter().any(|a| {
-        a.action_id.contains("ANTICOAG") || a.category.contains("PHARMACOLOGICAL")
-    });
+    let requests_anticoagulation = playbook
+        .actions
+        .iter()
+        .any(is_systemic_anticoagulant_action);
     let answerability = evaluate_clinical_answerability_gate(
         provenance,
         missing_channels_count,
@@ -234,6 +236,79 @@ mod tests {
         assert!(matches!(
             allowed.answerability,
             ClinicalAnswerabilityGate::Answerable { .. }
+        ));
+    }
+
+    #[test]
+    fn test_verify_playbook_governance_allows_pb10_and_pb13_without_pocus_and_blocks_apx() {
+        let prov = EpistemicProvenance::from_modalities(Some(0.9), None, Some(0.8), Some(1.0));
+        let hab = HabitatEnvironmentState {
+            current_zone: HabitatZoneId::MedOpsUltrasoundBay,
+            radiation_dose_rate_msv_d: 0.4,
+            gai_pct: 5.0,
+            pocus_thrombus_confirmed: false,
+            lbnp_dwell_s: 0.0,
+            sleep_quarters_noise_dba: 42.0,
+        };
+        let policy = HabitatZoneDeonticPolicy::default();
+
+        // Playbook #10 (Potassium Citrate + Ketorolac/Tamsulosin, category PHARMACOLOGICAL_UNLOCKED)
+        let pb10 = ActivePlaybook {
+            playbook_id: "PLAYBOOK_10_RENAL_LITHIASIS".to_string(),
+            title: "Playbook #10".to_string(),
+            causal_chain_summary: vec![],
+            safety_gates: SafetyGates::default(),
+            actions: vec![
+                CountermeasureAction {
+                    action_id: "ACT_PHARMACOLOGICAL_POTASSIUM_CITRATE_30MEQ".to_string(),
+                    label: "Potassium Citrate".to_string(),
+                    category: "PHARMACOLOGICAL_UNLOCKED".to_string(),
+                    delta_rho_per_hour: 0.18,
+                },
+                CountermeasureAction {
+                    action_id: "ACT_ANALGESIA_KETOROLAC_AND_TAMSULOSIN".to_string(),
+                    label: "Ketorolac + Tamsulosin".to_string(),
+                    category: "PHARMACOLOGICAL_UNLOCKED".to_string(),
+                    delta_rho_per_hour: 0.15,
+                },
+            ],
+        };
+        let res10 = verify_playbook_governance(&pb10, &prov, 0, false, &hab, &policy);
+        assert!(res10.is_ok(), "Playbook #10 must pass with pocus_thrombus_confirmed == false");
+
+        // Playbook #13 (Valacyclovir, category PHARMACOLOGICAL_UNLOCKED)
+        let pb13 = ActivePlaybook {
+            playbook_id: "PLAYBOOK_13_VIRAL_IMMUNE_VALACYCLOVIR".to_string(),
+            title: "Playbook #13".to_string(),
+            causal_chain_summary: vec![],
+            safety_gates: SafetyGates::default(),
+            actions: vec![CountermeasureAction {
+                action_id: "ACT_PHARMACOLOGICAL_VALACYCLOVIR_500MG".to_string(),
+                label: "Valacyclovir".to_string(),
+                category: "PHARMACOLOGICAL_UNLOCKED".to_string(),
+                delta_rho_per_hour: 0.16,
+            }],
+        };
+        let res13 = verify_playbook_governance(&pb13, &prov, 0, false, &hab, &policy);
+        assert!(res13.is_ok(), "Playbook #13 must pass with pocus_thrombus_confirmed == false");
+
+        // ACT_APX_ORAL must be blocked when pocus_thrombus_confirmed == false
+        let pb_apx = ActivePlaybook {
+            playbook_id: "PLAYBOOK_02_CONFIRMED_IJV_THROMBUS".to_string(),
+            title: "Playbook #02 Apixaban".to_string(),
+            causal_chain_summary: vec![],
+            safety_gates: SafetyGates::default(),
+            actions: vec![CountermeasureAction {
+                action_id: "ACT_APX_ORAL".to_string(),
+                label: "Apixaban oral".to_string(),
+                category: "PHARMACOLOGICAL_ANTICOAGULANT".to_string(),
+                delta_rho_per_hour: 0.22,
+            }],
+        };
+        let blocked_apx = verify_playbook_governance(&pb_apx, &prov, 0, false, &hab, &policy);
+        assert!(matches!(
+            blocked_apx,
+            Err(PlaybookError::BlockedByClinicalGate { .. })
         ));
     }
 }
