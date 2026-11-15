@@ -5,6 +5,7 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import type { AnatomicalRegionWireId, CrystallizedPlaybookId } from '../types/telemetry';
+import type { QualityMode, QualityTier } from '../lib/renderQuality';
 import type {
   BiologicalSex,
   CameraSnapshot,
@@ -46,6 +47,10 @@ export interface WorkbenchState {
   twinAutoRotate: boolean;
   displayMode: 'operational'|'presentation';
   setDisplayMode: (mode:'operational'|'presentation')=>void;
+  qualityTier: QualityTier;
+  qualityMode: QualityMode;
+  setQualityTier: (tier: QualityTier) => void;
+  setQualityMode: (mode: QualityMode) => void;
 
   setPhase: (phase: PhaseMode) => void;
   setTwinSex: (sex: BiologicalSex) => void;
@@ -114,6 +119,8 @@ const INITIAL_STATE = {
   degradedGpu: false,
   twinAutoRotate: true,
   displayMode: 'operational' as const,
+  qualityTier: 'STANDARD' as QualityTier,
+  qualityMode: 'AUTO' as QualityMode,
 };
 
 export const useWorkbenchStore = create<WorkbenchState>()(
@@ -121,6 +128,8 @@ export const useWorkbenchStore = create<WorkbenchState>()(
     ...INITIAL_STATE,
 
     setDisplayMode: (displayMode) => set({displayMode}),
+    setQualityTier: (qualityTier) => set({ qualityTier }),
+    setQualityMode: (qualityMode) => set({ qualityMode }),
 
     setPhase: (phase) => set({ phase }),
 

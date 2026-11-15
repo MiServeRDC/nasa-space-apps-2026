@@ -1,5 +1,14 @@
 # Progress Tracking: ARES-Health (Autonomous Resilient Edge-native System for Astronaut Health)
 
+## Greenfield phase 9 performance, quality policy, and resource governance delivered (2026-11-15)
+
+Dedicated work/MiServeRDC-greenfield-phase01; no main/push/hosted Actions.
+Delivered WaveformCanvas2D revision gating (reducing idle redraws by >66%), adaptive quality policy engine (`renderQuality.ts`) with hardware heuristics and hysteresis step-down/recovery, and 3D frameloop suppression to `never` on hidden/LOW_2D states.
+Verified 160/160 frontend tests, 0 TS errors, clean production bundle with lazy-loaded 3D chunks, and fast probe 4/4 passing (0 unwrap/expect in crates, cargo check and clippy 0 warnings).
+Headless Chrome / Playwright browser qualification verified 100% air-gapped execution (0 external requests), responsive layouts at 1440 and 390 viewports, and 200% zoom continuity.
+See `docs/evaluation/GREENFIELD_PHASE9_RESULTS.md`.
+Next: Phase 10 (End-to-end qualification of software and controlled integration).
+
 ## Greenfield phase 8 operational triage and responsive flow delivered (2026-11-15)
 
 Dedicated work/MiServeRDC-greenfield-phase01; no main/push/hosted Actions.

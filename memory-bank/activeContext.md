@@ -1,5 +1,21 @@
 # Active Context: ARES-Health (NASA Space Apps Challenge 2026)
 
+## Greenfield phase 9 performance, quality policy, and resource governance delivered (2026-11-15)
+
+Dedicated work/MiServeRDC-greenfield-phase01; no main/push/hosted Actions.
+Implemented WaveformCanvas2D revision gating and size delta tracking, eliminating over 66% of redundant 2D canvas redraw iterations during 60 FPS RAF cycles.
+Preserved Issue #11 NaN dropouts, pen-lift segment boundaries, and tactical threshold lines.
+Implemented configurable quality policy in `src/lib/renderQuality.ts`: `QualityTier` (LOW_2D, STANDARD, DETAILED) and `QualityMode` (AUTO | tier) with hardware capability detection (`detectHardwareTier`) and hysteresis-stabilized frame-pressure step-down (> 28ms) and recovery (< 14ms).
+Invariants: Quality tier changes NEVER mutate clinical measurements, telemetry freshness, or selected anatomical identifiers.
+Suppressed WebGL frameloop (`frameloop="never"`) on `SpatialCanvasRoot.tsx` when stage is hidden, occluded, context-lost, or in LOW_2D mode, ensuring 0 active draw calls without delaying 20 Hz telemetry ingestion.
+Tests: 160 frontend tests passing (`node --test`), TypeScript lint and build passing in 2.31s with 0 errors.
+Fast probe 4/4 passing (0 unwrap/expect in crates, cargo check and clippy 0 warnings).
+Real browser qualification via headless Chrome/Playwright (`scripts/verify_greenfield_phase9_browser.mjs`):
+100% air-gapped (0 external requests), cold boot within budget, 2D triage authoritative across 1440 and 390 viewports, 200% zoom without horizontal overflow.
+Artifacts recorded in `/var/folders/0t/wclc3zfx6vn6vrcmw_bz2s9w0000gn/T/ares-greenfield-phase9-bwQqIa/`.
+See `docs/evaluation/GREENFIELD_PHASE9_RESULTS.md`.
+Next: Phase 10 (End-to-end qualification of software and controlled integration).
+
 ## Greenfield phase 8 operational triage and responsive flow delivered (2026-11-15)
 
 Dedicated work/MiServeRDC-greenfield-phase01; no main/push/hosted Actions.
