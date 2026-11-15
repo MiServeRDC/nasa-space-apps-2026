@@ -1,5 +1,53 @@
 # ARES-Health
 
+## Run the demo
+
+**Run locally from this repository. No hosted website, API key, AI model download
+or physical sensor is needed.** Internet is needed to download source and build
+dependencies; the built demo runs locally. Recording is disabled by default.
+
+**Prerequisites:** Git (or download the repository ZIP), Rust/Cargo **1.98** and
+Node.js **26** with npm. These are the versions used for local qualification on
+macOS Apple Silicon. A native compiler/linker is needed by Cargo (on macOS, the
+Xcode Command Line Tools). Linux/container and Windows builds have not been
+qualified by that run.
+
+```bash
+git clone https://github.com/MiServeRDC/nasa-space-apps-2026.git
+cd nasa-space-apps-2026
+npm --prefix ares-cockpit ci --ignore-scripts --no-audit --no-fund
+npm --prefix ares-cockpit run build
+cargo run --release --locked -p ares-server-cli --bin ares-server-cli -- --mode ws-only --source recorded-replay --frontend-dir ares-cockpit/dist
+```
+
+**Open [http://127.0.0.1:8080](http://127.0.0.1:8080)** in a recent Chrome/Chromium
+browser. Keep the terminal running; **Ctrl+C stops the demo**. Run the commands
+from the repository root. If using a ZIP, extract it and open a terminal in that
+folder, then start at the `npm` command. The first build downloads dependencies
+and can take several minutes; subsequent starts reuse the compiled binary.
+Leave `VITE_ARES_HTTP_URL` and `VITE_ARES_WS_URL` unset for this single-origin demo.
+
+**What to try:** confirm **Engine connected** and **TERRESTRIAL REPLAY**, wait
+**120 real seconds** for personal-baseline learning, then inject **DESATURATION**
+in GATHER and follow the detector-selected checklist in ACT. EVALUATE offers
+explicitly labeled What-If scenarios. Missing HRV/MRI/TTV is intentional, not an
+installation failure. See the [guided walkthrough and troubleshooting](docs/submission/JUDGES_START_HERE.md).
+
+| Need | Go to |
+| --- | --- |
+| Judge walkthrough, expected results, troubleshooting | [Judge guide](docs/submission/JUDGES_START_HERE.md) |
+| Test results and remaining limits | [Release verification](docs/evaluation/JUDGES_HANDOFF_READINESS.md) |
+| Scientific evidence and model limitations | [Model evidence audit](docs/architecture/MODEL_EVIDENCE_AUDIT.md) |
+| Remaining Italian documentation | [Language audit](docs/evaluation/REPOSITORY_LANGUAGE_AUDIT.md) |
+| Optional native archive or hosting templates | [Packaging/deployment](deploy/judges/README.md) |
+
+**Repository access:** the repository was private at the last authenticated check.
+Confirm that judges can open and download the submitted link without signing in.
+This source handoff does not publish a website or change repository visibility.
+The submission video will be supplied separately.
+
+---
+
 ## Abstract
 
 ARES-Health is an offline astronaut-health software prototype built around
@@ -171,24 +219,25 @@ The backend is partitioned into **nine decoupled Safe-Rust crates** so that team
 
 ## 7. Quickstart
 
-### Rust core
+Use the complete [judge launch instructions at the top](#run-the-demo)
+for the production cockpit and backend in one terminal. No native archive is
+required. For a developer workflow with hot reload, use two terminals:
 
 ```bash
-cargo check --workspace                       # type-check all crates
-cargo test  --workspace -- --nocapture        # run the test suite
-cargo clippy --workspace -- -D warnings        # strict lint gate
-cargo run --bin ares-server-cli               # launch the dual-transport engine
+# Terminal 1, repository root
+cargo run --locked -p ares-server-cli --bin ares-server-cli -- --mode ws-only
 ```
-
-### React cockpit
 
 ```bash
-cd ares-cockpit
-npm install
-npm run dev        # Vite dev server on 127.0.0.1:5173
-npm run lint       # tsc -b --noEmit
-npm run build      # production build
+# Terminal 2, repository root
+npm --prefix ares-cockpit ci --ignore-scripts --no-audit --no-fund
+npm --prefix ares-cockpit run dev
 ```
+
+Open http://127.0.0.1:5173; Vite proxies API/WebSocket requests to the backend on
+8080. Starting only Vite shows a labeled local preview, not connected replay.
+Developer verification: `cargo test --workspace`, `cargo clippy --workspace -- -D warnings`,
+`npm --prefix ares-cockpit test`, and `npm --prefix ares-cockpit run lint`.
 
 ---
 
@@ -217,8 +266,8 @@ at your option. `SPDX-License-Identifier: MIT OR Apache-2.0`. Unless you explici
 ### Clean-room mandate
 
 - **Fresh code only.** All source was written from scratch during the hackathon window. No pre-existing proprietary code, no prior unpublished team code, and no code of uncertain provenance was incorporated.
-- **No proprietary or cloud dependencies.** 100% offline edge execution with zero external cloud services. Every third-party crate and frontend package is itself open-source and license-compatible with MIT OR Apache-2.0 (permissive licenses only; no copyleft contamination).
-- **NASA material is grounding, not source.** NASA standards, datasets, and literature are used for context and grounding only; no NASA or third-party copyrighted code is redistributed in this repository.
+- **Offline runtime.** The selected demo does not call external cloud inference services. Third-party code, fonts, datasets and anatomical models retain their own licenses; the project code license does not relicense these assets. See the anatomy attribution/license files and [release packaging notes](deploy/judges/README.md).
+- **NASA material is research context.** NASA standards, datasets and literature do not certify this prototype. Third-party dependencies, vendored code and static assets keep their original attribution and license notices.
 - **Provenance preserved.** All external datasets retain their original provenance tags and upstream licenses, and are cited in Section 11.
 
 ---

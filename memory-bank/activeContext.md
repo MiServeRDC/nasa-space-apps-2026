@@ -1,5 +1,31 @@
 # Active Context: ARES-Health (NASA Space Apps Challenge 2026)
 
+## Repository-first judge entry (2026-11-15)
+
+User selected GitHub source delivery and deferred the video; no slides created.
+Baseline main ad101f7, branch docs/judges-repository-entry. README now begins with
+complete source-build commands, tested toolchain, single-origin URL, shutdown and
+120-real-second detector walkthrough. Judge guide is source-first with actionable
+troubleshooting; native bundle/hosting are explicitly optional. Fixed misleading
+README dependency/license claims without changing code/assets' license terms.
+
+Translated 49 distinct diagnostic/help messages across five Rust files; enum
+identities, placeholders, JSON contracts and clinical behavior unchanged. Language
+inventory records remaining Italian in historical overview, plans, memory and
+Rust comments; no Italian prose detected by the targeted cockpit-source keyword
+scan. See docs/evaluation/REPOSITORY_LANGUAGE_AUDIT.md for scope and file inventory.
+
+Verified locked npm install/build, 329 default workspace Rust tests, documented
+Cargo source launch, real-browser Engine connected/replay/WS and ready endpoint,
+English CLI help/missing-data failure and 98 local Markdown link targets (before
+adding this entry). Required fast probe and workspace/all-target Clippy passed. Logs remain external in
+/tmp/ares-judges-readiness/repo-*. No new runtime features or hosted Actions.
+
+Authenticated GitHub API confirms private=true on 2026-11-15. Judge access remains
+an owner decision; no repository visibility change or public hosting performed.
+Integration uses a dedicated branch/PR, never a direct push to main.
+
+
 ## Judging release preparation (2026-11-15)
 
 Baseline main 56b888d, release/judges-handoff; aea748b UX changes were merged
