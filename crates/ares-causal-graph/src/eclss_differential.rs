@@ -7,14 +7,16 @@
 //! produce ipercapnia e tachicardia compensatoria simultanea nell'equipaggio.
 //! Distingue matematicamente il guasto ambientale dal collasso emodinamico/settico individuale.
 
+use ares_core_types::constants::{ECLSS_PPCO2_ACTION_LIMIT_MMHG, MAX_SAFE_CABIN_PPCO2_MMHG};
 use ares_core_types::telemetry::{Biometrics, CountermeasureAction};
 use serde::{Deserialize, Serialize};
 
-pub const NASA_STD_3001_PPCO2_ACTION_LIMIT_MMHG: f64 = 4.0;
+pub const NASA_STD_3001_PPCO2_ACTION_LIMIT_MMHG: f64 = ECLSS_PPCO2_ACTION_LIMIT_MMHG;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum HypercapniaRootCause {
     Nominal,
+    EarlyEnvironmentalSansWarning,
     EnvironmentalEclssScrubberSaturation,
     SuitOrHelmetVentilationFault,
     IsolatedCrewPathology,
@@ -100,7 +102,36 @@ pub fn evaluate_coupled_habitat_crew_co2(
         };
     }
 
-    // Caso 3: Atmosfera nominale (<= 4.0 mmHg), tachicardia attribuita a fisiologia individuale
+    // Caso 2b: Fascia di attenzione cronica Tier 1 (3.0 < ppCO2 <= 4.0 mmHg, NASA-STD-3001 [V2 6004])
+    let max_co2 = match (cabin_co2, helmet_co2) {
+        (Some(c), Some(h)) => Some(c.max(h)),
+        (Some(c), None) => Some(c),
+        (None, Some(h)) => Some(h),
+        (None, None) => None,
+    };
+    if let Some(co2) = max_co2
+        .filter(|&v| v > MAX_SAFE_CABIN_PPCO2_MMHG && v <= NASA_STD_3001_PPCO2_ACTION_LIMIT_MMHG)
+    {
+        return CoupledHabitatCrewDiagnosis {
+            root_cause: HypercapniaRootCause::EarlyEnvironmentalSansWarning,
+            observed_ppco2_mmhg: Some(co2),
+            causal_summary: format!(
+                "TIER-1 CHRONIC CO2 / SANS WARNING: Observed ppCO2 ({co2:.2} mmHg) exceeds NASA-STD-3001 3.0 mmHg chronic ceiling while remaining at or below the 4.0 mmHg acute scrubber action limit."
+            ),
+            causal_chain: vec![
+                "CHRONIC_PPCO2_ABOVE_3_MMHG_CEILING".to_string(),
+                "HYPERCAPNIC_CEREBRAL_VASODILATION_SANS_RISK".to_string(),
+            ],
+            recommended_override_actions: vec![CountermeasureAction {
+                action_id: "ACT_MONITOR_ECLSS_AND_SANS_TREND".to_string(),
+                label: "ECLSS WATCH: Monitor CDRA/Amine Bed Efficiency & Crew SANS Biomarkers (>3.0 mmHg Tier 1)".to_string(),
+                category: "ENVIRONMENTAL_SANS_PREVENTION".to_string(),
+                delta_rho_per_hour: 0.10,
+            }],
+        };
+    }
+
+    // Caso 3: Atmosfera nominale (<= 3.0 mmHg), tachicardia attribuita a fisiologia individuale
     if elevated_hr {
         return CoupledHabitatCrewDiagnosis {
             root_cause: HypercapniaRootCause::IsolatedCrewPathology,
@@ -192,6 +223,48 @@ mod tests {
         assert_eq!(
             diag.root_cause,
             HypercapniaRootCause::IsolatedCrewPathology
+        );
+    }
+
+    #[test]
+    fn test_tier1_chronic_co2_zone_flags_early_environmental_sans_warning() {
+        for co2 in [3.1, 3.5, 4.0] {
+            let cabin_bio = Biometrics {
+                heart_rate_bpm: Some(78.0),
+                cabin_ppco2_mmhg: Some(co2),
+                ..Biometrics::default()
+            };
+            let diag = evaluate_coupled_habitat_crew_co2(&cabin_bio, 4);
+            assert_eq!(
+                diag.root_cause,
+                HypercapniaRootCause::EarlyEnvironmentalSansWarning,
+                "Expected EarlyEnvironmentalSansWarning at cabin ppCO2={co2}"
+            );
+            assert_eq!(diag.observed_ppco2_mmhg, Some(co2));
+            assert_eq!(diag.recommended_override_actions.len(), 1);
+        }
+
+        let helmet_bio = Biometrics {
+            heart_rate_bpm: Some(78.0),
+            cabin_ppco2_mmhg: Some(2.1),
+            helmet_ppco2_mmhg: Some(3.6),
+            ..Biometrics::default()
+        };
+        let helmet_diag = evaluate_coupled_habitat_crew_co2(&helmet_bio, 1);
+        assert_eq!(
+            helmet_diag.root_cause,
+            HypercapniaRootCause::EarlyEnvironmentalSansWarning
+        );
+        assert_eq!(helmet_diag.observed_ppco2_mmhg, Some(3.6));
+
+        let boundary_nominal = Biometrics {
+            heart_rate_bpm: Some(75.0),
+            cabin_ppco2_mmhg: Some(3.0),
+            ..Biometrics::default()
+        };
+        assert_eq!(
+            evaluate_coupled_habitat_crew_co2(&boundary_nominal, 1).root_cause,
+            HypercapniaRootCause::Nominal
         );
     }
 }
