@@ -19,7 +19,8 @@ Long-duration exploration missions expose crews to space radiation, isolation an
 7. [Quickstart](#7-quickstart)
 8. [Data, Provenance & Evidence Boundary](#8-data-provenance--evidence-boundary)
 9. [Compliance, Licensing & Clean-Room Mandate](#9-compliance-licensing--clean-room-mandate)
-10. [References & Data Sources](#10-references--data-sources)
+10. [Team](#10-team)
+11. [References & Data Sources](#11-references--data-sources)
 
 ---
 
@@ -194,7 +195,21 @@ ARES-Health is a standalone, clean-room, open-source project with zero external 
 
 ---
 
-## 10. References & Data Sources
+## 10. Team
+
+ARES-Health is built by a cross-university team for NASA Space Apps Challenge 2026.
+
+| Name | Affiliation | Contact |
+| :--- | :--- | :--- |
+| Fabio Malaguti | Università di Bologna | fabio.malaguti@studio.unibo.it |
+| Alessandro Nicolini | Università di Bologna | alessandro.nicolini@studio.unibo.it |
+| Carolina Bonafè | Università di Bologna | carolina.bonafe@studio.unibo.it |
+| Leonardo Perrone | KU Leuven | leonardo.perrone@student.kuleuven.be |
+| Fernando Alonzi | KU Leuven | fernando.alonzi@student.kuleuven.be |
+
+---
+
+## 11. References & Data Sources
 
 Grounding standards, datasets, and literature. Full annotated reading list with evidence boundaries: [`docs/REFERENCES.md`](docs/REFERENCES.md).
 
