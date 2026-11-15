@@ -1,22 +1,23 @@
 // Branched Safety Gate DAG MedOps Playbook Runner Lens (`BranchedPlaybookDagLens`).
-// Supports all 15 Crystallized Playbooks (`#01-#15`) with `Priority 1-6` clinical triage
-// precedence tags (`P1-P6`), non-blocking Autonomous Safety-Override Banners (`Gate 2` LBNP
-// auto-vent to `0 mmHg`, `Gate 3` `0.38g` `+25%` ankle damping, `Gate 4B` EVA NO-GO, `SPE`),
-// and a visual Two-Branch Safety Gate DAG separating permitted `1500 ms` Press-and-Hold
-// countermeasures (preserving `#10` Potassium Citrate & `#13` Valacyclovir) from
-// `.ares-inhibited-surface` locked actions (`aria-disabled="true"` + `1-Click Verify ->`).
+// Supports all 30 Aerospace 360 MedOps Playbooks (`#01-#30`) grouped across 4 domain tabs with
+// `Priority 1-6` clinical triage precedence tags (`P1-P6`), non-blocking Autonomous Safety-Override
+// Banners (`Gates 1..7`, `SPE`), and a visual Two-Branch Safety Gate DAG separating permitted
+// `1500 ms` Press-and-Hold countermeasures from `.ares-inhibited-surface` locked actions.
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type {
   CountermeasureAction,
-  CrystallizedPlaybookId,
+  PlaybookId,
   TelemetryPacket,
 } from '../types/telemetry';
 import type { ScenarioState, WhatIf } from '../lib/scenario';
 import {
-  ALL_CRYSTALLIZED_PLAYBOOK_LIST,
+  ALL_360_PLAYBOOK_LIST,
   CRYSTALLIZED_PLAYBOOK_CATALOG,
   getCatalogEntry,
+  getPlaybookDomainForShortCode,
+  PLAYBOOK_360_DOMAIN_TABS,
+  type Playbook360DomainId,
 } from '../lib/playbookCatalog';
 import { useWorkbenchStore } from '../stores/workbenchStore';
 import { announceAssertive, announcePolite } from '../stores/a11yAnnouncer';
@@ -25,10 +26,7 @@ import {
   partitionPlaybookActionsWithSafetyGates,
   type PartitionedSafetyDagResult,
 } from '../workbench/safetyGatePartition';
-import {
-  getPlaybookPrecedence,
-  type PlaybookDomainGroup,
-} from './lensMath';
+import { getPlaybookPrecedence } from './lensMath';
 
 export interface BranchedPlaybookDagLensProps {
   packet: TelemetryPacket;
@@ -45,9 +43,9 @@ export function resolvePlaybookSafetyDag(
   scenario: ScenarioState,
   whatIf: WhatIf,
   thrombusConfirmed: boolean | null,
-  selectedPlaybookId: CrystallizedPlaybookId | null,
+  selectedPlaybookId: PlaybookId | null,
 ): {
-  playbookId: CrystallizedPlaybookId;
+  playbookId: PlaybookId;
   shortCode: string;
   title: string;
   normativeClause: string;
@@ -115,6 +113,7 @@ export function resolvePlaybookSafetyDag(
       hrBpm,
       gaiPct,
       radiationDoseMsvD: radDose,
+      extendedGates: packet.aerospace_360?.extended_safety_gates ?? null,
     },
   );
 
@@ -262,7 +261,8 @@ export function BranchedPlaybookDagLens({
   const openDrawer = useWorkbenchStore((s) => s.openDrawer);
   const returnBreadcrumb = useWorkbenchStore((s) => s.returnBreadcrumb);
 
-  const [domainFilter, setDomainFilter] = useState<'ALL' | PlaybookDomainGroup>('ALL');
+  const [domainFilter, setDomainFilter] = useState<'ALL' | Playbook360DomainId>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
   const [completedIds, setCompletedIds] = useState<Record<string, boolean>>({});
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -306,11 +306,20 @@ export function BranchedPlaybookDagLens({
   }, [returnBreadcrumb]);
 
   const visiblePlaybooks = useMemo(() => {
-    return ALL_CRYSTALLIZED_PLAYBOOK_LIST.filter((entry) => {
-      if (domainFilter === 'ALL') return true;
-      return getPlaybookPrecedence(entry.playbook_id).domainGroup === domainFilter;
+    const q = searchQuery.trim().toLowerCase();
+    return ALL_360_PLAYBOOK_LIST.filter((entry) => {
+      if (domainFilter !== 'ALL' && getPlaybookDomainForShortCode(entry.short_code) !== domainFilter) {
+        return false;
+      }
+      if (!q) return true;
+      return (
+        entry.short_code.toLowerCase().includes(q) ||
+        entry.short_label.toLowerCase().includes(q) ||
+        entry.title.toLowerCase().includes(q) ||
+        entry.playbook_id.toLowerCase().includes(q)
+      );
     });
-  }, [domainFilter]);
+  }, [domainFilter, searchQuery]);
 
   const activePrecedence = getPlaybookPrecedence(resolved.playbookId);
 
@@ -341,52 +350,69 @@ export function BranchedPlaybookDagLens({
         </div>
       ))}
 
-      {/* Playbook Domain Filter + Full-Sheet Drawer Trigger */}
-      <div className="flex flex-wrap items-center justify-between gap-1.5 font-mono text-[9px]">
-        <div className="flex flex-wrap gap-1" role="group" aria-label="Playbook domain filter">
-          {(
-            [
-              { id: 'ALL', label: 'ALL 15' },
-              { id: 'CORE', label: 'CORE #01-#05' },
-              { id: 'ACUTE', label: 'ACUTE #06-#09' },
-              { id: 'EXPLORATION', label: 'EXPLORE #10-#15' },
-            ] as const
-          ).map((grp) => {
-            const selected = domainFilter === grp.id;
-            return (
-              <button
-                key={grp.id}
-                type="button"
-                aria-pressed={selected}
-                onClick={() => setDomainFilter(grp.id)}
-                className={`ares-interactive rounded border px-2 py-1 font-semibold ${
-                  selected
-                    ? 'border-cyan-400/65 bg-cyan-400/15 text-cyan-200'
-                    : 'border-white/10 bg-black text-[var(--color-ink-meta)]'
-                }`}
-              >
-                {grp.label}
-              </button>
-            );
-          })}
+      {/* Playbook Domain Filter + Search + Full-Sheet Drawer Trigger */}
+      <div className="space-y-1.5 font-mono text-[9px]">
+        <div className="flex flex-wrap items-center justify-between gap-1.5">
+          <div className="flex flex-wrap gap-1" role="group" aria-label="Aerospace 360 playbook domain filter">
+            <button
+              type="button"
+              aria-pressed={domainFilter === 'ALL'}
+              onClick={() => setDomainFilter('ALL')}
+              className={`ares-interactive rounded border px-2 py-1 font-semibold ${
+                domainFilter === 'ALL'
+                  ? 'border-cyan-400/65 bg-cyan-400/15 text-cyan-200'
+                  : 'border-white/10 bg-black text-[var(--color-ink-meta)]'
+              }`}
+            >
+              ALL 30
+            </button>
+            {PLAYBOOK_360_DOMAIN_TABS.map((grp) => {
+              const selected = domainFilter === grp.id;
+              return (
+                <button
+                  key={grp.id}
+                  type="button"
+                  data-testid={`dag-domain-${grp.id}`}
+                  aria-pressed={selected}
+                  onClick={() => setDomainFilter(grp.id)}
+                  className={`ares-interactive rounded border px-2 py-1 font-semibold ${
+                    selected
+                      ? 'border-cyan-400/65 bg-cyan-400/15 text-cyan-200'
+                      : 'border-white/10 bg-black text-[var(--color-ink-meta)]'
+                  }`}
+                >
+                  {grp.label} {grp.rangeLabel}
+                </button>
+              );
+            })}
+          </div>
+
+          {!expandedView ? (
+            <button
+              id="btn-open-full-playbook-drawer"
+              type="button"
+              onClick={() => openDrawer('PLAYBOOK_SHEET', 'btn-open-full-playbook-drawer')}
+              className="ares-interactive rounded border border-white/15 bg-black px-2 py-1 font-semibold text-cyan-200"
+            >
+              EXPAND SHEET -&gt;
+            </button>
+          ) : null}
         </div>
 
-        {!expandedView ? (
-          <button
-            id="btn-open-full-playbook-drawer"
-            type="button"
-            onClick={() => openDrawer('PLAYBOOK_SHEET', 'btn-open-full-playbook-drawer')}
-            className="ares-interactive rounded border border-white/15 bg-black px-2 py-1 font-semibold text-cyan-200"
-          >
-            EXPAND SHEET -&gt;
-          </button>
-        ) : null}
+        <input
+          type="search"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search Playbooks #01-#30 (e.g. Sepsis, ARS, POCUS, LBNP)..."
+          aria-label="Search MedOps Playbooks #01 through #30"
+          className="w-full rounded border border-white/15 bg-black px-2.5 py-1.5 text-[10px] text-[var(--color-ink-display)] placeholder:text-[var(--color-ink-muted)] focus:border-cyan-400 focus:outline-none"
+        />
       </div>
 
-      {/* Playbook `#01-#15` Selector Strip with `P1-P6` Clinical Precedence Badges */}
+      {/* Playbook `#01-#30` Selector Strip with `P1-P6` Clinical Precedence Badges */}
       <div
         role="group"
-        aria-label="Select MedOps Playbook #01 through #15"
+        aria-label="Select MedOps Playbook #01 through #30"
         className="flex gap-1 overflow-x-auto pb-1 font-mono text-[10px]"
       >
         {visiblePlaybooks.map((entry) => {

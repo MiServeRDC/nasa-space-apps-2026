@@ -74,6 +74,9 @@ export const FLAG_SEU_RECOVERY_ACTIVE = 1 << 10;
 export const FLAG_TERRESTRIAL_BENCHMARKED_ONLY = 1 << 11;
 export const FLAG_GATE4A_DECOMPRESSION_LOCK = 1 << 12;
 export const FLAG_GATE4B_EVA_NO_GO = 1 << 13;
+export const FLAG_GATE5_PHARMA_LOCK = 1 << 14;
+export const FLAG_GATE6_RADIATION_INVASIVE_LOCK = 1 << 15;
+export const FLAG_GATE7_BMED_DELIRIUM_GUARD = 1 << 16;
 
 export const PLAYBOOK_ID_BY_CODE: Record<number, string> = {
   0: 'NONE',
@@ -92,6 +95,21 @@ export const PLAYBOOK_ID_BY_CODE: Record<number, string> = {
   13: 'PLAYBOOK_13_VIRAL_IMMUNE_VALACYCLOVIR',
   14: 'PLAYBOOK_14_CO2_SCRUBBER_SANS',
   15: 'PLAYBOOK_15_EFAST_TRAUMA_TRIAGE',
+  16: 'PLAYBOOK_16_SEPSIS_SEPTIC_SHOCK',
+  17: 'PLAYBOOK_17_HEMORRHAGIC_TRAUMA_TXA',
+  18: 'PLAYBOOK_18_TORSO_SHOCK_PERICARDIOCENTESIS',
+  19: 'PLAYBOOK_19_CONSERVATIVE_ACUTE_ABDOMEN_0G',
+  20: 'PLAYBOOK_20_EVA_MUSCULOSKELETAL_SPINE_FRACTURE',
+  21: 'PLAYBOOK_21_DENTAL_MAXILLOFACIAL_EMERGENCY',
+  22: 'PLAYBOOK_22_OCULAR_FOREIGN_BODY_CHEMICAL_BURN',
+  23: 'PLAYBOOK_23_ANAPHYLAXIS_AIRWAY_EMERGENCY',
+  24: 'PLAYBOOK_24_MICROGRAVITY_CARDIAC_ARREST_CPR',
+  25: 'PLAYBOOK_25_ACUTE_URINARY_RETENTION_POCUS',
+  26: 'PLAYBOOK_26_ACUTE_RADIATION_SYNDROME',
+  27: 'PLAYBOOK_27_AEROSPACE_TOXICOLOGY_EXPOSURE',
+  28: 'PLAYBOOK_28_EVA_DCS_AND_SUIT_EMERGENCY',
+  29: 'PLAYBOOK_29_BMED_PSYCHIATRIC_CRISIS',
+  30: 'PLAYBOOK_30_FEMALE_PELVIC_UROGYN_POCUS',
 };
 
 interface BinaryPlaybookDefaultMeta {
@@ -497,6 +515,453 @@ export const BINARY_PLAYBOOK_DEFAULTS: Record<number, BinaryPlaybookDefaultMeta>
       },
     ],
   },
+  16: {
+    playbook_id: 'PLAYBOOK_16_SEPSIS_SEPTIC_SHOCK',
+    title: 'Playbook #16: Sepsis & Septic Shock Surviving Sepsis Campaign 1-Hour Bundle',
+    total_steps: 4,
+    step_instruction:
+      'Obtain POCT lactate & cultures, start 1-hour IV Piperacillin-Tazobactam/Cefepime (Gate 5 check), and infuse 30 mL/kg crystalloid bolus',
+    causal_chain_summary: [
+      'suspected_infection + qSOFA >= 2 -> sepsis_1h_bundle',
+      'MAP < 65 mmHg or lactate >= 4.0 mmol/L -> norepinephrine_titration',
+    ],
+    actions: [
+      {
+        action_id: 'ACT_SEPSIS_POCT_LACTATE_AND_MICROBIAL_CULTURES',
+        label: 'Obtain immediate POCT lactate and paired microbial cultures prior to antimicrobials',
+        category: 'DIAGNOSTIC_VERIFICATION',
+        delta_rho_per_hour: 0.1,
+      },
+      {
+        action_id: 'ACT_SEPSIS_1H_BROAD_SPECTRUM_IV_ANTIBIOTICS',
+        label: 'Administer 1-hour broad-spectrum IV Piperacillin-Tazobactam or Cefepime (Gate 5 allergy/renal-adjusted)',
+        category: 'PHARMACOLOGICAL_UNLOCKED',
+        delta_rho_per_hour: 0.35,
+      },
+      {
+        action_id: 'ACT_SEPSIS_30ML_KG_CRYSTALLOID_BOLUS',
+        label: 'Infuse 30 mL/kg balanced crystalloid bolus with POCUS lung B-line fluid-tolerance check',
+        category: 'HEMODYNAMIC_RESUSCITATION',
+        delta_rho_per_hour: 0.3,
+      },
+    ],
+  },
+  17: {
+    playbook_id: 'PLAYBOOK_17_HEMORRHAGIC_TRAUMA_TXA',
+    title: 'Playbook #17: Hemorrhagic Trauma & TXA Window Protocol',
+    total_steps: 3,
+    step_instruction:
+      'Apply CAT tourniquet & QuikClot kaolin dressing; administer TXA 1 g IV if within <= 3.0 h injury window',
+    causal_chain_summary: [
+      'active_arterial_hemorrhage -> Gate1_anticoagulant_lock_active',
+      'injury_hours_elapsed <= 3.0 h -> TXA_1g_IV_eligible',
+    ],
+    actions: [
+      {
+        action_id: 'ACT_TRAUMA_CAT_TOURNIQUET_AND_QUIKCLOT_KAOLIN',
+        label: 'Apply CAT tourniquet proximal to arterial bleed and QuikClot kaolin hemostatic dressing',
+        category: 'HEMORRHAGE_CONTROL',
+        delta_rho_per_hour: 0.35,
+      },
+      {
+        action_id: 'ACT_HEMORRHAGE_TXA_1G_IV_WITHIN_3H',
+        label: 'Administer Tranexamic Acid (TXA) 1 g IV over 10 min within 3.0 h of injury',
+        category: 'PHARMACOLOGICAL_HEMOSTATIC',
+        delta_rho_per_hour: 0.25,
+      },
+      {
+        action_id: 'ACT_BALANCED_RESUSCITATION_WARM_CRYSTALLOID_CALCIUM',
+        label: 'Balanced resuscitation with warmed isotonic crystalloid and calcium replacement',
+        category: 'RESUSCITATION',
+        delta_rho_per_hour: 0.2,
+      },
+    ],
+  },
+  18: {
+    playbook_id: 'PLAYBOOK_18_TORSO_SHOCK_PERICARDIOCENTESIS',
+    title: 'Playbook #18: Torso Shock, Pericardiocentesis & Hemoperitoneum Protocol',
+    total_steps: 2,
+    step_instruction:
+      'Execute POCUS-guided closed 3-way stopcock pericardiocentesis or permissive hypotension (SBP 80-90 mmHg) for hemoperitoneum',
+    causal_chain_summary: [
+      'torso_shock -> eFAST_tamponade_or_hemoperitoneum_triage',
+      'tamponade_risk -> closed_0g_pericardiocentesis_with_Gate1_lock',
+    ],
+    actions: [
+      {
+        action_id: 'ACT_POCUS_GUIDED_PERICARDIOCENTESIS_CLOSED_SYRINGE',
+        label: 'Perform POCUS-guided closed 3-way stopcock pericardiocentesis with pigtail drain (0g aerosol containment)',
+        category: 'INVASIVE_PROCEDURE',
+        delta_rho_per_hour: 0.4,
+      },
+      {
+        action_id: 'ACT_HEMOPERITONEUM_TXA_PELVIC_BINDER_PERMISSIVE_HYPOTENSION',
+        label: 'Initiate TXA, pelvic binder stabilization, and permissive hypotension (target SBP 80-90 mmHg)',
+        category: 'HEMORRHAGE_CONTROL',
+        delta_rho_per_hour: 0.3,
+      },
+    ],
+  },
+  19: {
+    playbook_id: 'PLAYBOOK_19_CONSERVATIVE_ACUTE_ABDOMEN_0G',
+    title: 'Playbook #19: Conservative 0g Acute Abdomen (NOM) Protocol',
+    total_steps: 3,
+    step_instruction:
+      'Enforce 0g Non-Operative Management (open laparotomy forbidden): Ertapenem/Pip-Tazo + NPO + NG suction',
+    causal_chain_summary: [
+      'acute_abdomen_0g -> open_laparotomy_forbidden_in_0g',
+      'antibiotic_first_NOM -> POCUS_percutaneous_drain_if_abscess',
+    ],
+    actions: [
+      {
+        action_id: 'ACT_ABDOMEN_0G_ANTIBIOTIC_FIRST_ERTAPENEM_OR_PIPTAZO',
+        label: 'Initiate antibiotic-first NOM: Ertapenem 1 g IV/IM q24h or Piperacillin-Tazobactam (Gate 5 allergy check)',
+        category: 'PHARMACOLOGICAL_ANTIMICROBIAL',
+        delta_rho_per_hour: 0.25,
+      },
+      {
+        action_id: 'ACT_BOWEL_REST_NG_SUCTION_IV_HYDRATION',
+        label: 'Enforce NPO bowel rest, closed nasogastric decompression suction, and IV hydration',
+        category: 'CLINICAL_COUNTERMEASURE',
+        delta_rho_per_hour: 0.15,
+      },
+    ],
+  },
+  20: {
+    playbook_id: 'PLAYBOOK_20_EVA_MUSCULOSKELETAL_SPINE_FRACTURE',
+    title: 'Playbook #20: EVA Musculoskeletal, Lumbar Spine & Femoral Fracture Protocol',
+    total_steps: 3,
+    step_instruction:
+      'Relieve EVA glove/HUT pressure, splint extremity, perform L1-L5 cauda equina screen, and enforce Gate 4 EVA No-Go',
+    causal_chain_summary: [
+      'eva_musculoskeletal_trauma -> Gate4_EVA_no_go_active',
+      'limb_or_spine_injury -> splint_neurovascular_and_multimodal_analgesia',
+    ],
+    actions: [
+      {
+        action_id: 'ACT_EVA_GLOVE_HUT_DECOMPRESSION_SPLINT',
+        label: 'Remove EVA glove/HUT pressure source, splint affected extremity, and inspect neurovascular status',
+        category: 'MECHANICAL_INTERVENTION',
+        delta_rho_per_hour: 0.15,
+      },
+      {
+        action_id: 'ACT_LUMBAR_DISC_NEURO_CAUDA_EQUINA_SCREEN',
+        label: 'Perform focused L1-L5 radiculopathy and cauda equina neurological screen',
+        category: 'DIAGNOSTIC_VERIFICATION',
+        delta_rho_per_hour: 0.05,
+      },
+      {
+        action_id: 'ACT_MSK_MULTIMODAL_ANALGESIA_ACETAMINOPHEN_FENTANYL',
+        label: 'Administer multimodal analgesia (Acetaminophen / Intranasal Fentanyl; Ketorolac gated by Gate 5)',
+        category: 'PHARMACOLOGICAL_ANALGESIA',
+        delta_rho_per_hour: 0.1,
+      },
+    ],
+  },
+  21: {
+    playbook_id: 'PLAYBOOK_21_DENTAL_MAXILLOFACIAL_EMERGENCY',
+    title: "Playbook #21: Dental & Maxillofacial Emergency (Ludwig's Angina) Protocol",
+    total_steps: 4,
+    step_instruction:
+      "Assess Ludwig's angina airway threat (early i-gel + Gate 4 EVA No-Go), place IRM temporary restoration, and treat odontogenic abscess",
+    causal_chain_summary: [
+      'dental_maxillofacial_emergency -> barodontalgia_or_abscess_triage',
+      'ludwigs_angina_threat -> early_igel_airway_and_IV_antibiotics',
+    ],
+    actions: [
+      {
+        action_id: 'ACT_DENTAL_IRM_ZINC_OXIDE_EUGENOL_TEMP_FILLING',
+        label: 'Place IRM zinc oxide-eugenol temporary restoration for barodontalgia or crown/root defect',
+        category: 'DENTAL_INTERVENTION',
+        delta_rho_per_hour: 0.1,
+      },
+      {
+        action_id: 'ACT_DENTAL_INFERIOR_ALVEOLAR_LIDOCAINE_BLOCK',
+        label: 'Administer inferior alveolar nerve block with Lidocaine for acute dental pain control',
+        category: 'PHARMACOLOGICAL_ANALGESIA',
+        delta_rho_per_hour: 0.1,
+      },
+      {
+        action_id: 'ACT_DENTAL_ABSCESS_AMOX_CLAV_OR_CLINDAMYCIN',
+        label: 'Initiate Amoxicillin-Clavulanate or Clindamycin (Gate 5 allergy check) for odontogenic abscess',
+        category: 'PHARMACOLOGICAL_ANTIMICROBIAL',
+        delta_rho_per_hour: 0.15,
+      },
+    ],
+  },
+  22: {
+    playbook_id: 'PLAYBOOK_22_OCULAR_FOREIGN_BODY_CHEMICAL_BURN',
+    title: 'Playbook #22: Ocular Foreign Body, Chemical Burn & Seidel Check Protocol',
+    total_steps: 3,
+    step_instruction:
+      'Instill Tetracaine, irrigate via 0g Morgan Lens (abort if Seidel positive -> rigid Fox shield with zero globe pressure)',
+    causal_chain_summary: [
+      'ocular_chemical_or_fb_injury -> fluorescein_slit_lamp_Seidel_check',
+      'seidel_positive -> rigid_Fox_shield_zero_pressure_abort_irrigation',
+    ],
+    actions: [
+      {
+        action_id: 'ACT_OCULAR_TOPICAL_TETRACAINE_ANESTHETIC',
+        label: 'Instill topical Tetracaine ophthalmic anesthetic to facilitate examination',
+        category: 'PHARMACOLOGICAL_ANALGESIA',
+        delta_rho_per_hour: 0.05,
+      },
+      {
+        action_id: 'ACT_FLUORESCEIN_SLIT_LAMP_SEIDEL_PERFORATION_CHECK',
+        label: 'Perform fluorescein slit-lamp exam and Seidel test for globe perforation',
+        category: 'DIAGNOSTIC_VERIFICATION',
+        delta_rho_per_hour: 0.05,
+      },
+      {
+        action_id: 'ACT_ERYTHROMYCIN_OR_MOXIFLOXACIN_OPHTHALMIC',
+        label: 'Administer Erythromycin ointment or Moxifloxacin ophthalmic drops',
+        category: 'PHARMACOLOGICAL_ANTIMICROBIAL',
+        delta_rho_per_hour: 0.1,
+      },
+    ],
+  },
+  23: {
+    playbook_id: 'PLAYBOOK_23_ANAPHYLAXIS_AIRWAY_EMERGENCY',
+    title: 'Playbook #23: Anaphylaxis & Airway Emergency Protocol',
+    total_steps: 5,
+    step_instruction:
+      'IMMEDIATE Epinephrine 0.3-0.5 mg IM anterolateral thigh, 100% O2 + i-gel airway ready, Salbutamol MDI, and 20 mL/kg crystalloid',
+    causal_chain_summary: [
+      'anaphylaxis_suspected -> IM_epinephrine_priority_0',
+      'airway_or_bronchospasm -> 100pct_O2_igel_and_crystalloid_bolus',
+    ],
+    actions: [
+      {
+        action_id: 'ACT_ANAPHYLAXIS_EPINEPHRINE_03_05MG_IM_THIGH',
+        label: 'IMMEDIATE (Index 0): Administer Epinephrine 0.3-0.5 mg IM anterolateral thigh q5-15 min',
+        category: 'EMERGENCY_RESUSCITATION',
+        delta_rho_per_hour: 0.45,
+      },
+      {
+        action_id: 'ACT_AIRWAY_100PCT_O2_AND_IGEL_SUPRAGLOTTIC_READY',
+        label: 'Deliver 100% O2 and stage i-gel supraglottic airway',
+        category: 'AIRWAY_EMERGENCY',
+        delta_rho_per_hour: 0.2,
+      },
+      {
+        action_id: 'ACT_ISOTONIC_CRYSTALLOID_BOLUS_20ML_KG',
+        label: 'Infuse 20 mL/kg isotonic crystalloid bolus for anaphylactic hypotension',
+        category: 'RESUSCITATION',
+        delta_rho_per_hour: 0.15,
+      },
+    ],
+  },
+  24: {
+    playbook_id: 'PLAYBOOK_24_MICROGRAVITY_CARDIAC_ARREST_CPR',
+    title: 'Playbook #24: Microgravity Cardiac Arrest & 0g CPR Protocol',
+    total_steps: 5,
+    step_instruction:
+      'Initiate Evetts-Russomano/Handstand 0g CPR (100-120/min), deploy CMRS straps, verify AED hull electrical isolation, and insert i-gel',
+    causal_chain_summary: [
+      'pulseless_cardiac_arrest_0g -> Evetts_Russomano_or_Handstand_CPR',
+      'CMRS_stabilization + AED_hull_isolation -> ACLS_epinephrine_amiodarone',
+    ],
+    actions: [
+      {
+        action_id: 'ACT_0G_CPR_IMMEDIATE_EVETTS_RUSSOMANO_OR_HANDSTAND',
+        label: 'Initiate immediate 0g chest compressions (100-120/min, 50 mm depth) via Evetts-Russomano or Handstand technique',
+        category: 'EMERGENCY_RESUSCITATION',
+        delta_rho_per_hour: 0.5,
+      },
+      {
+        action_id: 'ACT_DEPLOY_CMRS_RESTRAINT_STRAPS',
+        label: 'Deploy Crew Medical Restraint System (CMRS) straps to stabilize patient and rescuer',
+        category: 'MECHANICAL_INTERVENTION',
+        delta_rho_per_hour: 0.2,
+      },
+      {
+        action_id: 'ACT_AED_ELECTRICAL_ISOLATION_FROM_HULL_BEFORE_SHOCK',
+        label: 'Verify AED electrical isolation from spacecraft hull before shock delivery',
+        category: 'ELECTRICAL_SAFETY_CRITICAL',
+        delta_rho_per_hour: 0.3,
+      },
+    ],
+  },
+  25: {
+    playbook_id: 'PLAYBOOK_25_ACUTE_URINARY_RETENTION_POCUS',
+    title: 'Playbook #25: Acute Urinary Retention (AUR) POCUS Protocol',
+    total_steps: 3,
+    step_instruction:
+      'Perform sterile closed-system Foley catheterization with gradual decompression in 0g and start Tamsulosin 0.4 mg PO',
+    causal_chain_summary: [
+      'POCUS_bladder_volume >= 500 mL -> acute_urinary_retention',
+      'closed_foley_decompression -> Gate6_check_before_suprapubic_cystostomy',
+    ],
+    actions: [
+      {
+        action_id: 'ACT_AUR_STERILE_CLOSED_FOLEY_CATHETERIZATION',
+        label: 'Perform sterile closed-system Foley catheterization with gradual decompression in 0g',
+        category: 'UROLOGICAL_INTERVENTION',
+        delta_rho_per_hour: 0.3,
+      },
+      {
+        action_id: 'ACT_AUR_TAMSULOSIN_04MG_STOP_ANTICHOLINERGICS',
+        label: 'Initiate Tamsulosin 0.4 mg PO daily and discontinue anticholinergic medications',
+        category: 'PHARMACOLOGICAL_UROLOGY',
+        delta_rho_per_hour: 0.15,
+      },
+    ],
+  },
+  26: {
+    playbook_id: 'PLAYBOOK_26_ACUTE_RADIATION_SYNDROME',
+    title: 'Playbook #26: Acute Radiation Syndrome (ARS) Hematologic Nadir & Cytokine Rescue',
+    total_steps: 4,
+    step_instruction:
+      'Maintain SPE storm shelter & ALC/CBC biodosimetry, administer Filgrastim (G-CSF) if indicated, and enforce Gate 6 invasive lock',
+    causal_chain_summary: [
+      'SPE_BFO_dose >= 1.0 Gy -> ARS_hematologic_nadir_kinetics',
+      'ANC < 0.5 K/uL or PLT < 75 K/uL -> Gate6_radiation_neutropenic_invasive_locked',
+    ],
+    actions: [
+      {
+        action_id: 'ACT_ARS_SPE_STORM_SHELTER_AND_BIODOSIMETRY',
+        label: 'Maintain SPE radiation storm shelter and serial ALC/CBC biodosimetry monitoring',
+        category: 'RADIATION_PROTECTION',
+        delta_rho_per_hour: 0.15,
+      },
+      {
+        action_id: 'ACT_ARS_FILGRASTIM_G_CSF_DAILY',
+        label: 'Administer Filgrastim (G-CSF) 5 mcg/kg/day SC until ANC recovery > 1.0 K/uL',
+        category: 'PHARMACOLOGICAL_UNLOCKED',
+        delta_rho_per_hour: 0.3,
+      },
+      {
+        action_id: 'ACT_ARS_THROMBOCYTOPENIA_BLEEDING_PRECAUTIONS',
+        label: 'Enforce Gate 6 non-emergent invasive procedure lock and strict NSAID/anticoagulant avoidance',
+        category: 'CLINICAL_SAFETY_GATE_OVERRIDE',
+        delta_rho_per_hour: 0.15,
+      },
+    ],
+  },
+  27: {
+    playbook_id: 'PLAYBOOK_27_AEROSPACE_TOXICOLOGY_EXPOSURE',
+    title: 'Playbook #27: Aerospace Toxicology, Pyrolysis & Regolith Exposure Protocol',
+    total_steps: 4,
+    step_instruction:
+      'Don PBA/QDM, isolate contaminated thermal/air loop, execute closed-loop decontamination, and administer targeted antidote (Gate 5B G6PD check)',
+    causal_chain_summary: [
+      'SMAC_or_IDLH_exceedance -> PBA_isolation_and_decontamination',
+      'MMH/MetHb/HCN/ClO4- -> targeted_antidote_with_Gate5B_G6PD_guard',
+    ],
+    actions: [
+      {
+        action_id: 'ACT_TOX_DON_PBA_QDM_ISOLATE_THERMAL_LOOP',
+        label: 'Don PBA/QDM immediately and isolate leaking NH3 thermal control loop',
+        category: 'ENVIRONMENTAL_ISOLATION',
+        delta_rho_per_hour: 0.3,
+      },
+      {
+        action_id: 'ACT_TOX_OCULAR_DERMAL_DECONTAMINATION',
+        label: 'Perform closed-loop ocular/dermal saline decontamination for toxicant exposure',
+        category: 'DECONTAMINATION',
+        delta_rho_per_hour: 0.22,
+      },
+      {
+        action_id: 'ACT_PYROLYSIS_DON_PBA_100PCT_NORMOBARIC_O2',
+        label: 'Don PBA and deliver 100% normobaric O2 for accelerated COHb washout',
+        category: 'AIRWAY_RESPIRATORY_SUPPORT',
+        delta_rho_per_hour: 0.28,
+      },
+    ],
+  },
+  28: {
+    playbook_id: 'PLAYBOOK_28_EVA_DCS_AND_SUIT_EMERGENCY',
+    title: 'Playbook #28: EVA Decompression Sickness, Pre-Breathe Lock & Suit Emergency',
+    total_steps: 3,
+    step_instruction:
+      'Abort EVA immediately for Parmitano water intrusion or Type II DCS/AGE; enforce Conkin R360 > 1.40 pre-breathe lock and Gate 4B EVA No-Go',
+    causal_chain_summary: [
+      'helmet_water_or_DCS_or_R360 > 1.40 -> Gate4B_EVA_no_go',
+      'TypeII_DCS_or_AGE -> airlock_BTA_hyperbaric_recompression_100pct_O2',
+    ],
+    actions: [
+      {
+        action_id: 'ACT_EVA_PARMITANO_WATER_INTRUSION_IMMEDIATE_ABORT',
+        label: 'PARMITANO PROTOCOL: Abort EVA immediately, minimize head-nod water migration, translate to airlock and prepare post-repress airway suction',
+        category: 'EVA_SUIT_LIFE_THREAT_ABORT',
+        delta_rho_per_hour: 0.45,
+      },
+      {
+        action_id: 'ACT_DCS_TYPE2_AGE_HYPERBARIC_RECOMPRESSION_BTA_AIRLOCK',
+        label: 'Initiate 100% O2 + airlock hyperbaric recompression via Bends Treatment Adapter (22.7 psi / USN TT6)',
+        category: 'HYPERBARIC_EMERGENCY',
+        delta_rho_per_hour: 0.4,
+      },
+      {
+        action_id: 'ACT_EVA_PREBREATHE_LOCK_CAMPOUT_OR_ISLE_PROTOCOL',
+        label: 'EVA LOCK: Conkin R360 > 1.40 requires campout / ISLE exercise 100% O2 pre-breathe before depressurization',
+        category: 'EVA_PREBREATHE_LOCK',
+        delta_rho_per_hour: 0.25,
+      },
+    ],
+  },
+  29: {
+    playbook_id: 'PLAYBOOK_29_BMED_PSYCHIATRIC_CRISIS',
+    title: 'Playbook #29: Acute Psychiatric Crisis, Delirium Exclusion & 0g Rapid Tranquilization',
+    total_steps: 4,
+    step_instruction:
+      'Enforce Gate 7A organic delirium exclusion first, engage airlock software interlock, and use QTc-safe tranquilization (Ketamine IM if QTc >= 470 ms)',
+    causal_chain_summary: [
+      'acute_agitation_or_self_harm -> Gate7A_organic_delirium_exclusion_first',
+      'Gate7B_CMRS_restraint_only_if_imminent_harm + Gate7C_QTc_guard',
+    ],
+    actions: [
+      {
+        action_id: 'ACT_GATE7_TREAT_REVERSIBLE_ORGANIC_DELIRIUM_CAUSE_FIRST',
+        label: 'Gate 7A: Treat reversible organic/toxic-metabolic delirium cause first (O2, ECLSS CO2 scrubber, sepsis antibiotics, or toxicant isolation)',
+        category: 'CLINICAL_SAFETY_GATE_OVERRIDE',
+        delta_rho_per_hour: 0.45,
+      },
+      {
+        action_id: 'ACT_BMED_VERBAL_DEESCALATION_1ON1_WATCH_AIRLOCK_LOCKOUT',
+        label: 'Non-confrontational verbal de-escalation, 1-on-1 crew watch, software interlock on airlock/depressurization/propellant valves',
+        category: 'BEHAVIORAL_SAFETY',
+        delta_rho_per_hour: 0.25,
+      },
+      {
+        action_id: 'ACT_BMED_OLANZAPINE_5_10MG_ODT',
+        label: 'Administer Olanzapine 5-10 mg ODT (rapid oral dissolving tablet; zero 0g liquid aspiration risk)',
+        category: 'PHARMACOLOGICAL_TRANQUILIZATION',
+        delta_rho_per_hour: 0.3,
+      },
+    ],
+  },
+  30: {
+    playbook_id: 'PLAYBOOK_30_FEMALE_PELVIC_UROGYN_POCUS',
+    title: 'Playbook #30: Female Pelvic & Urogyn POCUS Triage Protocol',
+    total_steps: 3,
+    step_instruction:
+      'Perform pelvic POCUS + point-of-care beta-hCG to differentiate ectopic hemorrhage, ovarian torsion, or complicated female UTI',
+    causal_chain_summary: [
+      'pelvic_emergency_flag -> POCUS_doppler_cul_de_sac_and_beta_hCG',
+      'ectopic_or_torsion -> TXA_resuscitation_or_detorsion_tele_gyn_consult',
+    ],
+    actions: [
+      {
+        action_id: 'ACT_ECTOPIC_HEMORRHAGE_TXA_IV_RESUSCITATION_TELE_SURGICAL_CONSULT',
+        label: 'Administer TXA, isotonic IV resuscitation, and urgent tele-surgical consultation',
+        category: 'EMERGENCY_RESUSCITATION',
+        delta_rho_per_hour: 0.35,
+      },
+      {
+        action_id: 'ACT_OVARIAN_TORSION_ANALGESIA_ULTRASOUND_DETORSION_PROTOCOL',
+        label: 'Provide analgesia and initiate ultrasound-guided detorsion / tele-gynecologic protocol',
+        category: 'GYNECOLOGIC_EMERGENCY',
+        delta_rho_per_hour: 0.25,
+      },
+      {
+        action_id: 'ACT_FEMALE_UTI_CEFTRIAXONE_OR_CIPROFLOXACIN_HYDRATION',
+        label: 'Initiate Ceftriaxone or Ciprofloxacin (Gate 5 check) with aggressive hydration',
+        category: 'PHARMACOLOGICAL_ANTIMICROBIAL',
+        delta_rho_per_hour: 0.2,
+      },
+    ],
+  },
 };
 
 export const ALERT_LEVEL_BY_CODE: Record<number, AlarmLevel> = {
@@ -546,6 +1011,9 @@ export interface DecodedBinaryTelemetryFrame {
   storm_shelter_mandatory: boolean;
   eimo_autonomous_active: boolean;
   partitions_healthy_count: number;
+  gate5_pharma_lock: boolean;
+  gate6_radiation_invasive_lock: boolean;
+  gate7_bmed_delirium_guard: boolean;
 }
 
 export interface EncodeTestBinaryFrameInput {
@@ -761,6 +1229,11 @@ export function decodeBinaryTelemetryFrame(
     eimo_autonomous_active:
       (deontic_habitat_mask & DEONTIC_EIMO_AUTONOMOUS_ACTIVE) !== 0,
     partitions_healthy_count: countHealthyPartitions(partition_status),
+    gate5_pharma_lock: (quality_flags_mask & FLAG_GATE5_PHARMA_LOCK) !== 0,
+    gate6_radiation_invasive_lock:
+      (quality_flags_mask & FLAG_GATE6_RADIATION_INVASIVE_LOCK) !== 0,
+    gate7_bmed_delirium_guard:
+      (quality_flags_mask & FLAG_GATE7_BMED_DELIRIUM_GUARD) !== 0,
   };
 }
 

@@ -1,5 +1,12 @@
 # Experience Log & Anti-Recurrence Invariants: ARES-Health
 
+## Entry 015 — Aerospace 360 P0/P1 Runtime Hardening, CRC-32C v2 Migration & Playbooks #16..=#30 (2026-11-15)
+
+- **CRC-32C Castagnoli v2 Migration & Orphan GC (`crates/ares-storage-lsah`):** Warm Arrow IPC segments and Cold AEAD archives migrated to Castagnoli CRC-32C v2 (`compute_crc32c`) with automatic v1 IEEE 802.3 fallback on legacy read, paired with warm orphan segment garbage collection so aborted multi-sol writes never leave unreferenced `.arrow.zst` files. (Supersedes the interim IEEE-only storage note in Entry 012 for v2+ archives while preserving v1 read compatibility.)
+- **Gate 2 Dynamic LBNP Baseline, Vasovagal Bradycardia & HR Dropout (`crates/ares-medops-playbooks/src/safety_gates.rs`, `ws_server.rs`):** Hardcoded `120 mmHg` SBP reference fails for astronauts with lower/higher resting BP. `enforce_hard_clinical_safety_gates_with_lbnp_baseline` now anchors $\Delta\text{SBP}$ and HR drop against `LbnpBaselineState`, triggers auto-vent on vasovagal bradycardia (`< LBNP_MIN_SAFE_HR_BRADYCARDIA_BPM` or HR drop `> LBNP_MAX_VASOVAGAL_HR_DROP_BPM`), pulse pressure `< 25 mmHg`, or HR/SBP dropout, and strips anticoagulants via `is_systemic_anticoagulant_action` under Gate 1 (including platelets `< 75.0 K/uL` or radiation `> 10.0 mSv/d` with platelets `< 100.0 K/uL`).
+- **Live Wiring Discipline (`ws_server.rs`, `hardware_adapter.rs`):** ECLSS `3.0`/`4.0` mmHg (`evaluate_coupled_habitat_crew_co2`), POCUS (`PocusEfastScan`, `PocusRenalBladderScan`), and `HardwareTransportAdapter` (`CRC-16-CCITT` + SQI gating) must execute in live `SharedMissionState::advance_tick`, never only in isolated unit tests.
+- **Playbooks `#16..=#30`, Gates 5-7 & Sex-Specific Physiology:** All 30 playbooks (`#01..=#30`) must remain 1:1 synchronized across `playbooks*.rs`, `binary_ipc.rs` (`playbook_id_to_u16` / `playbook_id_from_u16`), and `binaryTelemetryDecoder.ts`, with `BiologicalSex::Male`/`Female` calibration and `ModelValidationStatus::IllustrativeUnvalidated` epistemic tagging.
+
 ## Entry 010 — Persistence acknowledgement and bounded failure recovery
 
 - Never clear a staged Warm bank before the backend confirms its commit. Retain

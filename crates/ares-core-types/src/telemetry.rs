@@ -603,6 +603,8 @@ pub struct TelemetryPacket {
     pub mars_circadian_sleep: Option<MarsCircadianSleep>,
     #[serde(default)]
     pub neuro_immune_viral: Option<NeuroImmuneViral>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub aerospace_360: Option<crate::medical_360::AerospaceMedical360State>,
 }
 
 /// Input inviato dalla What-If Stress-Test Console (`POST /api/stress-test`).

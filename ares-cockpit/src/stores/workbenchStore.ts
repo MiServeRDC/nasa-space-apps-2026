@@ -4,7 +4,7 @@
 
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import type { AnatomicalRegionWireId, CrystallizedPlaybookId } from '../types/telemetry';
+import type { AnatomicalRegionWireId, PlaybookId } from '../types/telemetry';
 import type { QualityMode, QualityTier } from '../lib/renderQuality';
 import type {
   BiologicalSex,
@@ -29,7 +29,7 @@ export interface WorkbenchState {
   imagingTab: DiagnosticImagingTab;
   evaluateTab: EvaluateDockTab;
   selectedUberonRegion: AnatomicalRegionWireId | null;
-  selectedPlaybookId: CrystallizedPlaybookId | null;
+  selectedPlaybookId: PlaybookId | null;
   drawer: DrawerId | null;
   commandPaletteOpen: boolean;
   commandPaletteInitialTab: CommandPaletteTabId;
@@ -60,7 +60,7 @@ export interface WorkbenchState {
   setImagingTab: (tab: DiagnosticImagingTab) => void;
   setEvaluateTab: (tab: EvaluateDockTab) => void;
   selectUberonRegion: (region: AnatomicalRegionWireId | null) => void;
-  selectPlaybook: (playbookId: CrystallizedPlaybookId | null) => void;
+  selectPlaybook: (playbookId: PlaybookId | null) => void;
   openDrawer: (drawer: DrawerId, invokerElementId?: string | null) => void;
   closeDrawer: () => string | null;
   openCommandPalette: (
@@ -102,7 +102,7 @@ const INITIAL_STATE = {
   imagingTab: 'POCUS_IJV' as DiagnosticImagingTab,
   evaluateTab: 'STL_AND_CONES' as EvaluateDockTab,
   selectedUberonRegion: null as AnatomicalRegionWireId | null,
-  selectedPlaybookId: null as CrystallizedPlaybookId | null,
+  selectedPlaybookId: null as PlaybookId | null,
   drawer: null as DrawerId | null,
   commandPaletteOpen: false,
   commandPaletteInitialTab: 'COMMANDS' as CommandPaletteTabId,

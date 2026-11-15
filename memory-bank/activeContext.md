@@ -1,5 +1,25 @@
 # Active Context: ARES-Health (NASA Space Apps Challenge 2026)
 
+## Aerospace 360 Phase 1 & Phase 2 + P0/P1 Runtime Hardening Integrated on `main` (`97aeea5`, 2026-11-15)
+
+Integrated the complete Aerospace 360 architecture and P0/P1 runtime fixes across the 9 Safe Rust crates (`#323` passing workspace tests across `34` active suites, `0` Clippy warnings, `0` `.unwrap()`/`.expect()` in production, `#![forbid(unsafe_code)]`, `ModelValidationStatus::IllustrativeUnvalidated` epistemic honesty preserved):
+
+1. **P0/P1 Runtime Hardening (Phase 1):**
+   - **ECLSS `3.0`/`4.0` mmHg Live Wiring:** `crates/ares-causal-graph/src/eclss_differential.rs` adds Tier 1 CO2 SANS warning zone (`3.0 mmHg`) alongside the `4.0 mmHg` NASA-STD-3001 action ceiling, wired live into `crates/ares-server-cli/src/ws_server.rs` (`evaluate_coupled_habitat_crew_co2`).
+   - **Gate 1 Platelets & Drug Categories:** `crates/ares-medops-playbooks/src/safety_gates.rs` enforces hemorrhagic contraindication (`platelet_count_k_ul < 75.0 K/uL` or acute radiation `> 10.0 mSv/d` with platelets `< 100.0 K/uL` or unconfirmed) and strips systemic anticoagulants by drug category (`is_systemic_anticoagulant_action`).
+   - **Gate 2 Dynamic LBNP Baseline, Vasovagal & HR Dropout:** `enforce_hard_clinical_safety_gates_with_lbnp_baseline` evaluates `LbnpBaselineState` (`pre_lbnp_sbp_baseline_mmhg`, `pre_lbnp_hr_baseline_bpm`), vasovagal bradycardia (`< LBNP_MIN_SAFE_HR_BRADYCARDIA_BPM` or HR drop `> LBNP_MAX_VASOVAGAL_HR_DROP_BPM`), pulse pressure `< 25.0 mmHg`, and HR/SBP dropout fail-safe, wired into `SharedMissionState::advance_tick` in `ws_server.rs`.
+   - **Storage CRC-32C Castagnoli v2 + v1 Fallback + Orphan GC:** `crates/ares-storage-lsah` (`warm_arrow_ipc.rs`, `cold_aead_archive.rs`, `lib.rs`) migrates to Castagnoli CRC-32C v2 with v1 IEEE 802.3 fallback and warm orphan segment garbage collection.
+   - **POCUS Live Wiring & Hardware Transport Adapter Trait:** `PocusEfastScan` and `PocusRenalBladderScan` wired live in `ws_server.rs` and `wire_contract.rs`; `crates/ares-telemetry-ingest/src/hardware_adapter.rs` introduces `HardwareTransportAdapter` (`DeterministicMockBleAdapter`, `DeterministicMockUartEclssAdapter`, `DeterministicMockUvcPocusAdapter`) with CRC-16-CCITT and SQI gating.
+
+2. **6 Aerospace 360 Medical Domains, Playbooks `#16..=#30`, Gates 5-7 & Sex-Specific Physiology (Phase 2):**
+   - **Domain 1 (`sex_physiology.rs`):** Sex-specific (`BiologicalSex::Male` / `BiologicalSex::Female`, `ContraceptiveRegimen`, `g6pd_deficient`) hematology, orthostasis, REID sensitivity, and `PLAYBOOK_30_FEMALE_PELVIC_UROGYN_POCUS`.
+   - **Domain 2 (`radiation_ars.rs`):** SPE biodosimetry, ANC/PLT nadirs, immune coupling, `PLAYBOOK_26_ACUTE_RADIATION_SYNDROME`, and **Gate 6** (ARS neutropenic/thrombocytopenic invasive lock: `ANC < 0.5 K/uL` or `PLT < 75.0 K/uL`).
+   - **Domain 3 (`acute_emergencies.rs`, `playbooks_acute.rs`):** Playbooks `#17..=#25` & `#30` (hemorrhagic trauma TXA, torso shock pericardiocentesis, conservative acute abdomen 0g, EVA spine fracture, dental, ocular burn, anaphylaxis airway, microgravity CPR, acute urinary retention POCUS, female pelvic POCUS).
+   - **Domain 4 (`toxicology_dcs.rs`, `playbooks_tox_dcs.rs`):** Aerospace toxicology (`PLAYBOOK_27_AEROSPACE_TOXICOLOGY_EXPOSURE`) and Haldane/Conkin EVA DCS & suit emergency (`PLAYBOOK_28_EVA_DCS_AND_SUIT_EMERGENCY`).
+   - **Domain 5 (`space_pharmacology.rs`, `playbooks_sepsis_ars.rs`, `safety_gates_360.rs`):** 900-Sol radiolysis decay, `PLAYBOOK_16_SEPSIS_SEPTIC_SHOCK`, and **Gate 5A/5B/5C** (Ketorolac/NSAID renal/bleeding/allergy lock, G6PD/beta-lactam/additive QTc `>= 500 ms` lock, `< 90%` USP subpotency substitution).
+   - **Domain 6 (`behavioral_bmed.rs`, `playbooks_bmed.rs`):** `PLAYBOOK_29_BMED_PSYCHIATRIC_CRISIS`, **Gate 7A/7B/7C** (reversible organic delirium exclusion, CMRS restraint guard, Ketamine IM QTc `>= 470 ms` substitution), and `[V1 3003]` privacy redaction.
+   - **Binary IPC & FastMCP:** `binary_ipc.rs` maps `1..=30` playbooks and `FLAG_GATE5_PHARMA_LOCK` / `FLAG_GATE6_RADIATION_INVASIVE_LOCK` / `FLAG_GATE7_BMED_DELIRIUM_GUARD`; `server_mcp` supports Phase-2 360 domains, Gates 5-7, and domain filters/aliases.
+
 ## Greenfield phase 10 end-to-end qualification and controlled integration delivered (2026-11-15)
 
 Dedicated work/MiServeRDC-greenfield-phase01; no main/push/hosted Actions.

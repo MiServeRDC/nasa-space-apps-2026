@@ -41,12 +41,20 @@ pub const PRE_POCUS_MAX_THROMBUS_PROB: f64 = 0.45;
 /// Hard Safety Gate 2: Limiti emodinamici anti-sincope durante camera LBNP a -30 mmHg.
 pub const LBNP_MAX_SYS_BP_DROP_MMHG: f64 = 15.0;
 pub const LBNP_MAX_SAFE_HR_BPM: f64 = 115.0;
+/// Soglia minima di frequenza cardiaca sotto cui si attiva la protezione bradicardica vasovagale (bpm).
+pub const LBNP_MIN_SAFE_HR_BRADYCARDIA_BPM: f64 = 50.0;
+/// Calo massimo di frequenza cardiaca rispetto alla baseline pre-LBNP prima dello sfiato automatico (bpm).
+pub const LBNP_MAX_VASOVAGAL_HR_DROP_BPM: f64 = 25.0;
 
 /// Hard Safety Gate 3: Soglia massima di asimmetria del passo (GAI %) a 0.38g (Marte).
 pub const GAI_MAX_SAFE_PCT: f64 = 12.0;
 
-/// Limite massimo ammissibile di ppCO2 in cabina secondo NASA-STD-3001 (mmHg).
+/// Tier 1: Limite cronico nominale / allerta precoce SANS di ppCO2 in cabina secondo NASA-STD-3001 [V2 6004] (mmHg).
 pub const MAX_SAFE_CABIN_PPCO2_MMHG: f64 = 3.0;
+/// Tier 2: Limite operativo acuto per intervento scrubber CDRA / ammine / LiOH (mmHg).
+pub const ECLSS_PPCO2_ACTION_LIMIT_MMHG: f64 = 4.0;
+/// Tier 3: Soglia di emergenza (1.0 kPa) per indossamento immediato maschera O2 / PBA (mmHg).
+pub const ECLSS_PPCO2_EMERGENCY_MMHG: f64 = 7.6;
 
 /// Soglia di rischio litiasico renale da supersaturazione ossalato di calcio (Tiselius RSR).
 pub const RSR_CALCIUM_OXALATE_ATTENTION: f64 = 2.5;

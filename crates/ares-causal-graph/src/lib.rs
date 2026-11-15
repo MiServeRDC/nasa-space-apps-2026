@@ -6,8 +6,10 @@
 //! LBNP, accoppiamento translaminare SANS, Osservatore Bayesiano POCUS a 2 stadi e Grafo Causale Eterogeneo
 //! Astronaut Digital Health Graph (`ADHG` su `petgraph`).
 
+pub mod acute_emergencies;
 pub mod adhg_graph;
 pub mod bayesian_pocus;
+pub mod behavioral_bmed;
 pub mod biokg_reasoner;
 pub mod circadian_cognitive;
 pub mod dataset_graph;
@@ -18,5 +20,9 @@ pub mod hypergraph_spatial;
 pub mod mechanotransduction;
 pub mod orthostatic_fluid;
 pub mod parquet_adapters;
+pub mod radiation_ars;
 pub mod renal_nephrolithiasis;
+pub mod sex_physiology;
 pub mod space_immunology;
+pub mod space_pharmacology;
+pub mod toxicology_dcs;

@@ -10,6 +10,7 @@ pub mod ewma_forecaster;
 pub mod mri_index;
 pub mod normalizer;
 pub mod sliding_window;
+pub mod stl_360;
 pub mod timestral_backbone;
 pub mod timestral_bridge;
 pub mod timestral_quantiles;

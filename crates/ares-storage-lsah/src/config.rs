@@ -172,10 +172,38 @@ pub fn compute_storage_crc32c_castagnoli(bytes: &[u8]) -> u32 {
     !crc
 }
 
-/// Compatibility alias preserving the legacy storage checksum signature (IEEE 802.3 CRC-32 via `crc32fast`).
+/// CRC algorithm matched during versioned storage integrity verification.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CrcAlgorithmUsed {
+    CastagnoliV2,
+    LegacyIeeeV1,
+}
+
+/// Computes true Castagnoli CRC-32C (polynomial 0x82F6_3B78 reflected), matching the 128-byte binary IPC protocol.
 #[inline]
 pub fn compute_crc32c(data: &[u8]) -> u32 {
-    compute_storage_crc32_ieee(data)
+    compute_storage_crc32c_castagnoli(data)
+}
+
+/// Verifies a storage payload checksum using Castagnoli CRC-32C (`0x82F6_3B78`),
+/// optionally falling back to legacy v1 IEEE 802.3 CRC-32 (`0xEDB8_8320`) when `allow_legacy_ieee` is true.
+pub fn verify_crc32c_with_v1_ieee_fallback(
+    data: &[u8],
+    expected: u32,
+    allow_legacy_ieee: bool,
+) -> Result<CrcAlgorithmUsed, LsahStorageError> {
+    let castagnoli = compute_storage_crc32c_castagnoli(data);
+    if castagnoli == expected {
+        return Ok(CrcAlgorithmUsed::CastagnoliV2);
+    }
+    if allow_legacy_ieee && compute_storage_crc32_ieee(data) == expected {
+        return Ok(CrcAlgorithmUsed::LegacyIeeeV1);
+    }
+    Err(LsahStorageError::CrcMismatch {
+        artifact: "storage_payload".to_string(),
+        expected,
+        computed: castagnoli,
+    })
 }
 
 /// Verifies a segment's checksum against canonical IEEE 802.3 CRC-32.

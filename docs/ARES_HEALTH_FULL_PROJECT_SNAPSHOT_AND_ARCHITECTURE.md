@@ -5,8 +5,8 @@
 * **Sfida Globale:** NASA Space Apps Challenge 2026 — *"Create Health Monitoring Software for Astronauts on Space Missions"*
 * **Target di Missione:** Esplorazione dello Spazio Profondo / Missione Umana su Marte (Transito e Permanenza su Superficie marziana a $0.38g$)
 * **Vincolo Operativo Primario:** Latenza Radio Unidirezionale Terra-Marte (OWLT) da **8.2 a 48.1 minuti**; impossibilità fisica della telemedicina terrestre sincrona; obbligo di autonomia diagnostica, prognostica e terapeutica edge-native di bordo a zero dipendenze cloud.
-* **Baseline di Codice Attuale:** Commit `18c2be3` su `main` (sincronizzato con `origin/main` e `origin/work/fabiomalagutti27-droid`).
-* **Stato di Certificazione:** 100% Verificato — 205 test unitari/integrazione Rust passati su 39 suite (9 crate workspace), 21 test Cockpit Node passati su 7 suite, 0 warning Clippy (`-D warnings`), 4/4 sonde Agent Probe passate, zero emoji, zero `.unwrap()`/`.expect()` in produzione, layout memory bank conforme a 29 file.
+* **Baseline di Codice Attuale:** Commit `97aeea5` su `main` (integrazione Aerospace 360 Phase 1 & Phase 2, P0/P1 runtime hardening, 30 MedOps Playbook `#01..=#30`, 7 Hard Clinical Safety Gates, Sex-Specific Aerospace Physiology `Male`/`Female`).
+* **Stato di Certificazione:** 100% Verificato — Rust workspace tests su 9 crate (`323` passati / `0` falliti / `0` ignorati su `34` suite attive), 0 warning Clippy (`-D warnings`), 0 emoji, zero `.unwrap()`/`.expect()` in produzione, policy `#![forbid(unsafe_code)]`.
 
 ---
 
@@ -18,9 +18,9 @@ ARES-Health risponde a questo imperativo categorico attraverso un'architettura *
 1. **Zero Allocazioni e Concorrenza Lock-Free:** Bus dati a memoria condivisa (Seqlock Ring Buffer a 4.096 slot da 128 byte con Castagnoli CRC-32C) che assorbe flussi telemetrici a 20 Hz e pacchetti da sensori indossabili (Wearable Packet V2 a 64 byte a 500 Hz) con latenza di lettura di appena **42 nanosecondi**.
 2. **Modellazione Fisiopatologica Multi-Sistema Causale:** Grafo causale diretto a 13 nodi (ADHG) che integra emodinamica giugulare cefalica (shear stress $\tau_w$), meccano-trasduzione ossea (solutore RK4 Frost-Hargens per la Sclerostina), rischio litiasi renale (Tiselius AP(CaOx) RSR calibrato a $\kappa=0.255$), spostamento dei fluidi ortostatico e microgravitario (Gauer-Henry $\Delta PV\%$ con emolisi continua MARROW $-0.025\%$/Sol), ciclo circadiano marziano a 24.66 ore (modello a due processi Borbély S+C) e dinamica immuno-neuroendocrina (stress cortisolo/DHEA e riattivazione virale latente VZV/EBV/CMV).
 3. **Logica Temporale Quantitativa e Coni di Previsione Monotoni Non Incrociati:** Motore NQS-STL ($O(1)$ con cuneo monotono di Lemire-Donzé) per il calcolo continuo del *Time-To-Violation* (TTV a 7 giorni) e dell'indice di prontezza di missione (*Mission Readiness Index*, MRI), accoppiato al co-processore probabilistico *Timestral* che emette quantili monotoni $q_{0.05} \le q_{0.50} \le q_{0.95}$ con barriera di astensione conforme adattiva (Conformal PID).
-4. **4 Hard Clinical Safety Gates Inviolabili a Tempo Zero:** Meccanismi di sicurezza deterministici che bloccano categoricamente terapie invasive o rischiose (es. blocco anticoagulanti sistemici senza evidenza ecografica POCUS; sfiato automatico LBNP; limitazione dinamica tuta EVA a $0.38g$; blocco toracostomia con ago salvo conferma eFAST).
-5. **15 MedOps Playbook Tipo-1 Cristallizzati:** Procedure cliniche d'emergenza ed esecuzione deterministica DAG in meno di **20 microsecondi**, ordinate secondo precedenza clinica salvavita (Trauma/Shock > Vitals Acuti > Urgenze d'Organo > Cronici/Subacuti).
-6. **Integrità Epistemica e Separazione dei Dati:** Risoluzione rigorosa delle Issue #11 e #12, con chiara marcatura machine-readable dei dati reali registrati a terra (PhysioNet BIDMC v1.0.0 a 1 Hz con assenza di RMSSD preservata come `BEAT_INTERVALS_NOT_AVAILABLE`) rispetto ai modelli di simulazione What-If (`IllustrativeUnvalidated` / `IllustrativeScenarioRange`).
+4. **7 Hard Clinical Safety Gates Inviolabili (`4` Core + `3` Extended):** Barriere deterministiche (`safety_gates.rs`, `safety_gates_360.rs`) che bloccano terapie rischiose o invasive: Gate 1 (anticoagulazione POCUS + piastrine `< 75 K/uL` / radiazioni `> 10 mSv/d`), Gate 2 (auto-sfiato LBNP su baseline dinamico, bradicardia vasovagale, pulse pressure `< 25 mmHg`, dropout sensori), Gate 3 (smorzamento tuta EVA `0.38g`), Gate 4A/4B (toracostomia eFAST / idoneità EVA), Gate 5A/5B/5C (NSAID, G6PD/beta-lattamici/QTc `>= 500 ms`, radiolisi `< 90%` USP a 900 Sol), Gate 6 (blocco invasivo ARS su ANC `< 0.5` / PLT `< 75 K/uL`), Gate 7A/7B/7C (esclusione delirio organico, CMRS, sostituzione Ketamina IM).
+5. **30 MedOps Playbook Tipo-1 Cristallizzati (`#01..=#30`) & 6 Domini Aerospace 360:** Procedure cliniche DAG deterministiche eseguite in meno di **20 microsecondi** con codifica binaria `1..=30` (`binary_ipc.rs`), coprendo i 15 playbook core microgravitari (`#01..=#15`) e i 15 playbook 360 (`#16..=#30`) su Fisiologia Sex-Specific (`Male`/`Female`), Radiazioni ARS, Emergenze Chirurgiche/CPR 0g, Tossicologia/DCS EVA, Farmacologia/Sepsi, e Medicina Comportamentale BMed (`[V1 3003]`).
+6. **Integrità Epistemica e Separazione dei Dati:** Risoluzione rigorosa delle Issue #11 e #12, con chiara marcatura machine-readable dei dati reali registrati a terra (PhysioNet BIDMC v1.0.0 a 1 Hz con assenza di RMSSD preservata come `BEAT_INTERVALS_NOT_AVAILABLE`) rispetto ai modelli di simulazione What-If (`ModelValidationStatus::IllustrativeUnvalidated` / `IllustrativeScenarioRange`).
 7. **Piattaforma Cockpit & Telemedicina Asincrona Integrata:** Interfaccia utente ad altissima densità in React 19, TypeScript e Three.js, comprendente la vista Cockpit di bordo a 20 Hz, il Connected Mission Portal per il Ground Control con simulazione della latenza radio Terra-Marte, l'OpenScreen Multi-Track Studio con spring physics smoothing, e il rotatable dual-gender 3D biodigital twin a 360 gradi.
 
 ---
@@ -67,7 +67,7 @@ spatiotemporal-mcp-engine/  (o nasa-space-apps-2026/)
 │   ├── ares-telemetry-ingest/    # Ingestione BIDMC CSV 1Hz, filtro entropia SQI, pacchetti wearable Hubris/V2, GATHER DSP
 │   ├── ares-causal-graph/        # Grafo causale ADHG 13 nodi, ODE Sclerostina RK4, Tiselius litiasi, ARES-HyperGraph & BioKG
 │   ├── ares-nqs-stl/             # Logica temporale NQS-STL Lemire, stimatore TTV/MRI, co-processore Timestral RoPE/DHF
-│   ├── ares-medops-playbooks/    # Esecutore DAG Type-1 Playbooks #01-#15, modulo POCUS multi-organo, 4 Hard Safety Gates
+│   ├── ares-medops-playbooks/    # Esecutore DAG Type-1 Playbooks #01..=#30, POCUS multi-organo, 7 Hard Safety Gates (4 Core + 3 Extended)
 │   ├── ares-security-privacy/    # Controllo ruoli NASA-STD-3001, catena hash SHA-256 non ripudiabile, AEAD ChaCha20-Poly1305
 │   ├── ares-server-cli/          # Server Axum HTTP/WS 20Hz, Seqlock SPMC, bus shm_bus.rs, e router FastMCP stdio (8 tool)
 │   ├── ares-desktop-os/          # Shell di missione nativa pure-Rust basata su Tauri v2 con bridge IPC zero-copy
@@ -170,41 +170,59 @@ L'interfaccia utente è realizzata in **React 19, TypeScript e Tailwind CSS** co
 
 ---
 
-## 6. I 4 Hard Clinical Safety Gates di ARES-Health
+## 6. I 7 Hard Clinical Safety Gates di ARES-Health (4 Core + 3 Extended)
 
-I Safety Gate sono barriere algoritmiche e procedurali non oltrepassabili via software, progettate per impedire errori iatrogeni fatali causati da decondizionamento o stress cognitivo dell'equipaggio:
+I Safety Gate sono barriere algoritmiche e procedurali non oltrepassabili via software, progettate per impedire errori iatrogeni fatali causati da decondizionamento, tossicità farmacologica o stress cognitivo dell'equipaggio (`safety_gates.rs` e `safety_gates_360.rs`):
 
 | Safety Gate | Denominazione Operativa | Condizione Clinica di Lockout | Meccanismo Deterministico di Enforcement | Standard Normativo di Riferimento |
 | :--- | :--- | :--- | :--- | :--- |
-| **Gate 1** | **Anticoagulation POCUS Lockout** | Trombosi venosa giugulare interna (IJV) sospettata su base clinica o stasi emodinamica ($\tau_w < 1.0\text{ dyn/cm}^2$). | Blocco software assoluto della somministrazione di anticoagulanti sistemici (es. Enoxaparina) fino alla conferma ecografica POCUS di trombo endoluminale documentato (probabilità a 2 stadi $P \ge 0.92$). Impedisce emorragie intracraniche letali da trauma cranico occulto. | NASA-STD-3001 Vol. 1 Rev C, OCHMO MTB-007 |
-| **Gate 2** | **LBNP Anti-Syncope Auto-Vent** | Trattamento di decompressione della parte inferiore del corpo (LBNP a $-30\text{ mmHg}$) per contrastare il cephalad fluid shift e la sindrome SANS. | Apertura automatica istantanea delle valvole di sfiato della camera LBNP a $0\text{ mmHg}$ se la pressione arteriosa sistolica cala di oltre $15\text{ mmHg}$ ($\Delta\text{SBP} > 15$) o se la frequenza cardiaca supera i $115\text{ bpm}$. Previene il collasso presincopale ortostatico. | NASA HRP Risk of Orthostatic Intolerance, NASA-STD-3001 [V2 7038] |
-| **Gate 3** | **Martian EVA Gait Damping Lock** | Camminata su superficie marziana a $0.38g$ dopo 6 mesi di transito in microgravità con atrofia del muscolo soleo. | Limitazione dinamica e smorzamento degli attuatori esoscheletrici della tuta spaziale se l'indice di asimmetria dell'andatura supera il 12% ($GAI > 12\%$), imponendo il rientro in modulo o la deambulazione assistita per prevenire fratture da stress del calcagno e cadute. | NASA HRP Bone Fracture Risk, NASA-STD-3001 [V1 3004] |
-| **Gate 4A** | **Invasive Thoracic Decompression Lock** | Sospetto pneumotorace iperteso post-trauma o post-EVA. | Blocco dell'autorizzazione alla toracostomia con ago o inserimento di tubo toracico salvo evidenza ecografica M-mode del "segno del codice a barre" (assenza di lung sliding) su scansione eFAST o quadro di shock ostruttivo manifesto ($SI \ge 1.20, SpO_2 < 85\%$). | NASA-STD-3001 Vol. 1 Ch. 4 (Emergency Medical Care) |
-| **Gate 4B** | **EVA Fitness-For-Duty Lockout** | Valutazione pre-EVA per attività extraveicolari su superficie o manutenzione esterna veicolo. | Stato NO-GO categorico all'apertura del portello se l'astronauta presenta instabilità emodinamica ($SI \ge 0.90$), fatica cognitiva o privazione di sonno ($P_{\text{lapse}} \ge 0.75$), o decondizionamento muscolare ($GAI > 12\%$). | NASA-STD-3001 Vol. 2 [V2 6001], Flight Rules Section 14 |
+| **Gate 1 (Core)** | **Anticoagulation POCUS & Thrombocytopenia Lockout** | Sospetta trombosi IJV ($\tau_w < 1.0\text{ dyn/cm}^2$), piastrine $< 75.0\text{ K/uL}$, oppure radiazione acuta $> 10.0\text{ mSv/d}$ con piastrine $< 100.0\text{ K/uL}$ o non confermate. | Rimozione categorica degli anticoagulanti sistemici (`is_systemic_anticoagulant_action`) fino a conferma ecografica POCUS di trombo endoluminale *e* assenza di controindicazione emorragica; inietta `ACT_ANTICOAG_CONTRAINDICATED_THROMBOCYTOPENIA_RISK` se bloccato per piastrinopenia. | NASA-STD-3001 Vol. 1 Rev C, OCHMO MTB-007 |
+| **Gate 2 (Core)** | **LBNP Anti-Syncope Auto-Vent (Dynamic Baseline)** | Decompressione LBNP attiva (`-30 mmHg`) con monitoraggio continuo rispetto a `LbnpBaselineState` pre-LBNP. | Sfiato automatico istantaneo a `0 mmHg` (`ACT_EMERGENCY_LBNP_AUTO_VENT_0_MMHG`) se $\Delta\text{SBP} > 15\text{ mmHg}$ rispetto al baseline dinamico, $\text{HR} > 115\text{ bpm}$, bradicardia vasovagale, pulse pressure $< 25\text{ mmHg}$, o dropout/blackout dei sensori HR/SBP. | NASA HRP Risk of Orthostatic Intolerance, NASA-STD-3001 [V2 7038] |
+| **Gate 3 (Core)** | **Martian EVA Gait Damping Lock** | Camminata su superficie marziana a $0.38g$ con atrofia del muscolo soleo. | Limitazione dinamica e smorzamento `+25%` degli attuatori caviglia/ginocchio della tuta EVA se $GAI > 12\%$. | NASA HRP Bone Fracture Risk, NASA-STD-3001 [V1 3004] |
+| **Gate 4A (Core)** | **Invasive Thoracic Decompression Lock** | Sospetto pneumotorace iperteso post-trauma o post-EVA. | Blocco toracostomia ad ago salvo conferma ecografica eFAST di assenza lung sliding (barcode M-mode / lung point) o override di collasso vitale ($SI \ge 1.20$, $SpO_2 < 85\%$). | NASA-STD-3001 Vol. 1 Ch. 4 |
+| **Gate 4B (Core)** | **EVA Fitness-For-Duty Lockout** | Valutazione pre-EVA per attività extraveicolari. | Stato NO-GO categorico su instabilità emodinamica ($SI \ge 0.90$), fatica cognitiva ($P_{\text{lapse}} \ge 0.75$) o decondizionamento ($GAI > 12\%$). | NASA-STD-3001 Vol. 2 [V2 6001], Flight Rules Sec. 14 |
+| **Gate 5A/5B/5C (Ext.)** | **Space Pharmacology, QTc & 900-Sol Radiolysis Lock** | Analgesia NSAID/Ketorolac, allergie beta-lattamici/G6PD, politerapia QTc o decadimento scorte ExMC a 900 Sol. | **5A:** Blocca Ketorolac/NSAID se PLT $< 100\text{ K/uL}$, eGFR $< 60$, oliguria o allergia. **5B:** Blocca Blu di Metilene in G6PD, beta-lattamici in allergia, e farmaci QTc-prolunganti con QTc additivo $\ge 500\text{ ms}$. **5C:** Sostituisce automaticamente lotti subpotenti ($< 90\%$ USP da radiolisi) o esauriti. | NASA ExMC Formulary & Radiolysis, `NASA-STD-3001` |
+| **Gate 6 (Ext.)** | **ARS Neutropenia & Thrombocytopenia Invasive Lock** | Sindrome Acuta da Radiazioni (ARS) post-SPE con citopenia. | Blocca procedure invasive non emergenti se `ANC < 0.5 K/uL` o `PLT < 75.0 K/uL`. | NASA-STD-3001 [V1 3009], REID |
+| **Gate 7A/7B/7C (Ext.)** | **BMed Organic Delirium Exclusion & Restraint Guard** | Crisi psichiatrica acuta / agitazione in microgravità. | **7A:** Impone esclusione ed trattamento prioritario di cause organiche reversibili (ipossia, $CO_2$ ECLSS, sepsi, tossici) prima di diagnosi psichiatrica primaria. **7B:** Vincola contenzione CMRS a rischio imminente e check neurovascolare q15min. **7C:** Sostituisce aloperidolo/olanzapina con Ketamina IM se QTc $\ge 470\text{ ms}$ con monitoraggio $SpO_2$/capnografia. | NASA-STD-3001 [V1 3003] Behavioral Privacy |
 
 ---
 
-## 7. I 15 MedOps Playbook Tipo-1 Cristallizzati
+## 7. I 30 MedOps Playbook Tipo-1 Cristallizzati (`#01..=#30`)
 
-Tutti i 15 playbook sono codificati come grafi aciclici diretti (DAG) in pura memoria e compilati in codice macchina. L'esecuzione completa di qualsiasi playbook richiede **meno di 20 microsecondi**, garantendo una risposta istantanea in emergenza:
+Tutti i 30 playbook sono codificati come grafi aciclici diretti (DAG) in pura memoria (`crates/ares-medops-playbooks/src/playbooks*.rs`) con mappatura binaria `1..=30` in `crates/ares-core-types/src/binary_ipc.rs` (`playbook_id_from_u16`). L'esecuzione completa di qualsiasi playbook richiede **meno di 20 microsecondi**, garantendo una risposta istantanea in emergenza:
 
-| ID Playbook | Titolo Procedura Clinica | Bersaglio Fisiologico | Regola di Attivazione e Trigger STL | Tempo Esecuzione | Precedenza Clinica Deterministica |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **#01** | `PLAYBOOK_01_VENOUS_STASIS_LBNP` | Emodinamica IJV & Rischio Trombo | Stasi venosa giugulare ($\tau_w < 1.0\text{ dyn/cm}^2$, flusso retrogrado). | $< 15\ \mu\text{s}$ | Subacuta / Terapeutica (Priorità 5) |
-| **#02** | `PLAYBOOK_02_SANS_OPTIC_SHEATH` | Pressione Intracranica & Diametro ONSD | Ipertensione endocranica ($\text{ONSD} > 5.8\text{ mm}$, cefalea, edema papillare). | $< 18\ \mu\text{s}$ | Urgenza d'Organo (Priorità 3) |
-| **#03** | `PLAYBOOK_03_ARED_RESISTIVE_EXERCISE` | Atrofia Muscolo Soleo & Sclerostina | Decondizionamento muscolo-scheletrico ($\text{SOST} > 350\text{ pg/mL}$, soleo $< 10.5\text{ mm}$). | $< 14\ \mu\text{s}$ | Preventiva / Cronica (Priorità 6) |
-| **#04** | `PLAYBOOK_04_POCUS_ULTRASOUND_EXAM` | Rilevazione e Diagnostica Ecografica | Protocollo di scansione guidata per IJV, nervo ottico, reni ed eFAST. | $< 16\ \mu\text{s}$ | Diagnostica di Supporto (Priorità 4) |
-| **#05** | `PLAYBOOK_05_HYPERCAPNIA_SCRUBBER` | Frazione Inspirata di $CO_2$ in Cabina | Ipercapnia ambientale da accumulo ($ppCO_2 > 4.0\text{ mmHg}$). | $< 12\ \mu\text{s}$ | Ambientale / Tossicologica (Priorità 3) |
-| **#06** | `PLAYBOOK_06_ACUTE_DESATURATION` | Saturazione Emoglobinica d'Ossigeno | Ipossia acuta rapida ($SpO_2 < 90\%$, $\Delta SpO_2 / \Delta t < -2\%/\text{s}$). | $< 10\ \mu\text{s}$ | Vitals Acuta d'Emergenza (Priorità 2) |
-| **#07** | `PLAYBOOK_07_ACUTE_TACHYCARDIA` | Frequenza Cardiaca & Ritmo | Tachiaritmia instabile ($\text{HR} > 140\text{ bpm}$ a riposo con de-escalation). | $< 11\ \mu\text{s}$ | Vitals Acuta d'Emergenza (Priorità 2) |
-| **#08** | `PLAYBOOK_08_SENSOR_REATTACHMENT` | Qualità Segnale Elettrofisiologico | Distacco elettrodo o caduta qualità ($SQI < 0.60$ per $> 15\text{ s}$). | $< 8\ \mu\text{s}$ | Integrità del Segnale (Priorità 6) |
-| **#09** | `PLAYBOOK_09_SEPSIS_INFLAMMATORY` | Emodinamica Sistemica & Shock Index | Disfunzione microvascolare e shock settico ($SI \ge 1.0$, ipotensione). | $< 16\ \mu\text{s}$ | Vitals Acuta d'Emergenza (Priorità 2) |
-| **#10** | `PLAYBOOK_10_RENAL_LITHIASIS_COLIC` | Reni, Ureteri e Vescica | Colica renale da litiasi calcica ($AP(\text{CaOx}) > 2.0$, dolore al fianco, ematuria). | $< 15\ \mu\text{s}$ | Urgenza d'Organo (Priorità 3) |
-| **#11** | `PLAYBOOK_11_MARS_ENTRY_FLUID_LOAD` | Volume Intravascolare Pre-Atterraggio | Protocollo di carico idro-salino pre-ingresso gravitazionale su Marte a $0.38g$. | $< 14\ \mu\text{s}$ | Subacuta di Transizione (Priorità 5) |
-| **#12** | `PLAYBOOK_12_CIRCADIAN_LIGHT_HYGIENE` | Ritmo Sonno-Veglia & Vigilanza | Desincronizzazione circadiana marziana e privazione di sonno ($P_{\text{lapse}} > 0.60$). | $< 12\ \mu\text{s}$ | Preventiva Neuro-Cognitiva (Priorità 6) |
-| **#13** | `PLAYBOOK_13_IMMUNE_VIRAL_CONTAINMENT` | Sistema Immunitario & Carica Virale | Riattivazione virale latente indotta da stress (Herpes Zoster, lesioni cutanee). | $< 15\ \mu\text{s}$ | Subacuta Infettiva (Priorità 5) |
-| **#14** | `PLAYBOOK_14_CO2_SANS_MITIGATION` | Flusso Cerebrale & Ipertensione Venosa | Vasodilatazione cerebrale da $CO_2$ concomitante con stasi venosa e cefalea. | $< 13\ \mu\text{s}$ | Urgenza d'Organo (Priorità 3) |
-| **#15** | `PLAYBOOK_15_EFAST_TRAUMA_TRIAGE` | Cavità Pleuro-Peritoneali & Pericardio | Trauma da impatto, decompressione cabina, sospetto pneumotorace o emotorace. | $< 18\ \mu\text{s}$ | **Massima Urgenza: Trauma / Shock (Priorità 1)** |
+| Code (`u16`) | ID Playbook Verbatim (`binary_ipc.rs` & `playbooks*.rs`) | Dominio Clinico & Bersaglio Fisiologico |
+| :---: | :--- | :--- |
+| **#01** | `PLAYBOOK_01_VENOUS_STASIS_LBNP` | Core Microgravity: Stasi venosa IJV ($\tau_w < 1.0\text{ dyn/cm}^2$), LBNP `-30 mmHg` + POCUS. |
+| **#02** | `PLAYBOOK_02_CONFIRMED_IJV_THROMBUS` | Core Microgravity: Trombosi IJV confermata POCUS, sblocco Gate 1 anticoagulazione. |
+| **#03** | `PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED` | Core Microgravity: Decondizionamento muscolo-scheletrico, carico ARED + citrato. |
+| **#04** | `PLAYBOOK_04_SANS_TRANSLAMINAR_MITIGATION` | Core Microgravity: Sindrome SANS, pressione translaminare, cuffie venose/LBNP. |
+| **#05** | `PLAYBOOK_05_SPE_RADIATION_SHELTER_CANS` | Core Microgravity: Evento particellare solare (SPE) `CSA CANS > 1.5 mSv/d`, rifugio. |
+| **#06** | `PLAYBOOK_06_HYPOXEMIA_DESATURATION` | Core Vitals Acuti: Desaturazione acuta di ossigeno ($SpO_2 < 90\%$). |
+| **#07** | `PLAYBOOK_07_HEART_RATE_ANOMALY` | Core Vitals Acuti: Tachiaritmia o bradicardia instabile. |
+| **#08** | `PLAYBOOK_08_SENSOR_SIGNAL_LOSS` | Core Integrità Segnale: Perdita/degrado segnale elettrodi (`SQI < 0.60` / dropout). |
+| **#09** | `PLAYBOOK_09_MULTIPARAMETER_DETERIORATION` | Core Vitals Acuti: Deterioramento multiparametrico CUSUM / Mahalanobis $D^2$. |
+| **#10** | `PLAYBOOK_10_RENAL_LITHIASIS` | Core Organo: Litiasi renale da ipercalciuria ($AP(\text{CaOx})$ Tiselius) + Gate 5A NSAID. |
+| **#11** | `PLAYBOOK_11_MARS_ENTRY_FLUID_LOADING` | Core Transizione: Carico idro-salino pre-ingresso gravitazionale Marte `0.38g`. |
+| **#12** | `PLAYBOOK_12_CIRCADIAN_LIGHT_HYGIENE` | Core Neuro-Cognitivo: Desincronizzazione circadiana marziana `24.66 h` e PVT-B. |
+| **#13** | `PLAYBOOK_13_VIRAL_IMMUNE_VALACYCLOVIR` | Core Immuno-Infettivo: Riattivazione virale latente (VZV/EBV/CMV), Valacyclovir. |
+| **#14** | `PLAYBOOK_14_CO2_SCRUBBER_SANS` | Core ECLSS/SANS: Ipercapnia cabina ($P_{\text{CO}_2}$ `3.0/4.0 mmHg`) e vasodilatazione SANS. |
+| **#15** | `PLAYBOOK_15_EFAST_TRAUMA_TRIAGE` | Core Trauma (Priorità 1): Triage eFAST pleuro-peritoneale/pericardico + Gate 4A. |
+| **#16** | `PLAYBOOK_16_SEPSIS_SEPTIC_SHOCK` | 360 Farmacologia/Sepsi: Bundle 1h sepsi, lattato, cristalloidi `30 mL/kg`, noradrenalina, Gate 5B. |
+| **#17** | `PLAYBOOK_17_HEMORRHAGIC_TRAUMA_TXA` | 360 Trauma/Chirurgia 0g: Emorragia arteriosa, acido tranexamico (TXA) entro finestra. |
+| **#18** | `PLAYBOOK_18_TORSO_SHOCK_PERICARDIOCENTESIS` | 360 Trauma/Chirurgia 0g: Tamponamento pericardico eFAST-guidato e pericardiocentesi. |
+| **#19** | `PLAYBOOK_19_CONSERVATIVE_ACUTE_ABDOMEN_0G` | 360 Chirurgia 0g: Gestione non-operatoria addome acuto in microgravità (appendicite/colecistite). |
+| **#20** | `PLAYBOOK_20_EVA_MUSCULOSKELETAL_SPINE_FRACTURE` | 360 Trauma EVA: Stabilizzazione rachide e frattura muscolo-scheletrica post-EVA. |
+| **#21** | `PLAYBOOK_21_DENTAL_MAXILLOFACIAL_EMERGENCY` | 360 Emergenze Acute: Ascesso dentale, avulsione o trauma maxillo-facciale in volo. |
+| **#22** | `PLAYBOOK_22_OCULAR_FOREIGN_BODY_CHEMICAL_BURN` | 360 Emergenze Acute: Corpo estraneo corneale / ustione chimica oculare in 0g. |
+| **#23** | `PLAYBOOK_23_ANAPHYLAXIS_AIRWAY_EMERGENCY` | 360 Emergenze Acute: Anafilassi sistemica, adrenalina IM e gestione vie aeree i-gel. |
+| **#24** | `PLAYBOOK_24_MICROGRAVITY_CARDIAC_ARREST_CPR` | 360 Emergenze Acute: Arresto cardiaco senza polso, CPR `Evetts-Russomano` in 0g. |
+| **#25** | `PLAYBOOK_25_ACUTE_URINARY_RETENTION_POCUS` | 360 Emergenze Acute: Ritenzione urinaria acuta con stima vescicale POCUS. |
+| **#26** | `PLAYBOOK_26_ACUTE_RADIATION_SYNDROME` | 360 Radiazioni/ARS: Biodosimetria SPE, G-CSF filgrastim, cefepime neutropenia febbrile, Gate 6. |
+| **#27** | `PLAYBOOK_27_AEROSPACE_TOXICOLOGY_EXPOSURE` | 360 Tossicologia: Idrazina (B6), N2O4, metaemoglobinemia (Blu Metilene + Gate 5B G6PD), cianuri, regolite/perclorati. |
+| **#28** | `PLAYBOOK_28_EVA_DCS_AND_SUIT_EMERGENCY` | 360 EVA/DCS: Intrusione acqua casco (Parmitano), DCS Tipo II/AGE BTA airlock, ipertermia/ipotermia. |
+| **#29** | `PLAYBOOK_29_BMED_PSYCHIATRIC_CRISIS` | 360 BMed: Esclusione delirio organico (Gate 7A), CMRS (Gate 7B), tranquillizzazione/Ketamina (Gate 7C), `[V1 3003]`. |
+| **#30** | `PLAYBOOK_30_FEMALE_PELVIC_UROGYN_POCUS` | 360 Fisiologia Sex-Specific: Valutazione pelvica/uroginecologica POCUS (`BiologicalSex::Female`). |
 
 ---
 
@@ -247,7 +265,7 @@ Il software è stato validato tramite una batteria di test esaustiva:
 
 | Parametro di Qualità | Valore Rilevato | Soglia Limite / Requisito | Stato di Conformità |
 | :--- | :--- | :--- | :--- |
-| **Rust Workspace Tests** | **205 passati / 0 falliti** | 100% pass rate su tutti i 9 crate | **CONFORME** |
+| **Rust Workspace Tests** | **323 passati / 0 falliti** | 100% pass rate su tutti i 9 crate (`34` suite attive) | **CONFORME** |
 | **Rust Clippy Warnings** | **0 avvisi / 0 errori** | Flag `-D warnings` applicato | **CONFORME** |
 | **Cockpit TypeScript Tests** | **21 passati / 0 falliti** | 7 suite Node (`tests/*.test.ts`) | **CONFORME** |
 | **TypeScript Typecheck** | **0 errori** | `tsc -b --noEmit` su 624 moduli | **CONFORME** |
@@ -263,10 +281,10 @@ Il software è stato validato tramite una batteria di test esaustiva:
 
 ---
 
-## 10. Stato Attuale del Main (`18c2be3`) & Prossimi Passi
+## 10. Stato Attuale del Main (`97aeea5`) & Prossimi Passi
 
 Il repository si trova in uno stato di **completa maturità e convergenza tecnica**:
-* Il branch `main` e il tracking branch `origin/main` coincidono al commit `18c2be3`.
+* Il branch `main` integra la suite completa Aerospace 360 (Phase 1 P0/P1 runtime hardening + Phase 2 6 domini clinici, Playbooks `#16..=#30`, Gates `5A/5B/5C`, `6`, `7A/7B/7C`, Fisiologia Sex-Specific `Male`/`Female`) al commit `97aeea5`.
 * Tutti i branch dei collaboratori (`work/MiServeRDC`, `work/carolina2910`, `work/LelloXV`, `work/fertech02`) sono stati integrati, armonizzati e collaudati senza alcun conflitto o regressione.
 * Le Issue ufficiali su GitHub tracciano lo stato avanzato:
   - [Issue #28: ARES-Health Project Status & Final Architecture: Blocks A-N Complete](https://github.com/MiServeRDC/nasa-space-apps-2026/issues/28)

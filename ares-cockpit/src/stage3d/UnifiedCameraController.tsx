@@ -177,6 +177,7 @@ export function UnifiedCameraController({
 
     const optical = computeOpticalViewOffset(size.width, size.height, chromeInsets);
 
+    const wasInFlight = rig.inFlight;
     stepCameraRigFrame(
       rig,
       targetSnapshotRef.current,
@@ -186,32 +187,34 @@ export function UnifiedCameraController({
       reducedMotion,
     );
 
-    if (rig.inFlight || reducedMotion) {
-      if (rig.inFlight) {
-        sphericalSnapshotToCartesian(
-          {
-            azimuthRad: rig.azimuthRad,
-            polarRad: rig.polarRad,
-            radiusM: rig.radiusM,
-            target: rig.target,
-            fovDeg: rig.fovDeg,
-          },
-          _scratchOutPos,
-        );
-        camera.position.set(_scratchOutPos[0], _scratchOutPos[1], _scratchOutPos[2]);
-        if (ctrl) {
-          ctrl.target.set(rig.target[0], rig.target[1], rig.target[2]);
-          ctrl.update();
-        } else {
-          camera.lookAt(rig.target[0], rig.target[1], rig.target[2]);
-        }
-        if (persp.isPerspectiveCamera && Math.abs(persp.fov - rig.fovDeg) > 1e-3) {
-          persp.fov = rig.fovDeg;
-        }
+    if (rig.inFlight || (reducedMotion && wasInFlight)) {
+      sphericalSnapshotToCartesian(
+        {
+          azimuthRad: rig.azimuthRad,
+          polarRad: rig.polarRad,
+          radiusM: rig.radiusM,
+          target: rig.target,
+          fovDeg: rig.fovDeg,
+        },
+        _scratchOutPos,
+      );
+      camera.position.set(_scratchOutPos[0], _scratchOutPos[1], _scratchOutPos[2]);
+      if (ctrl) {
+        ctrl.target.set(rig.target[0], rig.target[1], rig.target[2]);
+        ctrl.update();
+      }
+      camera.quaternion.set(
+        rig.orientation[0],
+        rig.orientation[1],
+        rig.orientation[2],
+        rig.orientation[3],
+      );
+      if (persp.isPerspectiveCamera && Math.abs(persp.fov - rig.fovDeg) > 1e-3) {
+        persp.fov = rig.fovDeg;
       }
     } else if (ctrl) {
       // Note: Drei's <OrbitControls> updates damping & autoRotate at priority -1 each frame.
-      // Mirror live camera spherical pose so subsequent organ flights start seamlessly.
+      // Mirror live camera spherical pose & orientation so subsequent organ flights start seamlessly.
       const liveSnap = cartesianToSphericalSnapshot(
         [camera.position.x, camera.position.y, camera.position.z],
         [ctrl.target.x, ctrl.target.y, ctrl.target.z],
@@ -224,6 +227,10 @@ export function UnifiedCameraController({
       rig.target[1] = liveSnap.target[1];
       rig.target[2] = liveSnap.target[2];
       rig.fovDeg = liveSnap.fovDeg;
+      rig.orientation[0] = camera.quaternion.x;
+      rig.orientation[1] = camera.quaternion.y;
+      rig.orientation[2] = camera.quaternion.z;
+      rig.orientation[3] = camera.quaternion.w;
     }
 
     if (persp.isPerspectiveCamera) {

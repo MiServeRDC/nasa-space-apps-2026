@@ -64,6 +64,9 @@ pub const FLAG_SEU_RECOVERY_ACTIVE: u32 = 1 << 10;
 pub const FLAG_TERRESTRIAL_BENCHMARKED_ONLY: u32 = 1 << 11;
 pub const FLAG_GATE4A_DECOMPRESSION_LOCK: u32 = 1 << 12;
 pub const FLAG_GATE4B_EVA_NO_GO: u32 = 1 << 13;
+pub const FLAG_GATE5_PHARMA_LOCK: u32 = 1 << 14;
+pub const FLAG_GATE6_RADIATION_INVASIVE_LOCK: u32 = 1 << 15;
+pub const FLAG_GATE7_BMED_DELIRIUM_GUARD: u32 = 1 << 16;
 
 /// Reflected Castagnoli CRC-32C polynomial (`0x1EDC6F41` -> `0x82F63B78`).
 const CRC32C_POLY_REFLECTED: u32 = 0x82F6_3B78;
@@ -238,6 +241,36 @@ pub fn playbook_id_to_u16(playbook_id: &str) -> u16 {
         14
     } else if playbook_id.starts_with("PLAYBOOK_15") {
         15
+    } else if playbook_id.starts_with("PLAYBOOK_16") {
+        16
+    } else if playbook_id.starts_with("PLAYBOOK_17") {
+        17
+    } else if playbook_id.starts_with("PLAYBOOK_18") {
+        18
+    } else if playbook_id.starts_with("PLAYBOOK_19") {
+        19
+    } else if playbook_id.starts_with("PLAYBOOK_20") {
+        20
+    } else if playbook_id.starts_with("PLAYBOOK_21") {
+        21
+    } else if playbook_id.starts_with("PLAYBOOK_22") {
+        22
+    } else if playbook_id.starts_with("PLAYBOOK_23") {
+        23
+    } else if playbook_id.starts_with("PLAYBOOK_24") {
+        24
+    } else if playbook_id.starts_with("PLAYBOOK_25") {
+        25
+    } else if playbook_id.starts_with("PLAYBOOK_26") {
+        26
+    } else if playbook_id.starts_with("PLAYBOOK_27") {
+        27
+    } else if playbook_id.starts_with("PLAYBOOK_28") {
+        28
+    } else if playbook_id.starts_with("PLAYBOOK_29") {
+        29
+    } else if playbook_id.starts_with("PLAYBOOK_30") {
+        30
     } else {
         0
     }
@@ -261,6 +294,21 @@ pub fn playbook_id_from_u16(code: u16) -> Option<&'static str> {
         13 => Some("PLAYBOOK_13_VIRAL_IMMUNE_VALACYCLOVIR"),
         14 => Some("PLAYBOOK_14_CO2_SCRUBBER_SANS"),
         15 => Some("PLAYBOOK_15_EFAST_TRAUMA_TRIAGE"),
+        16 => Some("PLAYBOOK_16_SEPSIS_SEPTIC_SHOCK"),
+        17 => Some("PLAYBOOK_17_HEMORRHAGIC_TRAUMA_TXA"),
+        18 => Some("PLAYBOOK_18_TORSO_SHOCK_PERICARDIOCENTESIS"),
+        19 => Some("PLAYBOOK_19_CONSERVATIVE_ACUTE_ABDOMEN_0G"),
+        20 => Some("PLAYBOOK_20_EVA_MUSCULOSKELETAL_SPINE_FRACTURE"),
+        21 => Some("PLAYBOOK_21_DENTAL_MAXILLOFACIAL_EMERGENCY"),
+        22 => Some("PLAYBOOK_22_OCULAR_FOREIGN_BODY_CHEMICAL_BURN"),
+        23 => Some("PLAYBOOK_23_ANAPHYLAXIS_AIRWAY_EMERGENCY"),
+        24 => Some("PLAYBOOK_24_MICROGRAVITY_CARDIAC_ARREST_CPR"),
+        25 => Some("PLAYBOOK_25_ACUTE_URINARY_RETENTION_POCUS"),
+        26 => Some("PLAYBOOK_26_ACUTE_RADIATION_SYNDROME"),
+        27 => Some("PLAYBOOK_27_AEROSPACE_TOXICOLOGY_EXPOSURE"),
+        28 => Some("PLAYBOOK_28_EVA_DCS_AND_SUIT_EMERGENCY"),
+        29 => Some("PLAYBOOK_29_BMED_PSYCHIATRIC_CRISIS"),
+        30 => Some("PLAYBOOK_30_FEMALE_PELVIC_UROGYN_POCUS"),
         _ => None,
     }
 }
@@ -470,6 +518,21 @@ impl BinaryTelemetryFrame {
         }
         if meta.seu_recovery_active {
             quality_flags_mask |= FLAG_SEU_RECOVERY_ACTIVE;
+        }
+        if let Some(ref a360) = pkt.aerospace_360 {
+            let ext = &a360.extended_safety_gates;
+            if ext.gate5_nsaid_renal_bleeding_locked
+                || ext.gate5_allergy_or_qtc_locked
+                || ext.gate5_formulary_substitution_active
+            {
+                quality_flags_mask |= FLAG_GATE5_PHARMA_LOCK;
+            }
+            if ext.gate6_radiation_neutropenic_invasive_locked {
+                quality_flags_mask |= FLAG_GATE6_RADIATION_INVASIVE_LOCK;
+            }
+            if ext.gate7_bmed_delirium_or_restraint_guard_active {
+                quality_flags_mask |= FLAG_GATE7_BMED_DELIRIUM_GUARD;
+            }
         }
 
         let mut frame = Self {
@@ -960,6 +1023,7 @@ mod tests {
             orthostatic_fluid: None,
             mars_circadian_sleep: None,
             neuro_immune_viral: None,
+            aerospace_360: None,
         }
     }
 
@@ -1174,6 +1238,21 @@ mod tests {
             ("PLAYBOOK_13_VIRAL_IMMUNE_VALACYCLOVIR", 13),
             ("PLAYBOOK_14_CO2_SCRUBBER_SANS", 14),
             ("PLAYBOOK_15_EFAST_TRAUMA_TRIAGE", 15),
+            ("PLAYBOOK_16_SEPSIS_SEPTIC_SHOCK", 16),
+            ("PLAYBOOK_17_HEMORRHAGIC_TRAUMA_TXA", 17),
+            ("PLAYBOOK_18_TORSO_SHOCK_PERICARDIOCENTESIS", 18),
+            ("PLAYBOOK_19_CONSERVATIVE_ACUTE_ABDOMEN_0G", 19),
+            ("PLAYBOOK_20_EVA_MUSCULOSKELETAL_SPINE_FRACTURE", 20),
+            ("PLAYBOOK_21_DENTAL_MAXILLOFACIAL_EMERGENCY", 21),
+            ("PLAYBOOK_22_OCULAR_FOREIGN_BODY_CHEMICAL_BURN", 22),
+            ("PLAYBOOK_23_ANAPHYLAXIS_AIRWAY_EMERGENCY", 23),
+            ("PLAYBOOK_24_MICROGRAVITY_CARDIAC_ARREST_CPR", 24),
+            ("PLAYBOOK_25_ACUTE_URINARY_RETENTION_POCUS", 25),
+            ("PLAYBOOK_26_ACUTE_RADIATION_SYNDROME", 26),
+            ("PLAYBOOK_27_AEROSPACE_TOXICOLOGY_EXPOSURE", 27),
+            ("PLAYBOOK_28_EVA_DCS_AND_SUIT_EMERGENCY", 28),
+            ("PLAYBOOK_29_BMED_PSYCHIATRIC_CRISIS", 29),
+            ("PLAYBOOK_30_FEMALE_PELVIC_UROGYN_POCUS", 30),
         ];
 
         for (id, code) in expected {
@@ -1183,6 +1262,6 @@ mod tests {
 
         assert_eq!(playbook_id_to_u16("PLAYBOOK_99_UNKNOWN"), 0);
         assert_eq!(playbook_id_from_u16(0), None);
-        assert_eq!(playbook_id_from_u16(16), None);
+        assert_eq!(playbook_id_from_u16(31), None);
     }
 }

@@ -169,6 +169,7 @@ fn sample_packet_for_privacy(critical: bool) -> TelemetryPacket {
         orthostatic_fluid: None,
         mars_circadian_sleep: None,
         neuro_immune_viral: None,
+        aerospace_360: None,
     }
 }
 
@@ -690,6 +691,7 @@ fn cert_phase_28_k4_realtime_latency_percentiles_and_900_sol_memory_footprint() 
             orthostatic_fluid: None,
             mars_circadian_sleep: None,
             neuro_immune_viral: None,
+            aerospace_360: None,
         };
         let frame = BinaryTelemetryFrame::from_telemetry_packet(
             &pkt,

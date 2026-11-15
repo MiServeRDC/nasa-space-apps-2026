@@ -49,14 +49,13 @@ The acquisition script checks full length/SHA before atomic publication. Changed
 upstream bytes fail the lock, rather than being silently accepted. Building is
 development-time only; no network call or Python runtime is added to the product.
 
-Denver and SimTK automated public access returned HTTP 403 on 2026-11-15. To
-continue that subtask, download **Final 3D STL Models (87.8 MB)** and **Metadata**
+Denver and SimTK automated public access returned HTTP 403 (`cf-mitigated: challenge`) on 2026-11-15. To
+continue that subtask, follow the step-by-step browser-assisted runbook in
+[DENVER_STL_RUNBOOK.md](DENVER_STL_RUNBOOK.md) to download **Final 3D STL Models (87.8 MB)** and **Metadata**
 from the [University of Denver dataset](https://digitalcommons.du.edu/visiblehuman/1/)
 through an allowed browser session. Keep the original files in an external cache
-and record full hashes before import. No account credentials or private browser
-session are extracted by this phase. The existing HRA importer does not pretend
-to accept an uninspected STL package; the next import step must identify archive
-entries, explicit units and source anatomy before conversion.
+and record full hashes before import (`python3 scripts/acquire_female_anatomy.py --verify-denver`). No account credentials or private browser
+session are extracted by this phase. Once downloaded and landmark-registered (`>= 4` fit, `>= 3` check landmarks via `scripts/register_anatomy.mjs`), run `ares-cockpit/scripts/buildDenverLowerLimb.mjs` to validate and convert bilateral `soleus` (`L`/`R`) and `calcaneus` (`L`/`R`) into Meshopt static GLB chunks before human sign-off.
 
 ## Landmark authoring and registration
 

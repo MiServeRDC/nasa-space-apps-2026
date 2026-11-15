@@ -4,8 +4,32 @@
 use ares_core_types::constants::{
     MARS_SOL_SECONDS, MELANOPIC_LUX_THERAPY_MIN, sanitize_f64,
 };
-use ares_core_types::telemetry::{MarsCircadianSleep, SpotPoctPanel};
+use ares_core_types::telemetry::{MarsCircadianSleep, ModelValidationStatus, SpotPoctPanel};
 use std::f64::consts::PI;
+
+/// Compact circadian and cognitive fatigue state for BMed behavioral coupling.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CircadianCognitiveState {
+    pub sleep_debt_hours: f64,
+    pub cognitive_fatigue_index: f64,
+    pub pvt_lapse_probability: f64,
+    pub cognitive_readiness_score: f64,
+    pub melanopic_light_therapy_active: bool,
+    pub validation_status: ModelValidationStatus,
+}
+
+impl From<&MarsCircadianSleep> for CircadianCognitiveState {
+    fn from(sleep: &MarsCircadianSleep) -> Self {
+        Self {
+            sleep_debt_hours: sleep.sleep_debt_hours,
+            cognitive_fatigue_index: (1.0 - sleep.cognitive_readiness_score).clamp(0.0, 1.0),
+            pvt_lapse_probability: sleep.pvt_lapse_probability,
+            cognitive_readiness_score: sleep.cognitive_readiness_score,
+            melanopic_light_therapy_active: sleep.melanopic_light_therapy_active,
+            validation_status: ModelValidationStatus::IllustrativeUnvalidated,
+        }
+    }
+}
 
 /// Periodo circadiano intrinseco endogeno umano medio in ore (Czeisler et al. 1999 Science).
 pub const TAO_ENDO_HOURS: f64 = 24.18;
@@ -142,6 +166,18 @@ impl MarsCircadianOscillator {
             melanopic_light_therapy_active: therapy_active,
         }
     }
+
+    /// Evaluates a compact `CircadianCognitiveState` for downstream BMed behavioral coupling.
+    pub fn evaluate_cognitive_state(
+        &self,
+        mission_elapsed_s: f64,
+        melanopic_edi_lux: Option<f64>,
+        vocal_jitter_pct: Option<f64>,
+        poct: Option<&SpotPoctPanel>,
+    ) -> CircadianCognitiveState {
+        let sleep = self.evaluate_state(mission_elapsed_s, melanopic_edi_lux, vocal_jitter_pct, poct);
+        CircadianCognitiveState::from(&sleep)
+    }
 }
 
 #[cfg(test)]
@@ -160,5 +196,10 @@ mod tests {
         let sleep_eval = osc.evaluate_state(120_000.0, Some(500.0), Some(0.45), None);
         assert!(sleep_eval.melanopic_light_therapy_active);
         assert!(sleep_eval.cognitive_readiness_score > 0.0);
+
+        let cog_state = osc.evaluate_cognitive_state(120_000.0, Some(500.0), Some(0.45), None);
+        assert_eq!(cog_state.validation_status, ModelValidationStatus::IllustrativeUnvalidated);
+        assert!((cog_state.sleep_debt_hours - sleep_eval.sleep_debt_hours).abs() < 1e-9);
+        assert!((cog_state.cognitive_fatigue_index - (1.0 - sleep_eval.cognitive_readiness_score)).abs() < 1e-9);
     }
 }

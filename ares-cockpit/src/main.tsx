@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import './index.css';
 import App from './App';
 import { waitForFontsReadyBounded } from './instruments/instrumentMath';
+import { initWebVitalsReporter } from './lib/webVitalsReporter';
 
 const ReferenceAtlas = lazy(() => import('./anatomy/ReferenceInspector'));
 const isReferenceAtlas = window.location.pathname === '/anatomy';
@@ -11,6 +12,7 @@ const isAnatomyLab = window.location.pathname === '/anatomy-lab';
 
 // NotebookLM Risk 1 Fix: prime bounded local WOFF2 readiness promise immediately at boot
 void waitForFontsReadyBounded();
+initWebVitalsReporter();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

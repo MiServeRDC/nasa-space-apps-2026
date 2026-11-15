@@ -17,7 +17,7 @@ import {
   type WhatIf,
 } from './lib/scenario';
 import { ENGINE_HTTP_URL, useTelemetry } from './lib/useTelemetry';
-import type { CountermeasureAction, CrystallizedPlaybookId } from './types/telemetry';
+import type { CountermeasureAction, PlaybookId } from './types/telemetry';
 import type { InjuryMarker } from './types/injury';
 import type { CameraSnapshot } from './types/workbench';
 import type { AuditRecord } from './modules/audit-chain/AuditChainModal';
@@ -155,7 +155,7 @@ export default function App() {
   );
 
   const handleSelectPlaybookFromOptical = useCallback(
-    (playbookId: CrystallizedPlaybookId) => {
+    (playbookId: PlaybookId) => {
       selectPlaybook(playbookId);
       setPhase('ACT');
     },
@@ -218,8 +218,8 @@ export default function App() {
             open={drawer === 'PLAYBOOK_SHEET'}
             onClose={() => closeDrawer()}
             eyebrow="03 ACT // FULL MEDOPS PLAYBOOK SHEET [P]"
-            title="Crystallized Playbooks #01-#15 & 5-Gate Hardware Interlocks"
-            subtitle="Press & Hold 1.5s to execute permitted actions; inhibited actions require diagnostic verification"
+            title="Aerospace 360 Playbooks #01-#30 & Gates 1..7 Interlocks"
+            subtitle="Press & Hold 1.5s to record permitted actions; inhibited actions require diagnostic verification"
             invokerElementId={invokerElementId}
           >
             <BranchedPlaybookDagLens

@@ -1,11 +1,17 @@
 //! Fase 05 (C1): Meccanotrasduzione muscolo-osso, ODE RK4 di Frost-Hargens per la Sclerostina (SOST),
 //! Ultrasound Muscle Quality Index (MQI) e Gait Asymmetry Index (GAI a 0.38g).
 
+use std::cell::Cell;
+
 use ares_core_types::constants::{
     ARED_NOMINAL_LOAD_KGF, FROST_MECHANOSTAT_STRAIN_UE, SOST_HILL_EXPONENT, sanitize_f64,
 };
 use ares_core_types::telemetry::Musculoskeletal;
 use serde::{Deserialize, Serialize};
+
+thread_local! {
+    static LAST_BONE_EVAL: Cell<Option<(u64, u64, Musculoskeletal)>> = const { Cell::new(None) };
+}
 
 const K_PROD_SOST: f64 = 18.5; // pmol/(L * day)
 const K_DEG_SOST: f64 = 0.28; // 1 / day
@@ -58,11 +64,31 @@ pub fn compute_musculoskeletal_state(
     flight_day: u32,
     ared_daily_load_kgf: f64,
 ) -> Musculoskeletal {
-    compute_musculoskeletal_state_with_policy(
+    let day_key = u64::from(flight_day);
+    let load_bits = ared_daily_load_kgf.to_bits();
+
+    if let Some(cached) = LAST_BONE_EVAL.with(|cell| match cell.get() {
+        Some((cached_day, cached_load_bits, state))
+            if cached_day == day_key && cached_load_bits == load_bits =>
+        {
+            Some(state)
+        }
+        _ => None,
+    }) {
+        return cached;
+    }
+
+    let state = compute_musculoskeletal_state_with_policy(
         flight_day,
         ared_daily_load_kgf,
         Rk4HorizonPolicy::AdaptiveUnbounded { max_dt_days: 0.5 },
-    )
+    );
+
+    LAST_BONE_EVAL.with(|cell| {
+        cell.set(Some((day_key, load_bits, state)));
+    });
+
+    state
 }
 
 /// Computes musculoskeletal state with an explicit RK4 horizon integration policy (`Bounded60DaysLegacy`
@@ -195,5 +221,29 @@ mod tests {
         let next = step_sclerostin_rk4(f64::NAN, f64::INFINITY, f64::NAN);
         assert!(next.is_finite());
         assert!((12.0..=95.0).contains(&next));
+    }
+
+    #[test]
+    fn test_compute_musculoskeletal_state_cache_is_bit_identical_to_fresh_eval() {
+        let cases = [(120_u32, 0.0_f64), (120_u32, 135.0_f64), (450_u32, 62.5_f64)];
+        for (flight_day, load) in cases {
+            let fresh = compute_musculoskeletal_state_with_policy(
+                flight_day,
+                load,
+                Rk4HorizonPolicy::AdaptiveUnbounded { max_dt_days: 0.5 },
+            );
+            let first = compute_musculoskeletal_state(flight_day, load);
+            let cached = compute_musculoskeletal_state(flight_day, load);
+
+            for actual in [first, cached] {
+                assert_eq!(actual.ared_daily_load_kgf.to_bits(), fresh.ared_daily_load_kgf.to_bits());
+                assert_eq!(actual.soleus_csa_pct.to_bits(), fresh.soleus_csa_pct.to_bits());
+                assert_eq!(actual.echo_intensity_au.to_bits(), fresh.echo_intensity_au.to_bits());
+                assert_eq!(actual.mqi_index.to_bits(), fresh.mqi_index.to_bits());
+                assert_eq!(actual.sclerostin_pmol_l.to_bits(), fresh.sclerostin_pmol_l.to_bits());
+                assert_eq!(actual.urinary_calcium_mg_d.to_bits(), fresh.urinary_calcium_mg_d.to_bits());
+                assert_eq!(actual.gai_pct.to_bits(), fresh.gai_pct.to_bits());
+            }
+        }
     }
 }

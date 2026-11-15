@@ -7,12 +7,13 @@ import {renderToStaticMarkup} from 'react-dom/server';
 test('Phase 8: packet-only triage, display isolation and accessible source details',async t=>{
  const vite=await createServer({root:resolve(import.meta.dirname,'..'),configFile:false,server:{middlewareMode:true,hmr:false,watch:null},appType:'custom',logLevel:'error',esbuild:{jsx:'automatic'}});
  try{
- const {buildTriageOverview,TriageOverview}=await vite.ssrLoadModule('/src/workbench/TriageOverview.tsx'),{buildPacket,DEFAULT_WHATIF}=await vite.ssrLoadModule('/src/lib/scenario.ts'),{useWorkbenchStore}=await vite.ssrLoadModule('/src/stores/workbenchStore.ts');
+ const {buildTriageOverview,TriageOverview}=await vite.ssrLoadModule('/src/workbench/TriageOverview.tsx'),{VitalsAnchorCard}=await vite.ssrLoadModule('/src/workbench/VitalsAnchorCard.tsx'),{buildPacket,DEFAULT_WHATIF}=await vite.ssrLoadModule('/src/lib/scenario.ts'),{useWorkbenchStore}=await vite.ssrLoadModule('/src/stores/workbenchStore.ts');
  const packet=buildPacket(DEFAULT_WHATIF,0,null,0);packet.is_local_simulation=false;packet.provenance_manifest.biometrics_source='RECORDED_TERRESTRIAL_BIDMC_CSV';packet.provenance_manifest.scenario_overlay_mode='NONE_PURE_REPLAY';packet.biometrics.hrv_rmssd_ms=null;packet.safety_margins.mission_readiness_index=null;packet.safety_margins.med_stl_rho_robustness=null;
- const status={isStale:false,heldSample:false};
- await t.test('missing MRI/rho/HRV are explicit; finite zero is not replaced',()=>{
+ const status={isStale:false,heldSample:false,mode:'RECORDED_REPLAY',heldAgeMs:0};
+ await t.test('missing MRI/rho/HRV use honest missingness hatch; finite zero stays authoritative in VitalsAnchorCard without duplication',()=>{
   packet.biometrics.heart_rate_bpm=0;const view=buildTriageOverview(packet);assert.equal(view.evidence[0].value,0);assert.ok(view.missing.includes('HRV (RMSSD)'));assert.ok(view.missing.includes('Readiness (MRI)'));assert.ok(view.missing.includes('Global robustness'));
-  const html=renderToStaticMarkup(createElement(TriageOverview,{packet,status}));assert.match(html,/0 bpm/);assert.match(html,/Unavailable/);assert.match(html,/RECORDED TELEMETRY/);assert.doesNotMatch(html,/NaN|undefined/);
+  const html=renderToStaticMarkup(createElement(TriageOverview,{packet,status}));assert.doesNotMatch(html,/0 bpm/);assert.match(html,/ares-missing-hatch/);assert.match(html,/-- ms/);assert.match(html,/RECORDED TELEMETRY/);assert.doesNotMatch(html,/NaN|undefined/);
+  const vitalsHtml=renderToStaticMarkup(createElement(VitalsAnchorCard,{packet,telemetryStatus:status}));assert.match(vitalsHtml,/0/);assert.match(vitalsHtml,/bpm/);assert.doesNotMatch(vitalsHtml,/NaN|undefined/);
  });
  await t.test('unavailable provenance cannot promote leftover numeric biometrics',()=>{const copy=structuredClone(packet);copy.provenance_manifest.biometrics_source='UNAVAILABLE';const view=buildTriageOverview(copy);assert.ok(view.evidence.every(m=>m.value===null));});
  await t.test('backend alarm and supplied problem stay authoritative across missing channels',()=>{

@@ -4,6 +4,8 @@ import {TriageOverview} from './TriageOverview';
 // Safety execution and provenance remain in their existing packet-driven modules.
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import gsap from 'gsap';
+import { prefersReducedMotionSafe } from '../instruments/instrumentMath';
 import type { CountermeasureAction, TelemetryPacket } from '../types/telemetry';
 import type { InjuryMarker } from '../types/injury';
 import type { CameraSnapshot, PhaseMode } from '../types/workbench';
@@ -38,6 +40,7 @@ import {
 import { HorizonBar } from './HorizonBar';
 import { TelemetryIgnitionPreloader } from './TelemetryIgnitionPreloader';
 import { VitalsAnchorCard } from './VitalsAnchorCard';
+import { TooltipProvider } from '../components/ui/tooltip';
 import {
   PhaseGatherLeftContext,
   PhaseGatherRightDock,
@@ -117,8 +120,25 @@ export function WorkbenchShell({
   const studioBarOpen = useWorkbenchStore((s) => s.studioBarOpen);
 
   const stageApertureRef = useRef<HTMLDivElement>(null);
+  const phaseDeckHostRef = useRef<HTMLElement | null>(null);
   const internalCaptureRef = useRef<(() => CameraSnapshot) | null>(null);
   const effectiveCaptureRef = captureSnapshotRef ?? internalCaptureRef;
+
+  useEffect(() => {
+    const hostEl = phaseDeckHostRef.current;
+    if (!hostEl || typeof window === 'undefined') return;
+    if (prefersReducedMotionSafe()) return;
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        '.ares-phase-deck-panel',
+        { opacity: 0.88, y: 5 },
+        { opacity: 1, y: 0, duration: 0.18, ease: 'power2.out', clearProps: 'transform,opacity', stagger: 0.03 },
+      );
+    }, phaseDeckHostRef);
+    return () => {
+      ctx.revert();
+    };
+  }, [phase]);
 
   const [lazyGlbLayers, setLazyGlbLayers] = useState<LazyAnatomicalGlbToggles>({
     skeletal: false,
@@ -202,16 +222,17 @@ export function WorkbenchShell({
   const dataMode = clinicalDataMode(packet);
   const isSimulated = dataMode === 'LOCAL_PREVIEW' || dataMode === 'BACKEND_SCENARIO';
 
-  const chromeInsets = useMemo(()=>({leftPx:0,rightPx:0,topPx:0,bottomPx:0}),[]);
+  const chromeInsets = useMemo(() => ({ leftPx: 0, rightPx: 0, topPx: 44, bottomPx: 112 }), []);
 
   return (
-    <div
-      ref={eventRootRef}
-      className="workbench-frame"
-      data-display-mode={displayMode}
-      data-mode={isSimulated ? 'simulated' : 'empirical'}
-      data-phase={phase}
-    >
+    <TooltipProvider delayDuration={180}>
+      <div
+        ref={eventRootRef}
+        className="workbench-frame"
+        data-display-mode={displayMode}
+        data-mode={isSimulated ? 'simulated' : 'empirical'}
+        data-phase={phase}
+      >
       {/* Layer 4 (Boot): 2.2s Skippable Value-Setter Ignition Preloader */}
       <TelemetryIgnitionPreloader astronautId={packet.astronaut_id} />
 
@@ -238,37 +259,41 @@ export function WorkbenchShell({
         ipcLatencyUs={ipcLatencyUs}
         availableSubjects={availableSubjects}
         onSelectSubject={onSelectSubject}
+        onSexChange={handleSexChange}
+        crewProfile={packet.aerospace_360?.crew_profile ?? null}
       />
 
       {/* Responsive clinical grid; presentation changes only placement */}
       <main
+        ref={phaseDeckHostRef}
         aria-label="ARES-Health Spatial Biomedical Workbench"
-        className="ares-workbench-grid relative z-20 pointer-events-none"
+        className="ares-workbench-grid relative pointer-events-none"
       >
-        <TriageOverview packet={packet} status={telemetryStatus}/>
-        <div className="display-mode-controls" role="group" aria-label="Workbench display mode"><button className="phase8-button" aria-pressed={displayMode==='operational'} onClick={()=>setDisplayMode('operational')}>Operational</button><button className="phase8-button" aria-pressed={displayMode==='presentation'} onClick={()=>setDisplayMode('presentation')}>Presentation</button><span>Same telemetry and action gates in both views.</span></div>
-        {/* Left Column: Invariant Slot 1 Vitals Anchor + Contextual Slot 2 */}
-        <div className="clinical-context pointer-events-auto flex min-w-0 flex-col gap-3">
+        {/* Left Column: Executive Clinical Overview + Slot 1 Vitals Anchor + Contextual Slot 2 */}
+        <div className="clinical-context relative z-20 pointer-events-auto flex min-w-0 flex-col gap-2.5">
+          <TriageOverview packet={packet} status={telemetryStatus} />
           <VitalsAnchorCard packet={packet} telemetryStatus={telemetryStatus} />
 
-          {phase === 'GATHER' ? (
-            <PhaseGatherLeftContext packet={packet} scenario={scenario} />
-          ) : null}
+          <div className="ares-phase-deck-panel flex min-w-0 flex-col">
+            {phase === 'GATHER' ? (
+              <PhaseGatherLeftContext packet={packet} scenario={scenario} />
+            ) : null}
 
-          {phase === 'EVALUATE' ? (
-            <PhaseEvaluateLeftContext packet={packet} scenario={scenario} />
-          ) : null}
+            {phase === 'EVALUATE' ? (
+              <PhaseEvaluateLeftContext packet={packet} scenario={scenario} />
+            ) : null}
 
-          {phase === 'ACT' ? (
-            <PhaseActLeftContext
-              packet={packet}
-              scenario={scenario}
-              whatIf={whatIf}
-              thrombusConfirmed={thrombusConfirmed}
-              onChangeWhatIf={onChangeWhatIf}
-              onResetWhatIf={onResetWhatIf}
-            />
-          ) : null}
+            {phase === 'ACT' ? (
+              <PhaseActLeftContext
+                packet={packet}
+                scenario={scenario}
+                whatIf={whatIf}
+                thrombusConfirmed={thrombusConfirmed}
+                onChangeWhatIf={onChangeWhatIf}
+                onResetWhatIf={onResetWhatIf}
+              />
+            ) : null}
+          </div>
         </div>
 
         {/* Optional reference view; all controls are outside its aperture */}
@@ -284,11 +309,14 @@ export function WorkbenchShell({
             simulated={isSimulated}
             sourceLabel={clinicalSourceLabel(packet)}
             onSexChange={handleSexChange}
+            crewProfile={packet.aerospace_360?.crew_profile ?? null}
+            displayMode={displayMode}
+            onDisplayModeChange={setDisplayMode}
           />
         </section>
 
         {/* Right Column: Phase-Contextual Primary Diagnostic / Prognostic / Playbook Dock */}
-        <div id="clinical-phase-dock" tabIndex={-1} aria-label="Current clinical phase" className="clinical-dock pointer-events-auto flex min-w-0 flex-col">
+        <div id="clinical-phase-dock" tabIndex={-1} aria-label="Current clinical phase" className="clinical-dock ares-phase-deck-panel relative z-20 pointer-events-auto flex min-w-0 flex-col">
           {phase === 'GATHER' ? (
             <PhaseGatherRightDock
               packet={packet}
@@ -342,6 +370,7 @@ export function WorkbenchShell({
 
       {/* Layer 4: Modal & Command Palette Host (`Z-90`) */}
       <div className="relative z-[90]">{modalSlot}</div>
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }

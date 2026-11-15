@@ -1,9 +1,35 @@
 //! Fase 10 (E1) & Fase 41 (N4): Esecutore deterministico Type-1 Crystallized dei 15 Playbook MedOps (#01-#15).
 
+use crate::playbooks_acute::{
+    build_playbook_17_hemorrhagic_trauma, build_playbook_18_torso_shock,
+    build_playbook_19_acute_abdomen_0g, build_playbook_20_eva_msk_spine,
+    build_playbook_21_dental_maxillofacial, build_playbook_22_ocular_emergency,
+    build_playbook_23_anaphylaxis, build_playbook_24_microgravity_cpr, build_playbook_25_aur,
+    build_playbook_30_pelvic_urogyn,
+};
+use crate::playbooks_bmed::build_playbook_29_bmed_crisis;
+use crate::playbooks_sepsis_ars::{
+    build_playbook_16_sepsis_septic_shock, build_playbook_26_acute_radiation_syndrome,
+    is_ars_playbook_triggered, is_sepsis_protocol_triggered,
+};
+use crate::playbooks_tox_dcs::{
+    build_playbook_27_aerospace_toxicology, build_playbook_28_eva_dcs_and_suit_emergency,
+    select_toxicology_or_eva_playbook,
+};
 use crate::pocus_multiorgan::{PocusEfastScan, PocusRenalBladderScan};
+use ares_causal_graph::acute_emergencies::{
+    AcuteEmergencyTriageInput, evaluate_acute_emergencies_triage,
+};
+use ares_causal_graph::toxicology_dcs::{
+    DcsClassification, Nh3Severity, ToxicologyDcsAssessment,
+};
+use ares_core_types::constants::{ECLSS_PPCO2_ACTION_LIMIT_MMHG, MAX_SAFE_CABIN_PPCO2_MMHG};
+use ares_core_types::medical_360::{
+    BMedTriageClass, BehavioralHealthState, CrewBiologicalProfile, RadiationArsState,
+};
 use ares_core_types::telemetry::{
     ActivePlaybook, Biometrics, CountermeasureAction, JugularHemodynamics, Musculoskeletal,
-    NqsStlMargins, SafetyGates,
+    NqsStlMargins, SafetyGates, SpotPoctPanel,
 };
 use ares_core_types::{AnomalyDetectorKind, AnomalyStatus, VitalsAnomalyReport};
 
@@ -113,7 +139,7 @@ pub fn select_candidate_playbook_ext(
                 CountermeasureAction {
                     action_id: "ACT_ANTICOAG_ENOXAPARIN".to_string(),
                     label: "Initiate weight-adjusted Enoxaparin / Apixaban (POCUS thrombus verified)".to_string(),
-                    category: "PHARMACOLOGICAL_UNLOCKED".to_string(),
+                    category: "PHARMACOLOGICAL_ANTICOAGULANT".to_string(),
                     delta_rho_per_hour: 0.22,
                 },
                 CountermeasureAction {
@@ -164,8 +190,18 @@ pub fn select_candidate_playbook_ext(
         };
     }
 
-    // 3C: Ipercapnia Ambientale Cabin ppCO2 > 3.0 mmHg (#14)
-    if biometrics.helmet_ppco2_mmhg.is_some_and(|co2| co2 > 3.0) {
+    // 3C: Ipercapnia Ambientale Cabin/Helmet ppCO2 (#14)
+    let effective_ppco2 = biometrics
+        .cabin_ppco2_mmhg
+        .into_iter()
+        .chain(biometrics.helmet_ppco2_mmhg)
+        .fold(None::<f64>, |acc, v| Some(acc.map_or(v, |a| a.max(v))));
+    // Tier 2 (> 4.0 mmHg) triggers immediate scrubber override regardless of SANS;
+    // Tier 1 (> 3.0 mmHg) triggers when SANS is elevated (sans_risk_index > 0.35 <=> rho_sans < 0.64).
+    let sans_elevated = nqs.rho_sans < 0.64;
+    if effective_ppco2.is_some_and(|co2| co2 > ECLSS_PPCO2_ACTION_LIMIT_MMHG)
+        || (effective_ppco2.is_some_and(|co2| co2 > MAX_SAFE_CABIN_PPCO2_MMHG) && sans_elevated)
+    {
         return ActivePlaybook {
             playbook_id: "PLAYBOOK_14_CO2_SCRUBBER_SANS".to_string(),
             title: "Playbook #14: Cabin ppCO2 Hypercapnia Scrubbing & Ocular Vasodilation Mitigation".to_string(),
@@ -395,6 +431,329 @@ pub fn select_candidate_playbook(
     select_candidate_playbook_ext(
         biometrics, musculo, jugular, nqs, causal_chain_summary, None, None, None, 0, None, None,
     )
+}
+
+/// Deterministic Aerospace 360 MedOps Playbook dispatcher across all 30 Playbooks (`#01..=#30`).
+///
+/// Priority hierarchy:
+/// 1) Immediate life/suit threats (`#24` -> `#28` -> `#23` -> `#15` -> `#18` -> `#17` -> `#27`)
+/// 2) Time-critical organ/systemic emergencies (`#16` -> `#26` -> `#30` -> `#29` -> `#22` -> `#25` -> `#21` -> `#19` -> `#14`)
+/// 3) Existing Playbooks `#01..=#13` & `#20` EVA/Mars Biomechanical Trauma
+#[allow(clippy::too_many_arguments)]
+pub fn select_active_playbook_360(
+    biometrics: &Biometrics,
+    musculo: &Musculoskeletal,
+    jugular: &JugularHemodynamics,
+    nqs: &NqsStlMargins,
+    mut causal_chain_summary: Vec<String>,
+    efast: Option<&PocusEfastScan>,
+    renal_pocus: Option<&PocusRenalBladderScan>,
+    vitals_report: Option<&VitalsAnomalyReport>,
+    flight_sol: u32,
+    fatigue_score: Option<f64>,
+    immune_risk_pct: Option<f64>,
+    profile: Option<&CrewBiologicalProfile>,
+    poct: Option<&SpotPoctPanel>,
+    radiation_ars: Option<&RadiationArsState>,
+    acute_input: Option<&AcuteEmergencyTriageInput>,
+    tox_assessment: Option<&ToxicologyDcsAssessment>,
+    bmed: Option<&BehavioralHealthState>,
+    bmed_cooperative_for_oral_odt: bool,
+    effective_qtc_ms: Option<f64>,
+    sepsis_source_identified: bool,
+) -> Option<ActivePlaybook> {
+    let default_gates = SafetyGates {
+        anticoagulant_lock_active: !jugular.pocus_thrombus_confirmed,
+        lbnp_auto_vent_armed: true,
+        eva_suit_damping_active: musculo.gai_pct > 12.0,
+        gate4_invasive_decompression_locked: true,
+        gate4_eva_fitness_no_go: false,
+        ..SafetyGates::default()
+    };
+
+    let acute_summary = acute_input.map(|inp| evaluate_acute_emergencies_triage(biometrics, inp));
+
+    // --- TIER 1: Immediate Life / Suit Threats ---
+    // #24 Cardiac Arrest CPR
+    if let Some(ref s) = acute_summary
+        && s.cpr.triggered
+    {
+        return Some(build_playbook_24_microgravity_cpr(
+            &s.cpr,
+            default_gates,
+            causal_chain_summary,
+        ));
+    }
+
+    // #28 Suit Water Intrusion / Type II DCS / AGE
+    if let Some(tox) = tox_assessment
+        && (tox.parmitano_water_intrusion_emergency
+            || tox.dcs_classification == DcsClassification::TypeIINeuroChokesOrAge)
+        && let Some(pb28) = build_playbook_28_eva_dcs_and_suit_emergency(tox, default_gates)
+    {
+        return Some(pb28);
+    }
+
+    // #23 Anaphylaxis
+    if let Some(ref s) = acute_summary
+        && s.anaphylaxis.triggered
+    {
+        return Some(build_playbook_23_anaphylaxis(
+            &s.anaphylaxis,
+            default_gates,
+            causal_chain_summary,
+        ));
+    }
+
+    // #15 Tension Pneumothorax (eFAST verified pneumothorax)
+    if let Some(e) = efast
+        && e.is_pneumothorax_verified()
+    {
+        causal_chain_summary.push(
+            "eFAST confirmed pneumothorax: absent lung sliding and M-mode barcode".to_string(),
+        );
+        return Some(ActivePlaybook {
+            playbook_id: "PLAYBOOK_15_EFAST_TRAUMA_TRIAGE".to_string(),
+            title: "Playbook #15: eFAST Thoraco-Abdominal Trauma Triage & Needle Thoracostomy Protocol".to_string(),
+            causal_chain_summary,
+            safety_gates: default_gates,
+            actions: vec![
+                CountermeasureAction {
+                    action_id: "ACT_RAPID_5_WINDOW_EFAST_SCAN".to_string(),
+                    label: "Execute systematic eFAST ultrasound protocol (RUQ, LUQ, pelvic, subxiphoid, bilateral thoracic)".to_string(),
+                    category: "DIAGNOSTIC_VERIFICATION".to_string(),
+                    delta_rho_per_hour: 0.0,
+                },
+                CountermeasureAction {
+                    action_id: "ACT_PLEURAL_M_MODE_BARCODE_VERIFY".to_string(),
+                    label: "Obtain thoracic M-mode clips over 2nd intercostal mid-clavicular line to assess seashore vs barcode sign".to_string(),
+                    category: "DIAGNOSTIC_VERIFICATION".to_string(),
+                    delta_rho_per_hour: 0.0,
+                },
+                CountermeasureAction {
+                    action_id: "ACT_NEEDLE_DECOMPRESSION_2ND_ICL".to_string(),
+                    label: "Perform emergency needle decompression 2nd intercostal mid-clavicular line (requires Gate 4 confirmation)".to_string(),
+                    category: "INVASIVE_PROCEDURE".to_string(),
+                    delta_rho_per_hour: 0.35,
+                },
+                CountermeasureAction {
+                    action_id: "ACT_INTRAVENOUS_ACCESS_AND_AUTOTRANSFUSION".to_string(),
+                    label: "Establish bilateral large-bore peripheral access and prepare closed autotransfusion set".to_string(),
+                    category: "CLINICAL_COUNTERMEASURE".to_string(),
+                    delta_rho_per_hour: 0.20,
+                },
+            ],
+        });
+    }
+
+    // #18 Cardiac Tamponade / Hemoperitoneum Shock
+    if let Some(ref s) = acute_summary
+        && s.torso_shock.triggered
+    {
+        return Some(build_playbook_18_torso_shock(
+            &s.torso_shock,
+            default_gates,
+            causal_chain_summary,
+        ));
+    }
+
+    // #17 Arterial Hemorrhage
+    if let Some(ref s) = acute_summary
+        && s.hemorrhage.triggered
+    {
+        return Some(build_playbook_17_hemorrhagic_trauma(
+            &s.hemorrhage,
+            default_gates,
+            causal_chain_summary,
+        ));
+    }
+
+    // #27 IDLH / Acute Inhalation Toxicology
+    if let Some(tox) = tox_assessment {
+        let idlh_or_acute_tox = tox.nh3_severity != Nh3Severity::Nominal
+            || tox.mmh_pyridoxine_indicated
+            || tox.n2o4_pulmonary_surveillance_72h
+            || tox.methylene_blue_indicated
+            || tox.methylene_blue_blocked_g6pd
+            || tox.pyrolysis_co_exposure
+            || tox.hydroxocobalamin_indicated;
+        if idlh_or_acute_tox
+            && let Some(pb27) = build_playbook_27_aerospace_toxicology(tox, default_gates)
+        {
+            return Some(pb27);
+        }
+    }
+
+    // --- TIER 2: Time-Critical Organ / Systemic Emergencies ---
+    // #16 Sepsis / Septic Shock
+    let default_profile = CrewBiologicalProfile::default();
+    let effective_profile = profile.unwrap_or(&default_profile);
+    if is_sepsis_protocol_triggered(biometrics, poct, fatigue_score, sepsis_source_identified) {
+        return Some(build_playbook_16_sepsis_septic_shock(
+            biometrics,
+            poct,
+            effective_profile,
+            fatigue_score,
+            causal_chain_summary,
+            default_gates,
+        ));
+    }
+
+    // #26 Acute Radiation Syndrome
+    if let Some(ars) = radiation_ars
+        && is_ars_playbook_triggered(ars)
+    {
+        return Some(build_playbook_26_acute_radiation_syndrome(
+            ars,
+            causal_chain_summary,
+            default_gates,
+        ));
+    }
+
+    // #30 Ectopic Pregnancy / Ovarian Torsion
+    if let Some(ref s) = acute_summary
+        && s.pelvic.triggered
+    {
+        return Some(build_playbook_30_pelvic_urogyn(
+            &s.pelvic,
+            default_gates,
+            causal_chain_summary,
+        ));
+    }
+
+    // #29 Acute Psychiatric Crisis
+    if let Some(bmed_state) = bmed {
+        let bmed_crisis = bmed_state.acute_agitation_or_psychosis
+            || bmed_state.imminent_harm_to_self_or_vehicle
+            || matches!(
+                bmed_state.triage_classification,
+                BMedTriageClass::PrimaryAcutePsychiatricCrisis
+                    | BMedTriageClass::ImminentSelfOrVehicleHarmCrisis
+                    | BMedTriageClass::SecondaryOrganicToxicMetabolicDelirium
+            );
+        if bmed_crisis {
+            return Some(build_playbook_29_bmed_crisis(
+                bmed_state,
+                bmed_cooperative_for_oral_odt,
+                effective_qtc_ms,
+                default_gates,
+                causal_chain_summary,
+            ));
+        }
+    }
+
+    // #22 Chemical Ocular Burn
+    if let Some(ref s) = acute_summary
+        && s.ocular.triggered
+    {
+        return Some(build_playbook_22_ocular_emergency(
+            &s.ocular,
+            default_gates,
+            causal_chain_summary,
+        ));
+    }
+
+    // #25 Acute Urinary Retention >= 500 mL
+    if let Some(ref s) = acute_summary
+        && s.aur.triggered
+    {
+        return Some(build_playbook_25_aur(
+            &s.aur,
+            default_gates,
+            causal_chain_summary,
+        ));
+    }
+
+    // #21 Ludwig's Angina / Dental
+    if let Some(ref s) = acute_summary
+        && s.dental.triggered
+    {
+        return Some(build_playbook_21_dental_maxillofacial(
+            &s.dental,
+            default_gates,
+            causal_chain_summary,
+        ));
+    }
+
+    // #19 Acute Abdomen NOM
+    if let Some(ref s) = acute_summary
+        && s.acute_abdomen.triggered
+    {
+        return Some(build_playbook_19_acute_abdomen_0g(
+            &s.acute_abdomen,
+            default_gates,
+            causal_chain_summary,
+        ));
+    }
+
+    // #14 ECLSS CO2 Scrubber
+    let effective_ppco2 = biometrics
+        .cabin_ppco2_mmhg
+        .into_iter()
+        .chain(biometrics.helmet_ppco2_mmhg)
+        .fold(None::<f64>, |acc, v| Some(acc.map_or(v, |a| a.max(v))));
+    let sans_elevated = nqs.rho_sans < 0.64;
+    if effective_ppco2.is_some_and(|co2| co2 > ECLSS_PPCO2_ACTION_LIMIT_MMHG)
+        || (effective_ppco2.is_some_and(|co2| co2 > MAX_SAFE_CABIN_PPCO2_MMHG) && sans_elevated)
+    {
+        return Some(ActivePlaybook {
+            playbook_id: "PLAYBOOK_14_CO2_SCRUBBER_SANS".to_string(),
+            title: "Playbook #14: Cabin ppCO2 Hypercapnia Scrubbing & Ocular Vasodilation Mitigation".to_string(),
+            causal_chain_summary,
+            safety_gates: default_gates,
+            actions: vec![
+                CountermeasureAction {
+                    action_id: "ACT_INSPECT_CDRA_DESICCANT_BEDS".to_string(),
+                    label: "Verify Carbon Dioxide Removal Assembly cycle timing and inspect backup LiOH canisters".to_string(),
+                    category: "ENVIRONMENTAL_CHECK".to_string(),
+                    delta_rho_per_hour: 0.30,
+                },
+                CountermeasureAction {
+                    action_id: "ACT_DEPLOY_PORTABLE_CABIN_FANS".to_string(),
+                    label: "Install supplementary duct fans in crew sleeping quarters to eliminate microgravity CO2 pockets".to_string(),
+                    category: "ENVIRONMENTAL_CHECK".to_string(),
+                    delta_rho_per_hour: 0.15,
+                },
+                CountermeasureAction {
+                    action_id: "ACT_SERIAL_SANS_OCULAR_MONITORING".to_string(),
+                    label: "Acquire repeat optic nerve sheath ultrasound (ONSD) and tonometry intraocular pressure".to_string(),
+                    category: "DIAGNOSTIC_VERIFICATION".to_string(),
+                    delta_rho_per_hour: 0.10,
+                },
+            ],
+        });
+    }
+
+    // --- TIER 3: Non-IDLH EVA/Tox (#28/#27), #20 EVA/Mars MSK Trauma, & Existing #01..=#13 ---
+    if let Some(tox) = tox_assessment
+        && let Some(pb_tox) = select_toxicology_or_eva_playbook(tox, default_gates)
+    {
+        return Some(pb_tox);
+    }
+
+    if let Some(ref s) = acute_summary
+        && s.eva_msk.triggered
+    {
+        return Some(build_playbook_20_eva_msk_spine(
+            &s.eva_msk,
+            default_gates,
+            causal_chain_summary,
+        ));
+    }
+
+    Some(select_candidate_playbook_ext(
+        biometrics,
+        musculo,
+        jugular,
+        nqs,
+        causal_chain_summary,
+        efast,
+        renal_pocus,
+        vitals_report,
+        flight_sol,
+        fatigue_score,
+        immune_risk_pct,
+    ))
 }
 
 /// Acute vitals playbook (#06-#09) for an ALARM-level anomaly report, or `None`.
@@ -752,9 +1111,21 @@ mod tests {
         );
         assert_eq!(pb10.playbook_id, "PLAYBOOK_10_RENAL_LITHIASIS");
 
-        // Test Playbook #14 on cabin CO2 > 3.0 mmHg
-        let bio_co2 = Biometrics {
+        // Test Playbook #14 Tier 1 (> 3.0 mmHg + elevated SANS) and Tier 2 (> 4.0 mmHg override)
+        let bio_co2_tier1 = Biometrics {
+            cabin_ppco2_mmhg: Some(2.2),
             helmet_ppco2_mmhg: Some(3.8),
+            ..bio_nom.clone()
+        };
+        let nqs_sans_elevated = sample_nqs(0.75, 0.55);
+        let pb14_tier1 = select_candidate_playbook_ext(
+            &bio_co2_tier1, &musc, &jug, &nqs_sans_elevated, vec![], None, None, None, 0, None, None,
+        );
+        assert_eq!(pb14_tier1.playbook_id, "PLAYBOOK_14_CO2_SCRUBBER_SANS");
+
+        let bio_co2 = Biometrics {
+            cabin_ppco2_mmhg: Some(2.2),
+            helmet_ppco2_mmhg: Some(4.2),
             ..bio_nom.clone()
         };
         let pb14 = select_candidate_playbook_ext(
@@ -796,5 +1167,191 @@ mod tests {
             &bio_co2, &musc, &jug, &nqs_renal, vec![], Some(&efast_trauma), None, None, 0, None, None,
         );
         assert_eq!(pb15.playbook_id, "PLAYBOOK_15_EFAST_TRAUMA_TRIAGE");
+    }
+
+    #[test]
+    fn test_select_active_playbook_360_priority_hierarchy() {
+        use ares_causal_graph::acute_emergencies::{AnaphylaxisInput, MicrogravityCprInput};
+        use ares_causal_graph::toxicology_dcs::{ToxicologyDcsInput, evaluate_toxicology_dcs};
+
+        let bio_nom = sample_biometrics(0.5);
+        let musc = sample_musculo();
+        let jug = sample_jugular(1.2, false);
+        let nqs_nom = sample_nqs(0.70, 0.70);
+
+        // 1. Backward compatibility when all 360 inputs are None -> falls back to #03
+        let pb_nom = select_active_playbook_360(
+            &bio_nom, &musc, &jug, &nqs_nom, vec![], None, None, None, 0, None, None, None, None,
+            None, None, None, None, true, None, false,
+        )
+        .unwrap();
+        assert_eq!(pb_nom.playbook_id, "PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED");
+
+        // 2. Tier 1: #24 CPR outranks #28 Suit Water Intrusion & #16 Sepsis
+        let cpr_acute = AcuteEmergencyTriageInput {
+            cpr: MicrogravityCprInput {
+                pulseless_cardiac_arrest: true,
+                ..MicrogravityCprInput::default()
+            },
+            ..AcuteEmergencyTriageInput::default()
+        };
+        let tox_water = evaluate_toxicology_dcs(&ToxicologyDcsInput {
+            helmet_water_intrusion_detected: true,
+            ..ToxicologyDcsInput::default()
+        });
+        let pb_cpr = select_active_playbook_360(
+            &bio_nom,
+            &musc,
+            &jug,
+            &nqs_nom,
+            vec![],
+            None,
+            None,
+            None,
+            0,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(&cpr_acute),
+            Some(&tox_water),
+            None,
+            true,
+            None,
+            true,
+        )
+        .unwrap();
+        assert_eq!(pb_cpr.playbook_id, "PLAYBOOK_24_MICROGRAVITY_CARDIAC_ARREST_CPR");
+
+        // 3. Tier 1: #28 Suit Water Intrusion outranks #23 Anaphylaxis
+        let anaphylaxis_acute = AcuteEmergencyTriageInput {
+            anaphylaxis: AnaphylaxisInput {
+                post_allergen_exposure: true,
+                bronchospasm_or_stridor: true,
+                ..AnaphylaxisInput::default()
+            },
+            ..AcuteEmergencyTriageInput::default()
+        };
+        let pb_suit = select_active_playbook_360(
+            &bio_nom,
+            &musc,
+            &jug,
+            &nqs_nom,
+            vec![],
+            None,
+            None,
+            None,
+            0,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(&anaphylaxis_acute),
+            Some(&tox_water),
+            None,
+            true,
+            None,
+            false,
+        )
+        .unwrap();
+        assert_eq!(pb_suit.playbook_id, "PLAYBOOK_28_EVA_DCS_AND_SUIT_EMERGENCY");
+
+        // 4. Tier 1: #15 Tension Pneumothorax outranks #16 Sepsis
+        let efast_ptx = PocusEfastScan {
+            lung_sliding_absent: true,
+            m_mode_barcode_sign_confirmed: true,
+            ..Default::default()
+        };
+        let mut bio_sepsis = bio_nom.clone();
+        bio_sepsis.core_temp_celsius = Some(39.0);
+        bio_sepsis.resp_rate_brpm = Some(26.0);
+        bio_sepsis.sbp_mmhg = Some(85.0);
+        let pb_ptx = select_active_playbook_360(
+            &bio_sepsis,
+            &musc,
+            &jug,
+            &nqs_nom,
+            vec![],
+            Some(&efast_ptx),
+            None,
+            None,
+            0,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            true,
+            None,
+            true,
+        )
+        .unwrap();
+        assert_eq!(pb_ptx.playbook_id, "PLAYBOOK_15_EFAST_TRAUMA_TRIAGE");
+
+        // 5. Tier 2: #16 Sepsis outranks #29 BMed & #14 CO2 Scrubber
+        let mut bio_sepsis_co2 = bio_sepsis;
+        bio_sepsis_co2.cabin_ppco2_mmhg = Some(5.0);
+        let bmed_crisis = BehavioralHealthState {
+            acute_agitation_or_psychosis: true,
+            triage_classification: BMedTriageClass::PrimaryAcutePsychiatricCrisis,
+            ..Default::default()
+        };
+        let pb_sepsis = select_active_playbook_360(
+            &bio_sepsis_co2,
+            &musc,
+            &jug,
+            &nqs_nom,
+            vec![],
+            None,
+            None,
+            None,
+            0,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(&bmed_crisis),
+            true,
+            None,
+            true,
+        )
+        .unwrap();
+        assert_eq!(pb_sepsis.playbook_id, "PLAYBOOK_16_SEPSIS_SEPTIC_SHOCK");
+
+        // 6. Tier 2: #29 BMed outranks #14 CO2 Scrubber
+        let mut bio_co2 = bio_nom;
+        bio_co2.cabin_ppco2_mmhg = Some(5.0);
+        let pb_bmed = select_active_playbook_360(
+            &bio_co2,
+            &musc,
+            &jug,
+            &nqs_nom,
+            vec![],
+            None,
+            None,
+            None,
+            0,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(&bmed_crisis),
+            true,
+            None,
+            false,
+        )
+        .unwrap();
+        assert_eq!(pb_bmed.playbook_id, "PLAYBOOK_29_BMED_PSYCHIATRIC_CRISIS");
     }
 }

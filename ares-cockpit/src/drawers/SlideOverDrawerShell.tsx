@@ -39,35 +39,41 @@ export function SlideOverDrawerShell({
   const panelRef = useRef<HTMLElement | null>(null);
   const closeBtnRef = useRef<HTMLButtonElement | null>(null);
 
-  // NotebookLM Risk 1: Gate GSAP slide transition behind `waitForFontsReadyBounded()`
+  // NotebookLM Risk 1: Gate GSAP slide transition behind `waitForFontsReadyBounded()` inside `gsap.context()`
   useEffect(() => {
     if (!open || !panelRef.current) return;
     const el = panelRef.current;
-
-    if (prefersReducedMotionSafe()) {
-      gsap.set(el, { xPercent: 0, opacity: 1 });
-      closeBtnRef.current?.focus({ preventScroll: true });
-      return;
-    }
-
     let cancelled = false;
-    gsap.set(el, { xPercent: 8, opacity: 0.92 });
 
-    void waitForFontsReadyBounded().then(() => {
-      if (cancelled || !panelRef.current) return;
-      gsap.to(panelRef.current, {
-        xPercent: 0,
-        opacity: 1,
-        duration: 0.24,
-        ease: 'power3.out',
-        clearProps: 'transform',
+    const ctx = gsap.context(() => {
+      if (prefersReducedMotionSafe()) {
+        gsap.set(el, { xPercent: 0, opacity: 1 });
+        closeBtnRef.current?.focus({ preventScroll: true });
+        return;
+      }
+      gsap.set(el, { xPercent: 8, opacity: 0.92 });
+    }, panelRef);
+
+    if (!prefersReducedMotionSafe()) {
+      void waitForFontsReadyBounded().then(() => {
+        if (cancelled || !panelRef.current) return;
+        ctx.add(() => {
+          if (!panelRef.current) return;
+          gsap.to(panelRef.current, {
+            xPercent: 0,
+            opacity: 1,
+            duration: 0.24,
+            ease: 'power3.out',
+            clearProps: 'transform,opacity',
+          });
+        });
+        closeBtnRef.current?.focus({ preventScroll: true });
       });
-      closeBtnRef.current?.focus({ preventScroll: true });
-    });
+    }
 
     return () => {
       cancelled = true;
-      gsap.killTweensOf(el);
+      ctx.revert();
     };
   }, [open]);
 
