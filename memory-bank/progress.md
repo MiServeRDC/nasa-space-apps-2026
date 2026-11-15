@@ -1,5 +1,31 @@
 # Progress Tracking: ARES-Health (Autonomous Resilient Edge-native System for Astronaut Health)
 
+## Main retest and same-source WebSocket recovery (2026-11-15)
+
+PR #33 and #34 are integrated in main 9f93263. A fresh retest passed 334
+all-feature Rust tests and 326 default tests, but an added real-browser restart
+case failed: same-source reconnect reopened WS while leaving old readings frozen.
+A duplicate timestamp guard overrode the freshness gate, and old-session ordering
+watermarks were retained. Fixed on fix/cockpit-reconnect-freshness.
+
+Normalize the existing Rust mission_Elapsed_seconds as engine_elapsed_s; distinguish
+advancing engine time from repeating recording time. Keep one freshness gate,
+reject old/clockless regressive data, reset watermarks on a new socket, mark stale
+until actual data arrives, ignore superseded HTTP hydration and reset trend/binary
+caches on accepted timeline changes. No Rust or clinical-model changes.
+
+Verification after correction: 171 frontend tests, TypeScript/build, 18 real-browser
+checkpoints (including same-source visible clock reset), all-target/all-feature
+workspace Clippy, three network-denied LanceDB tests and vendor/fast probe pass.
+Rust source is unchanged from the passing 334/326 main runs. Initial failed and
+corrected live artifacts are retained separately outside git. No hosted Actions.
+
+Details: docs/evaluation/POST_MERGE_VERIFICATION_2026-11-15.md. Remaining work is
+physical hardware/native/long-duration qualification and optional LanceDB adapter
+parity; models remain illustrative/unvalidated. This change carries the verified
+reconnect correction and a stronger repeatable integration harness.
+
+
 ## LanceDB local-only build repair (2026-11-15)
 
 Baseline main e39312f, branch fix/lancedb-local-build. The earlier optional build

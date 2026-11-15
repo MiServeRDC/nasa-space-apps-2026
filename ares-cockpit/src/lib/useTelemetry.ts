@@ -194,6 +194,7 @@ export function useTelemetry(
   const activeSourceIdRef = useRef<string>('bidmc_01');
   const lastAppliedTimestampMsRef = useRef<number | null>(null);
   const lastAppliedRecTimeRef = useRef<number | null>(null);
+  const lastAppliedEngineElapsedSRef = useRef<number | null>(null);
   const snapshotInFlightRef = useRef<boolean>(false);
   const latestBinaryRef = useRef<DecodedBinaryTelemetryFrame | null>(null);
   const stressTestQueue = useRef(Promise.resolve());
@@ -220,32 +221,34 @@ export function useTelemetry(
         timestamp_ms: normalized.timestamp_ms,
         relative_recording_time_s: normalized.relative_recording_time_s,
         source_record_id: normalized.source_record_id,
+        engine_elapsed_s: normalized.engine_elapsed_s,
       },
       {
         activeSourceId: activeSourceIdRef.current,
         lastAppliedTimestampMs: lastAppliedTimestampMsRef.current,
         lastAppliedRecTime: lastAppliedRecTimeRef.current,
+        lastAppliedEngineElapsedS: lastAppliedEngineElapsedSRef.current,
       },
     );
 
-    if (
-      !gate.accepted ||
-      (lastAppliedTimestampMsRef.current !== null &&
-        normalized.timestamp_ms < lastAppliedTimestampMsRef.current &&
-        normalized.source_record_id === activeSourceIdRef.current)
-    ) {
+    if (!gate.accepted) {
       console.warn(
-        `[ares-cockpit] Rejected out-of-order snapshot (${normalized.timestamp_ms} < ${lastAppliedTimestampMsRef.current}) from ${originLabel}`,
+        `[ares-cockpit] Rejected out-of-order snapshot from ${originLabel} (timestamp=${normalized.timestamp_ms}, engine=${normalized.engine_elapsed_s ?? 'unknown'})`,
       );
       return false;
     }
 
-    if (normalized.source_record_id !== activeSourceIdRef.current) {
+    const resetTimeline = normalized.source_record_id !== activeSourceIdRef.current ||
+      (lastSampleRecTimeRef.current !== null && normalized.relative_recording_time_s < lastSampleRecTimeRef.current);
+    if (resetTimeline) {
       latestBinaryRef.current = null;
+      lastSampleRecTimeRef.current = null;
+      setRecordedHistory([]);
     }
     activeSourceIdRef.current = gate.nextState.activeSourceId ?? normalized.source_record_id;
     lastAppliedTimestampMsRef.current = gate.nextState.lastAppliedTimestampMs;
     lastAppliedRecTimeRef.current = gate.nextState.lastAppliedRecTime;
+    lastAppliedEngineElapsedSRef.current = gate.nextState.lastAppliedEngineElapsedS ?? null;
 
     const now = Date.now();
     activeSourceIdRef.current = normalized.source_record_id;
@@ -622,11 +625,12 @@ export function useTelemetry(
     };
 
     const fetchInitialSnapshot = async () => {
+      const generation = socketGenRef.current;
       try {
         const res = await fetch(`${ENGINE_HTTP_URL}/api/snapshot`, { signal: abortCtrl.signal });
         if (!res.ok || disposed) return;
         const json = (await res.json()) as unknown;
-        if (!disposed) {
+        if (!disposed && generation === socketGenRef.current && wsRef.current?.readyState !== WebSocket.OPEN) {
           acceptRawPayload(json, 'GET /api/snapshot');
         }
       } catch {
@@ -653,6 +657,13 @@ export function useTelemetry(
           return;
         }
         setWsConnected(true);
+        // A connected socket is a new transport session, including a restarted
+        // engine using the same BIDMC record. Keep stale until a frame arrives.
+        lastAppliedTimestampMsRef.current = null;
+        lastAppliedRecTimeRef.current = null;
+        lastAppliedEngineElapsedSRef.current = null;
+        latestBinaryRef.current = null;
+        setIsStale(true);
         setLink('ENGINE_LIVE');
         void fetchOsStatus();
         // Re-sync active What-If override when socket opens or reconnects.
@@ -703,9 +714,9 @@ export function useTelemetry(
       };
     };
 
+    connectWs();
     void fetchInitialSnapshot();
     void fetchOsStatus();
-    connectWs();
 
     const osPollId = window.setInterval(() => {
       if (!disposed) {

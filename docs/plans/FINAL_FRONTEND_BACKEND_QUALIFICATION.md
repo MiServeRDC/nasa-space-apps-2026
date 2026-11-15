@@ -38,3 +38,35 @@ Production-browser checks against the real Rust process reproduced two contract 
 2. Switching the cockpit overlay off does not tell Rust to leave scenario mode. Add a backward-compatible optional `overlay_active` patch, serialize transitions with existing scenario requests, and verify on/off/reconnect via the real API. Do not reset recorded samples or detector learning.
 
 No physiological constants or detector thresholds will be changed. Preserve checklist state for actual incidents and explicit manual catalog selection.
+
+
+## Post-merge main requalification
+
+Retest main 9f93263 with the same local matrix and production browser. Strengthen
+process-restart coverage by restarting the engine while the source is still
+BIDMC, before switching to absent hardware. Require the visible replay clock to
+restart near zero while the same recorded source ID is retained, not merely an
+open socket. This adds an actual transport/session check without changing product
+code or detector timing. Keep the original absent-hardware restart check as well.
+
+### Reproduced same-source restart defect and repair design
+
+The strengthened real-browser check failed on main: the connection badge recovered
+but visible replay time did not. `acceptRawPayload` duplicated a timestamp check
+that overrode the freshness gate's accepted rewind. Resetting only the UI badge or
+removing ordering protection is insufficient.
+
+Keep ordering in one gate. Preserve the existing wire `mission_Elapsed_seconds`
+clock as optional normalized `engine_elapsed_s`, distinct from recording time and
+mission-day scenario inputs. Within a connection, reject decreasing engine time;
+accept recording rewind only when engine time advances, proving a real replay
+cycle rather than inferring one from an arbitrary backward jump. A new WebSocket
+session resets the ordering watermarks and cached binary frame, and remains stale
+until actual telemetry arrives. Late HTTP snapshots must not override an active
+WS stream or cross a connection generation. Clear recorded trend history only
+when the accepted source/timeline changes. No Rust schema or physiology changes.
+
+Behavioral regressions cover real replay wraps, large delayed responses, old-cycle
+packets arriving after a wrap, legacy payloads without an engine clock, and the
+normalizer. Repeat the actual same-source restart test and existing end-to-end
+flow; preserve the failed main run as evidence rather than replacing its log.

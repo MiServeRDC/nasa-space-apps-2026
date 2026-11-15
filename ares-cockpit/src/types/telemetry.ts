@@ -498,6 +498,8 @@ export interface AerospaceMedical360State {
 
 export interface TelemetryPacket {
   timestamp_ms: number;
+  /** Monotonic engine lifetime, independent of the repeating recording clock. */
+  engine_elapsed_s?: number | null;
   relative_recording_time_s: number;
   source_record_id: string;
   mission_elapsed_days?: number | null;

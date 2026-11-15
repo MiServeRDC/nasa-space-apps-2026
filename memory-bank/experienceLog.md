@@ -246,3 +246,17 @@ inspected; no procedural or male substitution closes that coverage requirement.
 - Patched vendor sources need complete file/hash verification plus prominent
   modification notices; keep the vendor outside workspace membership and document
   its upstream warnings separately from workspace lint outcomes.
+
+
+## Same-source stream recovery and actual test execution (2026-11-15)
+
+- A connection badge and a passing pure gate do not prove telemetry updates.
+  Duplicate ordering checks in the hook can override accepted replay transitions.
+  Exercise the production hook after restarting the real engine with the same
+  record ID, and require a new visible clock and detector baseline.
+- Recording time repeats; engine elapsed time advances within a process. Use that
+  independent existing clock to prove wraps instead of treating any large backward
+  jump as a loop. Reset ordering at a new socket session and reject late hydration.
+- With cfg-gated integration tests, the newest executable after default Cargo tests
+  may contain zero cases. Select the feature-enabled binary by its test list and
+  verify actual case counts, not just exit zero, in network-denied reruns.
