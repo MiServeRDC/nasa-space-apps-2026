@@ -2495,6 +2495,7 @@ async fn post_source_mode_handler(
 /// `GET /api/binary-frame` and `POST /api/mcp`.
 pub fn build_axum_router(state: Arc<SharedMissionState>) -> Router {
     Router::new()
+        .route("/healthz", get(get_health_handler))
         .route("/ws/telemetry", get(ws_telemetry_handler))
         .route("/api/snapshot", get(get_snapshot_handler))
         .route("/api/os-status", get(get_os_status_handler))
@@ -2528,6 +2529,12 @@ pub fn build_axum_router(state: Arc<SharedMissionState>) -> Router {
         )
         .layer(middleware::from_fn(loopback_cors_middleware))
         .with_state(state)
+}
+
+async fn get_health_handler(State(state): State<Arc<SharedMissionState>>) -> Response {
+    let ready = state.latest_snapshot().is_some();
+    let code = if ready { StatusCode::OK } else { StatusCode::SERVICE_UNAVAILABLE };
+    (code, Json(serde_json::json!({"service":"ares-health", "version":env!("CARGO_PKG_VERSION"), "ready":ready}))).into_response()
 }
 
 async fn get_snapshot_handler(

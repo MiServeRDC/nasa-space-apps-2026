@@ -1,0 +1,11 @@
+# For a VM only: set ARES_DEMO_DOMAIN to a real public DNS hostname.
+# Run the app on a private network reachable as app:8080, never a public API port.
+{$ARES_DEMO_DOMAIN} {
+    encode zstd gzip
+    request_body {
+        max_size 64KB
+    }
+    @hardware path /api/source-mode
+    respond @hardware "The public judging instance uses recorded replay only." 403
+    reverse_proxy app:8080
+}

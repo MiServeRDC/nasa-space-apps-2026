@@ -24,4 +24,4 @@ The bundled numeric CSVs have no beat-to-beat intervals. RMSSD, SDNN, pNN50 and 
 
 The full HRV-dependent MRI, global margin and TTV/bands are also unavailable. Known non-HRV violations remain visible; an incomplete assessment is not nominal. Tests with explicitly supplied synthetic HRV values test software behavior only. No waveform/beat-interval processing is added by this correction.
 
-See [issue #11 implementation plan](../../docs/plans/ISSUE_11_HRV_VALIDITY_PLAN.md). Future integrations must repeat the null-propagation tests, including server/MCP and cockpit handling. The current main has no executable cockpit; issue #8 remains the frontend/wire integration task.
+See [issue #11 implementation plan](../../docs/plans/ISSUE_11_HRV_VALIDITY_PLAN.md). Future integrations must repeat the null-propagation tests, including server/MCP and cockpit handling. The current main includes an executable cockpit; see docs/submission/JUDGES_START_HERE.md for the verified replay workflow.

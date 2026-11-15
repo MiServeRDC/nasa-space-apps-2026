@@ -53,7 +53,8 @@ async function stopBackend() {
 
 try {
   const backendPort = await port(), frontendPort = await port();
-  const api = `http://127.0.0.1:${backendPort}`, origin = `http://127.0.0.1:${frontendPort}`;
+  const standalone = process.env.ARES_TEST_SINGLE_ORIGIN === '1';
+  const api = `http://127.0.0.1:${backendPort}`, origin = standalone ? api : `http://127.0.0.1:${frontendPort}`;
   const request = async (endpoint, body) => {
     const res = await fetch(api + endpoint, body === undefined ? undefined : {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
@@ -67,16 +68,16 @@ try {
   assert.ok(fs.existsSync(binary), 'Build ares-server-cli before running this probe');
   logFd = fs.openSync(path.join(artifacts, 'backend.log'), 'a');
   const startBackend = async () => {
-    backend = spawn(binary, ['--mode', 'ws-only', '--bind', `127.0.0.1:${backendPort}`, '--storage-dir', path.join(artifacts, 'storage')], { cwd: root, stdio: ['ignore', logFd, logFd] });
+    backend = spawn(binary, ['--mode', 'ws-only', '--bind', `127.0.0.1:${backendPort}`, '--storage-dir', path.join(artifacts, 'storage'), ...(standalone ? ['--frontend-dir', path.join(cockpit, 'dist')] : [])], { cwd: root, stdio: ['ignore', logFd, logFd] });
     backend.on('error', error => errors.push(`backend: ${error}`));
     await until(async () => { assert.equal(backend.exitCode, null, 'backend exited early'); return (await snapshot()).timestamp_ms; });
   };
+  await command('npm', ['--prefix', cockpit, 'run', 'build'], { VITE_ARES_HTTP_URL: standalone ? '' : api, VITE_ARES_WS_URL: '' }, 'production-build.log');
   await startBackend();
   const early = await fetch(api + '/api/inject-anomaly', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'DESATURATION_FAST' }) });
   assert.equal(early.status, 409); record('injection is refused before physiological baseline learning');
-  await command('npm', ['--prefix', cockpit, 'run', 'build'], { VITE_ARES_HTTP_URL: api }, 'production-build.log');
   const { preview } = await import(pathToFileURL(path.join(cockpit, 'node_modules/vite/dist/node/index.js')).href);
-  server = await preview({ root: cockpit, preview: { host: '127.0.0.1', port: frontendPort, strictPort: true } });
+  if (!standalone) server = await preview({ root: cockpit, preview: { host: '127.0.0.1', port: frontendPort, strictPort: true } });
   assert.ok(process.env.PLAYWRIGHT_MODULE, 'Set PLAYWRIGHT_MODULE to an installed playwright or playwright-core module');
   const { chromium } = await import(pathToFileURL(path.resolve(process.env.PLAYWRIGHT_MODULE)).href);
   browser = await chromium.launch({ executablePath: process.env.BROWSER_PATH, headless: true, args: ['--enable-unsafe-swiftshader'] });
@@ -90,6 +91,7 @@ try {
   });
   const page = await context.newPage();
   page.on('pageerror', error => errors.push(String(error)));
+  page.on('console', message => { if (message.type() === 'error' && /Content Security Policy|violates.*policy|Refused to/i.test(message.text())) errors.push(message.text()); });
   page.on('response', res => { if (res.status() >= 400) responses.push({ status: res.status(), url: res.url() }); });
   page.on('websocket', socket => socket.on('framereceived', () => frames++));
   const phase = name => page.getByRole('navigation', { name: 'Cockpit pages' }).getByRole('button', { name, exact: true }).click();
