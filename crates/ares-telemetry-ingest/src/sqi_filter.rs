@@ -1,9 +1,9 @@
-//! Fase 04 (B2): Filtro di qualita del segnale Spectral/Energy Entropy SQI (>= 0.70)
-//! con mantenimento Zero-Order Hold dell'ultimo campione valido quando `SQI < 0.70`.
+//! Phase 04 (B2): Spectral/Energy Entropy signal quality filter SQI (>= 0.70)
+//! with Zero-Order Hold retention of the last valid sample when `SQI < 0.70`.
 //!
-//! Invariante Issue #11 (@MiServeRDC): per sorgenti numeriche 1 Hz (`BIDMC v1.0.0`) prive di
-//! intervalli R-R beat-to-beat, non viene mai sintetizzato un RMSSD proxy da HR/RESP:
-//! `rmssd_ms` resta esplicitamente `None` con flag `BEAT_INTERVALS_NOT_AVAILABLE`.
+//! Issue #11 invariant (@MiServeRDC): for 1 Hz numeric sources (`BIDMC v1.0.0`) lacking
+//! beat-to-beat R-R intervals, a proxy RMSSD is never synthesized from HR/RESP:
+//! `rmssd_ms` remains explicitly `None` with the `BEAT_INTERVALS_NOT_AVAILABLE` flag.
 
 use crate::bidmc_replayer::BidmcNumericRow;
 use ares_core_types::constants::SQI_MIN_VALID_THRESHOLD;
@@ -12,7 +12,7 @@ const WINDOW_LEN: usize = 16;
 const EPSILON: f64 = 1e-12;
 pub const ZOH_MAX_HOLD_SECONDS: f64 = 30.0;
 
-/// Risultato dettagliato della valutazione SQI e disponibilita HRV.
+/// Detailed result of the SQI evaluation and HRV availability.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SqiEvaluation {
     pub sqi_score: f64,
@@ -20,7 +20,7 @@ pub struct SqiEvaluation {
     pub quality_flags: Vec<String>,
 }
 
-/// Valutatore O(1) di qualita del segnale (SQI) con memoria Zero-Order Hold per HRV reali.
+/// O(1) signal quality evaluator (SQI) with Zero-Order Hold memory for real HRV.
 #[derive(Debug, Clone)]
 pub struct SqiFilter {
     diff_energy_ring: [f64; WINDOW_LEN],
@@ -48,8 +48,8 @@ impl SqiFilter {
         Self::default()
     }
 
-    /// Valuta il campione numerico con eventuale `rmssd_ms` misurato da stream beat-to-beat R-R.
-    /// Se `raw_rmssd_ms` e `None`, `rmssd_ms` rimane `None` e viene emesso `BEAT_INTERVALS_NOT_AVAILABLE`.
+    /// Evaluates the numeric sample with an optional `rmssd_ms` measured from a beat-to-beat R-R stream.
+    /// If `raw_rmssd_ms` is `None`, `rmssd_ms` remains `None` and `BEAT_INTERVALS_NOT_AVAILABLE` is emitted.
     #[inline]
     pub fn evaluate_row_with_rmssd(
         &mut self,
@@ -139,13 +139,13 @@ impl SqiFilter {
         }
     }
 
-    /// Valuta una riga BIDMC numerica 1 Hz restituendo SQI, `rmssd_ms: None` e `quality_flags`.
+    /// Evaluates a 1 Hz numeric BIDMC row returning SQI, `rmssd_ms: None`, and `quality_flags`.
     #[inline]
     pub fn evaluate_row_detailed(&mut self, row: &BidmcNumericRow) -> SqiEvaluation {
         self.evaluate_row_with_rmssd(row, None)
     }
 
-    /// Aggiorna la finestra con la riga BIDMC corrente e restituisce `(sqi_score, rmssd_ms)`.
+    /// Updates the window with the current BIDMC row and returns `(sqi_score, rmssd_ms)`.
     #[inline]
     pub fn evaluate_row(&mut self, row: &BidmcNumericRow) -> (f64, Option<f64>) {
         let eval = self.evaluate_row_detailed(row);

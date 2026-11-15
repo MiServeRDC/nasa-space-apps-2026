@@ -1,8 +1,11 @@
-import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { CloseButton } from '../ui-primitives/CloseButton';
+import { ArrowRightIcon } from '@phosphor-icons/react';
+import { CockpitSelect } from '../ui-primitives/CockpitControls';
+import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { equalTelemetryValue } from '../../lib/equalTelemetryValue';
 import { DeferredPanel } from '../ui-primitives/DeferredPanel';
 import { Canvas } from '@react-three/fiber';
-import { Html, OrbitControls, PerformanceMonitor, QuadraticBezierLine } from '@react-three/drei';
+import { OrbitControls, PerformanceMonitor } from '@react-three/drei';
 import {useRenderQuality} from './useRenderQuality';
 import type {RenderProfile} from '../../lib/renderQuality';
 import type { CrewSex, ScenarioState } from '../../lib/scenario';
@@ -19,17 +22,15 @@ import type {
   ModelValidationStatus,
 } from '../../types/telemetry';
 const AiInjuryModal = lazy(() => import('./AiInjuryModal').then(m => ({default:m.AiInjuryModal})));
-import {
-  CephaladFluidShift,
-  MusclesLayer,
-  SkeletonLayer,
-  SkinLayer,
-  VascularNeuroLayer,
-  type V3,
-} from './AnatomicalLayers';
+import type { V3 } from './AnatomicalLayers';
 import type { AtlasAnchors } from './AtlasBody';
-const AtlasBody = lazy(() => import('./AtlasBody').then(m => ({default:m.AtlasBody})));
-import { GlbAssetErrorBoundary, NasaGlbAssetLayer, type GlbLoadStatus } from './NasaGlbAssetLayer';
+const ATLAS_CAMERA: { position: [number, number, number]; fov: number } = {
+  position: [0, 0.45, 3.95],
+  fov: 45,
+};
+const ATLAS_TARGET: [number, number, number] = [0, 0.45, 0];
+const PAIRED_DEPTHS = ['Skin', 'Muscles', 'Organs and vessels', 'Skeleton'] as const;
+const PairedAtlasBody = lazy(() => import('./PairedAtlasBody').then(m => ({ default: m.PairedAtlasBody })));
 import {
   projectHypergraphTo3D,
   type ProjectedAnatomicalNode,
@@ -37,85 +38,6 @@ import {
 
 export type NodeId = AnatomicalRegionWireId;
 export type TargetTab = 'POCUS' | 'MUSCLE_BONE' | 'FORECAST';
-
-interface LayerConfig {
-  skin: boolean;
-  muscles: boolean;
-  vascular: boolean;
-  organs: boolean;
-  skeleton: boolean;
-  arcs: boolean;
-  skinOpacity: number;
-  muscleOpacity: number;
-}
-
-const PRESETS: Record<string, { label: string; cfg: LayerConfig }> = {
-  ALL: {
-    label: 'ALL LAYERS',
-    cfg: {
-      skin: true,
-      muscles: true,
-      vascular: true,
-      organs: true,
-      skeleton: true,
-      arcs: true,
-      skinOpacity: 0.14,
-      muscleOpacity: 0.35,
-    },
-  },
-  SKIN_ONLY: {
-    label: 'SKIN ONLY',
-    cfg: {
-      skin: true,
-      muscles: false,
-      vascular: false,
-      organs: false,
-      skeleton: false,
-      arcs: true,
-      skinOpacity: 0.92,
-      muscleOpacity: 0.3,
-    },
-  },
-  MUSCLE_BONE: {
-    label: 'MUSCLE + BONE',
-    cfg: {
-      skin: false,
-      muscles: true,
-      vascular: false,
-      organs: false,
-      skeleton: true,
-      arcs: true,
-      skinOpacity: 0.1,
-      muscleOpacity: 0.55,
-    },
-  },
-  VASCULAR: {
-    label: 'VASCULAR / X-RAY',
-    cfg: {
-      skin: true,
-      muscles: false,
-      vascular: true,
-      organs: true,
-      skeleton: true,
-      arcs: true,
-      skinOpacity: 0.08,
-      muscleOpacity: 0.25,
-    },
-  },
-  SKELETON: {
-    label: 'SKELETON ONLY',
-    cfg: {
-      skin: false,
-      muscles: false,
-      vascular: false,
-      organs: false,
-      skeleton: true,
-      arcs: false,
-      skinOpacity: 0.1,
-      muscleOpacity: 0.3,
-    },
-  },
-};
 
 function clamp01(v: number): number {
   return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0;
@@ -193,21 +115,14 @@ function liveMetricForNode(
 function SpatialNodePin({
   node,
   worldPosition,
-  badgeValue,
-  isHottest,
   selected,
   onSelect,
 }: {
   node: ProjectedAnatomicalNode;
   worldPosition: V3;
-  badgeValue: string;
-  isHottest: boolean;
   selected: boolean;
   onSelect: () => void;
 }) {
-  const intensity = selected ? 3.0 : isHottest ? 2.4 : node.observed ? 1.3 : 0.35;
-  const radius = selected ? 0.068 : isHottest ? 0.056 : 0.046;
-
   return (
     <group position={worldPosition}>
       <mesh
@@ -222,44 +137,21 @@ function SpatialNodePin({
           document.body.style.cursor = 'auto';
         }}
       >
-        <sphereGeometry args={[radius, 16, 16]} />
-        <meshStandardMaterial
-          color={node.color}
-          emissive={node.color}
-          emissiveIntensity={intensity}
-        />
+        <sphereGeometry args={[0.044, 12, 12]} />
+        <meshBasicMaterial colorWrite={false} depthWrite={false} />
       </mesh>
-      <Html distanceFactor={5.5} position={[0.12, 0, 0]}>
-        <button
-          type="button"
-          onClick={onSelect}
-          style={{
-            fontFamily: 'monospace',
-            fontSize: 11,
-            color: node.color,
-            whiteSpace: 'nowrap',
-            background: selected ? 'rgba(34,211,238,0.18)' : 'rgba(0,0,0,0.82)',
-            border: selected ? `1px solid ${node.color}` : '1px solid rgba(55,65,81,0.8)',
-            padding: '4px 8px',
-            minHeight: 32,
-            borderRadius: 4,
-            cursor: 'pointer',
-          }}
-        >
-          {node.uberonCurie} {node.key.toUpperCase()}: {badgeValue}
-          {isHottest ? ' [HOT]' : ''}
-        </button>
-      </Html>
+      <mesh raycast={() => {}}>
+        <sphereGeometry args={[selected ? 0.023 : 0.016, 12, 12]} />
+        <meshBasicMaterial color={node.color} depthTest={false} depthWrite={false} transparent />
+      </mesh>
     </group>
   );
 }
 
 function InjuryPoint({
-  injury,
   position,
   onClick,
 }: {
-  injury: InjuryMarker;
   position: V3;
   onClick: () => void;
 }) {
@@ -278,45 +170,14 @@ function InjuryPoint({
           document.body.style.cursor = 'auto';
         }}
       >
-        <sphereGeometry args={[0.045, 14, 14]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={2.6} />
+        <sphereGeometry args={[0.044, 12, 12]} />
+        <meshBasicMaterial colorWrite={false} depthWrite={false} />
       </mesh>
-      <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[0.08, 0.008, 12, 24]} />
-        <meshBasicMaterial color={color} wireframe transparent opacity={0.78} />
+      <mesh raycast={() => {}}>
+        <sphereGeometry args={[0.017, 12, 12]} />
+        <meshBasicMaterial color={color} depthTest={false} depthWrite={false} transparent />
       </mesh>
-      <Html distanceFactor={4.8} position={[-0.14, 0.04, 0]}>
-        <button
-          type="button"
-          onClick={onClick}
-          style={{
-            fontFamily: 'monospace',
-            fontSize: 10,
-            fontWeight: 'bold',
-            color: '#000000',
-            whiteSpace: 'nowrap',
-            background: '#a3e635',
-            border: '1px solid #000000',
-            padding: '3px 7px',
-            minHeight: 28,
-            borderRadius: 4,
-            cursor: 'pointer',
-          }}
-        >
-          [{injury.severity}] {INJURY_REGIONS[injury.region].label.toUpperCase()}
-        </button>
-      </Html>
     </group>
-  );
-}
-
-function AtlasLoading() {
-  return (
-    <Html center>
-      <div className="rounded border border-nominal bg-black/90 px-3 py-2 font-mono text-xs text-nominal whitespace-nowrap">
-        Loading local Z-Anatomy GLB atlas (Meshopt)...
-      </div>
-    </Html>
   );
 }
 
@@ -403,14 +264,11 @@ function BodyHeatmapView({
   onOpenPlaybook,
 }: BodyHeatmapProps) {
   const quality=useRenderQuality(renderingActive);
-  const [cfg, setCfg] = useState<LayerConfig>(PRESETS.ALL.cfg);
+  const [showMarkers, setShowMarkers] = useState(true);
   const [selected, setSelected] = useState<NodeId | null>(null);
-  const [atlasMode, setAtlasMode] = useState(false);
-  const [atlasFailed, setAtlasFailed] = useState(false);
+  const [layers, setLayers] = useState<number[]>([0]);
   const [atlasAnchors, setAtlasAnchors] = useState<AtlasAnchors | null>(null);
-  const [glbEnabled, setGlbEnabled] = useState(false);
-  const [glbStatus, setGlbStatus] = useState<GlbLoadStatus>('OFF');
-  const [glbDetail, setGlbDetail] = useState('Procedural anatomical mesh active');
+  const currentAnchors = atlasAnchors?.profile === sex ? atlasAnchors : null;
 
   const [contextLost, setContextLost] = useState<boolean>(false);
   const canvasDomRef = useRef<HTMLCanvasElement | null>(null);
@@ -452,18 +310,12 @@ function BodyHeatmapView({
   // Injury modal & manual marker state
   const [modalOpen, setModalOpen] = useState(false);
   const [modalRegion, setModalRegion] = useState<InjuryRegionId>('LEFT_FOREARM');
-  const [modalInitialImage, setModalInitialImage] = useState<File | undefined>(undefined);
   const [editingInjury, setEditingInjury] = useState<InjuryMarker | null>(null);
   const [manualFormOpen, setManualFormOpen] = useState(false);
-  const [manualRegion, setManualRegion] = useState<InjuryRegionId>('LEFT_FOREARM');
+  const [manualPoint, setManualPoint] = useState<InjuryMarker['placement']>();
+  const pendingPoint = manualPoint?.profile === sex ? manualPoint : undefined;
   const [manualSeverity, setManualSeverity] = useState<InjurySeverity>('MODERATE');
   const [manualTitle, setManualTitle] = useState('');
-  const photoInputRef = useRef<HTMLInputElement>(null);
-
-  const handleGlbStatus = useCallback((status: GlbLoadStatus, detail: string) => {
-    setGlbStatus(status);
-    setGlbDetail(detail);
-  }, []);
 
   const handleAnchors = useCallback((anchors: AtlasAnchors) => {
     setAtlasAnchors(anchors);
@@ -499,212 +351,118 @@ function BodyHeatmapView({
     [hypergraphSpatial, localFallback],
   );
 
-  const skinOnly = cfg.skin && !cfg.skeleton && !cfg.muscles && !cfg.vascular;
-
-  const toggle = (k: 'skin' | 'muscles' | 'vascular' | 'organs' | 'skeleton' | 'arcs') =>
-    setCfg((c) => ({
-      ...c,
-      [k]: !c[k],
-      skinOpacity: k === 'skin' && !c.skin ? 0.14 : c.skinOpacity,
-    }));
-
-  const selectedNode = selected ? scene.nodesByRegion[selected] : null;
+  const selectedNode = selected && !manualFormOpen ? scene.nodesByRegion[selected] : null;
   const selectedMetrics = selectedNode ? liveMetricForNode(selectedNode, s) : null;
-  const relatedArcs = selectedNode
-    ? scene.arcs.filter(
-        (a) => a.sourceRegion === selectedNode.region || a.targetRegion === selectedNode.region,
-      )
-    : [];
 
-  const handlePhotoSelected = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setEditingInjury(null);
-    setModalInitialImage(file);
-    setModalRegion(manualRegion);
-    setModalOpen(true);
-    e.target.value = '';
-  };
+
+  useEffect(() => {
+    if (!manualFormOpen) return;
+    const cancelPlacement = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setManualPoint(undefined);
+      setManualFormOpen(false);
+    };
+    window.addEventListener('keydown', cancelPlacement);
+    return () => window.removeEventListener('keydown', cancelPlacement);
+  }, [manualFormOpen]);
 
   const handleCreateManualInjury = () => {
-    if (!onAddInjury) return;
-    const meta = INJURY_REGIONS[manualRegion];
+    if (!onAddInjury || !pendingPoint || !currentAnchors) return;
+    const distance = (region: InjuryRegionId) => currentAnchors.injuries[region]
+      .reduce((sum, axis, index) => sum + (axis - pendingPoint.point[index]) ** 2, 0);
+    const region = (Object.keys(currentAnchors.injuries) as InjuryRegionId[])
+      .reduce((nearest, candidate) => distance(candidate) < distance(nearest) ? candidate : nearest);
     onAddInjury({
-      id: `manual-${manualRegion}-${Date.now()}`,
-      region: manualRegion,
-      title: manualTitle.trim() || meta.defaultTitle,
+      id: `manual-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      region,
+      title: manualTitle.trim() || 'Body marker',
       severity: manualSeverity,
       methodId: 'MANUAL_CREW_ENTRY',
       validationStatus: 'ILLUSTRATIVE_UNVALIDATED',
-      recommendedPlaybookId: meta.recommendedPlaybookId,
-      summary: meta.defaultSummary,
-      careSteps: meta.defaultCare,
+      placement: pendingPoint,
+      summary: 'Manually placed on the anatomical atlas.',
+      careSteps: [],
       detectedAt: new Date().toISOString().slice(11, 19) + 'Z',
     });
+    setManualPoint(undefined);
     setManualTitle('');
     setManualFormOpen(false);
   };
 
-  const effectiveAtlasActive = atlasMode && !atlasFailed;
+  const visibleInjuries = injuries.filter(injury => !injury.placement || injury.placement.profile === sex);
+  const [inspectedMarker, setInspectedMarker] = useState<string | null>(null);
+  const markerDetails = !manualFormOpen && visibleInjuries.find(injury => injury.id === inspectedMarker && injury.placement);
+  const openInjury = (injury: InjuryMarker) => {
+    if (injury.placement) {
+      setSelected(null);
+      setInspectedMarker(injury.id);
+      return;
+    }
+    setEditingInjury(injury);
+    setModalOpen(true);
+  };
 
   return (
     <div className="anatomical-explorer flex h-full flex-col gap-2 bg-black">
-      <label className="flex flex-wrap items-center gap-2 text-xs text-gray-300">
-        Render quality
-        <select aria-label="Render quality" value={quality.profile} onChange={e=>quality.setProfile(e.target.value as RenderProfile)} className="rounded border border-line bg-black p-2">
-          <option value="AUTO">Auto</option><option value="LITE">Lite</option><option value="STANDARD">Standard</option><option value="HIGH">High</option>
-        </select>
-        <span className="text-gray-400">{quality.dpr.toFixed(2)}× resolution{quality.profile==='LITE' || quality.reducedMotion ? ' · static anatomy; measurements stay live' : ' · adaptive display only'}</span>
-      </label>
-      <details className="atlas-preferences">
-        <summary>Layers &amp; annotations <span>Display presets, body profile and injury tools</span></summary>
-        <div className="atlas-preferences-content">
-      {/* Top bar: Presets + Atlas Toggle + Biological Profile Switch + Injury Triage */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-2 font-mono text-xs">
-        <div className="flex flex-wrap gap-1.5">
-          {Object.entries(PRESETS).map(([k, p]) => (
-            <button
-              key={k}
-              type="button"
-              onClick={() => setCfg(p.cfg)}
-              className="min-h-[44px] min-w-[44px] cursor-pointer rounded border border-line bg-black px-2.5 py-2 text-gray-300 hover:border-nominal hover:text-nominal"
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              setAtlasFailed(false);
-              setAtlasMode((v) => !v);
-            }}
-            className={`min-h-[44px] min-w-[44px] cursor-pointer rounded border px-3 py-2 text-xs font-semibold transition-colors ${
-              effectiveAtlasActive
-                ? 'border-nominal bg-nominal/15 text-nominal'
-                : 'border-line bg-black text-gray-300 hover:border-nominal'
-            }`}
-          >
-            {effectiveAtlasActive ? 'ATLAS 3D GLB (CC BY-SA 4.0)' : 'PROCEDURAL RIG'}
-          </button>
-
-          {!effectiveAtlasActive && (
-            <button
-              type="button"
-              onClick={() => setGlbEnabled((v) => !v)}
-              className={`min-h-[44px] min-w-[44px] cursor-pointer rounded border px-3 py-2 text-xs font-semibold transition-colors ${
-                glbEnabled
-                  ? 'border-nominal bg-nominal/10 text-nominal'
-                  : 'border-line bg-black text-gray-400 hover:border-gray-600'
-              }`}
-            >
-              NASA LOCAL GLB OVERLAY: {glbEnabled ? glbStatus : 'OFF'}
-            </button>
-          )}
-
-          {onAddInjury && (
-            <>
-              <input
-                ref={photoInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handlePhotoSelected}
-                className="hidden"
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingInjury(null);
-                  setModalInitialImage(undefined);
-                  setModalOpen(true);
-                }}
-                className="min-h-[44px] cursor-pointer rounded border border-lime-400/70 bg-lime-950/25 px-3 py-2 font-bold text-lime-300 hover:bg-lime-400 hover:text-black"
-              >
-                + SCAN PHOTO (OPTICAL TRIAGE)
-              </button>
-              <button
-                type="button"
-                onClick={() => setManualFormOpen((v) => !v)}
-                className="min-h-[44px] cursor-pointer rounded border border-line bg-black px-3 py-2 text-gray-200 hover:border-lime-400 hover:text-lime-300"
-              >
-                + MANUAL MARKER
-              </button>
-            </>
-          )}
-
-          {onChangeSex && !effectiveAtlasActive && (
-            <div className="flex items-center gap-2 rounded-full border border-gray-700 bg-black px-2.5 py-1">
-              <span className="text-[10px] tracking-wider text-gray-400">BODY PROFILE</span>
-              <div className="flex rounded-full bg-black p-0.5">
-                {(['MALE', 'FEMALE'] as const).map((g) => {
-                  const active = sex === g;
-                  const activeCls =
-                    g === 'MALE'
-                      ? 'bg-sky-400 text-black font-bold'
-                      : 'bg-fuchsia-400 text-black font-bold';
-                  return (
-                    <button
-                      key={g}
-                      type="button"
-                      onClick={() => onChangeSex(g)}
-                      className={`min-h-[44px] min-w-[44px] cursor-pointer rounded-full px-3 py-1 text-[11px] transition-colors ${
-                        active ? activeCls : 'text-gray-400 hover:text-white'
-                      }`}
-                    >
-                      {g}
-                    </button>
-                  );
-                })}
-              </div>
+      <section className="atlas-preferences anatomy-toolbar" aria-label="Anatomy model and annotations">
+        <div className="anatomy-toolbar-row">
+          {onChangeSex && (
+            <div className="anatomy-segments" role="group" aria-label="Body profile">
+              <button type="button" aria-pressed={sex === 'MALE'} onClick={() => onChangeSex('MALE')}>Male</button>
+              <button type="button" aria-pressed={sex === 'FEMALE'} onClick={() => onChangeSex('FEMALE')}>Female</button>
             </div>
           )}
+          <div className="anatomy-annotations">
+            {onAddInjury && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingInjury(null);
+                    setModalOpen(true);
+                  }}
+                  className="act-secondary-button anatomy-photo-button"
+                >
+                  Add photo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setManualPoint(undefined);
+                    setManualFormOpen((v) => !v);
+                  }}
+                  aria-pressed={manualFormOpen}
+                  disabled={!manualFormOpen && (!currentAnchors || contextLost)}
+                  className="act-secondary-button"
+                >
+                  {manualFormOpen ? 'Cancel marker' : 'Add marker'}
+                </button>
+              </>
+            )}
+          </div>
         </div>
-      </div>
-
-      {/* Individual Layer Toggles */}
-      <div className="anatomy-layers font-mono text-xs flex-wrap gap-1.5">
-        <span className="mr-1 self-center px-1 text-gray-500">LAYERS:</span>
-        {([
-          ['skin', 'Skin'],
-          ['muscles', 'Muscles'],
-          ['vascular', 'Vascular/Neuro'],
-          ['organs', 'Visceral/Organs'],
-          ['skeleton', 'Skeleton'],
-          ['arcs', 'UBERON & Conduction Arcs'],
-        ] as const).map(([key, lbl]) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => toggle(key)}
-            className={`min-h-[44px] min-w-[44px] cursor-pointer rounded border px-2.5 py-2 ${
-              cfg[key]
-                ? 'border-nominal bg-nominal/15 text-nominal'
-                : 'border-line bg-black text-gray-500'
-            }`}
-          >
-            {lbl}
-          </button>
-        ))}
-      </div>
+        <div className="anatomy-toolbar-row">
+          <div className="anatomy-segments" role="group" aria-label="Anatomical layers">
+            {PAIRED_DEPTHS.map((layer, index) => (
+              <button key={layer} type="button" aria-pressed={layers.includes(index)}
+                disabled={layers.length === 1 && layers.includes(index)}
+                onClick={() => setLayers(active => active.includes(index)
+                  ? active.filter(layer => layer !== index) : [...active, index])}>{layer}</button>
+            ))}
+          </div>
+          <label className="anatomy-marker-toggle">
+            <input type="checkbox" checked={showMarkers} onChange={event => setShowMarkers(event.currentTarget.checked)} />
+            Region markers
+          </label>
+        </div>
 
       {/* Manual Marker Form */}
       {manualFormOpen && onAddInjury && (
         <div className="flex flex-wrap items-center gap-2 rounded border border-lime-400/50 bg-panel p-2.5 font-mono text-xs">
-          <select
-            aria-label="Manual marker region"
-            value={manualRegion}
-            onChange={(e) => setManualRegion(e.target.value as InjuryRegionId)}
-            className="min-h-[44px] rounded border border-line bg-black px-2 py-1 text-gray-200"
-          >
-            {(Object.keys(INJURY_REGIONS) as InjuryRegionId[]).map((key) => (
-              <option key={key} value={key}>
-                {INJURY_REGIONS[key].label}
-              </option>
-            ))}
-          </select>
-          <select
+          <p className="w-full" role="status">{pendingPoint
+            ? 'Point selected. Click the body again to move it.'
+            : 'Click the body where you want to place the marker.'}</p>
+          <CockpitSelect
             aria-label="Manual marker severity"
             value={manualSeverity}
             onChange={(e) => setManualSeverity(e.target.value as InjurySeverity)}
@@ -713,7 +471,7 @@ function BodyHeatmapView({
             <option value="LOW">LOW</option>
             <option value="MODERATE">MODERATE</option>
             <option value="HIGH">HIGH</option>
-          </select>
+          </CockpitSelect>
           <input
             type="text"
             placeholder="Note / injury description (optional)"
@@ -724,17 +482,12 @@ function BodyHeatmapView({
           <button
             type="button"
             onClick={handleCreateManualInjury}
+            disabled={!pendingPoint}
             className="min-h-[44px] cursor-pointer rounded border border-lime-400 bg-lime-400 px-3 py-1 font-bold text-black hover:bg-lime-300"
           >
-            PIN MARKER
+            Pin marker
           </button>
-          <button
-            type="button"
-            onClick={() => photoInputRef.current?.click()}
-            className="min-h-[44px] cursor-pointer rounded border border-nominal px-3 py-1 text-nominal hover:bg-nominal/10"
-          >
-            ATTACH PHOTO
-          </button>
+
         </div>
       )}
 
@@ -745,8 +498,182 @@ function BodyHeatmapView({
         </div>
       )}
 
+      </section>
+
+      {/* 3D Layered Viewport */}
+      <div ref={quality.viewportRef} data-anatomy-model="paired" data-body-profile={currentAnchors?.profile} data-anatomy-layer={layers.map(layer => PAIRED_DEPTHS[layer]).join(",")} data-placing-marker={manualFormOpen} data-render-loop={quality.frameloop} data-render-dpr={quality.dpr} className="relative min-h-0 flex-1 rounded border border-line bg-black">
+        {!contextLost && !currentAnchors && (
+            <span role="status" className="pointer-events-none absolute top-3 left-3 z-10 rounded border border-line bg-black px-2 py-1 font-mono text-xs text-nominal">
+              Loading anatomy
+            </span>
+          )}
+        {contextLost ? (
+          <Body2DFallbackSvg
+            nodes={scene.nodes}
+            hottestRegion={scene.hottestRegion}
+            onSelect={(r) => setSelected(r)}
+            reason="GPU WebGL Context Lost"
+          />
+        ) : (
+          <WebGlErrorBoundary
+            fallback={(errorMsg) => (
+              <Body2DFallbackSvg
+                nodes={scene.nodes}
+                hottestRegion={scene.hottestRegion}
+                onSelect={(r) => setSelected(r)}
+                reason={errorMsg}
+              />
+            )}
+          >
+            <Canvas
+              dpr={quality.dpr}
+              frameloop={quality.frameloop}
+              camera={ATLAS_CAMERA}
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', background: 'transparent' }}
+              onPointerMissed={() => setSelected(null)}
+              onCreated={handleCanvasCreated}
+              fallback={
+                <Body2DFallbackSvg
+                  nodes={scene.nodes}
+                  hottestRegion={scene.hottestRegion}
+                  onSelect={(r) => setSelected(r)}
+                />
+              }
+            >
+          {quality.profile==='AUTO' && quality.active && !quality.reducedMotion && <PerformanceMonitor
+            bounds={()=>[30,55]} flipflops={3}
+            onChange={api=>quality.setFactor(api.factor)} onFallback={()=>quality.setFactor(0)}
+          />}
+          <ambientLight intensity={0.55} />
+          <pointLight position={[2.5, 3, 3]} intensity={28} />
+          <pointLight position={[-2.5, 1.5, 2]} intensity={14} color="#e2e8f0" />
+          <pointLight position={[0, 1, -3]} intensity={12} color="#c4d6e1" />
+
+          <Suspense fallback={null}>
+            <PairedAtlasBody key={sex} sex={sex} layers={layers} onAnchors={handleAnchors}
+              onSurfaceClick={manualFormOpen ? point => setManualPoint({ profile: sex, point }) : undefined} />
+          </Suspense>
+
+          {showMarkers && currentAnchors && !manualFormOpen && (
+            <>
+              {scene.nodes.map((node) => {
+                const worldPosition = currentAnchors.nodes[node.region];
+                return (
+                  <SpatialNodePin
+                    key={node.region}
+                    node={node}
+                    worldPosition={worldPosition}
+                    selected={selected === node.region}
+                    onSelect={() => setSelected(node.region)}
+                  />
+                );
+              })}
+
+
+            </>
+          )}
+
+          {pendingPoint && <mesh position={pendingPoint.point} renderOrder={10}>
+            <sphereGeometry args={[0.025, 12, 12]} />
+            <meshBasicMaterial color="#f7ce7c" depthTest={false} />
+          </mesh>}
+          {currentAnchors && !manualFormOpen && visibleInjuries.map((inj) => {
+            const pos = inj.placement?.point ?? currentAnchors.injuries[inj.region];
+            return (
+              <InjuryPoint
+                key={inj.id}
+                position={pos}
+                onClick={() => openInjury(inj)}
+              />
+            );
+          })}
+
+          <OrbitControls
+            target={ATLAS_TARGET}
+            zoomToCursor
+            enablePan={false}
+            enableDamping
+            dampingFactor={0.05}
+            minDistance={1.2}
+            maxDistance={6.5}
+          />
+        </Canvas>
+          </WebGlErrorBoundary>
+        )}
+
+        {markerDetails && (
+          <div className="anatomy-marker-details">
+            <div><strong>{markerDetails.title}</strong><p>{markerDetails.severity.toLowerCase()} severity</p></div>
+            {onResolveInjury && <button type="button" className="act-secondary-button"
+              onClick={() => { onResolveInjury(markerDetails.id); setInspectedMarker(null); }}>Remove marker</button>}
+            <CloseButton onClick={() => setInspectedMarker(null)} />
+          </div>
+        )}
+        {/* Selected UBERON node details */}
+        {selectedNode && selectedMetrics && !markerDetails && (
+          <div className="absolute right-3 bottom-3 left-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-nominal bg-black/95 p-3 backdrop-blur">
+            <div className="min-w-0 flex-1 font-mono">
+              <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-nominal">
+                <span>
+                  {selectedNode.label} [{selectedNode.uberonCurie}]
+                </span>
+                <span
+                  className="rounded border px-1.5 py-0.5 text-[10px]"
+                  style={{ borderColor: selectedNode.color, color: selectedNode.color }}
+                >
+                  {selectedNode.observationState}
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-gray-300">{selectedMetrics.detailSummary}</p>
+              <div className="mt-1 flex flex-wrap gap-3 text-[11px] text-gray-400">
+                <span>Local: {(selectedNode.localIntensity * 100).toFixed(0)}%</span>
+                <span>Propagated: {(selectedNode.propagatedIntensity * 100).toFixed(0)}%</span>
+
+              </div>
+            </div>
+            <div className="flex items-center gap-2 font-mono text-xs">
+              {onOpenTab && (
+                <button
+                  type="button"
+                  onClick={() => onOpenTab(selectedMetrics.tab)}
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded border border-nominal bg-nominal px-3 py-2 font-bold text-black hover:opacity-90"
+                >
+                  {selectedMetrics.tabLabel} <ArrowRightIcon aria-hidden="true" size={15} />
+                </button>
+              )}
+              <CloseButton onClick={() => setSelected(null)} />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {!manualFormOpen && (showMarkers || visibleInjuries.length > 0) && (
+        <div className="anatomy-region-controls" aria-label="Anatomical indicators and marker controls" role="group">
+          {showMarkers && scene.nodes.map(node => (
+            <button key={node.region} type="button" aria-pressed={selected === node.region}
+              onClick={() => setSelected(node.region)}>
+              <span className="anatomy-region-dot" style={{ backgroundColor: node.color }} />
+              <span>{node.label}</span>
+              <strong>{liveMetricForNode(node, s).badgeValue}</strong>
+            </button>
+          ))}
+          {visibleInjuries.map(injury => (
+            <button key={injury.id} type="button" onClick={() => openInjury(injury)}>
+              <span className="anatomy-region-dot bg-lime-300" />
+              <span>{injury.placement ? injury.title : INJURY_REGIONS[injury.region].label}</span>
+              <strong>{injury.severity}</strong>
+            </button>
+          ))}
         </div>
-      </details>
+      )}
+
+      <label className="flex flex-wrap items-center gap-2 text-xs text-gray-300">
+        Render quality
+        <CockpitSelect aria-label="Render quality" value={quality.profile} onChange={e=>quality.setProfile(e.target.value as RenderProfile)} className="rounded border border-line bg-black p-2">
+          <option value="AUTO">Auto</option><option value="LITE">Lite</option><option value="STANDARD">Standard</option><option value="HIGH">High</option>
+        </CockpitSelect>
+        <span className="text-gray-400">{quality.dpr.toFixed(2)}× resolution{quality.profile==='LITE' || quality.reducedMotion ? ' · static anatomy; measurements stay live' : ' · adaptive display only'}</span>
+      </label>
 
       {/* Spatial Hypergraph & Deontic Habitat HUD Strip */}
       <div className="flex flex-wrap items-center justify-between gap-2 rounded border border-line bg-black px-3 py-1.5 font-mono text-[11px]">
@@ -780,228 +707,19 @@ function BodyHeatmapView({
           )}
           <span className="rounded border border-gray-800 px-1.5 py-0.5 text-[10px] text-gray-400">
             {modelValidationStatus ?? 'ILLUSTRATIVE_UNVALIDATED'} |{' '}
-            {effectiveAtlasActive ? 'Z-Anatomy 5-GLB (CC BY-SA 4.0)' : glbDetail}
+            Paired atlas (CC BY 4.0)
           </span>
         </div>
-      </div>
-
-      {/* 3D Layered Viewport */}
-      <div ref={quality.viewportRef} data-render-loop={quality.frameloop} data-render-dpr={quality.dpr} className="relative min-h-0 flex-1 rounded border border-line bg-black">
-        {contextLost ? (
-          <Body2DFallbackSvg
-            nodes={scene.nodes}
-            hottestRegion={scene.hottestRegion}
-            onSelect={(r) => setSelected(r)}
-            reason="GPU WebGL Context Lost"
-          />
-        ) : (
-          <WebGlErrorBoundary
-            fallback={(errorMsg) => (
-              <Body2DFallbackSvg
-                nodes={scene.nodes}
-                hottestRegion={scene.hottestRegion}
-                onSelect={(r) => setSelected(r)}
-                reason={errorMsg}
-              />
-            )}
-          >
-            <Canvas
-              dpr={quality.dpr}
-              frameloop={quality.frameloop}
-              camera={{ position: [0, 0.45, 3.3], fov: 45 }}
-              style={{ background: '#000000' }}
-              onPointerMissed={() => setSelected(null)}
-              onCreated={handleCanvasCreated}
-              fallback={
-                <Body2DFallbackSvg
-                  nodes={scene.nodes}
-                  hottestRegion={scene.hottestRegion}
-                  onSelect={(r) => setSelected(r)}
-                />
-              }
-            >
-          {quality.profile==='AUTO' && quality.active && !quality.reducedMotion && <PerformanceMonitor
-            bounds={()=>[30,55]} flipflops={3}
-            onChange={api=>quality.setFactor(api.factor)} onFallback={()=>quality.setFactor(0)}
-          />}
-          <ambientLight intensity={0.55} />
-          <pointLight position={[2.5, 3, 3]} intensity={28} />
-          <pointLight position={[-2.5, 1.5, 2]} intensity={14} color="#e2e8f0" />
-          <pointLight position={[0, 1, -3]} intensity={12} color="#22d3ee" />
-
-          {effectiveAtlasActive ? (
-            <GlbAssetErrorBoundary
-              onFallback={() => {
-                setAtlasFailed(true);
-                setAtlasMode(false);
-              }}
-            >
-              <Suspense fallback={<AtlasLoading />}>
-                <AtlasBody
-                  s={s}
-                  nodesByRegion={scene.nodesByRegion}
-                  skeleton={cfg.skeleton}
-                  muscles={cfg.muscles}
-                  vascular={cfg.vascular}
-                  organs={cfg.organs}
-                  muscleOpacity={cfg.muscleOpacity}
-                  selected={selected}
-                  onSelect={(id) => setSelected(id)}
-                  onAnchors={handleAnchors}
-                />
-              </Suspense>
-            </GlbAssetErrorBoundary>
-          ) : (
-            <>
-              {cfg.skeleton && <SkeletonLayer s={s} sex={sex} />}
-              {cfg.vascular && <VascularNeuroLayer s={s} sex={sex} nodesByRegion={scene.nodesByRegion} />}
-              {cfg.vascular && <CephaladFluidShift s={s} sex={sex} visible={cfg.vascular} />}
-              {cfg.muscles && (
-                <MusclesLayer
-                  s={s}
-                  opacity={cfg.muscleOpacity}
-                  sex={sex}
-                  soleusNode={scene.nodesByRegion.SoleusCalcaneus}
-                />
-              )}
-              {cfg.skin && <SkinLayer opacity={cfg.skinOpacity} sex={sex} skinOnly={skinOnly} />}
-              <NasaGlbAssetLayer enabled={glbEnabled} onStatusChange={handleGlbStatus} />
-            </>
-          )}
-
-          {cfg.arcs && (
-            <>
-              {scene.nodes.map((node) => {
-                const m = liveMetricForNode(node, s);
-                const worldPosition =
-                  effectiveAtlasActive && atlasAnchors
-                    ? atlasAnchors.nodes[node.region]
-                    : node.worldPosition;
-                return (
-                  <SpatialNodePin
-                    key={node.region}
-                    node={node}
-                    worldPosition={worldPosition}
-                    badgeValue={m.badgeValue}
-                    isHottest={scene.hottestRegion === node.region}
-                    selected={selected === node.region}
-                    onSelect={() => setSelected(node.region)}
-                  />
-                );
-              })}
-
-              {scene.arcs.map((arc) => (
-                <QuadraticBezierLine
-                  key={arc.id}
-                  start={
-                    effectiveAtlasActive && atlasAnchors
-                      ? atlasAnchors.nodes[arc.sourceRegion]
-                      : arc.sourcePos
-                  }
-                  end={
-                    effectiveAtlasActive && atlasAnchors
-                      ? atlasAnchors.nodes[arc.targetRegion]
-                      : arc.targetPos
-                  }
-                  mid={arc.midPoint}
-                  color={arc.color}
-                  lineWidth={1.2 + arc.fluxIntensity * 2.4}
-                  dashed={arc.dashed}
-                />
-              ))}
-            </>
-          )}
-
-          {injuries.map((inj) => {
-            const pos =
-              effectiveAtlasActive && atlasAnchors
-                ? atlasAnchors.injuries[inj.region]
-                : INJURY_REGIONS[inj.region].pos;
-            return (
-              <InjuryPoint
-                key={inj.id}
-                injury={inj}
-                position={pos}
-                onClick={() => {
-                  setEditingInjury(inj);
-                  setModalInitialImage(undefined);
-                  setModalOpen(true);
-                }}
-              />
-            );
-          })}
-
-          <OrbitControls
-            target={[0, 0.45, 0]}
-            enablePan={false}
-            enableDamping
-            dampingFactor={0.05}
-            minDistance={1.2}
-            maxDistance={6.5}
-          />
-        </Canvas>
-          </WebGlErrorBoundary>
-        )}
-
-        {/* Selected UBERON node details */}
-        {selectedNode && selectedMetrics && (
-          <div className="absolute right-3 bottom-3 left-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-nominal bg-black/95 p-3 backdrop-blur">
-            <div className="min-w-0 flex-1 font-mono">
-              <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-nominal">
-                <span>
-                  {selectedNode.label} [{selectedNode.uberonCurie}]
-                </span>
-                <span
-                  className="rounded border px-1.5 py-0.5 text-[10px]"
-                  style={{ borderColor: selectedNode.color, color: selectedNode.color }}
-                >
-                  {selectedNode.observationState}
-                </span>
-              </div>
-              <p className="mt-1 text-xs text-gray-300">{selectedMetrics.detailSummary}</p>
-              <div className="mt-1 flex flex-wrap gap-3 text-[11px] text-gray-400">
-                <span>Local: {(selectedNode.localIntensity * 100).toFixed(0)}%</span>
-                <span>Propagated: {(selectedNode.propagatedIntensity * 100).toFixed(0)}%</span>
-                <span>
-                  Arcs:{' '}
-                  {relatedArcs
-                    .map((a) => `${a.mechanism} (${a.couplingWeight.toFixed(2)})`)
-                    .join(' | ')}
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 font-mono text-xs">
-              {onOpenTab && (
-                <button
-                  type="button"
-                  onClick={() => onOpenTab(selectedMetrics.tab)}
-                  className="min-h-[44px] min-w-[44px] cursor-pointer rounded border border-nominal bg-nominal px-3 py-2 font-bold text-black hover:opacity-90"
-                >
-                  {selectedMetrics.tabLabel} -&gt;
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setSelected(null)}
-                className="min-h-[44px] min-w-[44px] cursor-pointer rounded border border-line bg-black px-3 py-2 text-gray-300 hover:text-white"
-              >
-                CLOSE
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       {onAddInjury && modalOpen && (
         <DeferredPanel name="injury annotation"><AiInjuryModal
           isOpen={modalOpen}
           initialRegion={modalRegion}
-          initialImage={modalInitialImage}
           existingInjury={editingInjury}
           onClose={() => {
             setModalOpen(false);
             setEditingInjury(null);
-            setModalInitialImage(undefined);
           }}
           onSaveInjury={onAddInjury}
           onResolveInjury={onResolveInjury}

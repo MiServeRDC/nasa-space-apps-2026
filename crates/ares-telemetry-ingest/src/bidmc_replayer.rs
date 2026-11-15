@@ -1,9 +1,9 @@
-//! Fase 03 (B1): Replay deterministico di PhysioNet BIDMC v1.0.0 (`1 Hz`, `0..480 s`).
+//! Phase 03 (B1): Deterministic replay of PhysioNet BIDMC v1.0.0 (`1 Hz`, `0..480 s`).
 //!
-//! Rispetta rigorosamente la Issue #4 (`@MiServeRDC`) e la skill `telemetry-replay-verifier`:
-//! 1. Trimming obbligatorio degli spazi iniziali negli header CSV (`" HR"`, `" PULSE"`, `" RESP"`, `" SpO2"`).
-//! 2. Preservazione esplicita di `Option<f64>::None` per i 13 campioni mancanti in `bidmc_01_Numerics.csv`
-//!    senza mai sostituirli con `0.0` o valori sani fittizi.
+//! Strictly respects Issue #4 (`@MiServeRDC`) and the `telemetry-replay-verifier` skill:
+//! 1. Mandatory trimming of leading spaces in the CSV headers (`" HR"`, `" PULSE"`, `" RESP"`, `" SpO2"`).
+//! 2. Explicit preservation of `Option<f64>::None` for the 13 missing samples in `bidmc_01_Numerics.csv`
+//!    without ever replacing them with `0.0` or fictitious healthy values.
 
 use std::fs::File;
 use std::io::{BufRead, BufReader};
@@ -37,7 +37,7 @@ pub enum IngestError {
     Dsp(#[from] crate::radar_csi_dsp::DspError),
 }
 
-/// Singolo campione numerico a 1 Hz estratto da `bidmc_*_Numerics.csv`.
+/// Single 1 Hz numeric sample extracted from `bidmc_*_Numerics.csv`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct BidmcNumericRow {
     pub record_id: String,
@@ -49,7 +49,7 @@ pub struct BidmcNumericRow {
     pub missing_channels: Vec<String>,
 }
 
-/// Motore di replay deterministico in-memory per una registrazione BIDMC (`481` righe, `0..480 s`).
+/// In-memory deterministic replay engine for a BIDMC recording (`481` rows, `0..480 s`).
 #[derive(Debug, Clone)]
 pub struct BidmcReplayer {
     record_id: String,
@@ -58,8 +58,8 @@ pub struct BidmcReplayer {
 }
 
 impl BidmcReplayer {
-    /// Carica e valida un file `bidmc_*_Numerics.csv` effettuando il trimming degli spazi
-    /// negli header (`" HR"`, `" PULSE"`, `" RESP"`, `" SpO2"`) e preservando i valori mancanti come `None`.
+    /// Loads and validates a `bidmc_*_Numerics.csv` file, trimming the spaces
+    /// in the headers (`" HR"`, `" PULSE"`, `" RESP"`, `" SpO2"`) and preserving missing values as `None`.
     pub fn from_csv_path(record_id: &str, path: &Path) -> Result<Self, IngestError> {
         let file = File::open(path).map_err(|e| IngestError::CsvIoError {
             path: path.display().to_string(),
@@ -69,7 +69,7 @@ impl BidmcReplayer {
         Self::from_buf_read(record_id, &path.display().to_string(), reader)
     }
 
-    /// Carica e valida uno stream CSV BIDMC da qualsiasi `BufRead` (utile anche per test in-memory).
+    /// Loads and validates a BIDMC CSV stream from any `BufRead` (also useful for in-memory tests).
     pub fn from_buf_read<R: BufRead>(
         record_id: &str,
         source_label: &str,
@@ -181,7 +181,7 @@ impl BidmcReplayer {
         }
     }
 
-    /// Restituisce il numero totale di campioni a 1 Hz caricati (481 per `0..480 s`).
+    /// Returns the total number of loaded 1 Hz samples (481 for `0..480 s`).
     #[inline]
     pub fn len(&self) -> usize {
         self.rows.len()
@@ -192,7 +192,7 @@ impl BidmcReplayer {
         self.rows.is_empty()
     }
 
-    /// Restituisce il campione corrente e avanza ciclicamente il cursore (`0..len`).
+    /// Returns the current sample and cyclically advances the cursor (`0..len`).
     #[inline]
     pub fn next_row(&mut self) -> &BidmcNumericRow {
         let idx = self.cursor_idx % self.rows.len();
@@ -200,14 +200,14 @@ impl BidmcReplayer {
         &self.rows[idx]
     }
 
-    /// Accesso diretto deterministico per secondo relativo `0..=480`.
+    /// Deterministic direct access by relative second `0..=480`.
     #[inline]
     pub fn row_at_second(&self, second_idx: usize) -> &BidmcNumericRow {
         let clamped = second_idx.min(self.rows.len().saturating_sub(1));
         &self.rows[clamped]
     }
 
-    /// Restituisce la slice immutabile di tutte le righe caricate.
+    /// Returns the immutable slice of all loaded rows.
     #[inline]
     pub fn rows(&self) -> &[BidmcNumericRow] {
         &self.rows

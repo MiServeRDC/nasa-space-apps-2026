@@ -1,3 +1,5 @@
+import { CockpitSummary } from '../ui-primitives/CockpitControls';
+import { displayLabel } from '../../lib/displayLabel';
 import { useEffect, useMemo, useState } from 'react';
 import { evaluate, type WhatIf } from '../../lib/scenario';
 import {
@@ -249,7 +251,7 @@ export function TimestralQuantileConePanel({
     packet?.biometrics.hrv_unavailable_reason === 'BEAT_INTERVALS_NOT_AVAILABLE' ||
     packet?.biometrics.hrv_rmssd_ms === null;
 
-  const [horizonMode, setHorizonMode] = useState<ConeHorizonMode>('LONG');
+  const [horizonMode, setHorizonMode] = useState<ConeHorizonMode>('SHORT_EWMA');
   const longConeOptions = useMemo(() => buildConeOptions(tq, hrvUnavailable), [tq, hrvUnavailable]);
   const shortConeOptions = useMemo(() => buildShortEwmaConeOptions(tq, hrvUnavailable), [tq, hrvUnavailable]);
   const coneOptions = horizonMode === 'SHORT_EWMA' ? shortConeOptions : longConeOptions;
@@ -280,113 +282,43 @@ export function TimestralQuantileConePanel({
   const ttvCone = hrvUnavailable ? null : parseMonotoneQuantileTriplet(tq?.ttv_hours_cone);
 
   const W = 520;
-  const H = 165;
+  const H = 198;
   const PAD_X = 42;
   const PAD_Y = 22;
 
   return (
-    <div className="space-y-2 rounded border border-line bg-black p-3 font-mono text-xs">
-      {/* Header Badges (Issue #12 compliant: zero forbidden strings) */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-semibold text-nominal">TIMESTRAL QUANTILE CONES (q05-q50-q95)</span>
-          <span className="rounded border border-gray-700 px-1.5 py-0.5 text-[10px] text-gray-300">
-            {validationLabel} | {intervalKindLabel}
-          </span>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span
-            className={`rounded border px-2 py-0.5 text-[10px] font-semibold ${
-              isAbstained
-                ? 'border-caution text-caution'
-                : 'border-ok text-ok'
-            }`}
-          >
-            CONFORMAL GATE: {gateStatus}
-          </span>
-          {typeof tq?.inference_latency_us === 'number' && Number.isFinite(tq.inference_latency_us) && (
-            <span className="text-[10px] text-gray-500">
-              {tq.inference_latency_us} us
-            </span>
-          )}
-        </div>
+    <div className="short-forecast">
+      <div className="short-forecast-controls" role="group" aria-label="Forecast horizon range">
+        <button type="button" aria-pressed={horizonMode === 'SHORT_EWMA'} onClick={() => setHorizonMode('SHORT_EWMA')}>
+          5 seconds to 2 minutes
+        </button>
+        <button type="button" aria-pressed={horizonMode === 'LONG'} onClick={() => setHorizonMode('LONG')}>
+          15 minutes to 24 hours
+        </button>
       </div>
 
       {/* Issue #11 Strict Nullability Banner */}
       {hrvUnavailable && (
         <div className="rounded border border-caution/60 bg-black px-2.5 py-1.5 text-[11px] text-caution">
-          BEAT_INTERVALS_NOT_AVAILABLE: R-R intervals absent (`hrv_rmssd_ms === null`). HRV/STL cones (`rmssd_ms`, `rho_global`, `ttv_hours_cone`) remain suppressed (not coerced to zero).
+          Beat intervals are unavailable. HRV, global safety margin and time-to-limit forecasts are unavailable for this input.
         </div>
       )}
 
       {/* Conformal Abstention Certificate Banner */}
       {tq?.abstention_certificate && isAbstained && (
         <div className="rounded border border-caution/50 bg-black px-2.5 py-1.5 text-[11px] text-gray-300">
-          ABSTENTION CERTIFICATE: {tq.abstention_certificate.reason}
+          Forecast availability: {displayLabel(tq.abstention_certificate.reason)}
           {tq.abstention_certificate.abstained
             ? ` [DETERMINISTIC FALLBACK ACTIVE | cov_err=${tq.abstention_certificate.empirical_coverage_error.toFixed(3)}]`
             : ''}
         </div>
       )}
 
-      {/* Horizon Mode Toggle (+15m..+24h Timestral vs +5s..+120s EWMA) & Channel Selector */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Forecast horizon range">
-          <button
-            type="button"
-            aria-pressed={horizonMode === 'LONG'}
-            onClick={() => setHorizonMode('LONG')}
-            className={`min-h-[44px] rounded border px-3 py-2 text-xs transition-colors ${
-              horizonMode === 'LONG'
-                ? 'border-nominal bg-nominal/10 text-nominal'
-                : 'border-line bg-black text-gray-400 hover:border-gray-600'
-            }`}
-          >
-            LONG HORIZON (+15m..+24h)
-          </button>
-          <button
-            type="button"
-            aria-pressed={horizonMode === 'SHORT_EWMA'}
-            onClick={() => setHorizonMode('SHORT_EWMA')}
-            className={`min-h-[44px] rounded border px-3 py-2 text-xs transition-colors ${
-              horizonMode === 'SHORT_EWMA'
-                ? 'border-nominal bg-nominal/10 text-nominal'
-                : 'border-line bg-black text-gray-400 hover:border-gray-600'
-            }`}
-          >
-            SHORT HORIZON (+5s..+120s EWMA)
-          </button>
-        </div>
-        {tq?.forecast_method && (
-          <span className="rounded border border-gray-700 px-2 py-1 text-[10px] text-gray-400">
-            METHOD: {tq.forecast_method}
-          </span>
-        )}
-      </div>
-
-      {horizonMode === 'SHORT_EWMA' && tq?.short_horizon_abstention && (
-        <div className="rounded border border-advisory/50 bg-black px-2.5 py-1.5 text-[11px] text-advisory">
-          SHORT-HORIZON EWMA STATUS:{' '}
-          {typeof tq.short_horizon_abstention === 'string'
-            ? tq.short_horizon_abstention
-            : tq.short_horizon_abstention.reason}
-        </div>
-      )}
-
-      {/* Channel Selector Buttons (>= 44x44 pt) */}
       {coneOptions.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="short-forecast-controls" role="group" aria-label="Forecast signal">
           {coneOptions.map((opt) => (
-            <button
-              key={opt.channel}
-              type="button"
-              onClick={() => setSelectedChannel(opt.channel)}
-              className={`min-h-[44px] min-w-[44px] rounded border px-3 py-2 text-xs transition-colors ${
-                activeCone?.channel === opt.channel
-                  ? 'border-nominal bg-nominal/10 text-nominal'
-                  : 'border-line bg-black text-gray-400 hover:border-gray-600'
-              }`}
-            >
+            <button key={opt.channel} type="button" aria-pressed={activeCone?.channel === opt.channel}
+              onClick={() => setSelectedChannel(opt.channel)}>
               {opt.label}
             </button>
           ))}
@@ -425,16 +357,20 @@ export function TimestralQuantileConePanel({
             .join(' ');
 
           const latestPt = activeCone.points[activeCone.points.length - 1];
-          const bandFill = isAbstained ? '#facc15' : '#22d3ee';
-          const bandStroke = isAbstained ? '#facc15' : '#22d3ee';
+          const bandFill = isAbstained ? '#e4af65' : '#72cdb6';
+          const bandStroke = isAbstained ? '#e4af65' : '#72cdb6';
 
           return (
-            <div>
+            <div className="short-forecast-chart">
+              <div className="forecast-legend">
+                <span><i aria-hidden="true" />Median</span>
+                <span><i className="forecast-range" aria-hidden="true" />5th–95th percentile</span>
+              </div>
               <svg
                 viewBox={`0 0 ${W} ${H}`}
                 className="w-full"
                 role="img"
-                aria-label={`Timestral multi-horizon quantile cone for ${activeCone.label}`}
+                aria-label={`Forecast range for ${activeCone.label}`}
               >
                 <path d={bandPath} fill={bandFill} fillOpacity="0.16" />
                 <path
@@ -478,9 +414,7 @@ export function TimestralQuantileConePanel({
               {latestPt && (
                 <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-gray-400">
                   <span>
-                    {activeCone.label} {latestPt.label} q05-q50-q95: [{latestPt.triplet.q05.toFixed(2)},{' '}
-                    {latestPt.triplet.q50.toFixed(2)}, {latestPt.triplet.q95.toFixed(2)}]
-                    {activeCone.ewmaLevel !== undefined ? ` | EWMA=${activeCone.ewmaLevel.toFixed(2)}` : ''}
+                    {activeCone.label} {latestPt.label} · median {latestPt.triplet.q50.toFixed(2)} · range {latestPt.triplet.q05.toFixed(2)}–{latestPt.triplet.q95.toFixed(2)}
                   </span>
                   {ttvCone && (
                     <span className="text-advisory">
@@ -496,10 +430,22 @@ export function TimestralQuantileConePanel({
       ) : (
         <div className="rounded border border-line/60 bg-black p-3 text-gray-500">
           {horizonMode === 'SHORT_EWMA'
-            ? 'Short-horizon EWMA cones warming up (+5s/+10s appear after baseline window)...'
-            : 'Timestral quantile cones awaiting telemetry frames...'}
+            ? 'The short-term forecast needs more valid samples.'
+            : 'The longer forecast is waiting for telemetry.'}
         </div>
       )}
+      <details className="scenario-disclosure">
+        <CockpitSummary>Model details</CockpitSummary>
+        <div className="short-forecast-meta">
+          <span>{displayLabel(validationLabel)} · {displayLabel(intervalKindLabel)}</span>
+          <span>{displayLabel(gateStatus)}</span>
+          {tq?.forecast_method && <span>{displayLabel(tq.forecast_method)}</span>}
+          {horizonMode === 'SHORT_EWMA' && tq?.short_horizon_abstention && (
+            <span>{displayLabel(typeof tq.short_horizon_abstention === 'string'
+              ? tq.short_horizon_abstention : tq.short_horizon_abstention.reason)}</span>
+          )}
+        </div>
+      </details>
     </div>
   );
 }
@@ -515,15 +461,13 @@ export function StlChart({
   whatIf,
   lastScanDay,
   isPureReplay,
-  packet,
 }: {
   whatIf: WhatIf;
   lastScanDay: number;
   isPureReplay?: boolean;
-  packet?: TelemetryPacket | null;
 }) {
   const W = 520;
-  const H = 190;
+  const H = 247;
   const PAD = 30;
   const { past, future, dayMin, dayMax } = useMemo(() => {
     const d = Math.round(whatIf.mission_day);
@@ -550,12 +494,12 @@ export function StlChart({
     ' ' +
     [...all].reverse().map((q) => `L${sx(q.day)},${sy(q.rho - 1.96 * q.sigma)}`).join(' ') +
     ' Z';
+  const currentDay = Math.round(whatIf.mission_day);
   const last = past[past.length - 1];
+  const historyColor = riskColor(last ? last.rho : 0);
 
   return (
     <div className="space-y-3">
-      <TimestralQuantileConePanel packet={packet} />
-
       {isPureReplay ? (
         <div className="flex flex-col items-center justify-center rounded border border-line bg-black p-4 text-center font-mono text-xs">
           <div className="font-bold text-advisory">
@@ -567,35 +511,40 @@ export function StlChart({
         </div>
       ) : (
         <div className="space-y-1">
-          <div className="flex items-center justify-between font-mono text-[10px] text-gray-500">
-            <span>ILLUSTRATIVE SCENARIO ROBUSTNESS TRAJECTORY (+14d)</span>
-            <span>ILLUSTRATIVE_SCENARIO_RANGE (NOMINAL BAND)</span>
+          <div className="forecast-legend">
+            <span><i aria-hidden="true" style={{ color: historyColor }} />Scenario history</span>
+            <span><i aria-hidden="true" className="forecast-dashed" />14-day projection</span>
+            <span><i aria-hidden="true" className="forecast-range" />Illustrative range</span>
           </div>
-          <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="NQS-STL robustness chart">
+          <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Scenario safety margin by mission day">
+            {[1, 0.5, -0.5].map(t => (
+              <line key={t} x1={PAD} x2={W - PAD} y1={sy(t)} y2={sy(t)} stroke="#33463a" />
+            ))}
             <path d={band} fill="#22d3ee" fillOpacity="0.12" />
             <line x1={PAD} x2={W - PAD} y1={sy(0)} y2={sy(0)} stroke="#f43f5e" strokeDasharray="4 3" />
             <text x={W - PAD} y={sy(0) - 4} textAnchor="end" fill="#f43f5e" fontSize="10" fontFamily="monospace">
-              rho = 0 violation
+              Safety threshold
             </text>
             <line
-              x1={sx(Math.round(whatIf.mission_day))}
-              x2={sx(Math.round(whatIf.mission_day))}
+              x1={sx(currentDay)}
+              x2={sx(currentDay)}
               y1={PAD / 2}
               y2={H - PAD / 2}
               stroke="#374151"
             />
-            <path d={line(past)} fill="none" stroke={riskColor(last ? last.rho : 0)} strokeWidth="2" />
+            <path d={line(past)} fill="none" stroke={historyColor} strokeWidth="2" />
             <path d={line(future)} fill="none" stroke="#e5e7eb" strokeWidth="1.5" strokeDasharray="5 4" />
+            {last && <circle cx={sx(currentDay)} cy={sy(last.rho)} r="3" fill={historyColor} stroke="#171e19" />}
             {[1, 0.5, 0, -0.5].map((t) => (
-              <text key={t} x={4} y={sy(t) + 3} fill="#6b7280" fontSize="10" fontFamily="monospace">
+              <text key={t} x={4} y={sy(t) + 3} fill="#a4b6aa" fontSize="10" fontFamily="monospace">
                 {t.toFixed(1)}
               </text>
             ))}
-            <text x={PAD} y={H - 2} fill="#6b7280" fontSize="10" fontFamily="monospace">
+            <text x={PAD} y={H - 2} fill="#a4b6aa" fontSize="10" fontFamily="monospace">
               day {dayMin}
             </text>
-            <text x={W - PAD} y={H - 2} textAnchor="end" fill="#6b7280" fontSize="10" fontFamily="monospace">
-              day {dayMax} (+14 d forecast)
+            <text x={W - PAD} y={H - 2} textAnchor="end" fill="#a4b6aa" fontSize="10" fontFamily="monospace">
+              day {dayMax} (+14 d)
             </text>
           </svg>
         </div>
@@ -611,7 +560,7 @@ export function PredicateBars({ rho }: { rho: Record<string, number | null> }) {
         const isNull = v === null || !Number.isFinite(v);
         return (
           <div key={k} className="flex items-center gap-2">
-            <span className="w-24 truncate text-gray-400">{k}</span>
+            <span className="w-24 truncate text-gray-400">{displayLabel(k)}</span>
             <div className="h-2 flex-1 rounded bg-line">
               {!isNull && (
                 <div

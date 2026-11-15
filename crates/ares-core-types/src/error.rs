@@ -1,4 +1,4 @@
-//! Fase 02 (A2): Errori fortemente tipizzati del dominio core (`thiserror::Error`).
+//! Phase 02 (A2): Strongly-typed core domain errors (`thiserror::Error`).
 
 use thiserror::Error;
 

@@ -1,11 +1,11 @@
 #![forbid(unsafe_code)]
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-//! Modulo per la diagnosi differenziale accoppiata Habitat-Equipaggio (ECLSS vs. Patologia Individuale).
+//! Module for the coupled Habitat-Crew differential diagnosis (ECLSS vs. individual pathology).
 //!
-//! Risolve il failure mode critico in cui la saturazione dello scrubber CO2 di bordo (CDRA / ammine)
-//! produce ipercapnia e tachicardia compensatoria simultanea nell'equipaggio.
-//! Distingue matematicamente il guasto ambientale dal collasso emodinamico/settico individuale.
+//! Resolves the critical failure mode where saturation of the onboard CO2 scrubber (CDRA / amines)
+//! produces simultaneous hypercapnia and compensatory tachycardia in the crew.
+//! Mathematically distinguishes the environmental fault from individual hemodynamic/septic collapse.
 
 use ares_core_types::constants::{ECLSS_PPCO2_ACTION_LIMIT_MMHG, MAX_SAFE_CABIN_PPCO2_MMHG};
 use ares_core_types::telemetry::{Biometrics, CountermeasureAction};
@@ -31,8 +31,8 @@ pub struct CoupledHabitatCrewDiagnosis {
     pub recommended_override_actions: Vec<CountermeasureAction>,
 }
 
-/// Valuta la telemetria accoppiata habitat/ECLSS e i biometrici dell'astronauta per isolare
-/// la saturazione dei filtri CO2 rispetto a patologie organiche cardiorespiratorie individuali.
+/// Evaluates the coupled habitat/ECLSS telemetry and the astronaut biometrics to isolate
+/// CO2 filter saturation from individual organic cardiorespiratory pathologies.
 pub fn evaluate_coupled_habitat_crew_co2(
     biometrics: &Biometrics,
     affected_crew_count: usize,
@@ -41,7 +41,7 @@ pub fn evaluate_coupled_habitat_crew_co2(
     let helmet_co2 = biometrics.helmet_ppco2_mmhg;
     let elevated_hr = biometrics.heart_rate_bpm.is_some_and(|hr| hr > 100.0);
 
-    // Caso 1: La ppCO2 in cabina supera 4.0 mmHg (NASA-STD-3001)
+    // Case 1: Cabin ppCO2 exceeds 4.0 mmHg (NASA-STD-3001)
     if let Some(c_co2) = cabin_co2.filter(|&c| c > NASA_STD_3001_PPCO2_ACTION_LIMIT_MMHG) {
         return CoupledHabitatCrewDiagnosis {
             root_cause: HypercapniaRootCause::EnvironmentalEclssScrubberSaturation,
@@ -63,7 +63,7 @@ pub fn evaluate_coupled_habitat_crew_co2(
         };
     }
 
-    // Caso 2: ppCO2 elevata nel casco/tuta (> 4.0 mmHg)
+    // Case 2: Elevated ppCO2 in the helmet/suit (> 4.0 mmHg)
     if let Some(h_co2) = helmet_co2.filter(|&h| h > NASA_STD_3001_PPCO2_ACTION_LIMIT_MMHG) {
         let is_multi_crew = affected_crew_count > 1;
         let root_cause = if is_multi_crew {
@@ -102,7 +102,7 @@ pub fn evaluate_coupled_habitat_crew_co2(
         };
     }
 
-    // Caso 2b: Fascia di attenzione cronica Tier 1 (3.0 < ppCO2 <= 4.0 mmHg, NASA-STD-3001 [V2 6004])
+    // Case 2b: Tier 1 chronic attention band (3.0 < ppCO2 <= 4.0 mmHg, NASA-STD-3001 [V2 6004])
     let max_co2 = match (cabin_co2, helmet_co2) {
         (Some(c), Some(h)) => Some(c.max(h)),
         (Some(c), None) => Some(c),
@@ -131,7 +131,7 @@ pub fn evaluate_coupled_habitat_crew_co2(
         };
     }
 
-    // Caso 3: Atmosfera nominale (<= 3.0 mmHg), tachicardia attribuita a fisiologia individuale
+    // Case 3: Nominal atmosphere (<= 3.0 mmHg), tachycardia attributed to individual physiology
     if elevated_hr {
         return CoupledHabitatCrewDiagnosis {
             root_cause: HypercapniaRootCause::IsolatedCrewPathology,

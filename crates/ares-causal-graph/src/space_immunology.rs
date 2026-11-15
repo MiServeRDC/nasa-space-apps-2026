@@ -1,10 +1,10 @@
-//! Modulo di disregolazione neuro-endocrina e rischio riattivazione virale (VZV / EBV / CMV) in volo spaziale (Gap 4).
+//! Neuro-endocrine dysregulation and viral reactivation risk (VZV / EBV / CMV) in spaceflight module (Gap 4).
 
 use ares_core_types::constants::sanitize_f64;
 use ares_core_types::medical_360::RadiationArsState;
 use ares_core_types::telemetry::{NeuroImmuneViral, SpotPoctPanel};
 
-/// Stato di immunocompetenza dell'astronauta.
+/// Astronaut immunocompetence state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ImmuneReactivationStage {
     LatentDormant,
@@ -13,8 +13,8 @@ pub enum ImmuneReactivationStage {
     ActiveReactivationClinical,
 }
 
-/// Calcola l'indice di stress neuro-endocrino composito (0.0..1.0)
-/// integrando cortisolo, prelievi POCT ed espressione vagale HRV.
+/// Computes the composite neuro-endocrine stress index (0.0..1.0)
+/// integrating cortisol, POCT samples, and vagal HRV expression.
 #[inline]
 pub fn compute_neuroendocrine_stress_score(
     rmssd_ms: Option<f64>,
@@ -49,15 +49,15 @@ pub fn compute_neuroendocrine_stress_score(
     (0.40 * vagal_suppression + 0.35 * cortisol_factor + 0.25 * nlr_factor).clamp(0.05, 1.0)
 }
 
-/// Calcola il bilancio citochinico Th1/Th2 (Crucian et al. 2018).
-/// In volo nominale Th1/Th2 = 1.0; con disfunzione immunitaria scende a 0.25 (predominanza Th2).
+/// Computes the Th1/Th2 cytokine balance (Crucian et al. 2018).
+/// In nominal flight Th1/Th2 = 1.0; with immune dysfunction it drops to 0.25 (Th2 predominance).
 #[inline]
 pub fn compute_th1_th2_balance(stress_score: f64, rad_load_factor: f64) -> f64 {
     let depression = (0.55 * stress_score + 0.45 * rad_load_factor).clamp(0.0, 0.90);
     (1.0 - depression).clamp(0.10, 1.20)
 }
 
-/// Calcola la probabilita di riattivazione virale (VZV / EBV / CMV) in percentuale (0..100%).
+/// Computes the viral reactivation probability (VZV / EBV / CMV) as a percentage (0..100%).
 #[inline]
 pub fn compute_viral_reactivation_risk_pct(
     stress_score: f64,
@@ -70,7 +70,7 @@ pub fn compute_viral_reactivation_risk_pct(
 
     let mut risk_pct = (0.45 * stress_score + 0.35 * th2_shift_penalty + 0.20 * rad_stress) * 100.0;
 
-    // Riscontro biologico diretto da POCT qPCR salivare (> 100 copies/mL)
+    // Direct biological finding from salivary POCT qPCR (> 100 copies/mL)
     if let Some(panel) = poct
         && let Some(copies) = panel.viral_reactivation_copies_ml
         && copies > 100.0
@@ -81,7 +81,7 @@ pub fn compute_viral_reactivation_risk_pct(
     risk_pct.clamp(5.0, 99.0)
 }
 
-/// Genera la telemetria completa `NeuroImmuneViral`.
+/// Generates the complete `NeuroImmuneViral` telemetry.
 pub fn compute_neuro_immune_viral_state(
     rmssd_ms: Option<f64>,
     radiation_dose_rate_msv_d: f64,

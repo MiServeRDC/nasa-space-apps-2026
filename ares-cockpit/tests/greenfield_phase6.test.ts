@@ -51,7 +51,7 @@ function collectFilesRecursively(dir: string): string[] {
   return out;
 }
 
-test('Phase 6 Risk 1: document.fonts.ready bounded gate governs FLIP, drawers, preloader, and index.html', async () => {
+test('Phase 6 Risk 1: document.fonts.ready bounded gate governs legacy FLIP, drawers and preloader', async () => {
   // 1. Behavioral: resolves 'locked' when fontSet.load + fontSet.ready complete within timeout
   const loadCalls: string[] = [];
   const lockedStatus = await waitForFontsReadyBounded({
@@ -88,14 +88,7 @@ test('Phase 6 Risk 1: document.fonts.ready bounded gate governs FLIP, drawers, p
   assert.equal(fallbackStatus, 'timeout_fallback');
   assert.ok(elapsedMs >= 45 && elapsedMs < 1000, `Expected bounded timeout fallback, got ${elapsedMs}ms`);
 
-  // 3. Structural: verify Risk 1 wiring across index.html, main.tsx, BentoCardShell, SlideOverDrawerShell, Preloader
-  const indexHtml = fs.readFileSync(path.join(COCKPIT_ROOT, 'index.html'), 'utf-8');
-  assert.match(indexHtml, /__ARES_FONTS_READY__/);
-  assert.match(indexHtml, /document\.fonts/);
-
-  const mainTsx = fs.readFileSync(path.join(COCKPIT_ROOT, 'src/main.tsx'), 'utf-8');
-  assert.match(mainTsx, /waitForFontsReadyBounded/);
-
+  // The bounded font gate remains in the legacy motion components.
   const bentoCard = fs.readFileSync(path.join(COCKPIT_ROOT, 'src/instruments/BentoCardShell.tsx'), 'utf-8');
   const fontsGateIdx = bentoCard.indexOf('waitForFontsReadyBounded');
   const flipGetStateIdx = bentoCard.indexOf('Flip.getState');

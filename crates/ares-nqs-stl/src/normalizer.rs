@@ -1,4 +1,4 @@
-//! Fase 08 (D1): Normalizzatore adimensionale NQS-STL (Invariante Entry 004).
+//! Phase 08 (D1): Dimensionless NQS-STL normalizer (Invariant Entry 004).
 
 use ares_core_types::constants::{
     ARED_CRITICAL_LOAD_KGF, ARED_NOMINAL_LOAD_KGF, RMSSD_CRITICAL_MS, RMSSD_NOMINAL_MS,
@@ -6,17 +6,17 @@ use ares_core_types::constants::{
     TAU_W_CRITICAL_DYN_CM2, TAU_W_NOMINAL_DYN_CM2, sanitize_f64,
 };
 
-/// Direzione di sicurezza del predicato fisiologico.
+/// Safety direction of the physiological predicate.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PredicatePolarity {
-    /// Valori piu alti sono piu sicuri (es. tau_w, ARED load, RMSSD, MQI).
+    /// Higher values are safer (e.g. tau_w, ARED load, RMSSD, MQI).
     HigherIsSafer,
-    /// Valori piu bassi sono piu sicuri (es. Sclerostina SOST, SANS Risk, Dose Radiazioni).
+    /// Lower values are safer (e.g. Sclerostin SOST, SANS Risk, Radiation Dose).
     LowerIsSafer,
 }
 
-/// Normalizza un predicato atomico x(t) nella semantica quantitativa adimensionale NQS-STL:
-/// +1.0 = baseline nominale, 0.0 = soglia critica, < 0.0 = violazione attiva.
+/// Normalizes an atomic predicate x(t) into the dimensionless NQS-STL quantitative semantics:
+/// +1.0 = nominal baseline, 0.0 = critical threshold, < 0.0 = active violation.
 #[inline]
 pub fn normalize_predicate_nqs(
     value: f64,
@@ -33,7 +33,7 @@ pub fn normalize_predicate_nqs(
     (sign * (x - critical) / denom).clamp(-2.0, 1.0)
 }
 
-/// Calcola i 5 margini atomici NQS-STL istantanei.
+/// Computes the 5 instantaneous atomic NQS-STL margins.
 #[inline]
 pub fn compute_atomic_nqs_margins(
     tau_w_dyn_cm2: f64,
@@ -78,25 +78,25 @@ pub fn compute_atomic_nqs_margins(
     (rho_tau_w, rho_ared, rho_sost, rho_rmssd, rho_sans)
 }
 
-/// Normalizza il margine renale rho_renal a partire dall'indice RSR di ossalato di calcio (Nominale <= 1.5, Critico >= 4.5).
+/// Normalizes the renal margin rho_renal from the calcium oxalate RSR index (Nominal <= 1.5, Critical >= 4.5).
 #[inline]
 pub fn normalize_renal_rsr_margin(rsr: f64) -> f64 {
     normalize_predicate_nqs(rsr, 1.50, 4.50, PredicatePolarity::LowerIsSafer)
 }
 
-/// Normalizza il margine ortostatico rho_orthostatic a partire dallo Shock Index (Nominale = 0.65, Critico >= 1.20).
+/// Normalizes the orthostatic margin rho_orthostatic from the Shock Index (Nominal = 0.65, Critical >= 1.20).
 #[inline]
 pub fn normalize_orthostatic_margin(shock_index: f64) -> f64 {
     normalize_predicate_nqs(shock_index, 0.65, 1.20, PredicatePolarity::LowerIsSafer)
 }
 
-/// Normalizza il margine circadiano-cognitivo rho_circadian a partire dalla probabilita di lapse PVT-B (Nominale = 0.05, Critico >= 0.65).
+/// Normalizes the circadian-cognitive margin rho_circadian from the PVT-B lapse probability (Nominal = 0.05, Critical >= 0.65).
 #[inline]
 pub fn normalize_circadian_margin(pvt_lapse_probability: f64) -> f64 {
     normalize_predicate_nqs(pvt_lapse_probability, 0.05, 0.65, PredicatePolarity::LowerIsSafer)
 }
 
-/// Normalizza il margine immunitario rho_immune a partire dal rischio di riattivazione virale % (Nominale <= 20%, Critico >= 75%).
+/// Normalizes the immune margin rho_immune from the viral reactivation risk % (Nominal <= 20%, Critical >= 75%).
 #[inline]
 pub fn normalize_immune_margin(viral_risk_pct: f64) -> f64 {
     normalize_predicate_nqs(viral_risk_pct, 20.0, 75.0, PredicatePolarity::LowerIsSafer)

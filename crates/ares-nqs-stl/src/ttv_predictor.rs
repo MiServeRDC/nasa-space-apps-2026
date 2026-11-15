@@ -1,5 +1,5 @@
 //! Illustrative fixed-rate TTV sensitivity range (not a fitted EWMA-OLS or calibrated CI)
-//! e calcolo del cono TTV Grey-Box pessimistico al 5° percentile (TTV_q05 <= TTV_q50 <= TTV_q95).
+//! and computation of the pessimistic 5th-percentile Grey-Box TTV cone (TTV_q05 <= TTV_q50 <= TTV_q95).
 
 use ares_core_types::MonotoneQuantileTriplet;
 
@@ -52,7 +52,7 @@ pub fn estimate_greybox_quantile_ttv_cone(
 #[inline]
 pub fn estimate_ttv_with_ci95(rho_global: f64, degradation_rate_per_hour: f64) -> (f64, f64, f64) {
     if rho_global <= 0.0 {
-        // Violazione gia attiva: TTV = 0.0 ore
+        // Violation already active: TTV = 0.0 hours
         return (0.0, 0.0, 0.0);
     }
 

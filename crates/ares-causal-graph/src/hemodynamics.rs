@@ -1,5 +1,5 @@
-//! Fase 06 (C2): Emodinamica venosa giugulare dimensionalmente esatta (tau_w in dyn/cm^2),
-//! curva dose-risposta della camera LBNP e indice translaminare SANS.
+//! Phase 06 (C2): Dimensionally exact jugular venous hemodynamics (tau_w in dyn/cm^2),
+//! LBNP chamber dose-response curve and SANS translaminar index.
 
 use ares_core_types::constants::{BLOOD_VISCOSITY_POISE, sanitize_f64};
 use ares_core_types::telemetry::{
@@ -7,7 +7,7 @@ use ares_core_types::telemetry::{
 };
 use std::f64::consts::PI;
 
-/// Calcola lo shear stress di parete della vena giugulare interna (in dyn/cm^2) con viscosita ematica variabile:
+/// Computes the wall shear stress of the internal jugular vein (in dyn/cm^2) with variable blood viscosity:
 /// tau_w = 2 * mu * v_max * sqrt(pi / CSA_cm2).
 #[inline]
 pub fn compute_tau_w_dyn_cm2_with_viscosity(vmax_cm_s: f64, ijv_csa_mm2: f64, viscosity_poise: f64) -> f64 {
@@ -22,14 +22,14 @@ pub fn compute_tau_w_dyn_cm2_with_viscosity(vmax_cm_s: f64, ijv_csa_mm2: f64, vi
     2.0 * mu * vmax * (PI / csa_cm2).sqrt()
 }
 
-/// Calcola lo shear stress di parete della vena giugulare interna con viscosita standard di 0.035 Poise.
+/// Computes the wall shear stress of the internal jugular vein with standard viscosity of 0.035 Poise.
 #[inline]
 pub fn compute_tau_w_dyn_cm2(vmax_cm_s: f64, ijv_csa_mm2: f64) -> f64 {
     compute_tau_w_dyn_cm2_with_viscosity(vmax_cm_s, ijv_csa_mm2, BLOOD_VISCOSITY_POISE)
 }
 
-/// Calcola lo stato emodinamico giugulare e oculare SANS, considerando la viscosita ematica variabile mu(Hct)
-/// e l'iperemia da vasodilatazione cerebrale indotta da ppCO2 in cabina (Patch N0-B & Condition 5).
+/// Computes the jugular and ocular SANS hemodynamic state, accounting for variable blood viscosity mu(Hct)
+/// and hyperemia from cabin ppCO2-induced cerebral vasodilation (Patch N0-B & Condition 5).
 #[inline]
 pub fn compute_jugular_and_sans_state_ext(
     musculo: &Musculoskeletal,
@@ -45,16 +45,16 @@ pub fn compute_jugular_and_sans_state_ext(
     let lbnp_norm = (lbnp_mag / 30.0).clamp(0.0, 1.2);
     let rad_stress = (scenario.radiation_dose_rate_msv_d / 5.0).clamp(0.0, 1.0);
 
-    // Area trasversa IJV (mm^2): dilatazione in microgravita contrastata da MQI soleo e LBNP
+    // IJV cross-sectional area (mm^2): microgravity dilation counteracted by soleus MQI and LBNP
     let ijv_csa_mm2 =
         (96.0 * (1.0 - 0.28 * musculo.mqi_index - 0.34 * lbnp_norm + 0.08 * rad_stress))
             .clamp(32.0, 118.0);
 
-    // Velocita di picco IJV (cm/s): sostenuta da pompa crurale MQI e gradiente idrostatico LBNP
+    // IJV peak velocity (cm/s): sustained by MQI calf pump and LBNP hydrostatic gradient
     let ijv_vmax_cm_s = (3.2 + 9.8 * musculo.mqi_index + 7.4 * lbnp_norm - 1.8 * rad_stress)
         .clamp(1.5, 24.0);
 
-    // Condition 5: Calcolo della viscosita prima di tau_w
+    // Condition 5: Viscosity computation before tau_w
     let mu = apparent_viscosity_poise.unwrap_or(BLOOD_VISCOSITY_POISE);
     let tau_w_dyn_cm2 = compute_tau_w_dyn_cm2_with_viscosity(ijv_vmax_cm_s, ijv_csa_mm2, mu);
 
@@ -80,11 +80,11 @@ pub fn compute_jugular_and_sans_state_ext(
         lbnp_pressure_mmhg: if scenario.lbnp_active { -lbnp_mag } else { 0.0 },
     };
 
-    // Patch N0-B: Ipercapnia in cabina -> vasodilatazione arteriolare cerebrale e coroideale Delta_CBF
+    // Patch N0-B: Cabin hypercapnia -> cerebral and choroidal arteriolar vasodilation Delta_CBF
     let ppco2 = cabin_ppco2_mmhg.unwrap_or(1.8).max(0.0);
     let delta_cbf = (0.075 * (ppco2 - 1.8).max(0.0)).clamp(0.0, 0.35);
 
-    // Congestione venosa cefalica efficace: somma della componente meccanica e iperemica arteriolare
+    // Effective cephalic venous congestion: sum of the mechanical and arteriolar hyperemic components
     let venous_congestion = ((ijv_csa_mm2 - 38.0) / 62.0).clamp(0.0, 1.0);
     let effective_congestion = (venous_congestion + delta_cbf).clamp(0.0, 1.0);
 
@@ -104,7 +104,7 @@ pub fn compute_jugular_and_sans_state_ext(
     (jugular, sans)
 }
 
-/// Calcola lo stato emodinamico giugulare e oculare SANS con parametri nominali di default.
+/// Computes the jugular and ocular SANS hemodynamic state with default nominal parameters.
 #[inline]
 pub fn compute_jugular_and_sans_state(
     musculo: &Musculoskeletal,

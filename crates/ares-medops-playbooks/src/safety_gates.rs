@@ -1,4 +1,4 @@
-//! Fase 11 (E2) & Fase 41 (N4): Macchina a stati deterministica dei 4 Hard Clinical Safety Gates.
+//! Phase 11 (E2) & Phase 41 (N4): Deterministic state machine of the 4 Hard Clinical Safety Gates.
 
 use crate::playbooks_bmed::apply_gate7_bmed_guards;
 use crate::pocus_multiorgan::PocusEfastScan;
@@ -25,8 +25,8 @@ pub const RADIATION_ACUTE_THRESHOLD_MSV_D: f64 = 10.0;
 pub const PLATELET_RADIATION_SAFE_FLOOR_K_UL: f64 = 100.0;
 pub const LBNP_MIN_SAFE_PULSE_PRESSURE_MMHG: f64 = 25.0;
 
-/// Restituisce `true` se l'azione rappresenta una terapia anticoagulante sistemica
-/// (escludendo le azioni di override di sicurezza clinica).
+/// Returns `true` if the action represents a systemic anticoagulant therapy
+/// (excluding clinical safety override actions).
 #[inline]
 pub fn is_systemic_anticoagulant_action(a: &CountermeasureAction) -> bool {
     let cat = a.category.as_str();
@@ -43,9 +43,9 @@ pub fn is_systemic_anticoagulant_action(a: &CountermeasureAction) -> bool {
         || id.contains("HEPARIN")
 }
 
-/// Risolve deterministicamente la conta piastrinica effettiva (k/uL) secondo la gerarchia
-/// di sicurezza clinica: override esplicito stress-test, altrimenti il minimo conservativo
-/// tra POCT, biometria corrente e predizione nadir ARS.
+/// Deterministically resolves the effective platelet count (k/uL) according to the
+/// clinical safety hierarchy: explicit stress-test override, otherwise the conservative minimum
+/// among POCT, current biometrics, and the ARS nadir prediction.
 #[inline]
 pub fn resolve_effective_platelets_k_ul(
     stress_override: Option<f64>,
@@ -68,8 +68,8 @@ pub fn resolve_effective_platelets_k_ul(
     .reduce(f64::min)
 }
 
-/// Applica in modo inflessibile i 4 Hard Clinical Safety Gates al Playbook candidato
-/// con supporto per la baseline emodinamica pre-LBNP dinamica.
+/// Inflexibly applies the 4 Hard Clinical Safety Gates to the candidate Playbook
+/// with support for the dynamic pre-LBNP hemodynamic baseline.
 #[inline]
 #[allow(clippy::too_many_arguments)]
 pub fn enforce_hard_clinical_safety_gates_with_lbnp_baseline(
@@ -133,7 +133,7 @@ pub fn enforce_hard_clinical_safety_gates_with_lbnp_baseline(
             || sensor_dropout_critical);
     let eva_suit_damping_active = musculo.gai_pct > GAI_MAX_SAFE_PCT;
 
-    // Calcolo del Shock Index per Gate 4
+    // Shock Index computation for Gate 4
     let computed_si = shock_index.or_else(|| {
         if let (Some(hr_val), Some(sbp_val)) = (biometrics.heart_rate_bpm, biometrics.sbp_mmhg) {
             if sbp_val > 0.0 {
@@ -146,17 +146,17 @@ pub fn enforce_hard_clinical_safety_gates_with_lbnp_baseline(
         }
     });
 
-    // Gate 4A: Interlock Decompressione Toracica Invasiva (Needle Thoracostomy)
-    // Sbloccata solo se:
-    // 1) POCUS eFAST conferma assenza lung sliding + barcode M-mode / lung point, OPPURE
-    // 2) Override vitale d'emergenza: Shock Index >= 1.20 e SpO2 < 85% (collasso tensivo immediato)
+    // Gate 4A: Invasive thoracic decompression interlock (Needle Thoracostomy)
+    // Unlocked only if:
+    // 1) POCUS eFAST confirms absent lung sliding + M-mode barcode / lung point, OR
+    // 2) Emergency life override: Shock Index >= 1.20 and SpO2 < 85% (immediate tension collapse)
     let pneumothorax_verified = efast.is_some_and(|e| e.is_pneumothorax_verified());
     let spo2 = biometrics.spo2_pct.unwrap_or(98.0);
     let vital_collapse_override =
         computed_si.is_some_and(|si| si >= SHOCK_INDEX_CRITICAL) && spo2 < 85.0;
     let gate4_invasive_decompression_locked = !pneumothorax_verified && !vital_collapse_override;
 
-    // Gate 4B: Interlock Idoneita Operativa EVA (Fitness-for-Duty)
+    // Gate 4B: EVA operational fitness interlock (Fitness-for-Duty)
     let cognitive_fatigued = fatigue_index.unwrap_or(0.0) >= 0.75;
     let si_elevated = computed_si.is_some_and(|si| si >= SHOCK_INDEX_ATTENTION);
     let gate4_eva_fitness_no_go = eva_suit_damping_active || cognitive_fatigued || si_elevated;
@@ -180,8 +180,8 @@ pub fn enforce_hard_clinical_safety_gates_with_lbnp_baseline(
         eclss_environmental_co2_alert: eclss_alert,
     };
 
-    // Gate 1: Rimuove categoricamente qualsiasi farmaco anticoagulante se POCUS non conferma trombo
-    // o se sussiste controindicazione emorragica / trombocitopenia
+    // Gate 1: Categorically removes any anticoagulant drug if POCUS does not confirm thrombus
+    // or if a hemorrhagic contraindication / thrombocytopenia is present
     if anticoagulant_lock_active {
         playbook.actions.retain(|a| !is_systemic_anticoagulant_action(a));
 
@@ -198,7 +198,7 @@ pub fn enforce_hard_clinical_safety_gates_with_lbnp_baseline(
         }
     }
 
-    // Gate 3: Se GAI > 12%, aggiunge vincolo di smorzamento caviglia tuta EVA a 0.38g
+    // Gate 3: If GAI > 12%, adds an EVA suit ankle damping constraint at 0.38g
     if eva_suit_damping_active {
         playbook.actions.push(CountermeasureAction {
             action_id: "ACT_EVA_SUIT_ANKLE_DAMPING_038G".to_string(),
@@ -211,14 +211,14 @@ pub fn enforce_hard_clinical_safety_gates_with_lbnp_baseline(
         });
     }
 
-    // Gate 4A: Se bloccato, rimuove procedure toraciche invasive (toracostomia ad ago / drenaggio)
+    // Gate 4A: If blocked, removes invasive thoracic procedures (needle thoracostomy / drainage)
     if gate4_invasive_decompression_locked {
         playbook.actions.retain(|a| {
             !a.action_id.contains("THORACOSTOMY") && !a.action_id.contains("NEEDLE_DECOMPRESSION")
         });
     }
 
-    // Gate 4B: Se non idoneo EVA, inietta blocco critico EVA
+    // Gate 4B: If not EVA-fit, injects a critical EVA block
     if gate4_eva_fitness_no_go
         && !playbook
             .actions
@@ -241,7 +241,7 @@ pub fn enforce_hard_clinical_safety_gates_with_lbnp_baseline(
         );
     }
 
-    // Gate 2: Se viene rilevato rischio pre-sincopale durante LBNP, sfiata immediatamente a 0 mmHg (priorita assoluta al vertice)
+    // Gate 2: If pre-syncopal risk is detected during LBNP, immediately vents to 0 mmHg (absolute top priority)
     if pre_syncope_detected {
         playbook.actions.retain(|a| {
             !a.action_id.contains("LBNP_MAINTAIN")
@@ -283,7 +283,7 @@ pub fn enforce_hard_clinical_safety_gates_with_lbnp_baseline(
     playbook
 }
 
-/// Applica in modo inflessibile i 4 Hard Clinical Safety Gates al Playbook candidato.
+/// Inflexibly applies the 4 Hard Clinical Safety Gates to the candidate Playbook.
 #[inline]
 #[allow(clippy::too_many_arguments)]
 pub fn enforce_hard_clinical_safety_gates_ext(
@@ -309,7 +309,7 @@ pub fn enforce_hard_clinical_safety_gates_ext(
     )
 }
 
-/// Applica in modo inflessibile i 4 Hard Clinical Safety Gates al Playbook candidato (firma standard).
+/// Inflexibly applies the 4 Hard Clinical Safety Gates to the candidate Playbook (standard signature).
 #[inline]
 pub fn enforce_hard_clinical_safety_gates(
     playbook: ActivePlaybook,
@@ -568,12 +568,12 @@ mod tests {
         let jug = dummy_jugular(false, false);
         let scen = dummy_scenario(false, false, 0.0);
 
-        // Sin POCUS -> bloccato
+        // Without POCUS -> blocked
         let enforced = enforce_hard_clinical_safety_gates(pb.clone(), &bio, &musc, &jug, &scen);
         assert!(enforced.safety_gates.gate4_invasive_decompression_locked);
         assert!(enforced.actions.iter().all(|a| !a.action_id.contains("NEEDLE_DECOMPRESSION")));
 
-        // Con POCUS pneumotorace verificato -> sbloccato
+        // With POCUS-verified pneumothorax -> unlocked
         let efast = PocusEfastScan {
             lung_sliding_absent: true,
             m_mode_barcode_sign_confirmed: true,
@@ -585,7 +585,7 @@ mod tests {
         assert!(!unlocked_pocus.safety_gates.gate4_invasive_decompression_locked);
         assert!(unlocked_pocus.actions.iter().any(|a| a.action_id.contains("NEEDLE_DECOMPRESSION")));
 
-        // Con collasso vitale immediato (Shock Index >= 1.20 e SpO2 < 85%) -> sbloccato
+        // With immediate life-threatening collapse (Shock Index >= 1.20 and SpO2 < 85%) -> unlocked
         let bio_collapse = Biometrics {
             sbp_mmhg: Some(90.0), // SI = 130 / 90 = 1.44 >= 1.20
             spo2_pct: Some(82.0), // SpO2 < 85%

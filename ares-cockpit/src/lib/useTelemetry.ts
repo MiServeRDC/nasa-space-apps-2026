@@ -193,6 +193,9 @@ export function useTelemetry(
   const lastAppliedTimestampMsRef = useRef<number | null>(null);
   const lastAppliedRecTimeRef = useRef<number | null>(null);
   const snapshotInFlightRef = useRef<boolean>(false);
+  const latestBinaryRef = useRef<DecodedBinaryTelemetryFrame | null>(null);
+  const stressTestQueue = useRef(Promise.resolve());
+  const stressTestRevision = useRef(0);
 
   const acceptRawPayload = useCallback((raw: unknown, originLabel: string): boolean => {
     if (!isValidTelemetryPayload(raw)) {
@@ -235,6 +238,9 @@ export function useTelemetry(
       return false;
     }
 
+    if (normalized.source_record_id !== activeSourceIdRef.current) {
+      latestBinaryRef.current = null;
+    }
     activeSourceIdRef.current = gate.nextState.activeSourceId ?? normalized.source_record_id;
     lastAppliedTimestampMsRef.current = gate.nextState.lastAppliedTimestampMs;
     lastAppliedRecTimeRef.current = gate.nextState.lastAppliedRecTime;
@@ -278,7 +284,9 @@ export function useTelemetry(
       }
     }
 
-    setLivePacket(normalized);
+    const binary = latestBinaryRef.current;
+    setLivePacket(binary && binary.timestamp_ms > normalized.timestamp_ms
+      ? mergeBinaryFrameIntoPacket(normalized, binary) : normalized);
     setLink('ENGINE_LIVE');
     return true;
   }, []);
@@ -307,12 +315,9 @@ export function useTelemetry(
       setIpcLatencyUs(measuredIpcUs);
       setBinaryFrameCount((c) => c + 1);
       setLastBinaryFrame(decoded);
-      if (decoded.timestamp_ms > 0) {
-        lastAppliedTimestampMsRef.current = Math.max(
-          lastAppliedTimestampMsRef.current ?? 0,
-          decoded.timestamp_ms,
-        );
-      }
+      // JSON snapshots carry the anomaly report. Order them against other JSON
+      // snapshots so a continuous binary stream cannot starve recovery updates.
+      latestBinaryRef.current = decoded;
       setLivePacket((prev) => (prev ? mergeBinaryFrameIntoPacket(prev, decoded) : prev));
       setLink('ENGINE_LIVE');
       return decoded;
@@ -320,7 +325,7 @@ export function useTelemetry(
     [],
   );
 
-  const postStressTestOverride = useCallback(
+  const sendStressTestOverride = useCallback(
     async (w: WhatIf, thrombus: boolean | null): Promise<void> => {
       const payload = buildStressTestPayload(w, thrombus, activeSourceIdRef.current);
       if (IS_ARES_DESKTOP_SHELL) {
@@ -385,6 +390,15 @@ export function useTelemetry(
     },
     [acceptRawPayload],
   );
+
+  const postStressTestOverride = useCallback((w: WhatIf, thrombus: boolean | null) => {
+    const revision = ++stressTestRevision.current;
+    const pending = stressTestQueue.current.then(async () => {
+      if (revision === stressTestRevision.current) await sendStressTestOverride(w, thrombus);
+    });
+    stressTestQueue.current = pending.catch(() => {});
+    return pending;
+  }, [sendStressTestOverride]);
 
   const injectAnomaly = useCallback(
     async (

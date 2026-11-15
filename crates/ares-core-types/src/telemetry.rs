@@ -1,16 +1,16 @@
-//! Fase 01 (A1): Contratti telemetrici condivisi conformi a `contracts/telemetry_schema.json`.
+//! Phase 01 (A1): Shared telemetry contracts conforming to `contracts/telemetry_schema.json`.
 //!
-//! Rispetta gli invarianti della Issue #4 (@MiServeRDC):
-//! 1. Separazione esplicita tra `RECORDED_TERRESTRIAL_BIDMC_CSV`, `DERIVED_COMPUTED`
-//!    e `SIMULATED_SCENARIO_INPUT`.
-//! 2. Supporto nativo `Option<f64>` (`null` in JSON) per canali biometrici mancanti
-//!    (es. i 13 campioni mancanti di PULSE/SpO2 in `bidmc_01_Numerics.csv`).
-//! 3. Distinzione tra tempo nativo di registrazione (`relative_recording_time_s` a 1 Hz)
-//!    e frequenza di refresh UI (`20 Hz`).
+//! Respects the invariants of Issue #4 (@MiServeRDC):
+//! 1. Explicit separation between `RECORDED_TERRESTRIAL_BIDMC_CSV`, `DERIVED_COMPUTED`
+//!    and `SIMULATED_SCENARIO_INPUT`.
+//! 2. Native `Option<f64>` support (`null` in JSON) for missing biometric channels
+//!    (e.g. the 13 missing PULSE/SpO2 samples in `bidmc_01_Numerics.csv`).
+//! 3. Distinction between native recording time (`relative_recording_time_s` at 1 Hz)
+//!    and the UI refresh rate (`20 Hz`).
 
 use serde::{Deserialize, Serialize};
 
-/// Fase operativa secondo la traccia NASA Space Apps 2026 (`1. GATHER -> 2. EVALUATE -> 3. ACT`).
+/// Operational phase per the NASA Space Apps 2026 track (`1. GATHER -> 2. EVALUATE -> 3. ACT`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum SystemPhase {
@@ -19,7 +19,7 @@ pub enum SystemPhase {
     Act,
 }
 
-/// Gravita globale di allerta clinica conforme a NASA-STD-3001 Vol. 2 Rev F.
+/// Global clinical alert severity conforming to NASA-STD-3001 Vol. 2 Rev F.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum AlertSeverity {
@@ -30,7 +30,7 @@ pub enum AlertSeverity {
     CriticalEmergency,
 }
 
-/// Origine dei segnali biometrici cardiorespiratori (Issue #4).
+/// Origin of the cardiorespiratory biometric signals (Issue #4).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum BiometricsSource {
@@ -39,7 +39,7 @@ pub enum BiometricsSource {
     HardwareWearable,
 }
 
-/// Modalita di calcolo dei sottosistemi fisiopatologici e di scenario.
+/// Computation mode of the pathophysiological and scenario subsystems.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ScenarioOverlayMode {
@@ -48,7 +48,7 @@ pub enum ScenarioOverlayMode {
     DerivedAndSimulated,
 }
 
-/// Manifesto di provenienza dei dati allegato a ogni pacchetto telemetrico.
+/// Data provenance manifest attached to every telemetry packet.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ProvenanceManifest {
     pub biometrics_source: BiometricsSource,
@@ -58,7 +58,7 @@ pub struct ProvenanceManifest {
     pub biological_context_refs: Vec<String>,
 }
 
-/// Stato direzionale del flusso nella vena giugulare interna (Marshall-Goebel et al. 2019).
+/// Directional flow state in the internal jugular vein (Marshall-Goebel et al. 2019).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum JugularFlowGrade {
@@ -280,9 +280,9 @@ pub enum HrvUnavailableReason {
     BeatIntervalsNotAvailable,
 }
 
-/// Segnali biometrici, autonomici ed esposizione radiologica (`1. GATHER`).
-/// I campi provenienti da sensori fisici o CSV BIDMC usano `Option<f64>` per non
-/// convertire mai campioni mancanti (`NaN`/vuoti) in falsi zeri fisiologici.
+/// Biometric and autonomic signals and radiation exposure (`1. GATHER`).
+/// Fields coming from physical sensors or BIDMC CSV use `Option<f64>` so as not to
+/// ever convert missing samples (`NaN`/empty) into false physiological zeros.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct Biometrics {
     pub heart_rate_bpm: Option<f64>,
@@ -328,7 +328,7 @@ pub struct Biometrics {
     pub platelet_count_k_ul: Option<f64>,
 }
 
-/// Risultati di diagnostica episodica Point-of-Care (POCT) e laboratorio di bordo (`ExMC`).
+/// Results of episodic Point-of-Care (POCT) diagnostics and onboard laboratory (`ExMC`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct SpotPoctPanel {
     #[serde(default)]
@@ -373,7 +373,7 @@ pub struct SpotPoctPanel {
     pub platelet_count_k_ul: Option<f64>,
 }
 
-/// Stato del rischio litiasico renale e volume vescicale (`Gap 1`).
+/// Renal lithiasis risk state and bladder volume (`Gap 1`).
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct RenalNephrolithiasis {
     pub estimated_urine_output_l_d: f64,
@@ -385,7 +385,7 @@ pub struct RenalNephrolithiasis {
     pub post_void_bladder_volume_ml: f64,
 }
 
-/// Dinamica del volume plasmatico, viscosita e rischio di collasso ortostatico (`Gap 2`).
+/// Plasma volume dynamics, viscosity, and orthostatic collapse risk (`Gap 2`).
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct OrthostaticFluid {
     pub plasma_volume_delta_pct: f64,
@@ -396,7 +396,7 @@ pub struct OrthostaticFluid {
     pub pre_landing_fluid_load_completed: bool,
 }
 
-/// Modello circadiano a due processi (S+C) su Sol marziano e prontezza neurocognitiva (`Gap 3`).
+/// Two-process (S+C) circadian model on the Martian Sol and neurocognitive readiness (`Gap 3`).
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct MarsCircadianSleep {
     pub mars_sol_fraction: f64,
@@ -408,7 +408,7 @@ pub struct MarsCircadianSleep {
     pub melanopic_light_therapy_active: bool,
 }
 
-/// Disregolazione immunitaria spaziale e rischio riattivazione virale (`Gap 4`).
+/// Spaceflight immune dysregulation and viral reactivation risk (`Gap 4`).
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct NeuroImmuneViral {
     pub neuroendocrine_stress_score: f64,
@@ -418,7 +418,7 @@ pub struct NeuroImmuneViral {
     pub infection_containment_active: bool,
 }
 
-/// Metriche di meccanotrasduzione muscoloscheletrica (`DERIVED_COMPUTED` + `SIMULATED_SCENARIO_INPUT`).
+/// Musculoskeletal mechanotransduction metrics (`DERIVED_COMPUTED` + `SIMULATED_SCENARIO_INPUT`).
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Musculoskeletal {
     pub ared_daily_load_kgf: f64,
@@ -430,7 +430,7 @@ pub struct Musculoskeletal {
     pub gai_pct: f64,
 }
 
-/// Emodinamica della vena giugulare interna (IJV) e stato contromisura LBNP.
+/// Internal jugular vein (IJV) hemodynamics and LBNP countermeasure state.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct JugularHemodynamics {
     pub ijv_csa_mm2: f64,
@@ -442,7 +442,7 @@ pub struct JugularHemodynamics {
     pub lbnp_pressure_mmhg: f64,
 }
 
-/// Biomarcatori Spaceflight-Associated Neuro-Ocular Syndrome (SANS).
+/// Spaceflight-Associated Neuro-Ocular Syndrome (SANS) biomarkers.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct SansOcular {
     pub onsd_mm: f64,
@@ -450,7 +450,7 @@ pub struct SansOcular {
     pub sans_risk_index: f64,
 }
 
-/// Margini normalizzati di robustezza temporale NQS-STL (`2. EVALUATE`).
+/// Normalized NQS-STL temporal robustness margins (`2. EVALUATE`).
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct NqsStlMargins {
     pub rho_tau_w: f64,
@@ -496,7 +496,7 @@ const fn default_true() -> bool {
     true
 }
 
-/// Stato dei 4 Hard Clinical Safety Gates salvavita (`3. ACT`).
+/// State of the 4 life-saving Hard Clinical Safety Gates (`3. ACT`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SafetyGates {
     pub anticoagulant_lock_active: bool,
@@ -552,7 +552,7 @@ impl SafetyGates {
     }
 }
 
-/// Singola azione di contromisura ordinata per impatto sul margine NQS-STL.
+/// Single countermeasure action ordered by impact on the NQS-STL margin.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CountermeasureAction {
     pub action_id: String,
@@ -561,7 +561,7 @@ pub struct CountermeasureAction {
     pub delta_rho_per_hour: f64,
 }
 
-/// Playbook operativo MedOps attivo.
+/// Active MedOps operational Playbook.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ActivePlaybook {
     pub playbook_id: String,
@@ -571,7 +571,7 @@ pub struct ActivePlaybook {
     pub actions: Vec<CountermeasureAction>,
 }
 
-/// Pacchetto telemetrico completo a 20 Hz conforme a `contracts/telemetry_schema.json`.
+/// Complete 20 Hz telemetry packet conforming to `contracts/telemetry_schema.json`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[allow(non_snake_case)]
 pub struct TelemetryPacket {
@@ -607,7 +607,7 @@ pub struct TelemetryPacket {
     pub aerospace_360: Option<crate::medical_360::AerospaceMedical360State>,
 }
 
-/// Input inviato dalla What-If Stress-Test Console (`POST /api/stress-test`).
+/// Input sent from the What-If Stress-Test Console (`POST /api/stress-test`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct StressTestScenarioInput {
     pub source_record_id: String,

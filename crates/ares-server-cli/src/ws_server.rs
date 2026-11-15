@@ -1,5 +1,5 @@
-//! Fase 13 (G1) + Blocchi H & I: Server HTTP/WebSocket Axum a 20 Hz su `127.0.0.1:8080`,
-//! API `/api/stress-test`, bridge Timestral 1 Hz -> 20 Hz e ARES-HyperGraph / ARES-DatasetGraph.
+//! Phase 13 (G1) + Blocks H & I: Axum HTTP/WebSocket server at 20 Hz on `127.0.0.1:8080`,
+//! `/api/stress-test` API, Timestral 1 Hz -> 20 Hz bridge, and ARES-HyperGraph / ARES-DatasetGraph.
 
 use crate::edge_llm_bridge::{
     CopilotAskRequest, CopilotAskResponse, EdgeCopilotError, EdgeLlmConfig,
@@ -143,18 +143,18 @@ pub struct OwltMarsCommState {
     pub label: String,
 }
 
-/// Modalità di selezione della sorgente telemetrica primaria.
+/// Primary telemetry source selection mode.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default, clap::ValueEnum)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum TelemetrySourceMode {
-    /// Replay deterministico da dataset CSV terrestre (es. PhysioNet BIDMC v1.0.0).
+    /// Deterministic replay from a terrestrial CSV dataset (e.g. PhysioNet BIDMC v1.0.0).
     #[default]
     RecordedReplay,
-    /// Streaming hardware live da nodi wearable (es. Oxide Hubris / Embassy via Tier C).
+    /// Live hardware streaming from wearable nodes (e.g. Oxide Hubris / Embassy via Tier C).
     LiveWearableHardware,
 }
 
-/// Timeout massimo senza pacchetti wearable prima di segnalare perdita del sensore (3.0 secondi).
+/// Maximum timeout without wearable packets before signaling sensor loss (3.0 seconds).
 pub const WEARABLE_STALE_TIMEOUT: Duration = Duration::from_secs(3);
 
 /// Unified OS status bar state exposed by both Tauri IPC and `GET /api/os-status`.
@@ -183,7 +183,7 @@ pub struct OsStatusBarState {
     pub model_validation_status: ares_core_types::telemetry::ModelValidationStatus,
 }
 
-/// Errori tipizzati di inizializzazione del runtime `ares-server-cli`.
+/// Typed initialization errors for the `ares-server-cli` runtime.
 #[derive(Debug, Error)]
 pub enum ServerRuntimeError {
     #[error("telemetry ingest error: {0}")]
@@ -207,7 +207,7 @@ pub enum InjectAnomalyError {
     StateUnavailable,
 }
 
-/// Restituisce lo scenario nominale iniziale per l'avvio della missione.
+/// Returns the initial nominal scenario for mission startup.
 #[inline]
 pub fn default_scenario_input() -> StressTestScenarioInput {
     StressTestScenarioInput {
@@ -222,7 +222,7 @@ pub fn default_scenario_input() -> StressTestScenarioInput {
     }
 }
 
-/// Risolve in O(1) il nodo ADHG primario associato al Playbook MedOps attivo.
+/// Resolves in O(1) the primary ADHG node associated with the active MedOps Playbook.
 #[inline]
 pub fn primary_adhg_node_for_playbook(playbook_id: &str) -> AdhgNodeKind {
     match playbook_id {
@@ -252,7 +252,7 @@ pub fn primary_adhg_node_for_playbook(playbook_id: &str) -> AdhgNodeKind {
     }
 }
 
-/// Esegue un singolo ciclo deterministico (GATHER -> EVALUATE -> ACT) in < 150 microsecondi.
+/// Runs a single deterministic cycle (GATHER -> EVALUATE -> ACT) in < 150 microseconds.
 pub fn compute_mission_telemetry_tick(
     replayer: &mut BidmcReplayer,
     sqi_filter: &mut SqiFilter,
@@ -356,7 +356,7 @@ fn compute_mission_telemetry_tick_from_row(
         }
     }
 
-    // 2. EVALUATE (Parte 1): ODE RK4 Muscoloscheletrico + Moduli Multi-Organo Block N (Condition 5)
+    // 2. EVALUATE (Part 1): Musculoskeletal RK4 ODE + Multi-Organ Modules Block N (Condition 5)
     let musculo = compute_musculoskeletal_state(scenario.flight_day, scenario.ared_daily_load_kgf);
     let effective_sbp = biometrics
         .sbp_mmhg
@@ -409,7 +409,7 @@ fn compute_mission_telemetry_tick_from_row(
         Some(&immune),
     );
 
-    // 2. EVALUATE (Parte 2): Margini normalizzati NQS-STL a 10 predicati e Mission Readiness Index
+    // 2. EVALUATE (Part 2): 10-predicate normalized NQS-STL margins and Mission Readiness Index
     let (nqs_stl, nqs_severity) = evaluate_nqs_stl_and_mri_ext(
         &biometrics,
         &musculo,
@@ -427,7 +427,7 @@ fn compute_mission_telemetry_tick_from_row(
         AnomalyStatus::Alarm => AlertSeverity::Warning,
     });
 
-    // 3. ACT: Selezione deterministica Playbook #01-#30, diagnosi ECLSS accoppiata e Safety Gates 1-7
+    // 3. ACT: Deterministic Playbook #01-#30 selection, coupled ECLSS diagnosis, and Safety Gates 1-7
     let eclss_diag =
         evaluate_coupled_habitat_crew_co2(&biometrics, overrides.affected_crew_count);
     let max_ppco2_mmhg = biometrics
@@ -761,7 +761,7 @@ fn compute_mission_telemetry_tick_from_row(
     (packet, pocus_est.thrombus_posterior, causal_chain)
 }
 
-/// Snapshot immutabile estratto per il router FastMCP (< 150 token Context-Mode).
+/// Immutable snapshot extracted for the FastMCP router (< 150 tokens Context-Mode).
 #[derive(Debug, Clone)]
 pub struct FastMcpRuntimeContext {
     pub latest_packet: TelemetryPacket,
@@ -834,7 +834,7 @@ impl MissionWireSnapshot {
     }
 }
 
-/// Stato mutabile interno protetto da RwLock per la pipeline a 20 Hz, Timestral 1 Hz e HyperGraph.
+/// Internal mutable state protected by RwLock for the 20 Hz pipeline, Timestral 1 Hz, and HyperGraph.
 pub struct MissionRuntimeInner {
     pub replayer: BidmcReplayer,
     pub sqi_filter: SqiFilter,
@@ -1239,8 +1239,8 @@ impl MissionRuntimeInner {
     }
 }
 
-/// Stato condiviso tra il server Axum HTTP/WebSocket, il co-processore Timestral 1 Hz,
-/// il ring buffer binario zero-copy Seqlock e il server FastMCP su `stdio`.
+/// State shared between the Axum HTTP/WebSocket server, the Timestral 1 Hz co-processor,
+/// the zero-copy Seqlock binary ring buffer, and the FastMCP server on `stdio`.
 struct RuntimeStorage {
     engine: Arc<LsahStorageEngine>,
     // An OS lease prevents simultaneous CLI/desktop writers from sharing a root.
@@ -1263,9 +1263,9 @@ pub struct SharedMissionState {
     pub shm_dispatcher: Option<crate::shm_bus::NonBlockingShmDsnDispatcher>,
 }
 
-/// Impone gli invarianti di sicurezza per lo stato di attesa hardware indossabile:
-/// azzera i canali vitali a None, imposta sqi_score a 0.0, aggiunge "wearable_sensor_loss"
-/// ed eleva la severità dell'allarme a DataDegradedMissingChannels.
+/// Enforces the safety invariants for the wearable-hardware standby state:
+/// zeroes the vital channels to None, sets sqi_score to 0.0, adds "wearable_sensor_loss"
+/// and elevates the alarm severity to DataDegradedMissingChannels.
 pub fn enforce_awaiting_wearable_hardware_packet(packet: &mut TelemetryPacket) {
     packet.source_record_id = "awaiting_wearable_hardware".to_string();
     packet.provenance_manifest.biometrics_source = BiometricsSource::HardwareWearable;
@@ -1295,8 +1295,8 @@ impl SharedMissionState {
         self.shutdown.send_replace(true);
     }
 
-    /// Imposta esplicitamente la modalità della sorgente telemetrica primaria.
-    /// Resetta in modo coerente le baseline del detector, dell'EWMA e dell'SQI.
+    /// Explicitly sets the primary telemetry source mode.
+    /// Coherently resets the detector, EWMA, and SQI baselines.
     pub fn set_source_mode(&self, mode: TelemetrySourceMode) {
         let Ok(mut guard) = self.inner.write() else {
             return;
@@ -1327,7 +1327,7 @@ impl SharedMissionState {
         }
     }
 
-    /// Restituisce la modalità della sorgente telemetrica attualmente attiva.
+    /// Returns the currently active telemetry source mode.
     pub fn source_mode(&self) -> TelemetrySourceMode {
         self.inner
             .read()
@@ -1400,8 +1400,8 @@ impl SharedMissionState {
         Ok(())
     }
 
-    /// Inizializza lo stato condiviso caricando `bidmc_01..03_Numerics.csv`,
-    /// inizializzando Timestral (Blocco H), `ARES-HyperGraph` e `ARES-DatasetGraph` (Blocco I).
+    /// Initializes the shared state by loading `bidmc_01..03_Numerics.csv`,
+    /// initializing Timestral (Block H), `ARES-HyperGraph`, and `ARES-DatasetGraph` (Block I).
     pub fn from_data_dir(data_dir: &Path) -> Result<Arc<Self>, ServerRuntimeError> {
         let csv_path = data_dir.join("bidmc_01_Numerics.csv");
         let replayer = BidmcReplayer::from_csv_path("bidmc_01", &csv_path)?;
@@ -1465,7 +1465,7 @@ impl SharedMissionState {
         let latest_habitat_assessment = habitat_policy.evaluate(&habitat_state);
         let zone_markov = ZoneTransitionMarkovModel::default();
 
-        // Warm-up deterministico di 8 campioni a 1 Hz per calibrare il cono quantilico iniziale.
+        // Deterministic warm-up of 8 samples at 1 Hz to calibrate the initial quantile cone.
         let mut latest_short_horizon_cones = Vec::new();
         let mut latest_short_horizon_abstention = None;
         for step in 0..8 {
@@ -1807,8 +1807,8 @@ impl SharedMissionState {
         })
     }
 
-    /// Avanza il clock di replay (`dt`, tipicamente `50 ms` a 20 Hz), mantenendo
-    /// i canali registrati BIDMC bloccati alla cadenza nativa di `1 Hz` (`1000 ms`).
+    /// Advances the replay clock (`dt`, typically `50 ms` at 20 Hz), keeping
+    /// the recorded BIDMC channels locked to the native `1 Hz` cadence (`1000 ms`).
     pub fn advance_tick(&self, dt: Duration) -> Option<TelemetryPacket> {
         let _publication = self.publication.lock().ok()?;
         let start = Instant::now();
@@ -2025,7 +2025,7 @@ impl SharedMissionState {
         Some(snapshot_packet)
     }
 
-    /// Esegue uno step del co-processore asincrono Timestral a 1 Hz.
+    /// Runs one step of the asynchronous Timestral co-processor at 1 Hz.
     pub fn run_1hz_timestral_step(&self) -> Option<Arc<NqsQuantileForecastSnapshot>> {
         let mut guard = self.inner.write().ok()?;
         guard.run_1hz_timestral_inference().ok()
@@ -2109,7 +2109,7 @@ impl SharedMissionState {
         Ok(wire)
     }
 
-    /// Applica un nuovo scenario What-If completo senza avanzare il cursore BIDMC (`1 Hz`).
+    /// Applies a new complete What-If scenario without advancing the BIDMC cursor (`1 Hz`).
     pub fn apply_stress_test(
         &self,
         new_scenario: StressTestScenarioInput,
@@ -2118,7 +2118,7 @@ impl SharedMissionState {
         self.latest_snapshot()
     }
 
-    /// Applica un payload What-If completo o parziale in < 1 ms senza avanzare `replay_elapsed`.
+    /// Applies a complete or partial What-If payload in < 1 ms without advancing `replay_elapsed`.
     pub fn apply_stress_test_patch(
         &self,
         patch: StressTestPatchRequest,
@@ -2338,18 +2338,18 @@ impl SharedMissionState {
         Some(wire_snapshot)
     }
 
-    /// Legge una copia dell'ultimo `TelemetryPacket` calcolato.
+    /// Reads a copy of the last computed `TelemetryPacket`.
     pub fn latest_snapshot(&self) -> Option<TelemetryPacket> {
         self.inner.read().ok().map(|g| g.latest_packet.clone())
     }
 
-    /// Legge una copia dell'ultimo `WireTelemetryPacket` compatibile con `contracts/telemetry_schema.json`.
+    /// Reads a copy of the last `WireTelemetryPacket` compatible with `contracts/telemetry_schema.json`.
     pub fn latest_wire_snapshot(&self) -> Option<WireTelemetryPacket> {
         let snapshot = self.inner.read().ok()?.capture_wire();
         Some(snapshot.into_wire_packet())
     }
 
-    /// Estrae il contesto completo e compatto per il router `FastMCP` (< 150 token).
+    /// Extracts the complete, compact context for the `FastMCP` router (< 150 tokens).
     pub fn fastmcp_context(&self) -> Option<FastMcpRuntimeContext> {
         let guard = self.inner.read().ok()?;
         Some(FastMcpRuntimeContext {
@@ -2467,9 +2467,9 @@ async fn post_source_mode_handler(
     StatusCode::OK
 }
 
-/// Costruisce il router Axum con `/ws/telemetry`, `GET /api/snapshot`,
+/// Builds the Axum router with `/ws/telemetry`, `GET /api/snapshot`,
 /// `POST /api/stress-test`, `POST /api/inject-anomaly`, `GET /api/os-status`,
-/// `GET /api/binary-frame` e `POST /api/mcp`.
+/// `GET /api/binary-frame` and `POST /api/mcp`.
 pub fn build_axum_router(state: Arc<SharedMissionState>) -> Router {
     Router::new()
         .route("/ws/telemetry", get(ws_telemetry_handler))

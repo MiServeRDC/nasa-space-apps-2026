@@ -10,7 +10,7 @@ pub use ares_core_types::medical_360::PocusPelvicScan;
 use ares_core_types::telemetry::ModelValidationStatus;
 use serde::{Deserialize, Serialize};
 
-/// Target anatomico Point-of-Care Ultrasound indicizzato nel database LSAH.
+/// Point-of-Care Ultrasound anatomical target indexed in the LSAH database.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum PocusAnatomicalTarget {
@@ -45,7 +45,7 @@ impl PocusAnatomicalTarget {
     }
 }
 
-/// Risultato di scansione POCUS Oculare (SANS / ICP).
+/// Ocular POCUS scan result (SANS / ICP).
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct PocusOcularScan {
     pub onsd_mm: f64,
@@ -80,7 +80,7 @@ impl PocusOcularScan {
     }
 }
 
-/// Risultato di scansione POCUS Renale e Vescicale.
+/// Renal and bladder POCUS scan result.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct PocusRenalBladderScan {
     /// 0 = None, 1 = Mild, 2 = Moderate, 3 = Severe
@@ -126,7 +126,7 @@ impl PocusRenalBladderScan {
     }
 }
 
-/// Risultato di scansione eFAST toraco-addominale a 5 finestre.
+/// 5-window thoraco-abdominal eFAST scan result.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct PocusEfastScan {
     pub morison_pouch_free_fluid: bool,

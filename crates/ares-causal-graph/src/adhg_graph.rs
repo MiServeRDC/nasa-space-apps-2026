@@ -1,4 +1,4 @@
-//! Fase 07 (C3): Grafo Causale Eterogeneo ADHG (`petgraph::stable_graph::StableDiGraph`).
+//Phase 07 (C3): Heterogenos ADHG Casual Graph (`petgraph::stable_graph::StableDiGraph`).
 
 pub use crate::bayesian_pocus::{
     BayesianPocusObserver, PocusPosteriorEstimate, evaluate_two_stage_bayesian_pocus,
@@ -10,7 +10,7 @@ use ares_core_types::telemetry::{
 use petgraph::stable_graph::{NodeIndex, StableDiGraph};
 use serde::{Deserialize, Serialize};
 
-/// Identificativo dei nodi fisiologici nell'Astronaut Digital Health Graph (ADHG).
+// Identifier of the physiological nodes in the Astronaut Digital Health Graph (ADHG).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum AdhgNodeKind {
     AredMechanicalLoad,
@@ -59,7 +59,7 @@ pub struct AdhgCausalEdge {
     pub causal_weight: f64,
 }
 
-/// Grafo Causale Eterogeneo ADHG basato su `petgraph::stable_graph::StableDiGraph`.
+/// Heterogeneous ADHG causal graph based on `petgraph::stable_graph::StableDiGraph`.
 pub struct AdhgCausalEngine {
     graph: StableDiGraph<AdhgNodeState, AdhgCausalEdge>,
     n_ared: NodeIndex,
@@ -77,7 +77,7 @@ pub struct AdhgCausalEngine {
     n_immune: NodeIndex,
 }
 
-/// Alias di compatibilita per `AdhgCausalEngine`.
+/// Compatibility alias for `AdhgCausalEngine`.
 pub type AdhgGraph = AdhgCausalEngine;
 
 impl Default for AdhgCausalEngine {
@@ -302,13 +302,13 @@ impl AdhgCausalEngine {
         }
     }
 
-    /// Restituisce un riferimento immutabile al grafo `petgraph` sottostante.
+    /// Returns an immutable reference to the underlying `petgraph` graph.
     #[inline]
     pub fn graph(&self) -> &StableDiGraph<AdhgNodeState, AdhgCausalEdge> {
         &self.graph
     }
 
-    /// Aggiorna lo stato esteso a 13 nodi dell'ADHG e restituisce la sintesi causale multisistema.
+    /// Updates the ADHG 13-node extended state and returns the multi-system causal synthesis.
     #[allow(clippy::too_many_arguments)]
     pub fn update_and_extract_causal_chain_ext(
         &mut self,
@@ -420,7 +420,7 @@ impl AdhgCausalEngine {
         (pocus, chain)
     }
 
-    /// Aggiorna lo stato dei nodi nel grafo `petgraph` e restituisce la sintesi causale attiva.
+    /// Updates the node state in the `petgraph` graph and returns the active causal synthesis.
     pub fn update_and_extract_causal_chain(
         &mut self,
         musculo: &Musculoskeletal,

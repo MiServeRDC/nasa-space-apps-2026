@@ -1,5 +1,5 @@
-//! Fase 12 (F1): Governance della Privacy Medica per Ruolo (`NASA-STD-3001 Vol. 1 Rev C Ch. 7 [V1 3003]`)
-//! e Cifratura Autenticata Store-and-Forward `ChaCha20-Poly1305` con chiavi effimere `ZeroizeOnDrop`.
+//! Phase 12 (F1): Role-based Medical Privacy Governance (`NASA-STD-3001 Vol. 1 Rev C Ch. 7 [V1 3003]`)
+//! and authenticated Store-and-Forward encryption `ChaCha20-Poly1305` with ephemeral `ZeroizeOnDrop` keys.
 
 use crate::audit_chain::Sha256AuditLogger;
 use crate::sanitizer::StrictMcpSanitizer;
@@ -16,8 +16,8 @@ use chacha20poly1305::{ChaCha20Poly1305, Key, Nonce};
 use serde::{Deserialize, Serialize};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
-/// Chiave simmetrica effimera a 256 bit per il canale Store-and-Forward Deep Space Network (DSN).
-/// Viene azzerata automaticamente in RAM al rilascio (`ZeroizeOnDrop`).
+/// Ephemeral 256-bit symmetric key for the Store-and-Forward Deep Space Network (DSN) channel.
+/// Automatically zeroed in RAM on release (`ZeroizeOnDrop`).
 #[derive(Clone, Zeroize, ZeroizeOnDrop)]
 pub struct EphemeralDsnKey {
     key_bytes: [u8; 32],
@@ -35,7 +35,7 @@ impl EphemeralDsnKey {
     }
 }
 
-/// Pacchetto clinico cifrato `ChaCha20-Poly1305` per downlink asincrono verso il Flight Surgeon a Terra.
+/// `ChaCha20-Poly1305`-encrypted clinical packet for asynchronous downlink to the Flight Surgeon on the ground.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EncryptedStoreAndForwardBundle {
     pub astronaut_id: String,
@@ -56,7 +56,7 @@ pub enum CrewPrivacyTier360 {
     MissionControlCapcom,
 }
 
-/// Guardia unificata di sicurezza e privacy per `ARES-Health` (`@MiServeRDC`).
+/// Unified security and privacy guard for `ARES-Health` (`@MiServeRDC`).
 #[derive(Default)]
 pub struct AresSecurityGuard {
     audit_logger: Sha256AuditLogger,
@@ -74,8 +74,8 @@ impl AresSecurityGuard {
         }
     }
 
-    /// Sigilla e cifra un `TelemetryPacket` filtrato per il Flight Surgeon usando `ChaCha20-Poly1305`
-    /// con metadati missione vincolati come Associated Authenticated Data (AAD).
+    /// Seals and encrypts a `TelemetryPacket` filtered for the Flight Surgeon using `ChaCha20-Poly1305`
+    /// with mission metadata bound as Associated Authenticated Data (AAD).
     pub fn seal_store_and_forward_packet(
         &self,
         packet: &TelemetryPacket,
@@ -113,7 +113,7 @@ impl AresSecurityGuard {
         })
     }
 
-    /// Verifica l'autenticità AAD e decifra un `EncryptedStoreAndForwardBundle`.
+    /// Verifies the AAD authenticity and decrypts an `EncryptedStoreAndForwardBundle`.
     pub fn open_store_and_forward_packet(
         &self,
         bundle: &EncryptedStoreAndForwardBundle,
@@ -213,11 +213,11 @@ impl CrewPrivacyFilter for AresSecurityGuard {
 
         match role {
             CrewRole::AstronautSelf => {
-                // L'astronauta ha visibilità completa sui propri biomarcatori personali e vocali.
+                // The astronaut has full visibility over their own personal and vocal biomarkers.
             }
             CrewRole::CrewMedicalOfficer | CrewRole::GroundFlightSurgeon => {
-                // Secondo NASA-STD-3001 Vol. 1 Ch. 7 [V1 3003], i biomarcatori vocali/psicologici
-                // grezzi restano mascherati a meno di consenso esplicito o violazione salvavita (rho < 0).
+                // Per NASA-STD-3001 Vol. 1 Ch. 7 [V1 3003], the raw vocal/psychological biomarkers
+                // remain masked unless there is explicit consent or a life-saving violation (rho < 0).
                 if !self.astronaut_vocal_consent_granted && !life_safety_breach {
                     out.biometrics.vocal_f0_hz = None;
                     out.biometrics.vocal_jitter_pct = None;

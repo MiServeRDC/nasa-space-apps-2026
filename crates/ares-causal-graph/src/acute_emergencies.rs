@@ -1,12 +1,8 @@
 #![forbid(unsafe_code)]
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-//! Domain 3: Acute Emergencies, Non-Operative 0g Surgery, Dental, Ocular,
-//! Anaphylaxis, Microgravity CPR, Acute Urinary Retention & Pelvic/Urogyn Triage.
-//!
-//! All outputs embed `ModelValidationStatus::IllustrativeUnvalidated` until
-//! validated against prospective clinical or flight-analog datasets.
-
+// Domain 3: Acute Emergencies, Non-Operative 0g Surgery, Dental, Ocular,
+// Anaphylaxis, Microgravity CPR, Acute Urinary Retention & Pelvic/Urogyn Triage.
 use ares_core_types::medical_360::PocusPelvicScan;
 use ares_core_types::telemetry::{Biometrics, ModelValidationStatus};
 use serde::{Deserialize, Serialize};

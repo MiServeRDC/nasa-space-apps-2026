@@ -1,0 +1,4 @@
+VOTE: GUILTY
+REASON: The engine is genuinely built and runs (126/126 tests, measured latencies, SHA-256-verified replay), but you cannot "submit and pitch exactly as it stands" when the record shows no assembled pitch artifact and no documented code provenance, so the thing being shipped is not actually finished.
+DECIDING FACT: The defense itself concedes Fresh Code compliance "must be documented before submission, not assumed," and the record shows no completed 30-second video or 7-slide deck exists, meaning the required submission artifacts are not built.
+WOULD FLIP IF: The record showed a finished, format-compliant pitch (30s video or 7 slides) plus documented proof that the code was written inside the 48-hour window, making "as-is" a real, submittable artifact that the solid engineering could carry.

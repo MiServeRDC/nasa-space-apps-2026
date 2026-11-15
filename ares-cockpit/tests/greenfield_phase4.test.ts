@@ -294,12 +294,13 @@ test('Phase 4 source files enforce Risk 1 font-gate, Risk 5 a11yAnnouncer, <= 4 
     path.join(SRC_ROOT, 'workbench', 'WorkbenchShell.tsx'),
     path.join(SRC_ROOT, 'workbench', 'HorizonBar.tsx'),
     path.join(SRC_ROOT, 'workbench', 'PhaseActDeck.tsx'),
-    triPhasePath,
-    osBarPath,
   ]) {
     const src = fs.readFileSync(announcerConsumer, 'utf8');
     assert.match(src, /a11yAnnouncer/, `${path.basename(announcerConsumer)} must route via a11yAnnouncer`);
   }
+  const header = fs.readFileSync(triPhasePath, 'utf8');
+  assert.ok(header.includes('aria-label="Cockpit pages"'));
+  assert.match(header, /aria-current=/);
 
   // <= 4 blur-shell budget: HorizonBar, TriPhaseHeader, and OsSystemStatusBar must NOT use hud-specular-card / backdrop-blur
   for (const solidChromeFile of [

@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-//! Entrypoint CLI per `ares-server-cli` (Dual-Transport: Axum 20 Hz WebSocket + FastMCP stdio + Timestral 1 Hz + ARES-DatasetGraph).
+//! CLI entrypoint for `ares-server-cli` (Dual-Transport: Axum 20 Hz WebSocket + FastMCP stdio + Timestral 1 Hz + ARES-DatasetGraph).
 
 use anyhow::{Context, Result, ensure};
 use ares_causal_graph::dataset_graph::AresUnifiedDatasetGraph;
@@ -14,17 +14,17 @@ use std::time::Duration;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum ServerMode {
-    /// Avvia sia il server Axum HTTP/WebSocket (20 Hz) + worker Timestral 1 Hz sia il loop FastMCP su `stdio`.
+    /// Starts both the Axum HTTP/WebSocket server (20 Hz) + Timestral 1 Hz worker and the FastMCP loop on `stdio`.
     WsAndMcp,
     /// Avvia solo il server Axum HTTP/WebSocket su `127.0.0.1:8080` + worker Timestral 1 Hz.
     WsOnly,
-    /// Avvia solo il server FastMCP JSON-RPC 2.0 su `stdio`.
+    /// Starts only the FastMCP JSON-RPC 2.0 server on `stdio`.
     McpOnly,
-    /// Esegue replay completo (7 crate + Timestral + HyperGraph), genera ed esporta il grafo a 24 dataset su disco e verifica tutti i file.
+    /// Runs the full replay (7 crates + Timestral + HyperGraph), generates and exports the 24-dataset graph to disk, and verifies all files.
     SmokeTest,
-    /// Costruisce `AresUnifiedDatasetGraph` (24 dataset + slice BIDMC) ed esporta i 4 file del knowledge graph su disco.
+    /// Builds `AresUnifiedDatasetGraph` (24 datasets + BIDMC slice) and exports the 4 knowledge graph files to disk.
     BuildGraph,
-    /// Valuta il detector di anomalie sui vitali con eventi iniettati sui record BIDMC e scrive il report Markdown.
+    /// Evaluates the vitals anomaly detector with injected events on the BIDMC records and writes the Markdown report.
     EvalAnomaly,
 }
 
@@ -42,31 +42,31 @@ pub enum EvalSplitArg {
     about = "ARES-Health Dual-Transport Orchestrator (20 Hz Axum WebSocket + FastMCP stdio + Timestral + ARES-DatasetGraph)"
 )]
 pub struct CliArgs {
-    /// Modalita operativa del server.
+    /// Server operational mode.
     #[arg(long, value_enum, default_value_t = ServerMode::WsAndMcp)]
     pub mode: ServerMode,
 
-    /// Indirizzo di bind per il server HTTP/WebSocket (Zero-Trust loopback di default).
+    /// Bind address for the HTTP/WebSocket server (Zero-Trust loopback by default).
     #[arg(long, default_value = "127.0.0.1:8080")]
     pub bind: String,
 
-    /// Percorso della directory contenente i file CSV PhysioNet BIDMC v1.0.0.
+    /// Path to the directory containing the PhysioNet BIDMC v1.0.0 CSV files.
     #[arg(long, default_value = "data/bidmc")]
     pub data_dir: PathBuf,
 
-    /// Percorso della root del repository per l'esportazione di `data/knowledge_graph/` e `graphify-out/`.
+    /// Path to the repository root for exporting `data/knowledge_graph/` and `graphify-out/`.
     #[arg(long)]
     pub repo_root: Option<PathBuf>,
 
-    /// Directory con i record BIDMC aggiuntivi (04-53) usati solo da `--mode eval-anomaly`.
+    /// Directory with the additional BIDMC records (04-53) used only by `--mode eval-anomaly`.
     #[arg(long, default_value = "data/bidmc_eval")]
     pub eval_dir: PathBuf,
 
-    /// Sottoinsieme di record da valutare con `--mode eval-anomaly`.
+    /// Subset of records to evaluate with `--mode eval-anomaly`.
     #[arg(long, value_enum, default_value_t = EvalSplitArg::All)]
     pub eval_split: EvalSplitArg,
 
-    /// File Markdown di output per `--mode eval-anomaly` (stampa su stdout se assente).
+    /// Output Markdown file for `--mode eval-anomaly` (prints to stdout if absent).
     #[arg(long)]
     pub eval_out: Option<PathBuf>,
 
@@ -141,8 +141,8 @@ fn export_and_verify_graph_bundle(graph: &AresUnifiedDatasetGraph, repo_root: &P
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Invariante mcp-builder: tutti i log diagnostici vanno rigorosamente su stderr
-    // per non corrompere mai lo stream JSON-RPC 2.0 su stdout.
+    // mcp-builder invariant: all diagnostic logs must go strictly to stderr
+    // to never corrupt the JSON-RPC 2.0 stream on stdout.
     tracing_subscriber::fmt()
         .with_writer(std::io::stderr)
         .with_target(false)

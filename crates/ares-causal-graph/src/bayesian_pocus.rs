@@ -1,4 +1,4 @@
-//! Fase 07 (C3): Osservatore Bayesiano POCUS a 2 Stadi (`Invariante Entry 002`).
+//! Phase 07 (C3): 2-stage Bayesian POCUS observer (`Invariant Entry 002`).
 
 use ares_core_types::constants::{PRE_POCUS_MAX_THROMBUS_PROB, sanitize_f64};
 use ares_core_types::medical_360::{ContraceptiveRegimen, CrewBiologicalProfile};
@@ -13,7 +13,7 @@ pub const LR_ETHINYLESTRADIOL_COC: f64 = 2.60;
 pub const ACT_SWITCH_COC_TO_PROGESTIN_ONLY_OR_LNG_IUD: &str =
     "ACT_SWITCH_COC_TO_PROGESTIN_ONLY_OR_LNG_IUD";
 
-/// Risultato della stima Bayesiana a 2 stadi per la trombosi della vena giugulare interna.
+/// Result of the 2-stage Bayesian estimate for internal jugular vein thrombosis.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct PocusPosteriorEstimate {
     /// Legacy name: illustrative stasis score in [0,1], not a calibrated probability.
@@ -21,7 +21,7 @@ pub struct PocusPosteriorEstimate {
     pub model_validation_status: ares_core_types::telemetry::ModelValidationStatus,
     /// Legacy name: illustrative score using fixed priors/LR/clamps; not clinical probability.
     pub thrombus_posterior: f64,
-    /// Indica se e richiesta un'ispezione ecografica POCUS immediata.
+    /// Indicates whether an immediate POCUS ultrasound inspection is required.
     pub pocus_inspection_required: bool,
 }
 
@@ -51,7 +51,7 @@ fn compute_stage2_thrombus_posterior(pre_pocus_prior: f64, pocus_thrombus_confir
     }
 }
 
-/// Calcola la stima Bayesiana a 2 stadi (Invariante Entry 002) calibrata sul profilo biologico.
+/// Computes the 2-stage Bayesian estimate (Invariant Entry 002) calibrated on the biological profile.
 #[inline]
 pub fn evaluate_two_stage_bayesian_pocus_for_profile(
     jugular: &JugularHemodynamics,
@@ -66,10 +66,10 @@ pub fn evaluate_two_stage_bayesian_pocus_for_profile(
     let stasis_probability =
         (0.55 * shear_deficit + 0.30 * secretome_deficit + 0.15 * rad_factor).clamp(0.02, 0.99);
 
-    // Stadio 1: Prior emodinamico pre-POCUS (rigorosamente <= 0.45 anche sotto COC estrogenico)
+    // Stage 1: Pre-POCUS hemodynamic prior (strictly <= 0.45 even under estrogenic COC)
     let pre_pocus_prior = compute_stage1_pre_pocus_prior(stasis_probability, profile);
 
-    // Stadio 2: Aggiornamento Bayesiano con Likelihood Ratio ecografico (LR+ = 24.0)
+    // Stage 2: Bayesian update with ultrasound likelihood ratio (LR+ = 24.0)
     let thrombus_posterior =
         compute_stage2_thrombus_posterior(pre_pocus_prior, jugular.pocus_thrombus_confirmed);
 
@@ -81,7 +81,7 @@ pub fn evaluate_two_stage_bayesian_pocus_for_profile(
     }
 }
 
-/// Calcola la stima Bayesiana a 2 stadi (Invariante Entry 002).
+/// Computes the 2-stage Bayesian estimate (Invariant Entry 002).
 #[inline]
 pub fn evaluate_two_stage_bayesian_pocus(
     jugular: &JugularHemodynamics,
@@ -170,7 +170,7 @@ pub fn evaluate_bayesian_thrombus_probability(
     )
 }
 
-/// Osservatore Bayesiano a 2 stadi per la stratificazione clinica tra stasi giugulare e trombo occlusivo.
+/// 2-stage Bayesian observer for clinical stratification between jugular stasis and occlusive thrombus.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct BayesianPocusObserver;
 

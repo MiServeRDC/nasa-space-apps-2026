@@ -2,7 +2,7 @@ import {clinicalStructure,cloneAtlasLayer,disposeAtlasMaterials} from './atlasMa
 import { useEffect, useMemo } from 'react';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
-import type { ScenarioState } from '../../lib/scenario';
+import type { CrewSex, ScenarioState } from '../../lib/scenario';
 import { INJURY_REGIONS, type InjuryRegionId } from '../../types/injury';
 import type { AnatomicalRegionWireId } from '../../types/telemetry';
 import { riskColor, type V3 } from './AnatomicalLayers';
@@ -28,7 +28,7 @@ const DEFAULT_NODE_FALLBACKS: Record<AnatomicalRegionWireId, V3> = {
 };
 
 export interface AtlasAnchors {
-  profile: 'MALE';
+  profile: CrewSex;
   nodes: Record<AnatomicalRegionWireId, V3>;
   injuries: Record<InjuryRegionId, V3>;
 }

@@ -1,5 +1,5 @@
-//! Fase 19/20 (Blocco I): Grounding normativo `NASA-STD-3001`, `ClinicalAnswerabilityGate`
-//! e verifica deontica dell'habitat (`HabitatZoneDeonticPolicy`) sui Playbook MedOps (`#01-#05`).
+//! Phase 19/20 (Block I): `NASA-STD-3001` regulatory grounding, `ClinicalAnswerabilityGate`,
+//! and habitat deontic verification (`HabitatZoneDeonticPolicy`) on the MedOps Playbooks (`#01-#05`).
 
 use crate::safety_gates::is_systemic_anticoagulant_action;
 use ares_causal_graph::adhg_graph::AdhgNodeKind;
@@ -16,14 +16,14 @@ use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use thiserror::Error;
 
-/// Errori tipizzati del dominio Playbooks & Safety Gates (`ares-medops-playbooks`).
+/// Typed errors of the Playbooks & Safety Gates domain (`ares-medops-playbooks`).
 #[derive(Debug, Error)]
 pub enum PlaybookError {
-    /// Identificativo Playbook non riconosciuto nel catalogo Type-1 (`#01..#05`).
+    /// Playbook identifier not recognized in the Type-1 catalog (`#01..#05`).
     #[error("unknown MedOps playbook id `{0}`")]
     UnknownPlaybookId(String),
 
-    /// Tentativo di sblocco farmacologico bloccato dal ClinicalAnswerabilityGate / MTB-007.
+    /// Pharmacological unlock attempt blocked by the ClinicalAnswerabilityGate / MTB-007.
     #[error("playbook `{playbook_id}` blocked by {enforced_clause}: {reason}")]
     BlockedByClinicalGate {
         playbook_id: String,
@@ -32,7 +32,7 @@ pub enum PlaybookError {
     },
 }
 
-/// Ancoraggio normativo ed epistemico O(1) per un Playbook MedOps cristallizzato.
+/// O(1) regulatory and epistemic anchoring for a crystallized MedOps Playbook.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PlaybookNormativeGrounding {
     pub playbook_id: Cow<'static, str>,
@@ -45,7 +45,7 @@ pub struct PlaybookNormativeGrounding {
     pub citation: Cow<'static, str>,
 }
 
-/// Risolve in O(1) il grounding `ARES-BioKG` di tutti i 30 Playbook MedOps (`#01..#30`).
+/// Resolves in O(1) the `ARES-BioKG` grounding of all 30 MedOps Playbooks (`#01..#30`).
 pub fn ground_playbook_normative(
     playbook_id: &str,
 ) -> Result<PlaybookNormativeGrounding, PlaybookError> {
@@ -279,7 +279,7 @@ pub fn ground_playbook_normative(
     })
 }
 
-/// Esito combinato della validazione BioKG + Deontica Habitat su un `ActivePlaybook`.
+/// Combined outcome of the BioKG + Habitat Deontic validation on an `ActivePlaybook`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PlaybookGovernanceVerdict {
     pub grounding: PlaybookNormativeGrounding,
@@ -287,9 +287,9 @@ pub struct PlaybookGovernanceVerdict {
     pub habitat_assessment: HabitatDeonticAssessment,
 }
 
-/// Valuta un `ActivePlaybook` rispetto a `EpistemicProvenance` (`ClinicalAnswerabilityGate`)
-/// e `HabitatZoneDeonticPolicy`. Restituisce `Err(PlaybookError::BlockedByClinicalGate)`
-/// se il playbook contiene azioni anticoagulanti senza conferma POCUS B-mode (`MTB-007`).
+/// Evaluates an `ActivePlaybook` against `EpistemicProvenance` (`ClinicalAnswerabilityGate`)
+/// and `HabitatZoneDeonticPolicy`. Returns `Err(PlaybookError::BlockedByClinicalGate)`
+/// if the playbook contains anticoagulant actions without POCUS B-mode confirmation (`MTB-007`).
 pub fn verify_playbook_governance(
     playbook: &ActivePlaybook,
     provenance: &EpistemicProvenance,

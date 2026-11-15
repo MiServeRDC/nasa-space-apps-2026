@@ -1,11 +1,11 @@
 #![forbid(unsafe_code)]
 
-//! Fase 22 (J2): `crates/ares-desktop-os` — `ARES-MedOS` Pure-Rust Workstation OS Shell.
+//! Phase 22 (J2): `crates/ares-desktop-os` — `ARES-MedOS` Pure-Rust Workstation OS Shell.
 //!
-//! Embedda in-process tutti i crate dell'engine (`SharedMissionState`), mantiene un
-//! `SeqlockTelemetryRing<64>` lock-free per frame binari da 128 byte (`BinaryTelemetryFrame`),
-//! monitora le 4 partizioni `ARINC 653` e lo stato `OWLT` Marte, ed espone i dispatcher IPC
-//! in-process verso la shell nativa e la `FastMCP` Command Palette.
+//! Embeds in-process all engine crates (`SharedMissionState`), maintains a
+//! lock-free `SeqlockTelemetryRing<64>` for 128-byte binary frames (`BinaryTelemetryFrame`),
+//! monitors the 4 `ARINC 653` partitions and the Mars `OWLT` state, and exposes the in-process IPC
+//! dispatchers toward the native shell and the `FastMCP` Command Palette.
 
 pub mod ipc_bridge;
 pub mod voice_whisper;
@@ -49,7 +49,7 @@ pub use ares_server_cli::ws_server::{
     Arinc653PartitionHealth, OsStatusBarState, OwltMarsCommState, PartitionId,
 };
 
-/// Errori tipizzati per la workstation shell `ARES-MedOS`.
+/// Typed errors for the `ARES-MedOS` workstation shell.
 #[derive(Debug, Error)]
 pub enum DesktopShellError {
     #[error("failed to initialize shared mission state: {0}")]
@@ -127,7 +127,7 @@ pub fn resolve_medos_data_dir(explicit: Option<&Path>) -> Result<PathBuf, Deskto
     ))
 }
 
-/// Configurazione deterministica di avvio per `AresMedOsWorkstationShell`.
+/// Deterministic startup configuration for `AresMedOsWorkstationShell`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DesktopShellConfig {
     pub data_dir: PathBuf,
@@ -149,7 +149,7 @@ impl Default for DesktopShellConfig {
     }
 }
 
-/// Risultato deterministico dello smoke-test della workstation `ARES-MedOS` a 8 crate.
+/// Deterministic result of the 8-crate `ARES-MedOS` workstation smoke test.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DesktopSmokeTestReport {
     pub bidmc_ticks_processed: u32,

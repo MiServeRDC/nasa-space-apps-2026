@@ -1,8 +1,8 @@
-//! Fase 31 (L3): Rilevatore QRS Pan-Tompkins in Puro Rust per forme d'onda 125-500 Hz,
-//! rigetto ectopie secondo Malik (+/- 20%) e calcolo RMSSD / SDNN / pNN50.
+//! Phase 31 (L3): Pure-Rust Pan-Tompkins QRS detector for 125-500 Hz waveforms,
+//! Malik ectopic beat rejection (+/- 20%) and RMSSD / SDNN / pNN50 computation.
 //!
-//! INVARIANTE CRITICO ISSUE #11: I CSV numerici a 1 Hz (`BidmcReplayer`) non passano MAI
-//! per questo modulo e mantengono rigorosamente `rmssd_ms: None` + `BEAT_INTERVALS_NOT_AVAILABLE`.
+//! CRITICAL ISSUE #11 INVARIANT: The 1 Hz numeric CSVs (`BidmcReplayer`) NEVER pass
+//! through this module and strictly keep `rmssd_ms: None` + `BEAT_INTERVALS_NOT_AVAILABLE`.
 
 use crate::radar_csi_dsp::{BiquadSos, DspError};
 use ares_core_types::telemetry::ModelValidationStatus;

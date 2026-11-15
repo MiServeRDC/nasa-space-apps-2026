@@ -1,5 +1,5 @@
-//! Modulo circadiano a due processi (S+C) su Sol marziano (24.66h), debito di sonno,
-//! fototerapia melanopica e probabilita di lapse psicomotorio PVT-B (Gap 3).
+//! Two-process (S+C) circadian module on the Martian Sol (24.66h), sleep debt,
+//! melanopic phototherapy, and PVT-B psychomotor lapse probability (Gap 3).
 
 use ares_core_types::constants::{
     MARS_SOL_SECONDS, MELANOPIC_LUX_THERAPY_MIN, sanitize_f64,
@@ -31,14 +31,14 @@ impl From<&MarsCircadianSleep> for CircadianCognitiveState {
     }
 }
 
-/// Periodo circadiano intrinseco endogeno umano medio in ore (Czeisler et al. 1999 Science).
+/// Mean human endogenous intrinsic circadian period in hours (Czeisler et al. 1999 Science).
 pub const TAO_ENDO_HOURS: f64 = 24.18;
 
-/// Costanti di tempo per accumulo (veglia) e dissipazione (sonno) della pressione omeostatica S (ore).
+/// Time constants for accumulation (wakefulness) and dissipation (sleep) of homeostatic pressure S (hours).
 pub const TAU_WAKE_HOURS: f64 = 18.2;
 pub const TAU_SLEEP_HOURS: f64 = 4.2;
 
-/// Stato interno completo dell'oscillatore circadiano e della pressione omeostatica.
+/// Complete internal state of the circadian oscillator and homeostatic pressure.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct MarsCircadianOscillator {
     pub homeostatic_s: f64,
@@ -57,7 +57,7 @@ impl Default for MarsCircadianOscillator {
 }
 
 impl MarsCircadianOscillator {
-    /// Esegue uno step di avanzamento temporale dt_hours sul Sol marziano.
+    /// Performs a dt_hours time-advance step on the Martian Sol.
     pub fn step_state(
         &mut self,
         dt_hours: f64,
@@ -68,7 +68,7 @@ impl MarsCircadianOscillator {
         let dt = sanitize_f64(dt_hours, 0.05).clamp(0.0001, 12.0);
         let lux = sanitize_f64(melanopic_edi_lux, 0.0).max(0.0);
 
-        // Processo S: pressione omeostatica
+        // Process S: homeostatic pressure
         if is_sleeping {
             let eta = sanitize_f64(sleep_quality, 0.85).clamp(0.30, 1.0);
             self.homeostatic_s = (self.homeostatic_s * (-dt * eta / TAU_SLEEP_HOURS).exp()).clamp(0.05, 1.0);
@@ -80,7 +80,7 @@ impl MarsCircadianOscillator {
             }
         }
 
-        // Processo C: velocita angolare endogena + modulazione PRC da luce melanopica
+        // Process C: endogenous angular velocity + PRC modulation from melanopic light
         let omega_endo = (2.0 * PI) / TAO_ENDO_HOURS;
         let prc = self.circadian_phase_rad.sin();
         let light_drive = 0.085 * prc * (1.0 + lux / 50.0).ln();
@@ -88,14 +88,14 @@ impl MarsCircadianOscillator {
         self.circadian_phase_rad = (self.circadian_phase_rad + d_phi).rem_euclid(2.0 * PI);
     }
 
-    /// Calcola la frazione di Sol marziano corrente [0.0, 1.0).
+    /// Computes the current Martian Sol fraction [0.0, 1.0).
     #[inline]
     pub fn compute_mars_sol_fraction(mission_elapsed_s: f64) -> f64 {
         let elapsed = sanitize_f64(mission_elapsed_s, 0.0).max(0.0);
         (elapsed % MARS_SOL_SECONDS) / MARS_SOL_SECONDS
     }
 
-    /// Calcola il disallineamento di fase (in radianti) rispetto al ciclo solare marziano.
+    /// Computes the phase misalignment (in radians) relative to the Martian solar cycle.
     #[inline]
     pub fn compute_phase_misalignment(&self, mission_elapsed_s: f64) -> f64 {
         let sol_frac = Self::compute_mars_sol_fraction(mission_elapsed_s);
@@ -106,14 +106,14 @@ impl MarsCircadianOscillator {
         delta.abs()
     }
 
-    /// Valuta il termine circadiano armonico C(t) in [-1.0, 1.0].
+    /// Evaluates the harmonic circadian term C(t) in [-1.0, 1.0].
     #[inline]
     pub fn evaluate_circadian_process_c(&self) -> f64 {
         let phi = self.circadian_phase_rad;
         (0.88 * (phi - 0.78).cos() + 0.12 * (2.0 * phi - 1.25).cos()).clamp(-1.0, 1.0)
     }
 
-    /// Calcola la probabilita di lapse psicomotorio PVT-B (Dinges & Basner 2011) in [0.0, 1.0].
+    /// Computes the PVT-B psychomotor lapse probability (Dinges & Basner 2011) in [0.0, 1.0].
     #[inline]
     pub fn compute_pvt_lapse_probability(
         &self,
@@ -141,7 +141,7 @@ impl MarsCircadianOscillator {
         p_lapse.clamp(0.02, 0.98)
     }
 
-    /// Genera la telemetria completa `MarsCircadianSleep`.
+    /// Generates the complete `MarsCircadianSleep` telemetry.
     pub fn evaluate_state(
         &self,
         mission_elapsed_s: f64,

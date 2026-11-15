@@ -1,10 +1,10 @@
 #![forbid(unsafe_code)]
 
-//! `ares-security-privacy` — Blocco F (Fase 12 F1).
+//! `ares-security-privacy` — Block F (Phase 12 F1).
 //!
-//! Implementa la governance della privacy medica per ruolo (`NASA-STD-3001 Vol. 1 Ch. 7`),
-//! la catena di audit `SHA-256` (`Sha256AuditLogger`), la cifratura Store-and-Forward
-//! `ChaCha20-Poly1305` e lo scudo anti-Prompt-Injection (`StrictMcpSanitizer`).
+//! Implements role-based medical privacy governance (`NASA-STD-3001 Vol. 1 Ch. 7`),
+//! the `SHA-256` audit chain (`Sha256AuditLogger`), `ChaCha20-Poly1305` Store-and-Forward
+//! encryption, and the anti-Prompt-Injection shield (`StrictMcpSanitizer`).
 
 pub mod audit_chain;
 pub mod privacy_views;
@@ -144,7 +144,7 @@ mod tests {
         let guard = AresSecurityGuard::new(false);
         let nominal_pkt = sample_telemetry_packet(0.39, AlertSeverity::Nominal);
 
-        // 1. AstronautSelf vede sempre i propri biomarcatori vocali
+        // 1. AstronautSelf always sees their own vocal biomarkers
         let Ok(self_view) = guard.filter_packet_for_role(&nominal_pkt, CrewRole::AstronautSelf)
         else {
             panic!("AstronautSelf filter failed");
@@ -152,7 +152,7 @@ mod tests {
         assert_eq!(self_view.biometrics.vocal_f0_hz, Some(122.4));
         assert_eq!(self_view.biometrics.vocal_jitter_pct, Some(0.58));
 
-        // 2. CMO senza consenso e con rho_global >= 0 vede i biomarcatori vocali mascherati
+        // 2. CMO without consent and with rho_global >= 0 sees masked vocal biomarkers
         let Ok(cmo_nominal) =
             guard.filter_packet_for_role(&nominal_pkt, CrewRole::CrewMedicalOfficer)
         else {
@@ -161,7 +161,7 @@ mod tests {
         assert_eq!(cmo_nominal.biometrics.vocal_f0_hz, None);
         assert_eq!(cmo_nominal.biometrics.vocal_jitter_pct, None);
 
-        // 3. CMO quando rho_global < 0 (violazione clinica salvavita) ottiene lo sblocco automatico
+        // 3. CMO when rho_global < 0 (life-saving clinical violation) gets automatic unlock
         let critical_pkt = sample_telemetry_packet(-0.18, AlertSeverity::Warning);
         let Ok(cmo_breach) =
             guard.filter_packet_for_role(&critical_pkt, CrewRole::CrewMedicalOfficer)
@@ -224,7 +224,7 @@ mod tests {
         assert_eq!(decrypted.astronaut_id, "ARES-CDR-01");
         assert_eq!(decrypted.biometrics.vocal_f0_hz, None);
 
-        // La manomissione dei metadati AAD deve invalidare il tag Poly1305
+        // Tampering with the AAD metadata must invalidate the Poly1305 tag
         bundle.aad_metadata = "ARES-DSN|astronaut=FORGED|fd=999|src=bidmc_02".to_string();
         assert!(guard.open_store_and_forward_packet(&bundle, &key).is_err());
     }

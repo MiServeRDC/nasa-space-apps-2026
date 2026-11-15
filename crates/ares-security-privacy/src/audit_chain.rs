@@ -1,11 +1,11 @@
-//! Fase 12 (F1): Catena di Audit SHA-256 non ripudiabile per eventi MedOps, Safety Gates e override.
+//! Phase 12 (F1): Non-repudiable SHA-256 audit chain for MedOps events, Safety Gates, and overrides.
 
 use ares_core_types::error::AresCoreError;
 use ares_core_types::security::{AuditChainRecord, CrewRole, MedOpsAuditLogger};
 use sha2::{Digest, Sha256};
 use std::sync::Mutex;
 
-/// Logger di audit basato su catena hash SHA-256 in memoria protetta.
+/// Audit logger based on an SHA-256 hash chain in protected memory.
 #[derive(Default)]
 pub struct Sha256AuditLogger {
     records: Mutex<Vec<AuditChainRecord>>,
@@ -34,7 +34,7 @@ impl Sha256AuditLogger {
         format!("{:x}", hasher.finalize())
     }
 
-    /// Restituisce una copia dei record registrati nella catena di audit.
+    /// Returns a copy of the records logged in the audit chain.
     pub fn records(&self) -> Result<Vec<AuditChainRecord>, AresCoreError> {
         let guard = self
             .records
@@ -45,7 +45,7 @@ impl Sha256AuditLogger {
         Ok(guard.clone())
     }
 
-    /// Verifica matematicamente una slice esterna di record `AuditChainRecord` contro manomissioni.
+    /// Mathematically verifies an external slice of `AuditChainRecord` records against tampering.
     pub fn verify_external_slice(slice: &[AuditChainRecord]) -> bool {
         let mut expected_prev = "0".repeat(64);
         for rec in slice {
