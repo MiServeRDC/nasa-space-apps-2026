@@ -84,14 +84,16 @@ export function PlaybookRunner({
   }, [requestedPlaybook]);
 
   const suggested = activePlaybook && activePlaybook.playbook_id !== 'NONE' ? activePlaybook : null;
+  const standby = followLiveEngine && suggested === null;
   const followingLive = followLiveEngine && suggested !== null;
   const usingSuggested = followingLive || (suggested !== null && suggested.playbook_id === manualPlaybookId);
-  const selectedId = usingSuggested && suggested ? suggested.playbook_id : manualPlaybookId;
-  const selectedEntry = getCatalogEntry(selectedId) ?? (usingSuggested ? undefined : CRYSTALLIZED_PLAYBOOK_LIST[0]);
+  const selectedId = standby ? '' : usingSuggested && suggested ? suggested.playbook_id : manualPlaybookId;
+  const selectedEntry = standby ? undefined : getCatalogEntry(selectedId) ?? (usingSuggested ? undefined : CRYSTALLIZED_PLAYBOOK_LIST[0]);
 
   const gates = getEffectiveSafetyGates(activePlaybook, thrombusConfirmed);
 
   const resolvedActions = useMemo<CountermeasureAction[]>(() => {
+    if (standby) return [];
     if (
       usingSuggested &&
       activePlaybook?.actions &&
@@ -100,7 +102,7 @@ export function PlaybookRunner({
       return activePlaybook.actions;
     }
     return enforceHardSafetyGatesOnActions(selectedEntry?.default_actions ?? [], gates);
-  }, [usingSuggested, activePlaybook, selectedEntry, gates]);
+  }, [standby, usingSuggested, activePlaybook, selectedEntry, gates]);
 
   const steps = useMemo(
     () =>
@@ -133,7 +135,7 @@ export function PlaybookRunner({
       : selectedEntry?.default_causal_chain ?? [];
 
   const displayTitle =
-    usingSuggested && activePlaybook?.title ? activePlaybook.title : selectedEntry?.title ?? 'Suggested procedure';
+    standby ? 'No procedure suggested' : usingSuggested && activePlaybook?.title ? activePlaybook.title : selectedEntry?.title ?? 'Suggested procedure';
   const displayStepInstruction =
     followingLive && activePlaybook?.step_instruction
       ? activePlaybook.step_instruction
@@ -165,7 +167,7 @@ export function PlaybookRunner({
   return (
     <div className="act-procedure space-y-4 text-sm text-gray-200">
       <div className="act-procedure-meta">
-        <span>{usingSuggested ? (isLiveEngine ? 'Suggested by the engine' : 'Suggested by the simulation') : 'Manual review'} · {displayLabel(validationTag)}</span>
+        <span>{standby ? 'Monitoring standby' : usingSuggested ? (isLiveEngine ? 'Suggested by the engine' : 'Suggested by the simulation') : 'Manual review'} · {displayLabel(validationTag)}</span>
 
         {!usingSuggested && suggested && (
           <button type="button" onClick={() => {
@@ -194,6 +196,7 @@ export function PlaybookRunner({
       <p className="act-monitor-state" data-status={monitoringStatus} role="status">
         <strong>{statusText}.</strong> Status updates from the readings, independently of the checklist.
       </p>
+      {standby ? <p>No active procedure is supported by the current readings. Continue monitoring or explicitly select a procedure for manual review.</p> : <>
       <section className="act-next-step" aria-labelledby="act-next-title">
         <h4 id="act-next-title">
           {completed ? 'Checklist complete' : currentStep ? `Do this now · Step ${activeStepIdx + 1} of ${steps.length}` : 'No steps available'}
@@ -288,6 +291,7 @@ export function PlaybookRunner({
         </ol>
       </section>
 
+      </>}
       <details className="scenario-disclosure">
         <CockpitSummary>Browse other procedures</CockpitSummary>
       <label className="act-procedure-picker">
@@ -299,6 +303,7 @@ export function PlaybookRunner({
           setManualPlaybookId(entry.playbook_id);
           setManualStepIdx(0);
         }}>
+          {standby && <option value="" disabled>Select a procedure for manual review</option>}
           {usingSuggested && !selectedEntry && <option value={selectedId}>{displayTitle}</option>}
           {ALL_CRYSTALLIZED_PLAYBOOK_LIST.map(entry => (
             <option key={entry.playbook_id} value={entry.playbook_id}>

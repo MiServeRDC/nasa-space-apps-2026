@@ -215,3 +215,19 @@ proper quaternion rotation (DOI 10.1364/JOSAA.4.000629) and least-squares scale
 Source: FEMALE_SOURCE_LOCK.json, FEMALE_REGISTRATION_REVIEW.md and implementation
 stack addendum. A 403 package stays missing until actual bytes/entries/units are
 inspected; no procedural or male substitution closes that coverage requirement.
+
+
+## Replay/scenario integration qualification (2026-11-15)
+
+- Hiding unmeasured organ metrics is insufficient if the same simulated model still
+  suggests an ACT procedure. Outside explicit scenario mode, automatic procedures
+  must come from the measured-vitals detector; NONE must remain monitoring standby,
+  with catalog fallback only after explicit manual selection.
+- A frontend overlay boolean cannot deactivate a stateful backend implicitly.
+  Explicit on/off patches must share the scenario serialization queue and be sent
+  on reconnect. Verify actual backend provenance, null metrics, unchanged replay
+  clock and preserved learning when switching off.
+- Historical module/unit tests can pass without covering the current App entry
+  point. Qualify the production bundle against an actual owned backend process.
+- An isolated passing latency assertion does not invalidate an earlier loaded-run
+  failure. Record both; do not loosen the production budget to make tests green.

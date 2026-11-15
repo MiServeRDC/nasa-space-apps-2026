@@ -393,12 +393,15 @@ export function useTelemetry(
     [acceptRawPayload],
   );
 
-  const postStressTestOverride = useCallback((w: WhatIf, thrombus: boolean | null) => {
+  const postStressTestOverride = useCallback((w: WhatIf, thrombus: boolean | null, active = true) => {
     const revision = ++stressTestRevision.current;
     const pending = stressTestQueue.current.then(async () => {
-      return revision === stressTestRevision.current
-        ? sendStressTestPatch(buildStressTestPayload(w, thrombus, activeSourceIdRef.current), buildFertechStressTestPayload(w))
-        : false;
+      if (revision !== stressTestRevision.current) return false;
+      if (!active) return sendStressTestPatch({ overlay_active: false, preserve_overlay: true });
+      return sendStressTestPatch(
+        { ...buildStressTestPayload(w, thrombus, activeSourceIdRef.current), overlay_active: true },
+        buildFertechStressTestPayload(w),
+      );
     });
     stressTestQueue.current = pending.then(() => {}, () => {});
     return pending;
@@ -654,9 +657,7 @@ export function useTelemetry(
         void fetchOsStatus();
         // Re-sync active What-If override when socket opens or reconnects.
         const cur = inputsRef.current;
-        if (cur.whatIfOverlayActive) {
-          void postStressTestOverride(cur.whatIf, cur.thrombusConfirmed);
-        }
+        void postStressTestOverride(cur.whatIf, cur.thrombusConfirmed, cur.whatIfOverlayActive);
       };
 
       ws.onmessage = (ev) => {
@@ -725,9 +726,8 @@ export function useTelemetry(
 
   // 2. Forward active What-If overrides via POST /api/stress-test (or Tauri IPC) on change.
   useEffect(() => {
-    if (!whatIfOverlayActive) return;
     if (!IS_ARES_DESKTOP_SHELL && link !== 'ENGINE_LIVE' && !wsConnected) return;
-    void postStressTestOverride(whatIf, thrombusConfirmed);
+    void postStressTestOverride(whatIf, thrombusConfirmed, whatIfOverlayActive);
   }, [whatIf, thrombusConfirmed, whatIfOverlayActive, link, wsConnected, postStressTestOverride]);
 
   // 3. Stale-data watchdog (never let old data look fresh/healthy if stream stalls).

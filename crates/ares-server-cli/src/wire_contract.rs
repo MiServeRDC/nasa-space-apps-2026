@@ -46,6 +46,8 @@ const CONTRACT_BASE_EPOCH_MS: u64 = 1_794_657_600_000;
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct StressTestPatchRequest {
+    /// Explicit scenario-mode transition, independent of stored scenario values.
+    pub overlay_active: Option<bool>,
     /// Apply mission or crew context without changing the current overlay mode.
     pub preserve_overlay: bool,
     pub source_record_id: Option<String>,
@@ -82,6 +84,7 @@ pub struct StressTestPatchRequest {
 impl From<StressTestScenarioInput> for StressTestPatchRequest {
     fn from(s: StressTestScenarioInput) -> Self {
         Self {
+            overlay_active: None,
             preserve_overlay: false,
             source_record_id: Some(s.source_record_id),
             flight_day: Some(s.flight_day),
@@ -613,7 +616,11 @@ impl WireTelemetryPacket {
                     .safety_gates
                     .gate4_eva_fitness_no_go,
             },
-            triggered_playbooks: vec![p.active_playbook.playbook_id.clone()],
+            triggered_playbooks: if p.active_playbook.playbook_id == "NONE" {
+                Vec::new()
+            } else {
+                vec![p.active_playbook.playbook_id.clone()]
+            },
             priority_actions: p
                 .active_playbook
                 .actions
