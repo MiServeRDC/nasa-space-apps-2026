@@ -193,6 +193,22 @@ npm run build      # production build
 
 ARES-Health is a standalone, clean-room, open-source project with zero external proprietary dependencies, developed fresh for the hackathon in accordance with NASA Space Apps Fresh-Code rules.
 
+### Licensing
+
+ARES-Health is dual-licensed under either of:
+
+- **MIT License** ([`LICENSE`](LICENSE))
+- **Apache License, Version 2.0** ([`LICENSE-APACHE`](LICENSE-APACHE))
+
+at your option. `SPDX-License-Identifier: MIT OR Apache-2.0`. Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work, as defined in the Apache-2.0 license, shall be dual-licensed as above, without any additional terms or conditions. The dual MIT OR Apache-2.0 track is the standard Rust-ecosystem licensing model: MIT maximizes permissive reuse while Apache-2.0 adds an explicit patent grant.
+
+### Clean-room mandate
+
+- **Fresh code only.** All source was written from scratch during the hackathon window. No pre-existing proprietary code, no prior unpublished team code, and no code of uncertain provenance was incorporated.
+- **No proprietary or cloud dependencies.** 100% offline edge execution with zero external cloud services. Every third-party crate and frontend package is itself open-source and license-compatible with MIT OR Apache-2.0 (permissive licenses only; no copyleft contamination).
+- **NASA material is grounding, not source.** NASA standards, datasets, and literature are used for context and grounding only; no NASA or third-party copyrighted code is redistributed in this repository.
+- **Provenance preserved.** All external datasets retain their original provenance tags and upstream licenses, and are cited in Section 11.
+
 ---
 
 ## 10. Team
