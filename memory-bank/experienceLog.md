@@ -142,3 +142,20 @@
   validation is not anatomical review. Unknown/missing/ambiguous counterparts clear
   selection; donor annotations do not transfer by ontology alone.
 - Evidence: GREENFIELD_PHASE23_RESULTS.md and ANATOMY_IDENTITY_AND_COVERAGE_ADR.md.
+
+
+## Anatomy source identity, partial hashes and subcomponent terms (2026-11-15)
+
+- Count nodes, meshes and ontology concepts separately. Exact node candidates and
+  positive POSITION accessors are evidence of declared geometry, not anatomical
+  correctness; optic nerve and its sheath are distinct requirements.
+- Partial GLB JSON SHA, multipart ETag and full asset SHA are distinct. A metadata
+  Range request must not silently fetch hundreds of MB when Range is ignored.
+- An umbrella derivative license does not establish every contribution's terms.
+  Z-Anatomy's official attribution lists noncommercial inner-ear/kidney inputs;
+  preserve existing credits and resolve provenance before commercial packaging.
+- A source record can establish a candidate and its license while a 403 leaves
+  package inspection/hash acquisition pending. Common Visible Human provenance
+  does not establish compatible registration. Do not copy community fit constants.
+- Sources and evidence: docs/anatomy/SOURCE_DECISIONS.json, SOURCE_INVENTORY.json,
+  COVERAGE_MATRIX.md and GREENFIELD_PHASE4_RESULTS.md. No physiology change.

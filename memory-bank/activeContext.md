@@ -1,5 +1,22 @@
 # Active Context: ARES-Health (NASA Space Apps Challenge 2026)
 
+## Greenfield phase 4 source inventory complete with declared gaps (2026-11-15)
+
+Branch work/MiServeRDC-greenfield-phase01; no main merge/push. Added reproducible
+source inventory and 17-row coverage matrix. Local male hashes verified; HRA v1.10
+and v1.5 GLB JSON read through bounded Range only, with metadata/crosswalk hashes
+and raw-data license/DOI evidence. Full HRA asset hashes remain unavailable.
+Denver lists female soleus/calcaneus under CC BY 4.0, but direct metadata fetch
+returned 403; actual package inspection remains pending. Female native IJV/vagus/
+vestibular/sheath and registration remain open. Upstream Z-Anatomy attribution
+also cites noncommercial ear/kidney inputs; exact local contribution mapping is
+unresolved, so existing nervous/visceral derivatives are not commercially cleared.
+Evidence: docs/evaluation/GREENFIELD_PHASE4_RESULTS.md and docs/anatomy/.
+Checks: 109 frontend tests (including 7 script checks), lint and fast probe pass.
+Next: phase 5 fixture-based conversion/registry/picking, retaining explicit source
+and provenance gates. No new geometry or copied registration transforms shipped.
+
+
 ## Greenfield phases 2 and 3 contract foundation (2026-11-15)
 
 Branch work/MiServeRDC-greenfield-phase01; no main merge/push. Implemented isolated

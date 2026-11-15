@@ -19,3 +19,17 @@ The files are copied unchanged from the pinned source commit recorded in `MANIFE
 The supplied GLB derivatives retain **CC BY-SA 4.0**: https://creativecommons.org/licenses/by-sa/4.0/ . A copy of its legal text is included in `LICENSE-CC-BY-SA-4.0.txt`. Keep these credits and licence information with redistributed geometry and respect the upstream share-alike terms for adaptations. The application code licence does not relicense the anatomical assets.
 
 This is a generic male anatomical reference, used for both scenario profiles. It is not an individual body scan. The source projects do not endorse this application.
+
+
+## Subcomponent provenance review (2026-11-15)
+
+The pinned derivative's umbrella declaration above is not evidence that every
+upstream contribution has been individually cleared. The official
+[Z-Anatomy attribution](https://github.com/Z-Anatomy/Models-of-human-anatomy/blob/master/License.txt)
+also lists an inner-ear contribution under CC BY-NC-SA 4.0 and a kidney contribution
+under CC BY-NC 4.0. The exact correspondence between those contributions and our
+pinned nervous/visceral GLB nodes is unresolved. Preserve all credits and flag these
+assets for provenance review before new redistribution or commercial packaging;
+do not assume an umbrella CC BY-SA declaration overrides component restrictions.
+See `docs/anatomy/SOURCE_DECISIONS.json` and `COVERAGE_MATRIX.md` in the repository.
+The newer direct BodyParts3D terms do not relicense these existing derivatives.

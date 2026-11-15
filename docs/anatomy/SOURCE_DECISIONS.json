@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-15",
+  "purpose": "RESEARCH_SOURCE_DECISIONS_NOT_SHIPPING_MANIFEST",
+  "sources": [
+    {
+      "id": "existing-z-anatomy-derivatives",
+      "decision": "PRESERVE_CURRENT_ASSETS_AND_CREDITS_REVIEW_SUBCOMPONENTS",
+      "derivativeCommit": "236f3a183108bcccc1f95fda1558be19d7486d00",
+      "declaredLicense": "CC-BY-SA-4.0",
+      "derivativeAttributionBlob": "e51826dc6d6143532bd34dda4a913d73a1d01575",
+      "upstreamLicenseUrl": "https://github.com/Z-Anatomy/Models-of-human-anatomy/blob/master/License.txt",
+      "upstreamLicenseBlob": "4d48d7e83d2b79ba4510314c7612b2c3c0a90f67",
+      "unresolved": [
+        "Inner ear contribution: CC-BY-NC-SA-4.0",
+        "Kidney contribution: CC-BY-NC-4.0",
+        "Exact contribution-to-local-node mapping not supplied"
+      ]
+    },
+    {
+      "id": "hra-female-v1.10",
+      "decision": "SOURCE_LICENSE_EVIDENCED_METADATA_INVENTORIED_FULL_ASSET_PENDING",
+      "license": "CC-BY-4.0",
+      "evidence": "Per-release metadata was_derived_from raw-data license and distributions",
+      "metadataUrl": "https://cdn.humanatlas.io/digital-objects/ref-organ/united-female/v1.10/metadata.json",
+      "doi": "https://doi.org/10.48539/HBM637.DWBM.744",
+      "authors": [
+        "Kristen Browne",
+        "Heidi Schlehlein"
+      ],
+      "unresolved": [
+        "Full asset hash/geometry not acquired",
+        "IJV/vagus/vestibular/optic-sheath native geometry not established"
+      ]
+    },
+    {
+      "id": "hra-female-v1.5",
+      "decision": "PELVIS_SUPPLEMENT_CANDIDATE_REGISTRATION_PENDING",
+      "license": "CC-BY-4.0",
+      "doi": "https://doi.org/10.48539/HBM352.BTSQ.586",
+      "requiredNames": [
+        "VH_F_pubis",
+        "VH_F_ischium"
+      ],
+      "unresolved": [
+        "Full asset acquisition/hash",
+        "Independent common-landmark alignment and donor/version compatibility"
+      ]
+    },
+    {
+      "id": "denver-vhf-final-stl",
+      "decision": "INSTITUTIONAL_COVERAGE_AND_LICENSE_EVIDENCE_ACQUISITION_PENDING",
+      "sourceUrl": "https://digitalcommons.du.edu/visiblehuman/1/",
+      "datasetDOI": "https://doi.org/10.56902/COB.vh.2022.1",
+      "paperDOI": "https://doi.org/10.1038/s41597-022-01905-2",
+      "datasetLicense": "CC-BY-4.0",
+      "articleLicense": "CC-BY-4.0",
+      "authors": [
+        "Thor E. Andreassen",
+        "Donald R. Hume",
+        "Landon D. Hamilton",
+        "Karen E. Walker",
+        "Sean E. Higinbotham",
+        "Kevin B. Shelburne"
+      ],
+      "finalStlUrl": "https://digitalcommons.du.edu/cgi/viewcontent.cgi?filename=3&article=1001&context=visiblehuman&type=additional",
+      "metadataUrl": "https://digitalcommons.du.edu/cgi/viewcontent.cgi?filename=11&article=1001&context=visiblehuman&type=additional",
+      "listedFinalStlSizeMB": 87.8,
+      "assetSha256": null,
+      "metadataDownloadStatus": 403,
+      "sourceListedStructures": [
+        "Soleus bilateral",
+        "Calcaneus bilateral",
+        "Femur bilateral",
+        "Pelvis bilateral"
+      ],
+      "unresolved": [
+        "Actual package/node filenames and hashes not inspected",
+        "Registration against HRA not performed"
+      ]
+    },
+    {
+      "id": "direct-bodyparts3d-future",
+      "decision": "OPTIONAL_NEW_PIPELINE_NOT_RELICENSING_CURRENT_DERIVATIVES",
+      "sourceUrl": "https://dbarchive.biosciencedbc.jp/en/bodyparts3d/lic.html",
+      "license": "CC-BY-4.0",
+      "licenseUpdated": "2025-02-27",
+      "unresolved": [
+        "No new direct dataset download/conversion or node mapping in this task"
+      ]
+    },
+    {
+      "id": "human-atlas-community-reference",
+      "decision": "REFERENCE_ONLY_NO_CODE_OR_FITTED_TRANSFORMS_IMPORTED",
+      "sourceUrl": "https://github.com/slorksmo/Human-Atlas",
+      "codeLicense": "MIT",
+      "licenseBlob": "11d941f1b306e0b093011a4c1399b9ecf535d1b9",
+      "attributionBlob": "3c85dbc77fae52bc34d680a5431392208d29954f",
+      "lowerLimbImporterBlob": "34983dff8c6463d44c256c25714ac2e417ce7063",
+      "unresolved": [
+        "Per-group donor fitting is not validated anatomical registration",
+        "Repository assembly counts do not establish native HRA coverage"
+      ]
+    }
+  ]
+}

@@ -244,3 +244,14 @@ or clinical validity claim is introduced. No implementation or model download.
 Typed nullable clinical display and exact channel/unit forecast selection are implemented.
 No new physiology constants or inference model. See [results](../evaluation/GREENFIELD_PHASE01_RESULTS.md)
 for pinned refs, local asset decoding, software regressions and remaining phase 2 gates.
+
+
+## Anatomy phase 4 source evidence (2026-11-15)
+
+[Inventory results](../evaluation/GREENFIELD_PHASE4_RESULTS.md) record official HRA
+raw-data license metadata, versioned DOIs and glTF JSON/crosswalk hashes; Denver
+DOI 10.56902/COB.vh.2022.1 and Andreassen et al. DOI 10.1038/s41597-022-01905-2;
+current DBCLS terms and Z-Anatomy's per-contribution attribution. Crossref CLI
+retrieved the paper. Named geometry candidates and exact source gaps are in
+[the matrix](../anatomy/COVERAGE_MATRIX.md). Full source blobs stay outside git.
+No heuristic threshold, copied fit or clinical validity claim is introduced.
