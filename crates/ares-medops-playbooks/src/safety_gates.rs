@@ -1,12 +1,18 @@
 //! Fase 11 (E2) & Fase 41 (N4): Macchina a stati deterministica dei 4 Hard Clinical Safety Gates.
 
+use crate::playbooks_bmed::apply_gate7_bmed_guards;
 use crate::pocus_multiorgan::PocusEfastScan;
+pub use crate::safety_gates_360::enforce_extended_360_safety_gates;
+use ares_causal_graph::space_pharmacology::MedicalConsumableInventory;
 use ares_core_types::constants::{
     GAI_MAX_SAFE_PCT, LBNP_MAX_SAFE_HR_BPM, LBNP_MAX_SYS_BP_DROP_MMHG,
     LBNP_MAX_VASOVAGAL_HR_DROP_BPM, LBNP_MIN_SAFE_HR_BRADYCARDIA_BPM, SHOCK_INDEX_ATTENTION,
     SHOCK_INDEX_CRITICAL, sanitize_f64,
 };
-use ares_core_types::medical_360::LbnpBaselineState;
+use ares_core_types::medical_360::{
+    BMedTriageClass, BehavioralHealthState, CrewBiologicalProfile, ExtendedSafetyGates,
+    LbnpBaselineState, RadiationArsState,
+};
 use ares_core_types::telemetry::{
     ActivePlaybook, Biometrics, CountermeasureAction, JugularHemodynamics, Musculoskeletal,
     SafetyGates, SpotPoctPanel, StressTestScenarioInput,
@@ -317,6 +323,75 @@ pub fn enforce_hard_clinical_safety_gates(
     )
 }
 
+/// Unified enforcement pipeline for Core Gates 1-4 and Extended Aerospace 360 Gates 5-7.
+#[allow(clippy::too_many_arguments)]
+pub fn enforce_all_clinical_safety_gates_360(
+    playbook: ActivePlaybook,
+    biometrics: &Biometrics,
+    musculo: &Musculoskeletal,
+    jugular: &JugularHemodynamics,
+    scenario: &StressTestScenarioInput,
+    efast: Option<&PocusEfastScan>,
+    fatigue_index: Option<f64>,
+    shock_index: Option<f64>,
+    lbnp_baseline: Option<LbnpBaselineState>,
+    poct: Option<&SpotPoctPanel>,
+    profile: Option<&CrewBiologicalProfile>,
+    radiation_ars: Option<&RadiationArsState>,
+    inventory: Option<&MedicalConsumableInventory>,
+    mission_sol: f64,
+    cumulative_habitat_gcr_gy: f64,
+    current_qtc_ms: Option<f64>,
+    gi_ulcer_history_or_bleed: bool,
+    behavioral_health: Option<&BehavioralHealthState>,
+) -> (ActivePlaybook, ExtendedSafetyGates) {
+    let mut pb = enforce_hard_clinical_safety_gates_with_lbnp_baseline(
+        playbook,
+        biometrics,
+        musculo,
+        jugular,
+        scenario,
+        efast,
+        fatigue_index,
+        shock_index,
+        lbnp_baseline,
+    );
+
+    let default_profile = CrewBiologicalProfile::default();
+    let effective_profile = profile.unwrap_or(&default_profile);
+    let (gated_pb, mut ext_gates) = enforce_extended_360_safety_gates(
+        pb,
+        biometrics,
+        poct,
+        effective_profile,
+        radiation_ars,
+        inventory,
+        mission_sol,
+        cumulative_habitat_gcr_gy,
+        current_qtc_ms,
+        shock_index,
+        gi_ulcer_history_or_bleed,
+    );
+    pb = gated_pb;
+
+    if let Some(bmed) = behavioral_health {
+        let should_enforce_gate7 = pb.playbook_id == "PLAYBOOK_29_BMED_PSYCHIATRIC_CRISIS"
+            || bmed.organic_delirium_mimic_detected
+            || bmed.airlock_software_lockout_active
+            || bmed.triage_classification != BMedTriageClass::Nominal;
+        if should_enforce_gate7 {
+            let qtc = current_qtc_ms.unwrap_or(410.0);
+            pb = apply_gate7_bmed_guards(pb, bmed, qtc);
+            ext_gates.gate7_bmed_delirium_or_restraint_guard_active =
+                bmed.organic_delirium_mimic_detected
+                    || bmed.airlock_software_lockout_active
+                    || bmed.triage_classification != BMedTriageClass::Nominal;
+        }
+    }
+
+    (pb, ext_gates)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -549,5 +624,64 @@ mod tests {
             enforced_si.actions[0].action_id,
             "ACT_EVA_NO_GO_COGNITIVE_OR_HEMODYNAMIC_LOCK"
         );
+    }
+
+    #[test]
+    fn test_enforce_all_clinical_safety_gates_360_integrates_gates_1_through_7() {
+        let mut pb = dummy_playbook_with_anticoag();
+        pb.playbook_id = "PLAYBOOK_29_BMED_PSYCHIATRIC_CRISIS".to_string();
+        pb.actions.push(CountermeasureAction {
+            action_id: "ACT_BMED_CMRS_RESTRAINT_Q15MIN_NEUROVASCULAR_CHECK".to_string(),
+            label: "CMRS restraint".to_string(),
+            category: "BEHAVIORAL_SAFETY".to_string(),
+            delta_rho_per_hour: 0.10,
+        });
+        pb.actions.push(CountermeasureAction {
+            action_id: "ACT_BMED_HALOPERIDOL_5MG_PLUS_LORAZEPAM_2MG_IM".to_string(),
+            label: "Haloperidol".to_string(),
+            category: "PHARMACOLOGICAL_UNLOCKED".to_string(),
+            delta_rho_per_hour: 0.15,
+        });
+
+        let bio = dummy_bio(88.0);
+        let musc = dummy_musculo(5.0);
+        let jug = dummy_jugular(false, false);
+        let scen = dummy_scenario(false, false, 0.0);
+        let bmed = BehavioralHealthState {
+            acute_agitation_or_psychosis: true,
+            organic_delirium_mimic_detected: true,
+            imminent_harm_to_self_or_vehicle: false,
+            triage_classification: BMedTriageClass::SecondaryOrganicToxicMetabolicDelirium,
+            ..BehavioralHealthState::default()
+        };
+
+        let (gated, ext) = enforce_all_clinical_safety_gates_360(
+            pb,
+            &bio,
+            &musc,
+            &jug,
+            &scen,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            10.0,
+            0.05,
+            Some(490.0),
+            false,
+            Some(&bmed),
+        );
+
+        assert!(gated.safety_gates.anticoagulant_lock_active);
+        assert!(ext.gate7_bmed_delirium_or_restraint_guard_active);
+        assert!(!gated.actions.iter().any(|a| a.action_id == "ACT_ANTICOAG_ENOXAPARIN"));
+        assert!(!gated.actions.iter().any(|a| a.action_id == "ACT_BMED_CMRS_RESTRAINT_Q15MIN_NEUROVASCULAR_CHECK"));
+        assert!(!gated.actions.iter().any(|a| a.action_id == "ACT_BMED_HALOPERIDOL_5MG_PLUS_LORAZEPAM_2MG_IM"));
+        assert!(gated.actions.iter().any(|a| a.action_id == "ACT_GATE7_TREAT_REVERSIBLE_ORGANIC_DELIRIUM_CAUSE_FIRST"));
+        assert!(gated.actions.iter().any(|a| a.action_id == "ACT_BMED_KETAMINE_1_2MG_KG_IM_DISSOCIATIVE"));
     }
 }
