@@ -120,6 +120,25 @@ interface ConeOption {
   ewmaLevel?: number;
 }
 
+const FORECAST_SIGNALS: Record<string, { label: string; unit?: string }> = {
+  hr_bpm: { label: 'Heart rate', unit: 'bpm' },
+  heart_rate_bpm: { label: 'Heart rate', unit: 'bpm' },
+  pulse_bpm: { label: 'Pulse rate', unit: 'bpm' },
+  pulse_rate_bpm: { label: 'Pulse rate', unit: 'bpm' },
+  spo2_pct: { label: 'Blood oxygen', unit: '%' },
+  resp_brpm: { label: 'Breathing rate', unit: 'br/min' },
+  resp_rate_brpm: { label: 'Breathing rate', unit: 'br/min' },
+  respiration_rate_brpm: { label: 'Breathing rate', unit: 'br/min' },
+  rmssd_ms: { label: 'HRV (RMSSD)', unit: 'ms' },
+  sdnn_ms: { label: 'HRV (SDNN)', unit: 'ms' },
+  lf_hf_ratio: { label: 'LF/HF ratio' },
+  rho_global: { label: 'Global safety margin' },
+};
+
+function forecastSignalLabel(channel: string): string {
+  return FORECAST_SIGNALS[channel.toLowerCase()]?.label ?? displayLabel(channel).replaceAll('_', ' ');
+}
+
 function buildShortEwmaConeOptions(
   tq: TimestralQuantilesSummary | null | undefined,
   hrvUnavailable: boolean,
@@ -153,7 +172,7 @@ function buildShortEwmaConeOptions(
       seen.add(cone.channel_name);
       options.push({
         channel: cone.channel_name,
-        label: cone.channel_name.toUpperCase(),
+        label: forecastSignalLabel(cone.channel_name),
         points: pts,
         ewmaLevel: typeof cone.ewma_level === 'number' && Number.isFinite(cone.ewma_level) ? cone.ewma_level : undefined,
       });
@@ -197,7 +216,7 @@ function buildConeOptions(
         seen.add(cone.channel_name);
         options.push({
           channel: cone.channel_name,
-          label: cone.channel_name.toUpperCase(),
+          label: forecastSignalLabel(cone.channel_name),
           points: pts,
         });
       }
@@ -210,10 +229,10 @@ function buildConeOptions(
     cone: MonotoneQuantileTriplet | null | undefined;
     suppressed: boolean;
   }> = [
-    { channel: 'hr_bpm', label: 'HR_BPM', cone: tq.heart_rate_bpm_cone, suppressed: false },
-    { channel: 'resp_brpm', label: 'RESP_BRPM', cone: tq.resp_rate_brpm_cone, suppressed: false },
-    { channel: 'rmssd_ms', label: 'RMSSD_MS', cone: tq.rmssd_ms_cone, suppressed: hrvUnavailable },
-    { channel: 'rho_global', label: 'RHO_GLOBAL', cone: tq.rho_global_cone, suppressed: hrvUnavailable },
+    { channel: 'hr_bpm', label: forecastSignalLabel('hr_bpm'), cone: tq.heart_rate_bpm_cone, suppressed: false },
+    { channel: 'resp_brpm', label: forecastSignalLabel('resp_brpm'), cone: tq.resp_rate_brpm_cone, suppressed: false },
+    { channel: 'rmssd_ms', label: forecastSignalLabel('rmssd_ms'), cone: tq.rmssd_ms_cone, suppressed: hrvUnavailable },
+    { channel: 'rho_global', label: forecastSignalLabel('rho_global'), cone: tq.rho_global_cone, suppressed: hrvUnavailable },
   ];
 
   for (const item of scalarFallback) {
@@ -299,17 +318,17 @@ export function TimestralQuantileConePanel({
 
       {/* Issue #11 Strict Nullability Banner */}
       {hrvUnavailable && (
-        <div className="rounded border border-caution/60 bg-black px-2.5 py-1.5 text-[11px] text-caution">
+        <div className="short-forecast-notice">
           Beat intervals are unavailable. HRV, global safety margin and time-to-limit forecasts are unavailable for this input.
         </div>
       )}
 
       {/* Conformal Abstention Certificate Banner */}
       {tq?.abstention_certificate && isAbstained && (
-        <div className="rounded border border-caution/50 bg-black px-2.5 py-1.5 text-[11px] text-gray-300">
+        <div className="short-forecast-notice">
           Forecast availability: {displayLabel(tq.abstention_certificate.reason)}
           {tq.abstention_certificate.abstained
-            ? ` [DETERMINISTIC FALLBACK ACTIVE | cov_err=${tq.abstention_certificate.empirical_coverage_error.toFixed(3)}]`
+            ? ` · Deterministic fallback · coverage error ${tq.abstention_certificate.empirical_coverage_error.toFixed(3)}`
             : ''}
         </div>
       )}
@@ -357,14 +376,16 @@ export function TimestralQuantileConePanel({
             .join(' ');
 
           const latestPt = activeCone.points[activeCone.points.length - 1];
-          const bandFill = isAbstained ? '#e4af65' : '#72cdb6';
-          const bandStroke = isAbstained ? '#e4af65' : '#72cdb6';
+          const unit = FORECAST_SIGNALS[activeCone.channel.toLowerCase()]?.unit;
 
           return (
-            <div className="short-forecast-chart">
-              <div className="forecast-legend">
-                <span><i aria-hidden="true" />Median</span>
-                <span><i className="forecast-range" aria-hidden="true" />5th–95th percentile</span>
+            <div className="short-forecast-chart" data-fallback={isAbstained}>
+              <div className="short-forecast-chart-header">
+                <strong>{activeCone.label}{unit && <span> · {unit}</span>}</strong>
+                <div className="forecast-legend">
+                  <span><i aria-hidden="true" />Median</span>
+                  <span><i className="forecast-range" aria-hidden="true" />5th–95th percentile</span>
+                </div>
               </div>
               <svg
                 viewBox={`0 0 ${W} ${H}`}
@@ -372,11 +393,14 @@ export function TimestralQuantileConePanel({
                 role="img"
                 aria-label={`Forecast range for ${activeCone.label}`}
               >
-                <path d={bandPath} fill={bandFill} fillOpacity="0.16" />
+                {[yHigh, (yHigh + yLow) / 2, yLow].map(value => (
+                  <line key={value} x1={PAD_X} x2={W - PAD_X} y1={sy(value)} y2={sy(value)} className="short-forecast-grid" />
+                ))}
+                <path d={bandPath} fill="var(--short-forecast-trace)" fillOpacity="0.18" />
                 <path
                   d={medianPath}
                   fill="none"
-                  stroke={bandStroke}
+                  stroke="var(--short-forecast-trace)"
                   strokeWidth="2"
                   strokeDasharray={isAbstained ? '5 3' : undefined}
                 />
@@ -387,11 +411,11 @@ export function TimestralQuantileConePanel({
                       x2={sx(p.xi)}
                       y1={sy(p.triplet.q95)}
                       y2={sy(p.triplet.q05)}
-                      stroke={bandStroke}
+                      stroke="var(--short-forecast-trace)"
                       strokeOpacity="0.45"
                       strokeWidth="1.5"
                     />
-                    <circle cx={sx(p.xi)} cy={sy(p.triplet.q50)} r="3.5" fill={bandStroke} />
+                    <circle cx={sx(p.xi)} cy={sy(p.triplet.q50)} r="3.5" fill="var(--short-forecast-trace)" />
                     <text
                       x={sx(p.xi)}
                       y={H - 4}
@@ -412,17 +436,14 @@ export function TimestralQuantileConePanel({
                 </text>
               </svg>
               {latestPt && (
-                <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-gray-400">
-                  <span>
-                    {activeCone.label} {latestPt.label} · median {latestPt.triplet.q50.toFixed(2)} · range {latestPt.triplet.q05.toFixed(2)}–{latestPt.triplet.q95.toFixed(2)}
-                  </span>
+                <dl className="short-forecast-summary">
+                  <div><dt>Horizon</dt><dd>{latestPt.label}</dd></div>
+                  <div><dt>Median</dt><dd>{latestPt.triplet.q50.toFixed(2)}{unit && <small> {unit}</small>}</dd></div>
+                  <div><dt>Forecast range</dt><dd>{latestPt.triplet.q05.toFixed(2)}–{latestPt.triplet.q95.toFixed(2)}{unit && <small> {unit}</small>}</dd></div>
                   {ttvCone && (
-                    <span className="text-advisory">
-                      TTV q05-q50-q95: [{ttvCone.q05.toFixed(1)}, {ttvCone.q50.toFixed(1)},{' '}
-                      {ttvCone.q95.toFixed(1)}] h
-                    </span>
+                    <div><dt>Time to limit</dt><dd>{ttvCone.q50.toFixed(1)} h <small>({ttvCone.q05.toFixed(1)}–{ttvCone.q95.toFixed(1)} h)</small></dd></div>
                   )}
-                </div>
+                </dl>
               )}
             </div>
           );

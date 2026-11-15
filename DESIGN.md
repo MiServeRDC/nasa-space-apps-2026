@@ -1,20 +1,19 @@
 # ARES Health cockpit
 
-Reference: *Aether — Centralized Network Console*, by Samnang Aing, supplied as a Markdown design reference. The HTML named in that document was unavailable. This implementation adapts its visual system to the existing ARES flight workspace.
+The desktop cockpit adopts the OLED visual system from `work/MiServeRDC` at `cfcb41a`. Gather, Evaluate and Act remain separately selected screens. Existing data, anatomy, controls and workflows carry through the visual refresh.
 
 ## Visual system
 
 | Role | Value |
 | --- | --- |
-| Background | #040607 |
-| Recessed controls | #000000 |
-| Raised panels | #111615 |
-| Panel edges | #373b34, with #817b6e for emphasis |
-| Primary controls and working selection | #d8a85f |
-| Active telemetry and focus | #5fcbb9 |
-| Text and metadata | #ffffff and #a1a1aa |
+| Background | #000000 |
+| Panels | #080d15 |
+| Panel headings | #0b1321 |
+| Panel borders | #27364b |
+| Working selection and focus | #38bdf8 |
+| Primary text | #e2e8f0 |
 
-Space Grotesk headlines carry the hierarchy. IBM Plex Mono labels, data and numeric inputs use locally bundled fonts. Controls use an 8 px radius and panels use a 16 px radius. Amber marks working selection and teal marks focus and active links. The existing warning and critical colors retain their semantic roles.
+Locally bundled Geist sets the interface and display type. Geist Mono is used for telemetry, mission identity and navigation. Panels use restrained blue-slate edges and a compact radius. Cyan marks controls and selection, while warning and critical colors keep their operational meaning.
 
 ## Workspace
 
@@ -30,7 +29,7 @@ GSAP animates the masthead entrance and scrubs only atmospheric lighting as it s
 
 The implementation keeps `main` as the source for telemetry validation, anomaly injection, 15 playbooks, safety gates and mission tools. Gather opens on the compact monitor with signal coverage and 30-second ranges from `work/LelloXV`. Signal coverage sits directly below Mission readiness. The historical BIDMC chart and anomaly panel keep their place in the main column. In local simulation, the chart explains how to connect a replay.
 
-Evaluate opens with a horizontal row of scenario inputs on desktop. The paired anatomical atlas and the full 14-day forecast sit side by side below it. Narrow screens stack those panels. The atlas provides body profile selection, layer controls and photo attachment in the open. The ultrasound section follows the comparison. The ocular scan timer is an explicit local simulation control. Short-term forecasts and muscle and bone estimates remain expandable. The short-term forecast uses the same chart palette and separation of technical details as the main forecast.
+Evaluate opens with a horizontal row of scenario inputs on desktop. The paired anatomical atlas and the full 14-day forecast sit side by side below it. Narrow screens stack those panels. The atlas provides body profile selection, layer controls and photo attachment in the open. The ultrasound section follows the comparison. The ocular scan timer is an explicit local simulation control. Short-term forecasts and muscle and bone estimates remain expandable. The short-term forecast uses the OLED panel palette, human-readable signal labels, units on the chart and summaries, and a separate disclosure for model details. Amber marks a deterministic fallback.
 
 Act puts the current instruction and its confirmation controls before the numbered checklist and the procedure library. The monitoring status follows incoming readings independently of checklist completion. Supporting explanations and sources stay behind a disclosure.
 
