@@ -7,6 +7,7 @@ import {
 } from './binaryTelemetryDecoder';
 import { buildPacket, type WhatIf } from './scenario';
 import { isValidTelemetryPayload, normalizeTelemetryPacket } from './telemetryValidation';
+import { resolveEngineEndpoints } from './engineEndpoint';
 import {
   IS_ARES_DESKTOP_SHELL,
   type OsStatusBarState,
@@ -16,14 +17,14 @@ import {
 export type { OsStatusBarState, TransportMode };
 export { IS_ARES_DESKTOP_SHELL };
 
-const DEFAULT_HTTP_BASE = 'http://127.0.0.1:8080';
-
-export const ENGINE_HTTP_URL: string =
-  (import.meta.env?.VITE_ARES_HTTP_URL as string | undefined) || DEFAULT_HTTP_BASE;
-
-export const ENGINE_WS_URL: string =
-  (import.meta.env?.VITE_ARES_WS_URL as string | undefined) ||
-  `${ENGINE_HTTP_URL.replace(/^http/i, 'ws')}/ws/telemetry`;
+const endpoints = resolveEngineEndpoints({
+  httpUrl: import.meta.env?.VITE_ARES_HTTP_URL,
+  wsUrl: import.meta.env?.VITE_ARES_WS_URL,
+  browserOrigin: typeof window === 'undefined' ? undefined : window.location.origin,
+  desktop: IS_ARES_DESKTOP_SHELL,
+});
+export const ENGINE_HTTP_URL = endpoints.http;
+export const ENGINE_WS_URL = endpoints.ws;
 
 export type LinkState = 'ENGINE_LIVE' | 'LOCAL_SIMULATION';
 

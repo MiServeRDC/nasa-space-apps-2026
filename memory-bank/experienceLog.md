@@ -260,3 +260,16 @@ inspected; no procedural or male substitution closes that coverage requirement.
 - With cfg-gated integration tests, the newest executable after default Cargo tests
   may contain zero cases. Select the feature-enabled binary by its test list and
   verify actual case counts, not just exit zero, in network-denied reruns.
+
+
+## Judging deployment versus local qualification (2026-11-15)
+
+- A browser defaulting to 127.0.0.1 targets the judge's computer after static
+  publication. Use same-origin API/WS serving, derive wss for HTTPS, retain explicit
+  overrides and test the actual bundled Rust entry point.
+- A successful native release or compose syntax check is not a tested Linux/TLS
+  deployment. Record the missing daemon/hosting target and require an external
+  logged-out browser check before declaring online readiness.
+- Test package relocation with development tools removed from PATH, recording off
+  and proper termination. Include source identity/dirty state and checksums; never
+  pass a dirty preview off as a final release or rely on private repository links.

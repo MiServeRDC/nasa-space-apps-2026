@@ -5,6 +5,7 @@
 pub mod anomaly_eval;
 pub mod edge_llm_bridge;
 pub mod fastmcp_router;
+pub mod frontend;
 pub mod mcp_stdio;
 #[cfg(feature = "shm-ipc")]
 pub mod shm_bus;

@@ -1,5 +1,31 @@
 # Active Context: ARES-Health (NASA Space Apps Challenge 2026)
 
+## Judging release preparation (2026-11-15)
+
+Baseline main 56b888d, release/judges-handoff. User explicitly declined slides and
+will create the video later; no slide or replacement video was generated.
+Prepared optional single-process Rust frontend/API/WS serving, same-origin browser
+endpoint discovery with desktop/explicit overrides, Vite proxy, readiness endpoint,
+static-root/origin/security headers and graceful SIGTERM handling. Original
+loopback default and clinical behavior are unchanged. Added native bundler/launcher,
+notices/checksums and generic container/proxy templates; no actual public deploy.
+
+Verified locally: 337 all-feature and 329 default Rust tests, 175 frontend tests,
+TypeScript/release build, all-target/all-feature workspace Clippy, 18 production
+checks served directly by the release Rust binary, relocated native startup with
+only system utilities on PATH, recording off/null HRV and SIGTERM exit 0.
+Docker compose syntax passes, but OrbStack daemon is absent: no Linux image-build
+claim. Artifact previews remain outside git; final packages require a clean commit.
+
+Status is NOT yet publicly online-qualified: hosting account/domain is unspecified,
+actual target image/TLS/wss needs an external-browser test, and judge links must
+be public without permissions (original repo still private). Notice index records
+available license texts/identifiers, not full legal clearance. NASA/PhysioNet and
+model/AI boundaries are explicit in revised submission copy. No paid services,
+hosted Actions, repository visibility changes or portal submission were performed.
+See docs/evaluation/JUDGES_HANDOFF_READINESS.md and deploy/judges/README.md.
+
+
 ## Main retest and same-source WebSocket recovery (2026-11-15)
 
 PR #33 and #34 are integrated in main 9f93263. A fresh retest passed 334

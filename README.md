@@ -2,9 +2,21 @@
 
 ## Abstract
 
-Long-duration exploration missions expose crews to space radiation, isolation and confinement, altered gravity, and a hostile closed environment, producing immune, musculoskeletal, cardiovascular, and behavioral deconditioning. Beyond lunar distance, the speed-of-light barrier makes real-time ground support impossible: Earth–Mars one-way latency is 4–24 minutes (an 8–48 minute round trip), and solar conjunction imposes communication blackouts of up to two weeks every ~26 months. Any architecture that depends on cloud APIs or Internet-hosted models is therefore invalid for deep space.
+ARES-Health is an offline astronaut-health software prototype built around
+**Gather -> Evaluate -> Act**. A Rust engine streams recorded PhysioNet BIDMC
+vital signs to a React cockpit, learns a personal baseline, detects explicitly
+injected deviations and selects an illustrative response checklist. The interface
+separates recordings, derived values and What-If simulations; missing HRV and
+unsupported global indices remain unavailable. No external inference service is
+required for this demo.
 
-**ARES-Health** addresses this by relocating the entire *gather -> evaluate -> act* loop onto the vehicle as a deterministic, offline edge system. A Safe-Rust engine ingests multimodal biosignals, models non-linear multi-organ coupling on an Astronaut Dynamic Health Graph (ADHG), quantifies a continuous margin of safety with Normalized Quantitative Semantics Signal Temporal Logic (NQS-STL), and emits deterministic, gated countermeasures through NASA MedOps playbooks. A microgravity-optimized React cockpit renders the results as a Mission Readiness Index, a 3D anatomical deconditioning map, and an interactive playbook runner. The system runs with zero external dependencies.
+**Judges:** start with [the walkthrough](docs/submission/JUDGES_START_HERE.md).
+[Deployment and packaging](deploy/judges/README.md) cover the single-process
+frontend/API/WS build. The demo is not clinically validated or NASA-certified;
+physical hardware, native GUI and LLM/voice weights are not qualified by the
+software tests. Longer architecture descriptions below include research/scenario
+modules and do not establish production or clinical readiness.
+
 
 ---
 

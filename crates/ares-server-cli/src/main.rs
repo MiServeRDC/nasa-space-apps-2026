@@ -6,6 +6,7 @@ use anyhow::{Context, Result, ensure};
 use ares_causal_graph::dataset_graph::AresUnifiedDatasetGraph;
 use ares_server_cli::anomaly_eval::{Split, evaluate_split, load_records, render_markdown};
 use ares_server_cli::mcp_stdio::run_mcp_stdio_loop;
+use ares_server_cli::frontend::with_frontend;
 use ares_server_cli::ws_server::{SharedMissionState, build_axum_router};
 use clap::{Parser, ValueEnum};
 use std::path::{Path, PathBuf};
@@ -50,6 +51,10 @@ pub struct CliArgs {
     #[arg(long, default_value = "127.0.0.1:8080")]
     pub bind: String,
 
+    /// Serve a built cockpit directory from the same HTTP/WebSocket process.
+    #[arg(long)]
+    pub frontend_dir: Option<PathBuf>,
+
     /// Path to the directory containing the PhysioNet BIDMC v1.0.0 CSV files.
     #[arg(long, default_value = "data/bidmc")]
     pub data_dir: PathBuf,
@@ -93,6 +98,19 @@ fn resolve_repo_root(explicit: Option<&Path>, data_dir: &Path) -> PathBuf {
         return grandparent.to_path_buf();
     }
     PathBuf::from(".")
+}
+
+async fn wait_for_shutdown() -> std::io::Result<()> {
+    #[cfg(unix)]
+    {
+        let mut terminate = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())?;
+        tokio::select! {
+            result = tokio::signal::ctrl_c() => result,
+            _ = terminate.recv() => Ok(()),
+        }
+    }
+    #[cfg(not(unix))]
+    tokio::signal::ctrl_c().await
 }
 
 fn export_and_verify_graph_bundle(graph: &AresUnifiedDatasetGraph, repo_root: &Path) -> Result<()> {
@@ -149,6 +167,8 @@ async fn main() -> Result<()> {
         .init();
 
     let args = CliArgs::parse();
+    ensure!(args.frontend_dir.is_none() || matches!(args.mode, ServerMode::WsOnly | ServerMode::WsAndMcp),
+        "--frontend-dir requires ws-only or ws-and-mcp mode");
     ensure!(args.storage_dir.is_none() || matches!(args.mode, ServerMode::WsOnly | ServerMode::WsAndMcp),
         "--storage-dir requires ws-only or ws-and-mcp mode");
     let repo_root = resolve_repo_root(args.repo_root.as_deref(), &args.data_dir);
@@ -266,14 +286,18 @@ async fn main() -> Result<()> {
                 }).context("failed starting MCP stdio thread")?;
             }
 
-            let app = build_axum_router(Arc::clone(&state));
+            let api = build_axum_router(Arc::clone(&state));
+            let app = match args.frontend_dir.as_deref() {
+                Some(dir) => with_frontend(api, dir).context("invalid frontend directory")?,
+                None => api,
+            };
             let listener = tokio::net::TcpListener::bind(&args.bind)
                 .await
                 .with_context(|| format!("impossibile eseguire il bind su {}", args.bind))?;
             tracing::info!(bind = %args.bind, "Server Axum 20 Hz + Timestral 1 Hz attivo");
             let shutdown_state = Arc::clone(&state);
             let result = axum::serve(listener, app).with_graceful_shutdown(async move {
-                if let Err(error) = tokio::signal::ctrl_c().await {
+                if let Err(error) = wait_for_shutdown().await {
                     tracing::error!(%error, "failed waiting for shutdown signal");
                 }
                 shutdown_state.request_shutdown();
