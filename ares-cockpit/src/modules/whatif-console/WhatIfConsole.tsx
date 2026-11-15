@@ -1,11 +1,11 @@
 import { CockpitSelect } from '../ui-primitives/CockpitControls';
-import { DEFAULT_WHATIF, type CrewSex, type WhatIf } from '../../lib/scenario';
+import { type CrewSex, type WhatIf } from '../../lib/scenario';
 
 type NumericKey = Exclude<keyof WhatIf, 'sex'>;
 
 const SLIDERS: { key: NumericKey; label: string; unit: string; min: number; max: number; step: number; hint: string }[] = [
-  { key: 'mission_day', label: 'Mission day', unit: 'd', min: 0, max: 900, step: 1, hint: 'Days you have spent in microgravity' },
-  { key: 'ppco2_mmhg', label: 'Cabin CO₂', unit: 'mmHg', min: 0.5, max: 8, step: 0.1, hint: 'Keep below 4.0 mmHg to protect your vision' },
+  { key: 'mission_day', label: 'Mission day', unit: 'd', min: 0, max: 900, step: 1, hint: 'Elapsed days in the scenario' },
+  { key: 'ppco2_mmhg', label: 'Cabin CO₂', unit: 'mmHg', min: 0.5, max: 8, step: 0.1, hint: 'NASA nominal cabin limit: 3 mmHg averaged over one hour' },
   { key: 'ared_load_pct', label: 'ARED exercise load', unit: '%', min: 0, max: 150, step: 5, hint: 'Daily resistive training for muscles and bone' },
   { key: 'lbnp_mmhg', label: 'LBNP leg pressure', unit: 'mmHg', min: -50, max: 0, step: 1, hint: 'Pulls fluid back toward your legs' },
   { key: 'artifact_level', label: 'Signal noise', unit: '', min: 0, max: 1, step: 0.05, hint: 'Sweat, fan vibration, or exercise motion' },
@@ -14,6 +14,7 @@ const SLIDERS: { key: NumericKey; label: string; unit: string; min: number; max:
 export function WhatIfConsole({
   value,
   onChange,
+  onReset,
   ventEvent,
   onRearm,
   link,
@@ -23,6 +24,7 @@ export function WhatIfConsole({
 }: {
   value: WhatIf;
   onChange: (w: WhatIf) => void;
+  onReset: () => void;
   ventEvent: string | null;
   onRearm: () => void;
   link: 'ENGINE_LIVE' | 'LOCAL_SIMULATION';
@@ -58,7 +60,7 @@ export function WhatIfConsole({
         </div>
       </div>
       <label className="scenario-profile">
-        <span>Scenario profile</span>
+        <span>Simulation body profile</span>
         <CockpitSelect value={value.sex} onChange={event => setSex(event.currentTarget.value as CrewSex)}
           className="rounded border border-line bg-black px-2">
           <option value="MALE">Male</option>
@@ -92,10 +94,7 @@ export function WhatIfConsole({
         <button
           type="button"
           className="cursor-pointer rounded border border-line px-2.5 py-1 font-mono text-gray-300 hover:border-nominal"
-          onClick={() => {
-            onChange(DEFAULT_WHATIF);
-            onToggleOverlay(false);
-          }}
+          onClick={onReset}
         >
           Reset conditions
         </button>

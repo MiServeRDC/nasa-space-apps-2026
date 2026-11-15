@@ -1,3 +1,4 @@
+import { CloseButton } from '../ui-primitives/CloseButton';
 import { CockpitSelect } from '../ui-primitives/CockpitControls';
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { createPortal } from 'react-dom';
@@ -143,11 +144,20 @@ export function AiInjuryModal({
     void runOpticalAnalysis(file, region);
   };
 
-  const handleCancelClose = () => {
+  const handleCancelClose = useCallback(() => {
     clearTimers();
     revokeUnpinnedBlobs();
     onClose();
-  };
+  }, [clearTimers, onClose, revokeUnpinnedBlobs]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') handleCancelClose();
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [isOpen, handleCancelClose]);
 
   const handleConfirmPin = () => {
     if (!result) return;
@@ -193,13 +203,7 @@ export function AiInjuryModal({
               OFFLINE OPTICAL WOUND TRIAGE &amp; 0g PROTOCOL
             </span>
           </div>
-          <button
-            type="button"
-            onClick={handleCancelClose}
-            className="min-h-[44px] cursor-pointer rounded border border-line bg-black px-3 py-1 text-gray-300 hover:border-white hover:text-white"
-          >
-            CLOSE
-          </button>
+          <CloseButton onClick={handleCancelClose} />
         </div>
 
         <div className="mt-2 rounded border border-advisory/50 bg-panel px-3 py-1.5 font-mono text-[11px] text-advisory">

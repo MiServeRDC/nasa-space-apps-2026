@@ -1,6 +1,7 @@
+import { CloseButton } from '../ui-primitives/CloseButton';
 import { ArrowRightIcon } from '@phosphor-icons/react';
 import { CockpitSelect } from '../ui-primitives/CockpitControls';
-import { lazy, memo, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { equalTelemetryValue } from '../../lib/equalTelemetryValue';
 import { DeferredPanel } from '../ui-primitives/DeferredPanel';
 import { Canvas } from '@react-three/fiber';
@@ -21,24 +22,15 @@ import type {
   ModelValidationStatus,
 } from '../../types/telemetry';
 const AiInjuryModal = lazy(() => import('./AiInjuryModal').then(m => ({default:m.AiInjuryModal})));
-import {
-  CephaladFluidShift,
-  MusclesLayer,
-  SkeletonLayer,
-  SkinLayer,
-  VascularNeuroLayer,
-  type V3,
-} from './AnatomicalLayers';
+import type { V3 } from './AnatomicalLayers';
 import type { AtlasAnchors } from './AtlasBody';
 const ATLAS_CAMERA: { position: [number, number, number]; fov: number } = {
-  position: [0, 0.45, 4.5],
+  position: [0, 0.45, 3.95],
   fov: 45,
 };
 const ATLAS_TARGET: [number, number, number] = [0, 0.45, 0];
 const PAIRED_DEPTHS = ['Skin', 'Muscles', 'Organs and vessels', 'Skeleton'] as const;
 const PairedAtlasBody = lazy(() => import('./PairedAtlasBody').then(m => ({ default: m.PairedAtlasBody })));
-const AtlasBody = lazy(() => import('./AtlasBody').then(m => ({default:m.AtlasBody})));
-import { GlbAssetErrorBoundary, NasaGlbAssetLayer, type GlbLoadStatus } from './NasaGlbAssetLayer';
 import {
   projectHypergraphTo3D,
   type ProjectedAnatomicalNode,
@@ -46,85 +38,6 @@ import {
 
 export type NodeId = AnatomicalRegionWireId;
 export type TargetTab = 'POCUS' | 'MUSCLE_BONE' | 'FORECAST';
-
-interface LayerConfig {
-  skin: boolean;
-  muscles: boolean;
-  vascular: boolean;
-  organs: boolean;
-  skeleton: boolean;
-  markers: boolean;
-  skinOpacity: number;
-  muscleOpacity: number;
-}
-
-const PRESETS: Record<string, { label: string; cfg: LayerConfig }> = {
-  ALL: {
-    label: 'ALL LAYERS',
-    cfg: {
-      skin: true,
-      muscles: true,
-      vascular: true,
-      organs: true,
-      skeleton: true,
-      markers: true,
-      skinOpacity: 0.14,
-      muscleOpacity: 0.35,
-    },
-  },
-  SKIN_ONLY: {
-    label: 'SKIN ONLY',
-    cfg: {
-      skin: true,
-      muscles: false,
-      vascular: false,
-      organs: false,
-      skeleton: false,
-      markers: true,
-      skinOpacity: 0.92,
-      muscleOpacity: 0.3,
-    },
-  },
-  MUSCLE_BONE: {
-    label: 'MUSCLE + BONE',
-    cfg: {
-      skin: false,
-      muscles: true,
-      vascular: false,
-      organs: false,
-      skeleton: true,
-      markers: true,
-      skinOpacity: 0.1,
-      muscleOpacity: 0.55,
-    },
-  },
-  VASCULAR: {
-    label: 'VASCULAR / X-RAY',
-    cfg: {
-      skin: true,
-      muscles: false,
-      vascular: true,
-      organs: true,
-      skeleton: true,
-      markers: true,
-      skinOpacity: 0.08,
-      muscleOpacity: 0.25,
-    },
-  },
-  SKELETON: {
-    label: 'SKELETON ONLY',
-    cfg: {
-      skin: false,
-      muscles: false,
-      vascular: false,
-      organs: false,
-      skeleton: true,
-      markers: false,
-      skinOpacity: 0.1,
-      muscleOpacity: 0.3,
-    },
-  },
-};
 
 function clamp01(v: number): number {
   return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0;
@@ -228,7 +141,7 @@ function SpatialNodePin({
         <meshBasicMaterial colorWrite={false} depthWrite={false} />
       </mesh>
       <mesh raycast={() => {}}>
-        <sphereGeometry args={[selected ? 0.021 : 0.014, 12, 12]} />
+        <sphereGeometry args={[selected ? 0.023 : 0.016, 12, 12]} />
         <meshBasicMaterial color={node.color} depthTest={false} depthWrite={false} transparent />
       </mesh>
     </group>
@@ -351,16 +264,11 @@ function BodyHeatmapView({
   onOpenPlaybook,
 }: BodyHeatmapProps) {
   const quality=useRenderQuality(renderingActive);
-  const [cfg, setCfg] = useState<LayerConfig>(PRESETS.ALL.cfg);
+  const [showMarkers, setShowMarkers] = useState(true);
   const [selected, setSelected] = useState<NodeId | null>(null);
-  const [bodyModel, setBodyModel] = useState<'paired' | 'atlas' | 'rig'>('paired');
-  const depthId = useId();
-  const [depth, setDepth] = useState(0);
-  const [atlasFailed, setAtlasFailed] = useState(false);
+  const [layers, setLayers] = useState<number[]>([0]);
   const [atlasAnchors, setAtlasAnchors] = useState<AtlasAnchors | null>(null);
-  const [glbEnabled, setGlbEnabled] = useState(false);
-  const [glbStatus, setGlbStatus] = useState<GlbLoadStatus>('OFF');
-  const [glbDetail, setGlbDetail] = useState('Procedural anatomical mesh active');
+  const currentAnchors = atlasAnchors?.profile === sex ? atlasAnchors : null;
 
   const [contextLost, setContextLost] = useState<boolean>(false);
   const canvasDomRef = useRef<HTMLCanvasElement | null>(null);
@@ -402,18 +310,12 @@ function BodyHeatmapView({
   // Injury modal & manual marker state
   const [modalOpen, setModalOpen] = useState(false);
   const [modalRegion, setModalRegion] = useState<InjuryRegionId>('LEFT_FOREARM');
-  const [modalInitialImage, setModalInitialImage] = useState<File | undefined>(undefined);
   const [editingInjury, setEditingInjury] = useState<InjuryMarker | null>(null);
   const [manualFormOpen, setManualFormOpen] = useState(false);
-  const [manualRegion, setManualRegion] = useState<InjuryRegionId>('LEFT_FOREARM');
+  const [manualPoint, setManualPoint] = useState<InjuryMarker['placement']>();
+  const pendingPoint = manualPoint?.profile === sex ? manualPoint : undefined;
   const [manualSeverity, setManualSeverity] = useState<InjurySeverity>('MODERATE');
   const [manualTitle, setManualTitle] = useState('');
-  const photoInputRef = useRef<HTMLInputElement>(null);
-
-  const handleGlbStatus = useCallback((status: GlbLoadStatus, detail: string) => {
-    setGlbStatus(status);
-    setGlbDetail(detail);
-  }, []);
 
   const handleAnchors = useCallback((anchors: AtlasAnchors) => {
     setAtlasAnchors(anchors);
@@ -449,210 +351,117 @@ function BodyHeatmapView({
     [hypergraphSpatial, localFallback],
   );
 
-  const skinOnly = cfg.skin && !cfg.skeleton && !cfg.muscles && !cfg.vascular;
-
-  const toggle = (k: 'skin' | 'muscles' | 'vascular' | 'organs' | 'skeleton' | 'markers') =>
-    setCfg((c) => ({
-      ...c,
-      [k]: !c[k],
-      skinOpacity: k === 'skin' && !c.skin ? 0.14 : c.skinOpacity,
-    }));
-
-  const selectedNode = selected ? scene.nodesByRegion[selected] : null;
+  const selectedNode = selected && !manualFormOpen ? scene.nodesByRegion[selected] : null;
   const selectedMetrics = selectedNode ? liveMetricForNode(selectedNode, s) : null;
 
 
-  const handlePhotoSelected = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setEditingInjury(null);
-    setModalInitialImage(file);
-    setModalRegion(manualRegion);
-    setModalOpen(true);
-    e.target.value = '';
-  };
+  useEffect(() => {
+    if (!manualFormOpen) return;
+    const cancelPlacement = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setManualPoint(undefined);
+      setManualFormOpen(false);
+    };
+    window.addEventListener('keydown', cancelPlacement);
+    return () => window.removeEventListener('keydown', cancelPlacement);
+  }, [manualFormOpen]);
 
   const handleCreateManualInjury = () => {
-    if (!onAddInjury) return;
-    const meta = INJURY_REGIONS[manualRegion];
+    if (!onAddInjury || !pendingPoint || !currentAnchors) return;
+    const distance = (region: InjuryRegionId) => currentAnchors.injuries[region]
+      .reduce((sum, axis, index) => sum + (axis - pendingPoint.point[index]) ** 2, 0);
+    const region = (Object.keys(currentAnchors.injuries) as InjuryRegionId[])
+      .reduce((nearest, candidate) => distance(candidate) < distance(nearest) ? candidate : nearest);
     onAddInjury({
-      id: `manual-${manualRegion}-${Date.now()}`,
-      region: manualRegion,
-      title: manualTitle.trim() || meta.defaultTitle,
+      id: `manual-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      region,
+      title: manualTitle.trim() || 'Body marker',
       severity: manualSeverity,
       methodId: 'MANUAL_CREW_ENTRY',
       validationStatus: 'ILLUSTRATIVE_UNVALIDATED',
-      recommendedPlaybookId: meta.recommendedPlaybookId,
-      summary: meta.defaultSummary,
-      careSteps: meta.defaultCare,
+      placement: pendingPoint,
+      summary: 'Manually placed on the anatomical atlas.',
+      careSteps: [],
       detectedAt: new Date().toISOString().slice(11, 19) + 'Z',
     });
+    setManualPoint(undefined);
     setManualTitle('');
     setManualFormOpen(false);
   };
 
+  const visibleInjuries = injuries.filter(injury => !injury.placement || injury.placement.profile === sex);
+  const [inspectedMarker, setInspectedMarker] = useState<string | null>(null);
+  const markerDetails = !manualFormOpen && visibleInjuries.find(injury => injury.id === inspectedMarker && injury.placement);
   const openInjury = (injury: InjuryMarker) => {
+    if (injury.placement) {
+      setSelected(null);
+      setInspectedMarker(injury.id);
+      return;
+    }
     setEditingInjury(injury);
-    setModalInitialImage(undefined);
     setModalOpen(true);
   };
-
-  const effectiveAtlasActive = bodyModel !== 'rig' && !atlasFailed;
-  const pairedActive = effectiveAtlasActive && bodyModel === 'paired';
 
   return (
     <div className="anatomical-explorer flex h-full flex-col gap-2 bg-black">
       <section className="atlas-preferences anatomy-toolbar" aria-label="Anatomy model and annotations">
-      {/* Top bar: Presets + Atlas Toggle + Biological Profile Switch + Injury Triage */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-2 font-mono text-xs">
-        <div className={pairedActive ? 'hidden' : 'flex flex-wrap gap-1.5'}>
-          {Object.entries(PRESETS).map(([k, p]) => (
-            <button
-              key={k}
-              type="button"
-              onClick={() => setCfg(p.cfg)}
-              className="min-h-[44px] min-w-[44px] cursor-pointer rounded border border-line bg-black px-2.5 py-2 text-gray-300 hover:border-nominal hover:text-nominal"
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="flex items-center gap-2 text-gray-300">
-            Anatomy model
-            <CockpitSelect
-              className="rounded border border-line bg-black p-2"
-              value={bodyModel}
-              onChange={event => {
-                const model = event.currentTarget.value;
-                if (model !== 'paired' && model !== 'atlas' && model !== 'rig') return;
-                setAtlasFailed(false);
-                setAtlasAnchors(null);
-                setBodyModel(model);
-              }}
-            >
-              <option value="paired">Paired atlas</option>
-              <option value="atlas">Z-Anatomy atlas</option>
-              <option value="rig">Procedural model</option>
-            </CockpitSelect>
-          </label>
-
-          {!effectiveAtlasActive && (
-            <button
-              type="button"
-              onClick={() => setGlbEnabled((v) => !v)}
-              className={`min-h-[44px] min-w-[44px] cursor-pointer rounded border px-3 py-2 text-xs font-semibold transition-colors ${
-                glbEnabled
-                  ? 'border-nominal bg-nominal/10 text-nominal'
-                  : 'border-line bg-black text-gray-400 hover:border-gray-600'
-              }`}
-            >
-              NASA LOCAL GLB OVERLAY: {glbEnabled ? glbStatus : 'OFF'}
-            </button>
-          )}
-
-          {onAddInjury && (
-            <>
-              <input
-                ref={photoInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handlePhotoSelected}
-                className="hidden"
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingInjury(null);
-                  setModalInitialImage(undefined);
-                  setModalOpen(true);
-                }}
-                className="min-h-[44px] cursor-pointer rounded border border-lime-400/70 bg-lime-950/25 px-3 py-2 font-bold text-lime-300 hover:bg-lime-400 hover:text-black"
-              >
-                Add photo
-              </button>
-              <button
-                type="button"
-                onClick={() => setManualFormOpen((v) => !v)}
-                className="min-h-[44px] cursor-pointer rounded border border-line bg-black px-3 py-2 text-gray-200 hover:border-lime-400 hover:text-lime-300"
-              >
-                Add marker
-              </button>
-            </>
-          )}
-
-          {onChangeSex && !effectiveAtlasActive && (
-            <div className="flex items-center gap-2 rounded-full border border-gray-700 bg-black px-2.5 py-1">
-              <span className="text-[10px] tracking-wider text-gray-400">BODY PROFILE</span>
-              <div className="flex rounded-full bg-black p-0.5">
-                {(['MALE', 'FEMALE'] as const).map((g) => {
-                  const active = sex === g;
-                  const activeCls =
-                    g === 'MALE'
-                      ? 'bg-sky-400 text-black font-bold'
-                      : 'bg-fuchsia-400 text-black font-bold';
-                  return (
-                    <button
-                      key={g}
-                      type="button"
-                      onClick={() => onChangeSex(g)}
-                      className={`min-h-[44px] min-w-[44px] cursor-pointer rounded-full px-3 py-1 text-[11px] transition-colors ${
-                        active ? activeCls : 'text-gray-400 hover:text-white'
-                      }`}
-                    >
-                      {g}
-                    </button>
-                  );
-                })}
-              </div>
+        <div className="anatomy-toolbar-row">
+          {onChangeSex && (
+            <div className="anatomy-segments" role="group" aria-label="Body profile">
+              <button type="button" aria-pressed={sex === 'MALE'} onClick={() => onChangeSex('MALE')}>Male</button>
+              <button type="button" aria-pressed={sex === 'FEMALE'} onClick={() => onChangeSex('FEMALE')}>Female</button>
             </div>
           )}
+          <div className="anatomy-annotations">
+            {onAddInjury && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingInjury(null);
+                    setModalOpen(true);
+                  }}
+                  className="act-secondary-button anatomy-photo-button"
+                >
+                  Add photo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setManualPoint(undefined);
+                    setManualFormOpen((v) => !v);
+                  }}
+                  aria-pressed={manualFormOpen}
+                  disabled={!manualFormOpen && (!currentAnchors || contextLost)}
+                  className="act-secondary-button"
+                >
+                  {manualFormOpen ? 'Cancel marker' : 'Add marker'}
+                </button>
+              </>
+            )}
+          </div>
         </div>
-      </div>
-
-      {/* Individual Layer Toggles */}
-      <div className="anatomy-layers flex flex-wrap gap-1.5 text-xs" role="group" aria-label="Anatomy layers">
-        <span className="mr-1 self-center px-1 text-gray-500">LAYERS:</span>
-        {([
-          ['skin', 'Skin'],
-          ['muscles', 'Muscles'],
-          ['vascular', 'Vascular/Neuro'],
-          ['organs', 'Visceral/Organs'],
-          ['skeleton', 'Skeleton'],
-          ['markers', 'Region markers'],
-        ] as const).filter(([key]) => !pairedActive || key === 'markers').map(([key, lbl]) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => toggle(key)}
-            aria-pressed={cfg[key]}
-            className={`min-h-[44px] min-w-[44px] cursor-pointer rounded border px-2.5 py-2 ${
-              cfg[key]
-                ? 'border-nominal bg-nominal/15 text-nominal'
-                : 'border-line bg-black text-gray-500'
-            }`}
-          >
-            {lbl}
-          </button>
-        ))}
-      </div>
+        <div className="anatomy-toolbar-row">
+          <div className="anatomy-segments" role="group" aria-label="Anatomical layers">
+            {PAIRED_DEPTHS.map((layer, index) => (
+              <button key={layer} type="button" aria-pressed={layers.includes(index)}
+                disabled={layers.length === 1 && layers.includes(index)}
+                onClick={() => setLayers(active => active.includes(index)
+                  ? active.filter(layer => layer !== index) : [...active, index])}>{layer}</button>
+            ))}
+          </div>
+          <label className="anatomy-marker-toggle">
+            <input type="checkbox" checked={showMarkers} onChange={event => setShowMarkers(event.currentTarget.checked)} />
+            Region markers
+          </label>
+        </div>
 
       {/* Manual Marker Form */}
       {manualFormOpen && onAddInjury && (
         <div className="flex flex-wrap items-center gap-2 rounded border border-lime-400/50 bg-panel p-2.5 font-mono text-xs">
-          <CockpitSelect
-            aria-label="Manual marker region"
-            value={manualRegion}
-            onChange={(e) => setManualRegion(e.target.value as InjuryRegionId)}
-            className="min-h-[44px] rounded border border-line bg-black px-2 py-1 text-gray-200"
-          >
-            {(Object.keys(INJURY_REGIONS) as InjuryRegionId[]).map((key) => (
-              <option key={key} value={key}>
-                {INJURY_REGIONS[key].label}
-              </option>
-            ))}
-          </CockpitSelect>
+          <p className="w-full" role="status">{pendingPoint
+            ? 'Point selected. Click the body again to move it.'
+            : 'Click the body where you want to place the marker.'}</p>
           <CockpitSelect
             aria-label="Manual marker severity"
             value={manualSeverity}
@@ -673,17 +482,12 @@ function BodyHeatmapView({
           <button
             type="button"
             onClick={handleCreateManualInjury}
+            disabled={!pendingPoint}
             className="min-h-[44px] cursor-pointer rounded border border-lime-400 bg-lime-400 px-3 py-1 font-bold text-black hover:bg-lime-300"
           >
             Pin marker
           </button>
-          <button
-            type="button"
-            onClick={() => photoInputRef.current?.click()}
-            className="min-h-[44px] cursor-pointer rounded border border-nominal px-3 py-1 text-nominal hover:bg-nominal/10"
-          >
-            Attach photo
-          </button>
+
         </div>
       )}
 
@@ -697,9 +501,8 @@ function BodyHeatmapView({
       </section>
 
       {/* 3D Layered Viewport */}
-      <div ref={quality.viewportRef} data-anatomy-model={pairedActive ? "paired" : effectiveAtlasActive ? "z-anatomy" : "procedural"} data-render-loop={quality.frameloop} data-render-dpr={quality.dpr} className="relative min-h-0 flex-1 rounded border border-line bg-black">
-        {effectiveAtlasActive && !contextLost &&
-          (!atlasAnchors || (pairedActive && atlasAnchors.profile !== sex)) && (
+      <div ref={quality.viewportRef} data-anatomy-model="paired" data-body-profile={currentAnchors?.profile} data-anatomy-layer={layers.map(layer => PAIRED_DEPTHS[layer]).join(",")} data-placing-marker={manualFormOpen} data-render-loop={quality.frameloop} data-render-dpr={quality.dpr} className="relative min-h-0 flex-1 rounded border border-line bg-black">
+        {!contextLost && !currentAnchors && (
             <span role="status" className="pointer-events-none absolute top-3 left-3 z-10 rounded border border-line bg-black px-2 py-1 font-mono text-xs text-nominal">
               Loading anatomy
             </span>
@@ -744,61 +547,17 @@ function BodyHeatmapView({
           <ambientLight intensity={0.55} />
           <pointLight position={[2.5, 3, 3]} intensity={28} />
           <pointLight position={[-2.5, 1.5, 2]} intensity={14} color="#e2e8f0" />
-          <pointLight position={[0, 1, -3]} intensity={12} color="#22d3ee" />
+          <pointLight position={[0, 1, -3]} intensity={12} color="#c4d6e1" />
 
-          {effectiveAtlasActive ? (
-            <GlbAssetErrorBoundary
-              key={bodyModel}
-              onFallback={() => {
-                setAtlasFailed(true);
-                setBodyModel('rig');
-                setAtlasAnchors(null);
-              }}
-            >
-              <Suspense fallback={null}>
-                {pairedActive ? (
-                  <PairedAtlasBody key={sex} sex={sex} depth={depth} onAnchors={handleAnchors} />
-                ) : (
-                  <AtlasBody
-                    s={s}
-                    nodesByRegion={scene.nodesByRegion}
-                    skeleton={cfg.skeleton}
-                    muscles={cfg.muscles}
-                    vascular={cfg.vascular}
-                    organs={cfg.organs}
-                    muscleOpacity={cfg.muscleOpacity}
-                    selected={selected}
-                    onSelect={(id) => setSelected(id)}
-                    onAnchors={handleAnchors}
-                  />
-                )}
-              </Suspense>
-            </GlbAssetErrorBoundary>
-          ) : (
-            <>
-              {cfg.skeleton && <SkeletonLayer s={s} sex={sex} />}
-              {cfg.vascular && <VascularNeuroLayer s={s} sex={sex} nodesByRegion={scene.nodesByRegion} />}
-              {cfg.vascular && <CephaladFluidShift s={s} sex={sex} visible={cfg.vascular} />}
-              {cfg.muscles && (
-                <MusclesLayer
-                  s={s}
-                  opacity={cfg.muscleOpacity}
-                  sex={sex}
-                  soleusNode={scene.nodesByRegion.SoleusCalcaneus}
-                />
-              )}
-              {cfg.skin && <SkinLayer opacity={cfg.skinOpacity} sex={sex} skinOnly={skinOnly} />}
-              <NasaGlbAssetLayer enabled={glbEnabled} onStatusChange={handleGlbStatus} />
-            </>
-          )}
+          <Suspense fallback={null}>
+            <PairedAtlasBody key={sex} sex={sex} layers={layers} onAnchors={handleAnchors}
+              onSurfaceClick={manualFormOpen ? point => setManualPoint({ profile: sex, point }) : undefined} />
+          </Suspense>
 
-          {cfg.markers && (
+          {showMarkers && currentAnchors && !manualFormOpen && (
             <>
               {scene.nodes.map((node) => {
-                const worldPosition =
-                  effectiveAtlasActive && atlasAnchors
-                    ? atlasAnchors.nodes[node.region]
-                    : node.worldPosition;
+                const worldPosition = currentAnchors.nodes[node.region];
                 return (
                   <SpatialNodePin
                     key={node.region}
@@ -814,11 +573,12 @@ function BodyHeatmapView({
             </>
           )}
 
-          {injuries.map((inj) => {
-            const pos =
-              effectiveAtlasActive && atlasAnchors
-                ? atlasAnchors.injuries[inj.region]
-                : INJURY_REGIONS[inj.region].pos;
+          {pendingPoint && <mesh position={pendingPoint.point} renderOrder={10}>
+            <sphereGeometry args={[0.025, 12, 12]} />
+            <meshBasicMaterial color="#f7ce7c" depthTest={false} />
+          </mesh>}
+          {currentAnchors && !manualFormOpen && visibleInjuries.map((inj) => {
+            const pos = inj.placement?.point ?? currentAnchors.injuries[inj.region];
             return (
               <InjuryPoint
                 key={inj.id}
@@ -841,8 +601,16 @@ function BodyHeatmapView({
           </WebGlErrorBoundary>
         )}
 
+        {markerDetails && (
+          <div className="anatomy-marker-details">
+            <div><strong>{markerDetails.title}</strong><p>{markerDetails.severity.toLowerCase()} severity</p></div>
+            {onResolveInjury && <button type="button" className="act-secondary-button"
+              onClick={() => { onResolveInjury(markerDetails.id); setInspectedMarker(null); }}>Remove marker</button>}
+            <CloseButton onClick={() => setInspectedMarker(null)} />
+          </div>
+        )}
         {/* Selected UBERON node details */}
-        {selectedNode && selectedMetrics && (
+        {selectedNode && selectedMetrics && !markerDetails && (
           <div className="absolute right-3 bottom-3 left-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-nominal bg-black/95 p-3 backdrop-blur">
             <div className="min-w-0 flex-1 font-mono">
               <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-nominal">
@@ -873,39 +641,15 @@ function BodyHeatmapView({
                   {selectedMetrics.tabLabel} <ArrowRightIcon aria-hidden="true" size={15} />
                 </button>
               )}
-              <button
-                type="button"
-                onClick={() => setSelected(null)}
-                className="min-h-[44px] min-w-[44px] cursor-pointer rounded border border-line bg-black px-3 py-2 text-gray-300 hover:text-white"
-              >
-                CLOSE
-              </button>
+              <CloseButton onClick={() => setSelected(null)} />
             </div>
           </div>
         )}
       </div>
 
-      {pairedActive && (
-        <div className="anatomy-depth">
-          <label htmlFor={depthId}>Anatomical depth</label>
-          <span>{PAIRED_DEPTHS[Math.round(depth)]}</span>
-          <input
-            id={depthId}
-            type="range"
-            min={0}
-            max={PAIRED_DEPTHS.length - 1}
-            step={0.01}
-            value={depth}
-            aria-valuetext={PAIRED_DEPTHS[Math.round(depth)]}
-            onChange={event => setDepth(event.currentTarget.valueAsNumber)}
-          />
-          <div aria-hidden="true">{PAIRED_DEPTHS.map(layer => <span key={layer}>{layer}</span>)}</div>
-        </div>
-      )}
-
-      {(cfg.markers || injuries.length > 0) && (
+      {!manualFormOpen && (showMarkers || visibleInjuries.length > 0) && (
         <div className="anatomy-region-controls" aria-label="Anatomical indicators and marker controls" role="group">
-          {cfg.markers && scene.nodes.map(node => (
+          {showMarkers && scene.nodes.map(node => (
             <button key={node.region} type="button" aria-pressed={selected === node.region}
               onClick={() => setSelected(node.region)}>
               <span className="anatomy-region-dot" style={{ backgroundColor: node.color }} />
@@ -913,10 +657,10 @@ function BodyHeatmapView({
               <strong>{liveMetricForNode(node, s).badgeValue}</strong>
             </button>
           ))}
-          {injuries.map(injury => (
+          {visibleInjuries.map(injury => (
             <button key={injury.id} type="button" onClick={() => openInjury(injury)}>
               <span className="anatomy-region-dot bg-lime-300" />
-              <span>{INJURY_REGIONS[injury.region].label}</span>
+              <span>{injury.placement ? injury.title : INJURY_REGIONS[injury.region].label}</span>
               <strong>{injury.severity}</strong>
             </button>
           ))}
@@ -963,7 +707,7 @@ function BodyHeatmapView({
           )}
           <span className="rounded border border-gray-800 px-1.5 py-0.5 text-[10px] text-gray-400">
             {modelValidationStatus ?? 'ILLUSTRATIVE_UNVALIDATED'} |{' '}
-            {pairedActive ? 'Paired atlas (CC BY 4.0)' : effectiveAtlasActive ? 'Z-Anatomy 5-GLB (CC BY-SA 4.0)' : glbDetail}
+            Paired atlas (CC BY 4.0)
           </span>
         </div>
       </div>
@@ -972,12 +716,10 @@ function BodyHeatmapView({
         <DeferredPanel name="injury annotation"><AiInjuryModal
           isOpen={modalOpen}
           initialRegion={modalRegion}
-          initialImage={modalInitialImage}
           existingInjury={editingInjury}
           onClose={() => {
             setModalOpen(false);
             setEditingInjury(null);
-            setModalInitialImage(undefined);
           }}
           onSaveInjury={onAddInjury}
           onResolveInjury={onResolveInjury}

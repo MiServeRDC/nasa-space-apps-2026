@@ -1,3 +1,4 @@
+import { CloseButton } from './CloseButton';
 // Keyboard shortcuts help dialog adhering to NASA-STD-3001 and Vercel UI primitives.
 // Invariant: STRICTLY ZERO EMOJIS in code, comments, or documentation.
 
@@ -14,18 +15,10 @@ interface ShortcutGroup {
 
 const SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
-    category: 'PRIMARY VIEW NAVIGATION',
-    items: [
-      { keys: ['1'], description: 'Tactical 20 Hz Flight HUD with GATHER, EVALUATE, ACT pages', actionLabel: 'View: Cockpit' },
-      { keys: ['2'], description: 'Ground Control Telemedicine, Latency Simulator & 24-Dataset Atlas', actionLabel: 'View: Ground Portal' },
-    ],
-  },
-  {
     category: 'BIOLOGICAL PROFILE & CONTROLS',
     items: [
       { keys: ['M'], description: 'Switch astronaut biological profile to MALE (78kg, 12.8mm soleus baseline)', actionLabel: 'Profile: Male' },
       { keys: ['F'], description: 'Switch astronaut biological profile to FEMALE (62kg, 11.2mm soleus baseline)', actionLabel: 'Profile: Female' },
-      { keys: ['R'], description: 'Reset 3D camera pan, tilt, zoom and orbit target to default', actionLabel: 'Reset Camera' },
     ],
   },
   {
@@ -87,14 +80,7 @@ export function KeyboardShortcutsModal({ isOpen, open, onClose }: KeyboardShortc
               ARES-HEALTH KEYBOARD SHORTCUTS
             </h2>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="cursor-pointer rounded border border-line px-2 py-0.5 text-gray-400 hover:border-nominal hover:text-nominal transition-colors"
-            aria-label="Close modal"
-          >
-            ESC
-          </button>
+          <CloseButton onClick={onClose} />
         </div>
 
         {/* Content list */}
@@ -134,13 +120,7 @@ export function KeyboardShortcutsModal({ isOpen, open, onClose }: KeyboardShortc
         {/* Footer */}
         <div className="mt-5 flex items-center justify-between border-t border-line pt-3 text-[11px] text-gray-500">
           <span>NASA-STD-3001 High-Contrast Microgravity Roving Focus Specification</span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="cursor-pointer rounded border border-nominal bg-nominal px-4 py-1.5 font-bold text-black hover:opacity-90 transition-opacity"
-          >
-            DISMISS
-          </button>
+
         </div>
       </div>
     </div>

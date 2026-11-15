@@ -19,7 +19,8 @@ import type {
 export interface PlaybookRunnerProps {
   activePlaybook: ActivePlaybook | null | undefined;
   isLiveEngine: boolean;
-  monitoringStatus: 'urgent' | 'watch' | 'normal' | 'unavailable';
+  monitoringStatus: 'urgent' | 'awaiting' | 'watch' | 'normal' | 'unavailable' | 'recovered' | 'recovered-watch';
+  onRestoreScenario?: () => void;
   thrombusConfirmed: boolean | null;
   ventEvent?: string | null;
   syncLatencyUs?: number | null;
@@ -57,6 +58,7 @@ export function PlaybookRunner({
   activePlaybook,
   isLiveEngine,
   monitoringStatus,
+  onRestoreScenario,
   thrombusConfirmed,
   ventEvent,
   syncLatencyUs,
@@ -145,6 +147,9 @@ export function PlaybookRunner({
   const showUltrasoundFinding = isAnticoagulantStep || selectedEntry.short_code === '#01' || selectedEntry.short_code === '#02';
   const statusText = {
     urgent: 'Alarm still active',
+    awaiting: 'Recovery awaiting updated readings',
+    recovered: 'Critical alert cleared',
+    'recovered-watch': 'Critical alert cleared · continue monitoring',
     watch: 'Readings still under observation',
     normal: 'Readings within configured limits',
     unavailable: 'Current readings cannot be verified',
@@ -193,7 +198,16 @@ export function PlaybookRunner({
           {completed ? 'Checklist complete' : currentStep ? `Do this now · Step ${activeStepIdx + 1} of ${steps.length}` : 'No steps available'}
         </h4>
         {currentStep && <p>{displayLabel(displayStepInstruction)}</p>}
-        {completed && <p>Keep monitoring the readings and any active alert.</p>}
+        {completed && (monitoringStatus === 'urgent' || monitoringStatus === 'awaiting') && (
+          <div className="act-recovery-controls">
+            <p>The checklist is complete. The alert clears when updated readings confirm recovery.</p>
+            {onRestoreScenario && (
+              <button type="button" className="act-secondary-button" onClick={onRestoreScenario}>
+                Restore simulated conditions
+              </button>
+            )}
+          </div>
+        )}
         {showUltrasoundFinding && (
       <div className="flex flex-wrap items-center gap-2 rounded border border-line bg-black px-3 py-2 text-xs">
         <span className="text-gray-400">

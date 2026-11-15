@@ -1,40 +1,51 @@
 import { useEffect, useMemo } from 'react';
-import { useThree } from '@react-three/fiber';
+import { useThree, type ThreeEvent } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
-import { Box3, Mesh, Vector3, type Material } from 'three';
+import { Box3, Mesh, MeshStandardMaterial, Vector3, type Material } from 'three';
 import type { CrewSex } from '../../lib/scenario';
 import type { AtlasAnchors } from './AtlasBody';
 import type { V3 } from './AnatomicalLayers';
 
-const ANATOMY_DEPTHS = ['Skin', 'Muscles', 'Organs and vessels', 'Skeleton'] as const;
+const SYSTEM_STYLE = {
+  skin: { layer: 0, color: '#bd927e' },
+  muscles: { layer: 1, color: '#a54f48' },
+  organs: { layer: 2, color: '#a86261' },
+  vessels: { layer: 2, color: '#884256' },
+  nerves: { layer: 2, color: '#c5a96e' },
+  skeleton: { layer: 3, color: '#d9ccb1' },
+};
 
-const SYSTEM_DEPTH = { skin: 0, muscles: 1, organs: 2, vessels: 2, nerves: 2, skeleton: 3 };
-
-export function PairedAtlasBody({ sex, depth, onAnchors }: {
+export function PairedAtlasBody({ sex, layers, onAnchors, onSurfaceClick }: {
   sex: CrewSex;
-  depth: number;
+  layers: readonly number[];
   onAnchors: (anchors: AtlasAnchors) => void;
+  onSurfaceClick?: (point: V3) => void;
 }) {
   const { scene } = useGLTF(`/anatomy/anatomy-${sex.toLowerCase()}.glb`, false);
   const invalidate = useThree(state => state.invalidate);
   const { model, systems } = useMemo(() => {
     const model = scene.clone(true);
     const systems = model.children.map(group => {
-      const index = SYSTEM_DEPTH[group.name as keyof typeof SYSTEM_DEPTH];
+      const style = SYSTEM_STYLE[group.name as keyof typeof SYSTEM_STYLE];
       const copies = new Map<Material, Material>();
       const clone = (material: Material) => {
         const existing = copies.get(material);
         if (existing) return existing;
         const copy = material.clone();
+        if (copy instanceof MeshStandardMaterial && style) {
+          copy.color.set(style.color);
+          copy.metalness = 0;
+          copy.roughness = 0.82;
+        }
         copies.set(material, copy);
         return copy;
       };
       group.traverse(object => {
         if (!(object instanceof Mesh)) return;
         object.material = Array.isArray(object.material) ? object.material.map(clone) : clone(object.material);
-        object.renderOrder = ANATOMY_DEPTHS.length - index;
+        object.renderOrder = style ? 4 - style.layer : 0;
       });
-      return { group, index, materials: [...copies.values()] };
+      return { group, style, materials: [...copies.values()] };
     });
     return { model, systems };
   }, [scene]);
@@ -77,10 +88,10 @@ export function PairedAtlasBody({ sex, depth, onAnchors }: {
 
   useEffect(() => onAnchors(anchors), [anchors, onAnchors]);
   useEffect(() => {
-    for (const { group, index, materials } of systems) {
-      const weight = Math.max(0, 1 - Math.abs(depth - index));
-      const opacity = weight * weight * (3 - 2 * weight);
-      group.visible = opacity > 0;
+    const deepest = Math.max(...layers);
+    for (const { group, style, materials } of systems) {
+      group.visible = Boolean(style && layers.includes(style.layer));
+      const opacity = style && style.layer < deepest ? [0.18, 0.32, 0.5][style.layer] : 1;
       for (const material of materials) {
         const transparent = opacity < 1;
         if (material.transparent !== transparent) {
@@ -92,7 +103,7 @@ export function PairedAtlasBody({ sex, depth, onAnchors }: {
       }
     }
     invalidate();
-  }, [systems, depth, invalidate]);
+  }, [systems, layers, invalidate]);
 
   useEffect(() => () => {
     for (const { materials } of systems) {
@@ -100,5 +111,15 @@ export function PairedAtlasBody({ sex, depth, onAnchors }: {
     }
   }, [systems]);
 
-  return <primitive object={model} scale={scale} position={offset} />;
+  const pickSurface = (event: ThreeEvent<MouseEvent>) => {
+    if (!onSurfaceClick || event.delta > 4) return;
+    const hit = event.intersections.find(({ object }) => systems.some(({ group }) =>
+      group.visible && group.getObjectById(object.id) !== undefined,
+    ));
+    if (!hit) return;
+    event.stopPropagation();
+    onSurfaceClick(hit.point.toArray());
+  };
+
+  return <primitive object={model} scale={scale} position={offset} onClick={onSurfaceClick ? pickSurface : undefined} />;
 }

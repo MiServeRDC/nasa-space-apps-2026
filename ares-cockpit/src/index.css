@@ -533,34 +533,8 @@ input[type="range"] { min-height: 32px; touch-action: pan-y; }
   background-size: auto, 32px 32px, 32px 32px;
   box-shadow: inset 0 0 65px #0009;
 }
-.anatomy-depth {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 3px 10px;
-  padding: 9px 12px;
-  background: #121714;
-  border: 1px solid #373b34;
-  border-radius: 8px;
-  font: 400 11px var(--font-mono);
-}
-.anatomy-depth > span { color: #f1d39d; }
-.anatomy-depth input { grid-column: 1 / -1; accent-color: #d8a85f; min-width: 0; min-height: 25px; }
-.anatomy-depth > div {
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 5px;
-  color: #b1b5ad;
-  font-size: 10px;
-}
-.anatomy-depth > div span:nth-child(2),
-.anatomy-depth > div span:nth-child(3) { text-align: center; }
-.anatomy-depth > div span:last-child { text-align: right; }
-
 @media (max-width: 420px) {
   .anatomical-explorer { padding: 7px; }
-  .anatomy-depth > div { font-size: 9px; }
 }
 
 
@@ -612,7 +586,7 @@ input[type="range"] { min-height: 32px; touch-action: pan-y; }
 .evaluate-wide { grid-template-columns: minmax(0, 1fr); }
 .evaluate-workbench {
   display: grid;
-  grid-template-columns: minmax(290px, 1fr) minmax(0, 1.85fr);
+  grid-template-columns: minmax(340px, 0.86fr) minmax(0, 1.14fr);
   grid-template-areas: "conditions conditions" "atlas results" "ultrasound ultrasound";
   align-items: start;
   gap: 16px;
@@ -622,18 +596,8 @@ input[type="range"] { min-height: 32px; touch-action: pan-y; }
 .evaluate-workbench > .evaluate-results { grid-area: results; }
 .evaluate-ultrasound { grid-area: ultrasound; min-width: 0; display: grid; gap: 8px; scroll-margin-top: 80px; }
 .evaluate-ultrasound h2 { font-size: 1.15rem; font-weight: 600; }
-.evaluate-scan-link { display: inline-flex; align-items: center; gap: 6px; justify-self: start; min-height: 36px; color: var(--color-nominal); }
-.evaluate-scan-link:hover { text-decoration: underline; }
 .evaluate-results { grid-area: results; }
-@media (max-width: 1190px) {
-  .evaluate-workbench {
-    grid-template-columns: minmax(250px, .85fr) minmax(0, 1.5fr);
-    grid-template-areas: "atlas results" "conditions results";
-    grid-template-rows: auto 1fr;
-  }
-}
 .evaluate-results { min-width: 0; display: grid; gap: 8px; }
-.evaluate-results > h2 { padding: 0 1px 2px; }
 #evaluate-results, #evaluate-muscle { scroll-margin-top: 14px; }
 .system-secondary-links { padding-bottom: 10px; }
 .system-secondary-links button { color: var(--color-nominal); min-height: 36px; text-decoration: underline; }
@@ -665,6 +629,18 @@ input[type="range"] { min-height: 32px; touch-action: pan-y; }
 .scenario-forecast .clinical-panel-heading h3 { font-size: 17px; }
 .scenario-disclosure { margin-top: 9px; border-top: 1px solid var(--color-line); }
 .scenario-disclosure > summary { padding: 9px 0; color: var(--color-nominal); }
+.mission-context-content {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  align-items: start;
+  gap: 12px 20px;
+  padding: 4px 0 10px;
+  font-size: 13px;
+  color: #b8c9c0;
+}
+.mission-context-content strong { color: #edf3ee; }
+.mission-context-content label { display: grid; gap: 5px; }
+.mission-context-content button { margin-top: 6px; }
 .forecast-detail { margin-top: 0; }
 .vital-range { margin-top: 5px; font-size: 12px; font-weight: 400; color: #b1bfb6; }
 .vital-range span { font: 400 11px var(--font-mono); }
@@ -765,11 +741,8 @@ input[type="range"] { min-height: 32px; touch-action: pan-y; }
   .provenance-menu > summary { margin-inline-start: 0; }
 }
 
-/* The atlas shares the workbench row with its controls and results. */
-.anatomical-explorer > [data-anatomy-model] { height: clamp(310px, 43vh, 410px); }
-@media (max-width: 540px) {
-  .anatomical-explorer > [data-anatomy-model] { height: clamp(320px, 48vh, 390px); }
-}
+/* Desktop proportions keep the figure upright while the forecast keeps a wider column. */
+.anatomical-explorer > [data-anatomy-model] { height: clamp(455px, 59vh, 630px); }
 
 .cockpit-select {
   position: relative;
@@ -846,10 +819,102 @@ details[open] > summary > .disclosure-caret { transform: rotate(90deg); }
 }
 .urgent-status button:hover { background: #ffced6; }
 
+
 .anatomy-toolbar { display: grid; gap: 8px; padding: 9px; }
+.anatomy-toolbar-row, .anatomy-annotations {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.anatomy-toolbar-row { justify-content: space-between; }
+.anatomy-segments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+}
+.anatomy-segments button {
+  min-height: 32px;
+  padding-inline: 9px;
+  border-radius: 5px;
+  color: #bdcbc3;
+}
+.anatomy-segments button:hover { background: #23332b; color: white; }
+.anatomy-segments button[aria-pressed="true"] { background: #34483b; color: #f2f7f3; }
+.anatomy-marker-toggle { display: flex; gap: 5px; align-items: center; color: #b8c9c0; }
+.anatomy-marker-toggle input { accent-color: #80b39f; }
+.anatomy-photo-button { color: #c7e6d9; }
+.forecast-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; color: #c1ccc5; font-size: 12px; }
+.forecast-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.forecast-legend i { width: 16px; border-top: 2px solid currentColor; }
+.forecast-legend .forecast-dashed { border-top-style: dashed; }
+.forecast-legend .forecast-range { height: 8px; border: 0; background: #4bbdb54d; }
+.forecast-assumption { margin-top: 8px; color: #b4c1b9; font-size: 12px; }
 .act-monitor-state { border-inline-start: 3px solid var(--color-line); color: #b8c9c0; padding: 7px 10px; }
 .act-monitor-state[data-status="urgent"] { border-color: var(--color-critical); color: #ffd9df; }
-.act-monitor-state[data-status="normal"] { border-color: var(--color-nominal); }
+.act-monitor-state[data-status="normal"],
+.act-monitor-state[data-status="recovered"] { border-color: var(--color-nominal); }
+.act-monitor-state[data-status="awaiting"],
+.act-monitor-state[data-status="recovered-watch"] { border-color: var(--color-warning); }
+.act-recovery-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
 .act-next-step { display: grid; gap: 10px; padding: 16px; background: #1c3028; border: 1px solid #5d8b79; border-radius: 10px; }
 .act-next-step h4 { font-weight: 600; color: var(--color-nominal); }
 .act-next-step > p { font-size: clamp(1.05rem, 1.7vw, 1.25rem); line-height: 1.42; color: #f2f6f3; }
+
+
+.cockpit-close {
+  display: inline-grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid #55675b;
+  border-radius: 8px;
+  background: #151f18;
+  color: #e3ece6;
+}
+.cockpit-close:hover { background: #2c3c32; }
+.cockpit-close:focus-visible { outline: 2px solid #5fcbb9; outline-offset: 2px; }
+[data-placing-marker="true"] canvas { cursor: crosshair; }
+.anatomy-marker-details {
+  position: absolute;
+  inset: auto 12px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #55675b;
+  border-radius: 8px;
+  background: #131d17;
+  padding: 10px;
+}
+.anatomy-marker-details > div { flex: 1; }
+.anatomy-marker-details p { color: #bdcbc3; }
+.anatomical-explorer button:disabled { cursor: default; }
+.anatomical-explorer button:disabled:not([aria-pressed="true"]) { opacity: 0.46; }
+
+
+.mission-actions .shortcuts-button { display: inline-flex; align-items: center; gap: 6px; }
+.short-forecast {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #53665a;
+  border-radius: 12px;
+  background: #171e19;
+}
+.short-forecast-controls { display: flex; flex-wrap: wrap; gap: 6px; }
+.short-forecast-controls button {
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid #465b4e;
+  border-radius: 7px;
+  color: #c2d0c7;
+  font-size: 12px;
+}
+.short-forecast-controls button:hover { border-color: #80b39f; }
+.short-forecast-controls button[aria-pressed="true"] { background: #2b4236; color: #f1f7f3; }
+.short-forecast-chart { border-top: 1px solid #465b4e; padding-top: 12px; }
+.short-forecast-meta { display: grid; gap: 4px; color: #b4c1b9; font-size: 12px; }

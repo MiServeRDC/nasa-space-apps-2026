@@ -1,5 +1,5 @@
 import { ArrowRightIcon, WarningCircleIcon } from '@phosphor-icons/react';
-import { CockpitSummary } from './modules/ui-primitives/CockpitControls';
+import { CockpitSelect, CockpitSummary } from './modules/ui-primitives/CockpitControls';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -16,6 +16,8 @@ import {
   type ScenarioState,
   type WhatIf,
 } from './lib/scenario';
+import { updateAlarmEpisode, type AlarmEpisode } from './lib/alarmRecovery';
+import { ACTIVITY_CONTEXT, DEFAULT_MISSION_PROFILE, EVA_AEROBIC_CAPACITY, type CrewActivity, type MissionProfile } from './lib/missionContext';
 import {
   formatNullableMetric,
   formatTimeToViolation,
@@ -38,14 +40,12 @@ import {
 import { FreshnessBadge, OriginBadge, ProvenanceMenu } from './modules/provenance/ProvenanceInspector';
 import { OsSystemStatusBar } from './modules/os-shell/OsSystemStatusBar';
 import { OsCommandPalette } from './modules/os-shell/OsCommandPalette';
-import type { MissionViewMode } from './modules/navigation/MissionSuiteNavbar';
 import type { InjuryMarker } from './types/injury';
 import type { DataOrigin, FreshnessStatus, TelemetryPacket } from './types/telemetry';
 
 import { DeferredPanel } from './modules/ui-primitives/DeferredPanel';
 
 const BodyHeatmap = lazy(() => import('./modules/body-3d-heatmap/BodyHeatmap').then(m => ({default:m.BodyHeatmap})));
-const MissionPortal = lazy(() => import('./modules/portal/MissionPortal').then(m => ({default:m.MissionPortal})));
 const KeyboardShortcutsModal = lazy(() => import('./modules/ui-primitives/KeyboardShortcutsModal').then(m => ({default:m.KeyboardShortcutsModal})));
 const AuditChainModal = lazy(() => import('./modules/audit-chain/AuditChainModal').then(m => ({default:m.AuditChainModal})));
 
@@ -269,19 +269,21 @@ function VitalsTrend({ history, recording }: { history: RecordedHistoryPoint[]; 
     <section className="health-trend" aria-label="Recorded vital trends">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <h2>Recorded trends</h2>
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Choose trend signal">
-          {(Object.keys(signals) as (keyof typeof signals)[]).map((key) => (
-            <button
-              key={key}
-              type="button"
-              aria-pressed={key === metric}
-              onClick={() => setMetric(key)}
-              className="health-choice font-mono"
-            >
-              {signals[key][0]}
-            </button>
-          ))}
-        </div>
+        {points.length >= 2 && (
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Choose trend signal">
+            {(Object.keys(signals) as (keyof typeof signals)[]).map((key) => (
+              <button
+                key={key}
+                type="button"
+                aria-pressed={key === metric}
+                onClick={() => setMetric(key)}
+                className="health-choice font-mono"
+              >
+                {signals[key][0]}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       {points.length >= 2 ? (
         <>
@@ -358,13 +360,12 @@ export default function App() {
     }
   };
 
-  const [activeView, setActiveView] = useState<MissionViewMode>(() => {
-    const v = getInitialParam('view');
-    if (v === 'VIEW_PORTAL' || v === 'VIEW_COCKPIT') return v;
-    return 'VIEW_COCKPIT';
-  });
   const [shortcutsModalOpen, setShortcutsModalOpen] = useState(false);
   const [auditModalOpen, setAuditModalOpen] = useState(false);
+  const [missionProfile, setMissionProfile] = useState<MissionProfile>(DEFAULT_MISSION_PROFILE);
+  const [crewActivity, setCrewActivity] = useState<CrewActivity>('unknown');
+  const [atlasProfile, setAtlasProfile] = useState<WhatIf['sex'] | null>(null);
+  const [alarmEpisode, setAlarmEpisode] = useState<AlarmEpisode | null>(null);
   const [whatIf, setWhatIf] = useState<WhatIf>(() => {
     const s = getInitialParam('sex')?.toUpperCase();
     if (s === 'MALE' || s === 'FEMALE') return { ...DEFAULT_WHATIF, sex: s };
@@ -417,11 +418,13 @@ export default function App() {
         injuryPhotoUrls.current.add(injury.photoUrl);
       }
       setInjuries((prev) => {
-        const replaced = prev.find((item) => item.region === injury.region);
+        const replaced = prev.find((item) =>
+          item.id === injury.id || (!item.placement && !injury.placement && item.region === injury.region),
+        );
         if (replaced && replaced.photoUrl !== injury.photoUrl) {
           releaseInjuryPhoto(replaced);
         }
-        return [...prev.filter((item) => item.region !== injury.region), injury];
+        return [...prev.filter((item) => item !== replaced), injury];
       });
     },
     [releaseInjuryPhoto],
@@ -490,8 +493,31 @@ export default function App() {
   const sm = packet.safety_margins;
   const b = packet.biometrics;
   const criticalMargin = sm.alarm_level === 'CRITICAL';
-  const vitalsAlarm = packet.vitals_anomaly?.overall === 'ALARM';
-  const showUrgentStatus = criticalMargin || vitalsAlarm;
+  const anomaly = packet.vitals_anomaly;
+  const vitalsAlarm = anomaly?.overall === 'ALARM';
+  const hasCurrentData = !status.isStale && sm.alarm_level !== 'DATA_DEGRADED_MISSING_CHANNELS';
+  const flaggedEffortSignal = hasCurrentData && anomaly?.channels.some(
+    (channel) => (channel.channel === 'heart_rate_bpm' || channel.channel === 'resp_rate_brpm') &&
+      channel.evaluable && channel.status !== 'NORMAL',
+  );
+  const canVerifyVitals = Boolean(anomaly?.baseline_ready) &&
+    b.heart_rate_bpm != null && b.spo2_percent != null && b.respiration_rate_brpm != null;
+  const currentEpisode = updateAlarmEpisode(alarmEpisode, {
+    source: packet.is_local_simulation ? 'simulation' : 'engine',
+    cause: vitalsAlarm ? 'vitals' : criticalMargin ? 'critical' : null,
+    fresh: hasCurrentData,
+    canVerifyVitals,
+  });
+  if (currentEpisode?.source !== alarmEpisode?.source || currentEpisode?.cause !== alarmEpisode?.cause ||
+    currentEpisode?.phase !== alarmEpisode?.phase) {
+    setAlarmEpisode(currentEpisode);
+  }
+  const showUrgentStatus = currentEpisode !== null && currentEpisode.phase !== 'recovered';
+  const monitoringStatus = currentEpisode?.phase === 'awaiting' ? 'awaiting'
+    : showUrgentStatus ? 'urgent'
+      : !hasCurrentData ? 'unavailable'
+        : currentEpisode?.phase === 'recovered' ? sm.alarm_level === 'NOMINAL' && anomaly?.overall !== 'ATTENTION' ? 'recovered' : 'recovered-watch'
+          : sm.alarm_level === 'NOMINAL' && anomaly?.overall !== 'ATTENTION' ? 'normal' : 'watch';
   const recommendedPhase: Phase =
     showUrgentStatus || sm.alarm_level === 'WARNING'
       ? 'ACT'
@@ -547,14 +573,13 @@ export default function App() {
     }
   };
 
-  const handleBodySex = useCallback<NonNullable<BodyHeatmapProps['onChangeSex']>>((sex) => {
-    setWhatIf(previous => ({ ...previous, sex }));
-    if (link === 'ENGINE_LIVE') setWhatIfOverlayActive(true);
-  }, [link]);
+  const restoreScenarioConditions = () => {
+    setWhatIf({ ...DEFAULT_WHATIF, sex: whatIf.sex, ppco2_mmhg: missionProfile.cabinCo2 });
+  };
+
   const handleBodyTab = useCallback((tab: EvalTab) => {
     setEvalTab(tab);
     setActivePhase('EVALUATE');
-    setActiveView('VIEW_COCKPIT');
     if (tab !== 'BODY_3D') {
       window.requestAnimationFrame(() => {
         document.getElementById(tab === 'MUSCLE_BONE' ? 'evaluate-muscle' : tab === 'POCUS' ? 'evaluate-ultrasound' : 'evaluate-results')?.scrollIntoView({ block: 'start' });
@@ -562,7 +587,7 @@ export default function App() {
     }
   }, []);
   const handleBodyPlaybook = useCallback<NonNullable<BodyHeatmapProps['onOpenPlaybook']>>((id) => {
-    setActivePhase('ACT'); setActiveView('VIEW_COCKPIT');
+    setActivePhase('ACT');
     setRequestedPlaybook(previous => ({ id: id ?? 'PLAYBOOK_01_VENOUS_STASIS_LBNP', seq: (previous?.seq ?? 0) + 1 }));
   }, []);
 
@@ -587,16 +612,11 @@ export default function App() {
       if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
         e.preventDefault();
         setShortcutsModalOpen((prev) => !prev);
-      } else if (e.key === '1' && !e.ctrlKey && !e.metaKey) {
-        setActiveView('VIEW_COCKPIT');
-      } else if (e.key === '2' && !e.ctrlKey && !e.metaKey) {
-        setActiveView('VIEW_PORTAL');
       } else if (e.key.toLowerCase() === 'm' && !e.ctrlKey && !e.metaKey) {
         handleWhatIfChange({ ...whatIf, sex: 'MALE' });
       } else if (e.key.toLowerCase() === 'f' && !e.ctrlKey && !e.metaKey) {
         handleWhatIfChange({ ...whatIf, sex: 'FEMALE' });
       } else if (e.key === 'Escape') {
-        setActiveView('VIEW_COCKPIT');
         setShortcutsModalOpen(false);
         setAuditModalOpen(false);
       }
@@ -623,7 +643,9 @@ export default function App() {
     <div ref={workspaceRef} className="ares-workspace flex flex-col">
       <TriPhaseHeader
         astronautId={packet.astronaut_id}
-        alarm={sm.alarm_level}
+        profile={missionProfile}
+        onSelectProfile={setMissionProfile}
+        alarm={showUrgentStatus ? 'CRITICAL' : sm.alarm_level}
         link={link}
         wsConnected={status.wsConnected}
         activePhase={activePhase}
@@ -639,9 +661,10 @@ export default function App() {
         <section className="urgent-status" aria-label="Urgent status">
           <WarningCircleIcon aria-hidden="true" size={27} weight="fill" />
           <div role="alert" className="urgent-status-message">
-            <strong>{criticalMargin ? 'Critical alert' : 'Vitals alarm'}</strong>
+            <strong>{currentEpisode?.phase === 'awaiting' ? 'Critical alert · awaiting updated readings'
+              : currentEpisode?.cause === 'vitals' ? 'Vitals alarm' : 'Critical alert'}</strong>
             <span>
-              {packet.is_local_simulation ? 'Local simulation' : status.isStale ? 'Last received readings' : 'Engine telemetry'}
+              {currentEpisode?.source === 'simulation' ? 'Local simulation' : currentEpisode?.phase === 'awaiting' ? 'Recovery needs fresh engine readings' : 'Engine telemetry'}
               {criticalMargin && !isPureReplay ? ` · ${RISK_LABEL[s.worst]}` : ''}
             </span>
           </div>
@@ -657,8 +680,6 @@ export default function App() {
       )}
 
       <div className="workspace-content mx-auto flex min-h-0 w-full flex-1 flex-col">
-
-
         <div className={`workspace-columns grid grid-flow-dense min-h-0 flex-1 ${activePhase === 'EVALUATE' ? 'evaluate-wide' : 'lg:grid-cols-[minmax(0,1fr)_330px]'}`}>
           {/* Left / Center Authoritative Workspace */}
           <main id="main-workspace" tabIndex={-1} className="clinical-main flex min-h-0 flex-col gap-4">
@@ -787,6 +808,7 @@ export default function App() {
                     <WhatIfConsole
                       value={whatIf}
                       onChange={handleWhatIfChange}
+                      onReset={restoreScenarioConditions}
                       ventEvent={ventEvent}
                       onRearm={() => setVentEvent(null)}
                       link={link}
@@ -797,6 +819,34 @@ export default function App() {
                         void syncWhatIfNow();
                       }}
                     />
+
+                    <details className="scenario-disclosure mission-context">
+                      <CockpitSummary>Mission and crew context</CockpitSummary>
+                      <div className="mission-context-content">
+                        <div>
+                          <strong>{missionProfile.label}</strong>
+                          <p>{missionProfile.gravity} · {missionProfile.cabinCo2} mmHg example cabin CO₂</p>
+                          {missionProfile.eva && <p>{missionProfile.eva} EVA · NASA VO₂max reference {EVA_AEROBIC_CAPACITY[missionProfile.eva]} mL/kg/min</p>}
+                          <button type="button" className="act-secondary-button"
+                            onClick={() => handleWhatIfChange({ ...whatIf, ppco2_mmhg: missionProfile.cabinCo2 })}>
+                            Use preset cabin CO₂
+                          </button>
+                        </div>
+                        <label>
+                          Crew activity · interpretation only
+                          <CockpitSelect value={crewActivity} onChange={(event) => setCrewActivity(event.currentTarget.value as CrewActivity)}>
+                            <option value="unknown">Not recorded</option>
+                            <option value="rest">At rest</option>
+                            <option value="exercise">Exercising</option>
+                          </CockpitSelect>
+                        </label>
+                        <p>
+                          {flaggedEffortSignal && 'The detector flagged a change in heart or breathing rate. '}
+                          {ACTIVITY_CONTEXT[crewActivity]}
+                          {flaggedEffortSignal && ' The detector flag remains active.'}
+                        </p>
+                      </div>
+                    </details>
 
                     {isPureReplay && (
                       <div className="mt-3 rounded border border-warning/40 bg-black p-2.5 font-mono text-[11px]">
@@ -818,56 +868,30 @@ export default function App() {
                   className="anatomy-panel min-h-0"
                 >
                   <div className="flex h-full min-h-0 flex-col gap-2">
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-cyan-500/15 pb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-[11px] text-zinc-400">BIODIGITAL MESH:</span>
-                        <div className="flex rounded border border-zinc-700 bg-black/60 p-0.5 font-mono text-xs">
-                          <button
-                            type="button"
-                            onClick={() => handleWhatIfChange({ ...whatIf, sex: 'MALE' })}
-                            className={`cursor-pointer px-2.5 py-0.5 rounded transition-all ${whatIf.sex === 'MALE' ? 'bg-[#d8a85f] text-black font-bold' : 'text-zinc-400 hover:text-white'}`}
-                          >
-                            MALE
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleWhatIfChange({ ...whatIf, sex: 'FEMALE' })}
-                            className={`cursor-pointer px-2.5 py-0.5 rounded transition-all ${whatIf.sex === 'FEMALE' ? 'bg-[#d8a85f] text-black font-bold' : 'text-zinc-400 hover:text-white'}`}
-                          >
-                            FEMALE
-                          </button>
-                        </div>
-                      </div>
-                    </div>
                     <DeferredPanel name="anatomical explorer"><BodyHeatmap
-                      renderingActive={activeView==='VIEW_COCKPIT'}
                       s={hasHemodynamics || hasMusculoskeletal ? s : null}
-                      sex={whatIf.sex}
+                      sex={atlasProfile ?? whatIf.sex}
                       hypergraphSpatial={packet.hypergraph_spatial}
                       isLocalSimulation={Boolean(packet.is_local_simulation)}
                       modelValidationStatus={packet.model_validation_status}
                       injuries={injuries}
                       onAddInjury={addInjury}
                       onResolveInjury={resolveInjury}
-                      onChangeSex={handleBodySex}
+                      onChangeSex={setAtlasProfile}
                       onOpenTab={handleBodyTab}
                       onOpenPlaybook={handleBodyPlaybook}
                     /></DeferredPanel>
                   </div>
                 </Card>
-                <section id="evaluate-results" className="evaluate-results" aria-labelledby="evaluate-results-title">
-                  <h2 id="evaluate-results-title" className="sidebar-heading">Scenario results</h2>
+                <section id="evaluate-results" className="evaluate-results" aria-label="Scenario results">
                     <Card title="14-day safety forecast" tag="Illustrative trajectory" className="scenario-forecast">
                       <StlChart whatIf={whatIf} lastScanDay={lastScanDay} isPureReplay={isPureReplay} />
-                      <p className="mt-2 text-xs text-gray-400">The red line is the scenario threshold. The projection holds the selected conditions constant.</p>
+                      <p className="forecast-assumption">Projection assumes the selected conditions stay constant.</p>
                       <details className="scenario-disclosure">
                         <CockpitSummary>Current margins by indicator</CockpitSummary>
                         <PredicateBars rho={predicateBarsMap} />
                       </details>
                     </Card>
-                  <a className="evaluate-scan-link" href="#evaluate-ultrasound">
-                    Go to ultrasound <ArrowRightIcon aria-hidden="true" size={15} />
-                  </a>
                   <details className="scenario-disclosure forecast-detail">
                     <CockpitSummary>Short-term forecast</CockpitSummary>
                     <p className="evaluate-detail-note">Ranges for the next few seconds or hours, when the current data support a forecast.</p>
@@ -1005,8 +1029,9 @@ export default function App() {
                     <PlaybookRunner
                       activePlaybook={packet.active_playbook}
                       isLiveEngine={link === 'ENGINE_LIVE'}
-                      monitoringStatus={showUrgentStatus ? 'urgent' : status.isStale || sm.alarm_level === 'DATA_DEGRADED_MISSING_CHANNELS'
-                        ? 'unavailable' : sm.alarm_level === 'NOMINAL' && packet.vitals_anomaly?.overall !== 'ATTENTION' ? 'normal' : 'watch'}
+                      monitoringStatus={monitoringStatus}
+                      onRestoreScenario={showUrgentStatus && (currentEpisode?.source === 'simulation' || whatIfOverlayActive)
+                        ? restoreScenarioConditions : undefined}
                       thrombusConfirmed={thrombus}
                       ventEvent={ventEvent}
                       syncLatencyUs={ipcLatencyUs}
@@ -1149,9 +1174,6 @@ export default function App() {
         <CockpitSummary>System &amp; connection details
           <span>{lastBinaryFrame?.storm_shelter_mandatory || osStatus?.storm_shelter_mandatory ? 'Storm shelter mandatory' : lastBinaryFrame?.eva_airlock_forbidden || osStatus?.eva_airlock_forbidden ? 'EVA airlock restricted' : 'Onboard tools and runtime diagnostics'}</span>
         </CockpitSummary>
-      <div className="system-secondary-links">
-        <button type="button" onClick={() => setActiveView('VIEW_PORTAL')}>Ground review &amp; evidence atlas</button>
-      </div>
       <OsSystemStatusBar
         packet={packet}
         whatIf={whatIf}
@@ -1160,42 +1182,8 @@ export default function App() {
         binaryFrameCount={binaryFrameCount}
         lastBinaryFrame={lastBinaryFrame}
         osStatus={osStatus}
-        paletteOpen={paletteOpen}
-        onTogglePalette={() => setPaletteOpen((v) => !v)}
       />
       </details>
-
-      {/* Ground Control Telemedicine & 24-Dataset Scientific Atlas Modal */}
-      {activeView === 'VIEW_PORTAL' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-xl p-4 md:p-8 animate-in fade-in duration-200">
-          <div className="flex h-full w-full max-w-[1700px] flex-col rounded-xl border border-cyan-500/30 bg-zinc-950 shadow-[0_0_50px_rgba(0,0,0,0.9)] overflow-hidden">
-            <div className="flex items-center justify-between border-b border-zinc-800 px-6 py-3 bg-black/60">
-              <div className="flex items-center gap-3">
-                <span className="font-mono text-xs font-bold text-cyan-400 tracking-widest uppercase">Deep Space Network Ground Control</span>
-                <span className="text-zinc-500 font-mono text-xs">|</span>
-                <span className="text-xs text-zinc-300 font-mono">Telemedicine Review Station &amp; 24-Dataset Evidence Atlas</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setActiveView('VIEW_COCKPIT')}
-                className="cursor-pointer rounded border border-zinc-700 px-3 py-1 font-mono text-xs text-zinc-300 hover:border-zinc-400 hover:text-white"
-              >
-                ESC CLOSE
-              </button>
-            </div>
-            <div className="flex-1 min-h-0 overflow-y-auto p-4">
-              <DeferredPanel name="ground portal"><MissionPortal
-                packet={packet}
-                s={hasHemodynamics || hasMusculoskeletal ? s : null}
-                whatIf={whatIf}
-                thrombus={thrombus}
-                onSetThrombus={handleThrombusChange}
-                sex={whatIf.sex}
-              /></DeferredPanel>
-            </div>
-          </div>
-        </div>
-      )}
 
       {shortcutsModalOpen && <DeferredPanel name="keyboard shortcuts"><KeyboardShortcutsModal
         open={shortcutsModalOpen}

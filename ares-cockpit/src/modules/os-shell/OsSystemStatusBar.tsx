@@ -1,3 +1,4 @@
+import { CloseButton } from '../ui-primitives/CloseButton';
 import { useEffect, useState } from 'react';
 import type { DecodedBinaryTelemetryFrame } from '../../lib/binaryTelemetryDecoder';
 import type { TelemetryPacket } from '../../types/telemetry';
@@ -80,8 +81,6 @@ export function OsSystemStatusBar({
   binaryFrameCount,
   lastBinaryFrame,
   osStatus,
-  paletteOpen,
-  onTogglePalette,
 }: {
   packet: TelemetryPacket;
   whatIf: WhatIf;
@@ -90,8 +89,6 @@ export function OsSystemStatusBar({
   binaryFrameCount: number;
   lastBinaryFrame: DecodedBinaryTelemetryFrame | null;
   osStatus: OsStatusBarState | null;
-  paletteOpen: boolean;
-  onTogglePalette: () => void;
 }) {
   const [utcNow, setUtcNow] = useState(() => new Date());
 
@@ -277,21 +274,6 @@ export function OsSystemStatusBar({
           STORM SHELTER: {stormShelterMandatory ? 'MANDATORY' : 'NOMINAL'}
         </span>
 
-        <button
-          type="button"
-          onClick={onTogglePalette}
-          aria-expanded={paletteOpen}
-          aria-haspopup="dialog"
-          data-testid="open-fastmcp-palette-btn"
-          className={`cursor-pointer rounded border px-2 py-0.5 text-[10px] font-bold transition-colors ${
-            paletteOpen
-              ? 'border-nominal bg-nominal text-black'
-              : 'border-nominal/70 bg-nominal/10 text-nominal hover:bg-nominal/20'
-          }`}
-        >
-          [ALT+SPACE / CMD+K: FASTMCP &amp; 24-DATASET BIOKG]
-        </button>
-
         {IS_ARES_DESKTOP_SHELL && (
           <div className="ml-1 flex items-center gap-1 border-l border-line pl-2">
             <button
@@ -310,14 +292,8 @@ export function OsSystemStatusBar({
             >
               []
             </button>
-            <button
-              type="button"
-              aria-label="Close ARES-MedOS window"
-              onClick={() => void invokeWindowPlugin('plugin:window|close')}
-              className="cursor-pointer rounded border border-critical/60 px-1.5 py-0.5 text-[10px] text-critical hover:bg-critical hover:text-black"
-            >
-              X
-            </button>
+            <CloseButton label="Close ARES-MedOS window"
+              onClick={() => void invokeWindowPlugin('plugin:window|close')} />
           </div>
         )}
       </div>
