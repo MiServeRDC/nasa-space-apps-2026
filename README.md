@@ -1,14 +1,5 @@
 # ARES-Health
 
-### Autonomous Resilient Edge-native System for Astronaut Health
-
-A 100% air-gapped, deterministic, edge-native health-monitoring system for deep-space crews, built for the **NASA Space Apps Challenge 2026** track *"Create Health Monitoring Software for Astronauts on Space Missions."*
-
-[![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE)
-[![Rust](https://img.shields.io/badge/core-Rust%202024-orange.svg)](Cargo.toml)
-[![Cockpit](https://img.shields.io/badge/cockpit-React%2019%20%2B%20Three.js-61dafb.svg)](ares-cockpit/package.json)
-[![Execution](https://img.shields.io/badge/execution-offline%20%7C%20zero--cloud-black.svg)](#2-problem-statement)
-
 ---
 
 ## Abstract
@@ -216,23 +207,7 @@ ARES-Health is a standalone, clean-room, open-source project with zero external 
 
 ---
 
-## 10. Team & Multi-Agent Workflow
-
-`main` is the shared integration branch; each collaborator works on a dedicated branch.
-
-| GitHub username | Working branch |
-| :--- | :--- |
-| `@LelloXV` | `work/LelloXV` |
-| `@MiServeRDC` | `work/MiServeRDC` |
-| `@carolina2910` | `work/carolina2910` |
-| `@fabiomalagutti27-droid` | `work/fabiomalagutti27-droid` |
-| `@fertech02` | `work/fertech02` |
-
-The workspace is pre-configured for autonomous AI coding agents across providers via [`AGENTS.md`](AGENTS.md) (universal), [`CLAUDE.md`](CLAUDE.md) (Claude Code), `.cursorrules` / `.cursor/rules/` (Cursor), and `.github/copilot-instructions.md`. Reusable agent skills live in `.agents/skills/` (mirrored across `.claude/`, `.gemini/`, `skills/`): `rust-pro`, `mcp-builder`, `context7`, `security-auditor`, `telemetry-replay-verifier`, `ui-ux-pro-max`, `frontend-design`, and `git-standard`. Contribution workflow and Conventional Commits standard: [`CONTRIBUTING.md`](CONTRIBUTING.md).
-
----
-
-## 11. References & Data Sources
+## 10. References & Data Sources
 
 Grounding standards, datasets, and literature. Full annotated reading list with evidence boundaries: [`docs/REFERENCES.md`](docs/REFERENCES.md).
 
@@ -253,28 +228,6 @@ Grounding standards, datasets, and literature. Full annotated reading list with 
 - De Martino et al. (2026). Interconnected physiological systems. *Frontiers in Network Physiology*. https://doi.org/10.3389/fnetp.2026.1867627
 
 > Evidence boundaries (sample sizes, terrestrial vs. spaceflight scope, preprint status) are recorded per source in [`docs/REFERENCES.md`](docs/REFERENCES.md). These sources contextualize design choices; they do not validate ARES-Health's outputs.
-
----
-
-## 12. Project Dossier
-
-The complete architectural, clinical, and engineering specification. (Numbered files currently at repository root; being consolidated under `docs/dossier/`.)
-
-- [`PANORAMICA_GENERALE_PROGETTO.md`](PANORAMICA_GENERALE_PROGETTO.md) — unified master blueprint and scientific-decision provenance.
-- [`00_Executive_Summary_and_Challenge.md`](00_Executive_Summary_and_Challenge.md) — challenge breakdown, communication constraints, strategic positioning.
-- [`01_Medical_Physiological_Deep_Space_Foundations.md`](01_Medical_Physiological_Deep_Space_Foundations.md) — space-medicine grounding (sarcopenia, osteopenia, fluid shifts, jugular thrombosis, SANS).
-- [`02_System_Architecture_and_Metrics.md`](02_System_Architecture_and_Metrics.md) — telemetry bus, ADHG, and Med-STL formalism.
-- [`03_Backend_Engine_and_Technology_Tradeoff.md`](03_Backend_Engine_and_Technology_Tradeoff.md) — Rust vs. Python vs. hybrid; edge MCP server.
-- [`04_Frontend_Astronaut_Cockpit_UX.md`](04_Frontend_Astronaut_Cockpit_UX.md) — microgravity HSI, MRI gauge, 3D deconditioning map, playbook runner.
-- [`05_Official_NASA_Challenge_Brief_and_Resources.md`](05_Official_NASA_Challenge_Brief_and_Resources.md) — official brief, RIDGE hazards, open repositories.
-- [`06_Flight_Surgeons_Research_and_Cutting_Edge_Biomarkers.md`](06_Flight_Surgeons_Research_and_Cutting_Edge_Biomarkers.md) — flight-surgeon survey and biomarker taxonomy.
-- [`07_Recent_2026_Literature_Physiatry_Biomedical_Engineering.md`](07_Recent_2026_Literature_Physiatry_Biomedical_Engineering.md) — 2025–2026 space-medicine literature review.
-- [`08_Open_Source_Ecosystem_and_Comparative_Analysis.md`](08_Open_Source_Ecosystem_and_Comparative_Analysis.md) — open-source landscape and compliance analysis.
-- [`09_NASA_Space_Apps_Official_Rules_and_Judging_Guide.md`](09_NASA_Space_Apps_Official_Rules_and_Judging_Guide.md) — rules, Fresh-Code policy, judging rubric.
-- [`10_Gemini_Argon_Review_and_Validation_Prompt.md`](10_Gemini_Argon_Review_and_Validation_Prompt.md) — red-team validation prompt.
-- [`11_Official_Submission_Guide_and_Ready_To_Paste_Form.md`](11_Official_Submission_Guide_and_Ready_To_Paste_Form.md) — submission compliance and traceability matrix.
-- [`docs/architecture/CRATES_AND_MODULES_BLUEPRINT.md`](docs/architecture/CRATES_AND_MODULES_BLUEPRINT.md) — crate/module blueprint and dataset coverage matrix.
-- [`docs/architecture/MODEL_EVIDENCE_AUDIT.md`](docs/architecture/MODEL_EVIDENCE_AUDIT.md) — **authoritative evidence audit and permitted-wording reference.**
 
 ---
 
