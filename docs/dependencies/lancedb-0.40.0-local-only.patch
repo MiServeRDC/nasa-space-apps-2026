@@ -1,0 +1,36 @@
+--- a/src/job.rs
++++ b/src/job.rs
+@@ -1,5 +1,6 @@
+ // SPDX-License-Identifier: Apache-2.0
+ // SPDX-FileCopyrightText: Copyright The LanceDB Authors
++// Modified by ARES-Health: gate HTTP-only errors for local builds; see docs/dependencies/LANCEDB_LOCAL_PATCH.md.
+ 
+ //! Handles to operations a server may run asynchronously.
+ 
+@@ -99,22 +100,24 @@
+ 
+     fn decode<T: DeserializeOwned>(self) -> Result<T> {
+         let value = self.value.ok_or_else(|| match &self.request_id {
++            #[cfg(feature = "remote")]
+             Some(request_id) => Error::Http {
+                 source: "successful typed job response did not contain a result".into(),
+                 request_id: request_id.clone(),
+                 status_code: None,
+             },
+-            None => Error::Runtime {
++            _ => Error::Runtime {
+                 message: "successful typed job did not contain a result".to_string(),
+             },
+         })?;
+         serde_json::from_value(value).map_err(|error| match self.request_id {
++            #[cfg(feature = "remote")]
+             Some(request_id) => Error::Http {
+                 source: format!("failed to parse typed job result: {error}").into(),
+                 request_id,
+                 status_code: None,
+             },
+-            None => Error::Runtime {
++            _ => Error::Runtime {
+                 message: format!("failed to parse typed job result: {error}"),
+             },
+         })

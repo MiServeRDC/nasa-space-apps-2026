@@ -1,5 +1,9 @@
 //! Optional embedded LanceDB 0.40.0 Warm-tier backend (`--features lancedb-warm`).
 //! Enforces `validate_airgapped_lsah_dir()` prior to opening any local database directory.
+//!
+//! Experimental write adapter, not production parity with the default Arrow backend:
+//! trait reads/searches and flush are placeholders; sequence metadata and replacement
+//! upsert semantics are incomplete. See `docs/dependencies/LANCEDB_LOCAL_PATCH.md`.
 
 #[cfg(feature = "lancedb-warm")]
 pub mod backend {
@@ -10,14 +14,14 @@ pub mod backend {
     use crate::warm_trait::{
         PocusSimilarityHit, PocusSimilarityQuery, WarmColumnarVectorBackend, WarmSegmentMeta,
     };
-    use arrow_array::RecordBatch;
+    use arrow_array::{RecordBatch, RecordBatchIterator, RecordBatchReader};
     use arrow_array::cast::AsArray;
     use arrow_array::types::{UInt16Type, UInt64Type};
     use parking_lot::Mutex;
     use std::path::PathBuf;
     use std::sync::Arc;
 
-    /// Embedded LanceDB 0.40.0 Warm backend constrained strictly to local filesystem paths.
+    /// Experimental LanceDB write adapter constrained to local filesystem paths.
     pub struct LanceDbEmbeddedWarmBackend {
         local_dir: PathBuf,
         pocus_dim: usize,
@@ -95,9 +99,8 @@ pub mod backend {
             let row_count = batch.num_rows();
             self.runtime.block_on(async move {
                 let schema = batch_owned.schema();
-                let reader = arrow_array::RecordBatchIterator::new(
-                    vec![Ok(batch_owned)].into_iter(),
-                    schema,
+                let reader: Box<dyn RecordBatchReader + Send> = Box::new(
+                    RecordBatchIterator::new(vec![Ok(batch_owned)].into_iter(), schema),
                 );
                 let table_names = conn
                     .table_names()
@@ -111,12 +114,12 @@ pub mod backend {
                         .await
                         .map_err(|e| LsahStorageError::Backend(e.to_string()))?;
                     table
-                        .add(Box::new(reader))
+                        .add(reader)
                         .execute()
                         .await
                         .map_err(|e| LsahStorageError::Backend(e.to_string()))?;
                 } else {
-                    conn.create_table("lsah_telemetry_frames", Box::new(reader))
+                    conn.create_table("lsah_telemetry_frames", reader)
                         .execute()
                         .await
                         .map_err(|e| LsahStorageError::Backend(e.to_string()))?;
@@ -159,8 +162,9 @@ pub mod backend {
             let conn = Arc::clone(&self.conn);
             self.runtime.block_on(async move {
                 let schema = batch.schema();
-                let reader =
-                    arrow_array::RecordBatchIterator::new(vec![Ok(batch)].into_iter(), schema);
+                let reader: Box<dyn RecordBatchReader + Send> = Box::new(
+                    RecordBatchIterator::new(vec![Ok(batch)].into_iter(), schema),
+                );
                 let table_names = conn
                     .table_names()
                     .execute()
@@ -173,12 +177,12 @@ pub mod backend {
                         .await
                         .map_err(|e| LsahStorageError::Backend(e.to_string()))?;
                     table
-                        .add(Box::new(reader))
+                        .add(reader)
                         .execute()
                         .await
                         .map_err(|e| LsahStorageError::Backend(e.to_string()))?;
                 } else {
-                    conn.create_table("lsah_pocus_signatures", Box::new(reader))
+                    conn.create_table("lsah_pocus_signatures", reader)
                         .execute()
                         .await
                         .map_err(|e| LsahStorageError::Backend(e.to_string()))?;

@@ -98,6 +98,13 @@ fi
 # ------------------------------------------------------------------------------
 # 3. Cargo Workspace Check / Clippy / Tests (runs automatically once Cargo.toml exists)
 # ------------------------------------------------------------------------------
+if [ -d "vendor/lancedb" ]; then
+    echo "[Probe] Verifying pinned LanceDB source and local-only patch..."
+    if ! python3 scripts/verify_lancedb_vendor.py; then
+        ERRORS=$((ERRORS + 1))
+    fi
+fi
+
 if [ -f "Cargo.toml" ] && { [ "$MODE" == "fast" ] || [ "$MODE" == "test" ] || [ "$MODE" == "all" ]; }; then
     echo "[Probe 3/4] Running cargo check & clippy --workspace..."
     if ! cargo check --workspace --quiet; then

@@ -14,7 +14,11 @@ no hosted workflows are added or triggered by this change.
 The production cockpit interoperates with a real local Rust engine in the default
 Arrow storage configuration. The qualification found and corrected two integration
 issues. It does not establish clinical effectiveness or hardware readiness.
-**All-feature compilation remains blocked by the optional LanceDB dependency.**
+**Follow-up:** the optional compile blocker was repaired after this baseline
+qualification. See [LanceDB build qualification](LANCEDB_LOCAL_BUILD_QUALIFICATION.md)
+for 334 passing all-feature tests, network-denied local persistence tests and
+remaining experimental-adapter limits. Historical failures below record the
+original baseline, rather than the repaired build.
 
 ## Corrections
 
@@ -50,7 +54,7 @@ instead of relying on an automatically suggested scenario procedure during repla
 | Required local fast probe (contracts, manifests, Cargo, Memory Bank) | Passed |
 | Production Chrome with actual Rust HTTP/WS | 17 qualification checkpoints passed |
 | SHM, native command and offline-voice feature tests | 331 passed, 0 failed/ignored |
-| Full optional feature matrix | Failed in dependency `lancedb 0.40.0`; details below |
+| Full optional feature matrix at original baseline | Failed in dependency `lancedb 0.40.0`; repaired in the linked follow-up |
 
 The first default parallel Rust run passed 324 tests and failed one existing wall
 clock budget assertion: `SharedMissionState::advance_tick` averaged 174.09 us
@@ -140,11 +144,11 @@ that `dist/` for a regular demo. `ARES_SERVER_BINARY` can select a prebuilt bina
 
 ## Open limitations
 
-- `cargo test --workspace --all-features --no-fail-fast -- --test-threads=1` fails
+- At the original baseline, `cargo test --workspace --all-features --no-fail-fast -- --test-threads=1` failed
   before ARES tests run: `lancedb-0.40.0/src/job.rs:102,112` constructs `Error::Http`,
   which is not present with the dependency's configured features
   (`default-features = false`). Do not claim the optional `lancedb-warm` build
-  passes. No Cargo registry files were edited and no cloud features were enabled
+  passed at that baseline. The linked follow-up repairs this blocker. No Cargo registry files were edited and no cloud features were enabled
   to conceal the defect. The verified default backend is Arrow IPC/Zstd/HNSW.
 - No physical wearable, ECLSS or POCUS device was connected. Hardware-mode
   abstention and deterministic transport tests are not physical acquisition tests.

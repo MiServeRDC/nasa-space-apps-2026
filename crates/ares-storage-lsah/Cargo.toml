@@ -29,10 +29,11 @@ tokio = { version = "1.40", features = ["full"] }
 zeroize = { version = "1.8", features = ["derive"] }
 zstd = { version = "0.13.3", default-features = false }
 
-# Optional embedded LanceDB backend (pinned to local cache versions)
+# Optional embedded LanceDB backend; root Cargo patch keeps remote/cloud features off.
 lance = { version = "13.0.0", optional = true, default-features = false }
 lancedb = { version = "0.40.0", optional = true, default-features = false }
 
 [dev-dependencies]
+futures = "0.3"
 ares-telemetry-ingest = { path = "../ares-telemetry-ingest" }
 tempfile = "3.27.0"

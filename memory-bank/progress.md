@@ -1,5 +1,31 @@
 # Progress Tracking: ARES-Health (Autonomous Resilient Edge-native System for Astronaut Health)
 
+## LanceDB local-only build repair (2026-11-15)
+
+Baseline main e39312f, branch fix/lancedb-local-build. The earlier optional build
+blocker is resolved by a checksum-verified, licensed local patch of SDK 0.40.0:
+two HTTP-only job error arms are gated on remote; local runtime fallbacks remain.
+No remote/cloud SDK features are enabled. The vendor is excluded from workspace
+membership, and the fast probe verifies its file set, hashes and exact changes.
+Original Apache-2.0 source/attribution retained; modification notices and the single
+doc-comment formatting normalization are documented. Cargo registry untouched.
+
+Also corrected four adapter Scannable type errors by explicitly boxing
+RecordBatchReader + Send for telemetry and POCUS creation/append.
+Validation: 334 all-feature workspace tests and 326 default tests pass serially;
+all-feature/all-target workspace Clippy and required fast probe pass. Three real
+persistence/path tests also pass with all network operations denied by the macOS
+sandbox: actual disk writes, reopen/appends, nullable HRV, simulated POCUS labels.
+Upstream dead-code/debug-link warnings remain documented, not suppressed.
+
+The optional adapter is still experimental: stub trait reads/search, no-op flush,
+restart sequence metadata and replacement/upsert semantics need separate work.
+Default runtime remains Arrow. Clinical policies and model status unchanged.
+See docs/evaluation/LANCEDB_LOCAL_BUILD_QUALIFICATION.md and
+ docs/dependencies/LANCEDB_LOCAL_PATCH.md. No hosted Actions. Next: normal PR
+integration of this repair; optional adapter parity is a separate task.
+
+
 ## Final frontend/backend integration qualification (2026-11-15)
 
 Baseline `origin/main` `fb70b72`; branch `work/MiServeRDC-integration-qualification`.
@@ -22,7 +48,7 @@ checklist retention, context/overlay sync, storage/audit, absent-hardware absten
 disconnect/restart, responsive widths and no-WebGL fallback. Main context observed
 no external requests/uncaught errors. Artifact logs remain outside the repository.
 
-Open findings: all-features fails inside optional lancedb 0.40.0 (`Error::Http`
+Original qualification finding (resolved in the follow-up above): all-features failed inside optional lancedb 0.40.0 (`Error::Http`
 missing in job.rs with default features disabled); default Arrow storage is verified.
 One original parallel latency check measured 174.09 us vs 150 us, then passed in
 isolation/serial; no deadline certification or threshold relaxation. Physical
