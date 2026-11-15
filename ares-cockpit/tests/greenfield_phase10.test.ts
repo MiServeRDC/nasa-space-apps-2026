@@ -5,8 +5,21 @@ import { TelemetryRingBuffer } from '../src/stores/telemetryRingBuffer.ts';
 import {
   getCatalogEntry,
   ALL_CRYSTALLIZED_PLAYBOOK_LIST,
+  ALL_360_PLAYBOOK_LIST,
   PLAYBOOK_BY_SHORT_CODE,
+  PLAYBOOK_360_BY_SHORT_CODE,
+  PLAYBOOK_360_DOMAIN_TABS,
+  getPlaybookDomainForShortCode,
+  type Playbook360ShortCode,
 } from '../src/lib/playbookCatalog.ts';
+import { getPlaybookPrecedence } from '../src/lenses/lensMath.ts';
+import { partitionPlaybookActionsWithSafetyGates } from '../src/workbench/safetyGatePartition.ts';
+import {
+  beginCameraFlight,
+  createInitialCameraRigState,
+  presetToCameraSnapshot,
+  stepCameraRigFrame,
+} from '../src/stage3d/cameraRigMath.ts';
 import { segmentWaveformWithDropouts } from '../src/instruments/instrumentMath.ts';
 import { evaluateFreshnessGate } from '../src/lib/freshnessGate.ts';
 import { normalizeTimestralQuantiles } from '../src/lib/telemetryValidation.ts';
@@ -199,4 +212,105 @@ test('Phase 10: Suite D - Dual donor switching and license segregation', () => {
   assert.equal(useWorkbenchStore.getState().selectedUberonRegion, 'InternalJugularVein');
 
   store.resetWorkbench();
+});
+
+test('Phase 10: Suite E - Aerospace 360 Catalog exposes all 30 playbooks (#01-#30) across 4 domain tabs', () => {
+  assert.equal(ALL_CRYSTALLIZED_PLAYBOOK_LIST.length, 15);
+  assert.equal(ALL_360_PLAYBOOK_LIST.length, 30);
+  assert.equal(PLAYBOOK_360_DOMAIN_TABS.length, 4);
+
+  assert.equal(PLAYBOOK_360_DOMAIN_TABS[0].shortCodes.length, 8);
+  assert.equal(PLAYBOOK_360_DOMAIN_TABS[1].shortCodes.length, 7);
+  assert.equal(PLAYBOOK_360_DOMAIN_TABS[2].shortCodes.length, 8);
+  assert.equal(PLAYBOOK_360_DOMAIN_TABS[3].shortCodes.length, 7);
+
+  for (let i = 1; i <= 30; i++) {
+    const code = `#${String(i).padStart(2, '0')}` as Playbook360ShortCode;
+    const entry = PLAYBOOK_360_BY_SHORT_CODE[code];
+    assert.ok(entry, `Shortcode ${code} must exist in PLAYBOOK_360_BY_SHORT_CODE`);
+    assert.equal(getCatalogEntry(entry.playbook_id)?.short_code, code);
+    assert.ok(entry.normative_clause.length > 0);
+    assert.ok(entry.default_actions.length > 0);
+    const prec = getPlaybookPrecedence(entry.playbook_id);
+    assert.ok(prec.tier >= 1 && prec.tier <= 6);
+    const dom = getPlaybookDomainForShortCode(code);
+    assert.ok(
+      PLAYBOOK_360_DOMAIN_TABS.some((t) => t.id === dom),
+      `Domain ${dom} for ${code} must match 4 domain tabs`,
+    );
+  }
+});
+
+test('Phase 10: Suite F - Gates 1..7 matrix surfaces extended safety gates 5A, 5B, 5C, 6, 7', () => {
+  const dag = partitionPlaybookActionsWithSafetyGates(
+    ALL_360_PLAYBOOK_LIST[15].default_actions,
+    {
+      anticoagulant_lock_active: true,
+      lbnp_auto_vent_armed: true,
+      eva_suit_damping_active: false,
+      gate4_invasive_decompression_locked: true,
+      gate4_eva_fitness_no_go: false,
+    },
+    {
+      gaiPct: 4.5,
+      extendedGates: {
+        gate5_nsaid_renal_bleeding_locked: true,
+        gate5_allergy_or_qtc_locked: true,
+        gate5_formulary_substitution_active: true,
+        gate6_radiation_neutropenic_invasive_locked: true,
+        gate7_bmed_delirium_or_restraint_guard_active: true,
+      },
+    },
+  );
+
+  assert.equal(dag.interlockMatrix.length, 5);
+  assert.equal(dag.extendedInterlockMatrix.length, 5);
+  assert.equal(dag.gates1To7Matrix.length, 10);
+  assert.deepEqual(
+    dag.gates1To7Matrix.map((g) => g.pillCode),
+    ['1', '2', '3', '4A', '4B', '5A', '5B', '5C', '6', '7'],
+  );
+
+  const byPill = new Map(dag.gates1To7Matrix.map((g) => [g.pillCode, g]));
+  assert.equal(byPill.get('5A')?.status, 'TRIGGERED');
+  assert.equal(byPill.get('5B')?.status, 'TRIGGERED');
+  assert.equal(byPill.get('5C')?.status, 'ACTIVE');
+  assert.equal(byPill.get('6')?.status, 'LOCKED');
+  assert.equal(byPill.get('7')?.status, 'TRIGGERED');
+  assert.equal(dag.autonomousOverrides.length, 4);
+});
+
+test('Phase 10: Suite G - Critically-damped Quaternion Slerp converges monotonically without overshoot and honors reduced motion', () => {
+  const rig = createInitialCameraRigState(presetToCameraSnapshot('DEFAULT'));
+  const target = presetToCameraSnapshot('HEART');
+  beginCameraFlight(rig, target);
+  assert.equal(rig.inFlight, true);
+  assert.equal(rig.slerpProgress, 0);
+
+  let prevProgress = rig.slerpProgress;
+  for (let i = 0; i < 120 && rig.inFlight; i++) {
+    stepCameraRigFrame(rig, target, 0, 0, 1 / 60, false);
+    assert.ok(rig.slerpProgress >= prevProgress - 1e-9, 'slerpProgress must be non-decreasing');
+    assert.ok(rig.slerpProgress <= 1 + 1e-9, 'slerpProgress must never overshoot 1.0');
+    const qNorm = Math.hypot(
+      rig.orientation[0],
+      rig.orientation[1],
+      rig.orientation[2],
+      rig.orientation[3],
+    );
+    assert.ok(Math.abs(qNorm - 1.0) < 1e-4, 'orientation quaternion must stay unit length');
+    prevProgress = rig.slerpProgress;
+  }
+  assert.equal(rig.inFlight, false);
+  assert.equal(rig.slerpProgress, 1);
+
+  // Reduced motion must complete flight in exactly 1 frame
+  const reducedRig = createInitialCameraRigState(presetToCameraSnapshot('DEFAULT'));
+  const reducedTarget = presetToCameraSnapshot('ONSD');
+  beginCameraFlight(reducedRig, reducedTarget);
+  stepCameraRigFrame(reducedRig, reducedTarget, -40, 12, 1 / 60, true);
+  assert.equal(reducedRig.inFlight, false);
+  assert.equal(reducedRig.slerpProgress, 1);
+  assert.equal(reducedRig.offsetX, -40);
+  assert.equal(reducedRig.offsetY, 12);
 });

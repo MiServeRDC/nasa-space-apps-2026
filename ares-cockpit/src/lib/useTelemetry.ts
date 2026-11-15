@@ -12,9 +12,14 @@ import {
   type OsStatusBarState,
   type TransportMode,
 } from '../modules/os-shell/OsSystemStatusBar';
+import {
+  computeReconnectBackoffMs,
+  resolveTelemetryTransportPolicy,
+  type TelemetryTransportPolicy,
+} from './telemetryTransportPolicy';
 
-export type { OsStatusBarState, TransportMode };
-export { IS_ARES_DESKTOP_SHELL };
+export type { OsStatusBarState, TransportMode, TelemetryTransportPolicy };
+export { IS_ARES_DESKTOP_SHELL, resolveTelemetryTransportPolicy };
 
 const DEFAULT_HTTP_BASE = 'http://127.0.0.1:8080';
 
@@ -563,9 +568,21 @@ export function useTelemetry(
   // 1B. Browser WebSocket + HTTP Snapshot transport (default in browser & fallback)
   useEffect(() => {
     if (IS_ARES_DESKTOP_SHELL) return;
+    const policy = resolveTelemetryTransportPolicy();
+
     let disposed = false;
     let retryTimer: number | undefined;
+    let osPollId: number | undefined;
+    let reconnectAttempt = 0;
     const abortCtrl = new AbortController();
+    const MAX_AUTO_PROBE_RETRIES = 3;
+
+    const stopOsPolling = () => {
+      if (osPollId !== undefined) {
+        window.clearInterval(osPollId);
+        osPollId = undefined;
+      }
+    };
 
     const fetchOsStatus = async () => {
       try {
@@ -585,16 +602,36 @@ export function useTelemetry(
       }
     };
 
-    const fetchInitialSnapshot = async () => {
+    const startOsPolling = () => {
+      if (disposed || osPollId !== undefined) return;
+      osPollId = window.setInterval(() => {
+        if (!disposed) {
+          void fetchOsStatus();
+        }
+      }, 2000);
+    };
+
+    const fetchInitialSnapshot = async (timeoutMs = 1500): Promise<boolean> => {
+      const probeCtrl = new AbortController();
+      const onParentAbort = () => probeCtrl.abort();
+      abortCtrl.signal.addEventListener('abort', onParentAbort, { once: true });
+      const timerId = window.setTimeout(() => probeCtrl.abort(), timeoutMs);
       try {
-        const res = await fetch(`${ENGINE_HTTP_URL}/api/snapshot`, { signal: abortCtrl.signal });
-        if (!res.ok || disposed) return;
+        const res = await fetch(`${ENGINE_HTTP_URL}/api/snapshot`, {
+          signal: probeCtrl.signal,
+        });
+        if (!res.ok || disposed) return false;
         const json = (await res.json()) as unknown;
         if (!disposed) {
           acceptRawPayload(json, 'GET /api/snapshot');
         }
+        return true;
       } catch {
-        // Offline or engine not started yet; WS retry loop handles reconnect
+        // Offline or engine not started yet
+        return false;
+      } finally {
+        window.clearTimeout(timerId);
+        abortCtrl.signal.removeEventListener('abort', onParentAbort);
       }
     };
 
@@ -606,7 +643,11 @@ export function useTelemetry(
         ws = new WebSocket(ENGINE_WS_URL);
         ws.binaryType = 'arraybuffer';
       } catch {
-        if (!disposed) retryTimer = window.setTimeout(connectWs, 3000);
+        if (!disposed && (policy === 'LIVE' || reconnectAttempt < MAX_AUTO_PROBE_RETRIES)) {
+          const delay = computeReconnectBackoffMs(reconnectAttempt);
+          reconnectAttempt += 1;
+          retryTimer = window.setTimeout(connectWs, delay);
+        }
         return;
       }
       wsRef.current = ws;
@@ -616,9 +657,11 @@ export function useTelemetry(
           ws.close();
           return;
         }
+        reconnectAttempt = 0;
         setWsConnected(true);
         setLink('ENGINE_LIVE');
         void fetchOsStatus();
+        startOsPolling();
         // Re-sync active What-If override when socket opens or reconnects.
         const cur = inputsRef.current;
         if (cur.whatIfOverlayActive) {
@@ -657,34 +700,72 @@ export function useTelemetry(
         wsRef.current = null;
         setWsConnected(false);
         setLink('LOCAL_SIMULATION');
-        if (!disposed) {
-          retryTimer = window.setTimeout(connectWs, 3000);
+        stopOsPolling();
+        if (disposed) return;
+
+        if (policy === 'LIVE' || reconnectAttempt < MAX_AUTO_PROBE_RETRIES) {
+          const delay = computeReconnectBackoffMs(reconnectAttempt);
+          reconnectAttempt += 1;
+          retryTimer = window.setTimeout(connectWs, delay);
         }
       };
 
       ws.onerror = () => {
-        if (gen === socketGenRef.current) {
+        if (
+          gen === socketGenRef.current &&
+          (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)
+        ) {
           ws.close();
         }
       };
     };
 
-    void fetchInitialSnapshot();
-    void fetchOsStatus();
-    connectWs();
-
-    const osPollId = window.setInterval(() => {
-      if (!disposed) {
+    if (policy === 'OFFLINE') {
+      setWsConnected(false);
+      setLink('LOCAL_SIMULATION');
+    } else if (policy === 'LIVE') {
+      void fetchInitialSnapshot();
+      void fetchOsStatus();
+      connectWs();
+      startOsPolling();
+    } else {
+      // AUTO_PROBE: single bounded HTTP probe prevents recurring WebSocket / poll console spam
+      // when running purely client-side without loopback :8080, while connecting immediately
+      // whenever the ARES backend is online.
+      void (async () => {
+        const backendReachable = await fetchInitialSnapshot(1500);
+        if (disposed || !backendReachable) {
+          setWsConnected(false);
+          setLink('LOCAL_SIMULATION');
+          return;
+        }
         void fetchOsStatus();
-      }
-    }, 2000);
+        connectWs();
+        startOsPolling();
+      })();
+    }
+
+    const handleManualReconnect = () => {
+      if (disposed || policy === 'OFFLINE') return;
+      window.clearTimeout(retryTimer);
+      reconnectAttempt = 0;
+      void (async () => {
+        if (policy === 'AUTO_PROBE') {
+          const ok = await fetchInitialSnapshot(1500);
+          if (disposed || !ok) return;
+        }
+        connectWs();
+      })();
+    };
+    window.addEventListener('ares:telemetry-reconnect', handleManualReconnect);
 
     return () => {
       disposed = true;
       socketGenRef.current += 1;
+      window.removeEventListener('ares:telemetry-reconnect', handleManualReconnect);
       abortCtrl.abort();
       window.clearTimeout(retryTimer);
-      window.clearInterval(osPollId);
+      if (osPollId !== undefined) window.clearInterval(osPollId);
       wsRef.current?.close();
       wsRef.current = null;
     };

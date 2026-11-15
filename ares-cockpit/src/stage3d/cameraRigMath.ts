@@ -1,10 +1,11 @@
-// Pure spherical camera spring rig & optical frustum offset math (`UnifiedCameraController`).
+// Pure spherical camera spring rig, critically-damped Quaternion Slerp, and optical frustum offset math (`UnifiedCameraController`).
 // Implements:
 // - Shortest-arc azimuthal delta (`Math.atan2(sin, cos)`) preventing 180-deg wraparound whips
 // - Polar clamp `[0.08, Math.PI - 0.08]` preventing gimbal lock
 // - `1.15x` radial apex clearance when `|deltaTheta| > Math.PI * 0.5` so camera never clips torso
+// - Critically-damped `omega_n` (`zeta = 1.0`, zero overshoot) Quaternion `slerp` orientation progression
 // - Optical frustum centering `setViewOffset` (`deltaX = -(W_L - W_R)/2`, `deltaY = -(H_T - H_B)/2`)
-// - Critical spring `k = 340, c = 38, m = 0.85` + `prefers-reduced-motion` instant 1-frame snap
+// - `prefers-reduced-motion` instant 1-frame snap
 // Uses only bare package runtime imports (`three`) so Node `--experimental-strip-types` can test directly.
 
 import * as THREE from 'three';
@@ -145,11 +146,25 @@ export interface CameraRigDynamicState {
   offsetYVel: number;
   flightStartRadiusM: number;
   flightInitialAbsDeltaTheta: number;
+  orientation: [number, number, number, number];
+  flightStartQuat: [number, number, number, number];
+  flightTargetQuat: [number, number, number, number];
+  slerpProgress: number;
+  slerpVelocity: number;
   inFlight: boolean;
 }
 
 const _tmpOffsetVec = new THREE.Vector3();
 const _tmpSpherical = new THREE.Spherical();
+const _tmpEyeVec = new THREE.Vector3();
+const _tmpTargetVec = new THREE.Vector3();
+const _tmpUpVec = new THREE.Vector3(0, 1, 0);
+const _tmpLookMatrix = new THREE.Matrix4();
+const _tmpQuatA = new THREE.Quaternion();
+const _tmpQuatB = new THREE.Quaternion();
+const _tmpQuatOut = new THREE.Quaternion();
+const _tmpStartPos: [number, number, number] = [0, 0, 0];
+const _tmpGoalPos: [number, number, number] = [0, 0, 0];
 
 /**
  * Shortest signed angular delta in `(-PI, +PI]` using `atan2(sin(d), cos(d))`.
@@ -256,9 +271,43 @@ export function sphericalSnapshotToCartesian(
   return outPosition;
 }
 
+export function computeOmegaN(
+  params: CameraSpringParams = UNIFIED_CAMERA_SPRING_PARAMS,
+): number {
+  const safeStiffness = Math.max(1, params.stiffness);
+  const safeMass = Math.max(0.05, params.mass);
+  return Math.sqrt(safeStiffness / safeMass);
+}
+
+/**
+ * Computes Three.js camera `lookAt` orientation quaternion (`-Z` forward toward target, `+Y` up)
+ * using zero-allocation module scratch objects.
+ */
+export function computeLookAtQuaternion(
+  eyePos: readonly [number, number, number],
+  targetPos: readonly [number, number, number],
+  outQuat: [number, number, number, number] = [0, 0, 0, 1],
+): [number, number, number, number] {
+  _tmpEyeVec.set(eyePos[0], eyePos[1], eyePos[2]);
+  _tmpTargetVec.set(targetPos[0], targetPos[1], targetPos[2]);
+  _tmpOffsetVec.subVectors(_tmpEyeVec, _tmpTargetVec);
+  if (_tmpOffsetVec.lengthSq() < 1e-10) {
+    _tmpEyeVec.set(targetPos[0], targetPos[1], targetPos[2] + 1);
+  }
+  _tmpLookMatrix.lookAt(_tmpEyeVec, _tmpTargetVec, _tmpUpVec);
+  _tmpQuatOut.setFromRotationMatrix(_tmpLookMatrix).normalize();
+  outQuat[0] = _tmpQuatOut.x;
+  outQuat[1] = _tmpQuatOut.y;
+  outQuat[2] = _tmpQuatOut.z;
+  outQuat[3] = _tmpQuatOut.w;
+  return outQuat;
+}
+
 export function createInitialCameraRigState(
   initialSnapshot: CameraSnapshot = presetToCameraSnapshot('DEFAULT'),
 ): CameraRigDynamicState {
+  const initPos = sphericalSnapshotToCartesian(initialSnapshot, [0, 0, 0]);
+  const initQuat = computeLookAtQuaternion(initPos, initialSnapshot.target, [0, 0, 0, 1]);
   return {
     azimuthRad: initialSnapshot.azimuthRad,
     azimuthVel: 0,
@@ -276,6 +325,11 @@ export function createInitialCameraRigState(
     offsetYVel: 0,
     flightStartRadiusM: clampRadius(initialSnapshot.radiusM),
     flightInitialAbsDeltaTheta: 0,
+    orientation: [...initQuat],
+    flightStartQuat: [...initQuat],
+    flightTargetQuat: [...initQuat],
+    slerpProgress: 1,
+    slerpVelocity: 0,
     inFlight: false,
   };
 }
@@ -287,6 +341,27 @@ export function beginCameraFlight(
   const dTheta = Math.abs(shortestAzimuthDelta(state.azimuthRad, nextTarget.azimuthRad));
   state.flightStartRadiusM = state.radiusM;
   state.flightInitialAbsDeltaTheta = dTheta;
+  sphericalSnapshotToCartesian(
+    {
+      azimuthRad: state.azimuthRad,
+      polarRad: state.polarRad,
+      radiusM: state.radiusM,
+      target: state.target,
+      fovDeg: state.fovDeg,
+    },
+    _tmpStartPos,
+  );
+  computeLookAtQuaternion(_tmpStartPos, state.target, state.flightStartQuat);
+  state.orientation[0] = state.flightStartQuat[0];
+  state.orientation[1] = state.flightStartQuat[1];
+  state.orientation[2] = state.flightStartQuat[2];
+  state.orientation[3] = state.flightStartQuat[3];
+
+  sphericalSnapshotToCartesian(nextTarget, _tmpGoalPos);
+  computeLookAtQuaternion(_tmpGoalPos, nextTarget.target, state.flightTargetQuat);
+
+  state.slerpProgress = 0;
+  state.slerpVelocity = 0;
   state.inFlight = true;
 }
 
@@ -299,19 +374,25 @@ export function abortCameraFlightInPlace(state: CameraRigDynamicState): void {
   state.targetVel[1] = 0;
   state.targetVel[2] = 0;
   state.fovVel = 0;
+  state.slerpVelocity = 0;
 }
 
-function stepScalarSpring(
+/**
+ * Closed-form critically-damped scalar integrator (`zeta = 1.0`, zero overshoot)
+ * governed by natural frequency `omegaN = sqrt(stiffness / mass)`.
+ */
+export function stepCriticallyDampedScalar(
   current: number,
   target: number,
   velocity: number,
   dt: number,
-  params: CameraSpringParams,
+  omegaN: number,
 ): { value: number; velocity: number; settled: boolean } {
-  const disp = current - target;
-  const accel = (-params.stiffness * disp - params.damping * velocity) / params.mass;
-  const nextVel = velocity + accel * dt;
-  const nextVal = current + nextVel * dt;
+  const err = current - target;
+  const term = velocity + omegaN * err;
+  const exp = Math.exp(-omegaN * dt);
+  const nextVal = target + (err + term * dt) * exp;
+  const nextVel = (velocity - term * omegaN * dt) * exp;
   if (Math.abs(nextVal - target) < 1e-4 && Math.abs(nextVel) < 1e-4) {
     return { value: target, velocity: 0, settled: true };
   }
@@ -319,8 +400,8 @@ function stepScalarSpring(
 }
 
 /**
- * Advances both spherical camera flight (if `state.inFlight === true`) and optical
- * frustum view-offset springs in-place with zero heap allocations.
+ * Advances both spherical camera flight + critically-damped Quaternion `Slerp` (`zeta = 1.0`)
+ * and optical frustum view-offset springs in-place with zero heap allocations.
  */
 export function stepCameraRigFrame(
   state: CameraRigDynamicState,
@@ -332,6 +413,7 @@ export function stepCameraRigFrame(
   params: CameraSpringParams = UNIFIED_CAMERA_SPRING_PARAMS,
 ): void {
   const dt = Math.min(Math.max(Number.isFinite(rawDtSec) ? rawDtSec : 0.016, 0.001), 0.05);
+  const omegaN = computeOmegaN(params);
 
   if (prefersReducedMotion) {
     if (state.inFlight) {
@@ -342,6 +424,13 @@ export function stepCameraRigFrame(
       state.target[1] = targetSnapshot.target[1];
       state.target[2] = targetSnapshot.target[2];
       state.fovDeg = targetSnapshot.fovDeg;
+      sphericalSnapshotToCartesian(targetSnapshot, _tmpGoalPos);
+      computeLookAtQuaternion(_tmpGoalPos, targetSnapshot.target, state.flightTargetQuat);
+      state.orientation[0] = state.flightTargetQuat[0];
+      state.orientation[1] = state.flightTargetQuat[1];
+      state.orientation[2] = state.flightTargetQuat[2];
+      state.orientation[3] = state.flightTargetQuat[3];
+      state.slerpProgress = 1;
       abortCameraFlightInPlace(state);
     }
     state.offsetX = targetOffsetX;
@@ -352,11 +441,11 @@ export function stepCameraRigFrame(
   }
 
   // Always smooth frustum optical center offset even during manual OrbitControls drag
-  const ox = stepScalarSpring(state.offsetX, targetOffsetX, state.offsetXVel, dt, params);
+  const ox = stepCriticallyDampedScalar(state.offsetX, targetOffsetX, state.offsetXVel, dt, omegaN);
   state.offsetX = ox.value;
   state.offsetXVel = ox.velocity;
 
-  const oy = stepScalarSpring(state.offsetY, targetOffsetY, state.offsetYVel, dt, params);
+  const oy = stepCriticallyDampedScalar(state.offsetY, targetOffsetY, state.offsetYVel, dt, omegaN);
   state.offsetY = oy.value;
   state.offsetYVel = oy.velocity;
 
@@ -367,19 +456,19 @@ export function stepCameraRigFrame(
   // Shortest-arc unwrapped azimuth target
   const deltaTheta = shortestAzimuthDelta(state.azimuthRad, targetSnapshot.azimuthRad);
   const continuousThetaTarget = state.azimuthRad + deltaTheta;
-  const az = stepScalarSpring(
+  const az = stepCriticallyDampedScalar(
     state.azimuthRad,
     continuousThetaTarget,
     state.azimuthVel,
     dt,
-    params,
+    omegaN,
   );
   // Normalize back into (-PI, +PI]
   state.azimuthRad = Math.atan2(Math.sin(az.value), Math.cos(az.value));
   state.azimuthVel = az.velocity;
 
   const clampedTargetPhi = clampPolarPhi(targetSnapshot.polarRad);
-  const pol = stepScalarSpring(state.polarRad, clampedTargetPhi, state.polarVel, dt, params);
+  const pol = stepCriticallyDampedScalar(state.polarRad, clampedTargetPhi, state.polarVel, dt, omegaN);
   state.polarRad = clampPolarPhi(pol.value);
   state.polarVel = pol.velocity;
 
@@ -395,13 +484,13 @@ export function stepCameraRigFrame(
     progress,
   );
 
-  const rad = stepScalarSpring(state.radiusM, clearanceTargetR, state.radiusVel, dt, params);
+  const rad = stepCriticallyDampedScalar(state.radiusM, clearanceTargetR, state.radiusVel, dt, omegaN);
   state.radiusM = clampRadius(rad.value);
   state.radiusVel = rad.velocity;
 
-  const tx = stepScalarSpring(state.target[0], targetSnapshot.target[0], state.targetVel[0], dt, params);
-  const ty = stepScalarSpring(state.target[1], targetSnapshot.target[1], state.targetVel[1], dt, params);
-  const tz = stepScalarSpring(state.target[2], targetSnapshot.target[2], state.targetVel[2], dt, params);
+  const tx = stepCriticallyDampedScalar(state.target[0], targetSnapshot.target[0], state.targetVel[0], dt, omegaN);
+  const ty = stepCriticallyDampedScalar(state.target[1], targetSnapshot.target[1], state.targetVel[1], dt, omegaN);
+  const tz = stepCriticallyDampedScalar(state.target[2], targetSnapshot.target[2], state.targetVel[2], dt, omegaN);
   state.target[0] = tx.value;
   state.targetVel[0] = tx.velocity;
   state.target[1] = ty.value;
@@ -409,15 +498,56 @@ export function stepCameraRigFrame(
   state.target[2] = tz.value;
   state.targetVel[2] = tz.velocity;
 
-  const fv = stepScalarSpring(state.fovDeg, targetSnapshot.fovDeg, state.fovVel, dt, params);
+  const fv = stepCriticallyDampedScalar(state.fovDeg, targetSnapshot.fovDeg, state.fovVel, dt, omegaN);
   state.fovDeg = fv.value;
   state.fovVel = fv.velocity;
 
+  // Synchronize target lookAt quaternion & critically-damped Slerp progress (`zeta = 1.0`, zero overshoot)
+  sphericalSnapshotToCartesian(targetSnapshot, _tmpGoalPos);
+  computeLookAtQuaternion(_tmpGoalPos, targetSnapshot.target, state.flightTargetQuat);
+
+  const slerpStep = stepCriticallyDampedScalar(state.slerpProgress, 1.0, state.slerpVelocity, dt, omegaN);
+  state.slerpProgress = Math.max(0, Math.min(1, slerpStep.value));
+  state.slerpVelocity = slerpStep.velocity;
+
+  _tmpQuatA.set(
+    state.flightStartQuat[0],
+    state.flightStartQuat[1],
+    state.flightStartQuat[2],
+    state.flightStartQuat[3],
+  );
+  _tmpQuatB.set(
+    state.flightTargetQuat[0],
+    state.flightTargetQuat[1],
+    state.flightTargetQuat[2],
+    state.flightTargetQuat[3],
+  );
+  _tmpQuatOut.slerpQuaternions(_tmpQuatA, _tmpQuatB, state.slerpProgress).normalize();
+  state.orientation[0] = _tmpQuatOut.x;
+  state.orientation[1] = _tmpQuatOut.y;
+  state.orientation[2] = _tmpQuatOut.z;
+  state.orientation[3] = _tmpQuatOut.w;
+
   const radiusSettled = Math.abs(state.radiusM - clampRadius(targetSnapshot.radiusM)) < 1e-3;
-  if (az.settled && pol.settled && rad.settled && radiusSettled && tx.settled && ty.settled && tz.settled && fv.settled) {
+  if (
+    az.settled &&
+    pol.settled &&
+    rad.settled &&
+    radiusSettled &&
+    tx.settled &&
+    ty.settled &&
+    tz.settled &&
+    fv.settled &&
+    slerpStep.settled
+  ) {
     state.azimuthRad = targetSnapshot.azimuthRad;
     state.polarRad = clampedTargetPhi;
     state.radiusM = clampRadius(targetSnapshot.radiusM);
+    state.slerpProgress = 1;
+    state.orientation[0] = state.flightTargetQuat[0];
+    state.orientation[1] = state.flightTargetQuat[1];
+    state.orientation[2] = state.flightTargetQuat[2];
+    state.orientation[3] = state.flightTargetQuat[3];
     abortCameraFlightInPlace(state);
   }
 }

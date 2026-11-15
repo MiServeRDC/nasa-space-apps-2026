@@ -42,8 +42,11 @@ Zero exact selectors is an unresolved gap, not proof that no unnamed/mislabelled
 - Denver female lower-limb record explicitly lists bilateral soleus and calcaneus,
   femur, pelvis and other lower-limb parts. This is **institutional source evidence**,
   not downloaded-file/mesh verification. The final 87.8 MB STL package and 55 KB
-  metadata are linked at the institutional page; direct metadata download returned
-  HTTP 403 on this run. No replacement files from an unofficial mirror were used.
+  metadata are linked at the institutional page; direct download returned
+  HTTP 403 (`cf-mitigated: challenge`) on this run. No replacement files from an unofficial mirror were used.
+  See [DENVER_STL_RUNBOOK.md](DENVER_STL_RUNBOOK.md) for the authorized browser acquisition,
+  `scripts/register_anatomy.mjs` (`>= 4` fit, `>= 3` check landmarks), and
+  `ares-cockpit/scripts/buildDenverLowerLimb.mjs` conversion workflow.
 - Female IJV/vagus/vestibular/sheath remain unresolved native source rows. Targeted
   primary-source searches did not establish a licensed female substitute. Optional
   borrowed male context cannot close a native female requirement.

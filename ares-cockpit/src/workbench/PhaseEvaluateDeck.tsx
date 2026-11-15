@@ -18,9 +18,16 @@ import { formatTimeToViolation } from '../lib/telemetryValidation';
 import { CANONICAL_REGIONS } from '../modules/body-3d-heatmap/uberonSpatialMapping';
 import { BentoCardShell } from '../instruments/BentoCardShell';
 import { TabularCounter } from '../instruments/TabularCounter';
+import { NumberTicker } from '../components/magicui/number-ticker';
 import { ForecastAndBoneRenalLens } from '../lenses/ForecastAndBoneRenalLens';
 import { WhatIfCounterfactualLens } from '../lenses/WhatIfCounterfactualLens';
 import { useWorkbenchStore } from '../stores/workbenchStore';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '../components/ui/tooltip';
 
 export interface PhaseEvaluateProps {
   packet: TelemetryPacket;
@@ -49,112 +56,153 @@ export function PhaseEvaluateLeftContext({
   );
 
   return (
-    <BentoCardShell
-      id="left-slot-2-evaluate-context"
-      tier="root"
-      eyebrow="02 EVALUATE | NQS-STL CAUSAL ROBUSTNESS"
-      title="Mission Readiness & Margins"
-      className="min-h-0 flex-1"
-      bodyClassName="space-y-2.5"
-    >
-      <ClinicalDataNotice packet={packet} />
-      <div className="grid grid-cols-2 gap-2">
-        <div className="ares-inner-well p-2" data-clinical-field="mri" data-availability={view.mri.availability}>
-          <TabularCounter
-            label="Readiness (MRI)"
-            sublabel="0-100"
-            value={mri}
-            unavailableLabel="N/A"
-            unavailableReason={view.mri.reason}
-            unit="%"
-            decimals={0}
-            tone={
-              mri !== null && mri < 55
-                ? 'critical'
-                : mri !== null && mri < 75
-                  ? 'caution'
-                  : 'nominal'
-            }
-            size="md"
-          />
-        </div>
-
-        <div className="ares-inner-well p-2" data-clinical-field="rhoGlobal" data-availability={view.rhoGlobal.availability}>
-          <TabularCounter
-            label="Global rho_min"
-            sublabel="STL >= 0"
-            value={rhoMin}
-            unavailableLabel="N/A"
-            unavailableReason={view.rhoGlobal.reason}
-            decimals={2}
-            alwaysShowPlus
-            tone={
-              rhoMin !== null && rhoMin < 0
-                ? 'critical'
-                : rhoMin !== null && rhoMin < 0.2
-                  ? 'caution'
-                  : 'spatial'
-            }
-            size="md"
-          />
-        </div>
-      </div>
-
-      {/* Time-To-Violation (TTV) honest card */}
-      <div className="ares-inner-well px-2.5 py-2 font-mono text-[10px]">
-        <div className="flex items-center justify-between text-[var(--color-ink-meta)]">
-          <span>EWMA-OLS TIME-TO-VIOLATION</span>
-          <span className="text-amber-300">ILLUSTRATIVE_SCENARIO_RANGE</span>
-        </div>
-        <div className="ares-tabular-metric mt-0.5 text-sm font-semibold text-[var(--color-ink-display)]">
-          {ttvFormatted.primaryText}
-        </div>
-        <div className="text-[9px] text-[var(--color-ink-muted)]">
-          {ttvFormatted.secondaryText}
-        </div>
-      </div>
-
-      {/* Normalized Signal Temporal Logic predicate bars */}
-      <div className="ares-inner-well space-y-1.5 p-2.5">
-        <div className="font-mono text-[10px] font-semibold text-[var(--color-ink-meta)]">
-          PREDICATE MARGINS rho_k in (-inf, +1.0]
-        </div>
-        {view.predicates.map((pred) => {
-          const val = pred.metric.value;
-          const pct = val === null ? 0 : Math.max(0, Math.min(100, ((val + 0.5) / 1.5) * 100));
-          const violated = val !== null && val < 0;
-          return (
-            <div key={pred.key} data-availability={pred.metric.availability} className="space-y-0.5 font-mono text-[10px]">
-              <div className="flex items-center justify-between">
-                <span className="text-[var(--color-ink-body)]">{pred.label}</span>
-                <span
-                  className={`ares-tabular-metric ${
-                    violated
-                      ? 'text-rose-300'
-                      : val !== null && val < 0.2
-                        ? 'text-amber-300'
-                        : 'text-cyan-200'
-                  }`}
-                >
-                  {val === null ? 'N/A' : val >= 0 ? `+${val.toFixed(2)}` : val.toFixed(2)} (rho)
-                </span>
+    <TooltipProvider delayDuration={180}>
+      <BentoCardShell
+        id="left-slot-2-evaluate-context"
+        tier="root"
+        eyebrow="02 EVALUATE | NQS-STL CAUSAL ROBUSTNESS"
+        title="Mission Readiness & Margins"
+        className="min-h-0 flex-1"
+        bodyClassName="space-y-2.5"
+      >
+        <ClinicalDataNotice packet={packet} />
+        <div className="grid grid-cols-2 gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div
+                data-clinical-field="mri"
+                data-availability={view.mri.availability}
+                className={mri === null ? 'ares-missing-hatch rounded-[var(--radius-well)] p-2 cursor-help' : 'ares-inner-well p-2'}
+              >
+                <div className="space-y-0.5">
+                  <div className="flex items-baseline justify-between gap-2 font-mono text-[9.5px] text-[var(--color-ink-meta)]">
+                    <span className="font-semibold uppercase tracking-wider">Readiness (MRI)</span>
+                    <span>0-100</span>
+                  </div>
+                  <div className="pt-0.5">
+                    <NumberTicker
+                      value={mri !== null ? Math.round(mri) : null}
+                      decimals={0}
+                      suffix="%"
+                      missingText="--"
+                      className={`text-xl font-bold leading-none ${
+                        mri === null
+                          ? 'text-[var(--color-ink-muted)]'
+                          : mri < 55
+                            ? 'text-rose-300'
+                            : mri < 75
+                              ? 'text-amber-200'
+                              : 'text-emerald-300'
+                      }`}
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
-                <div
-                  className={`h-full rounded-full ${
-                    violated
-                      ? 'bg-rose-500'
-                      : val !== null && val < 0.2
-                        ? 'bg-amber-400'
-                        : 'bg-cyan-400'
-                  }`}
-                  style={{ width: `${pct.toFixed(1)}%` }}
+            </TooltipTrigger>
+            <TooltipContent>
+              Readiness (MRI) · {view.mri.availability} ({view.mri.provenance}{view.mri.reason ? ` · ${view.mri.reason}` : ''})
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div
+                data-clinical-field="rhoGlobal"
+                data-availability={view.rhoGlobal.availability}
+                className={rhoMin === null ? 'ares-missing-hatch rounded-[var(--radius-well)] p-2 cursor-help' : 'ares-inner-well p-2'}
+              >
+                <TabularCounter
+                  label="Global rho_min"
+                  sublabel="STL >= 0"
+                  value={rhoMin}
+                  unavailableLabel="--"
+                  unavailableReason={view.rhoGlobal.reason}
+                  decimals={2}
+                  alwaysShowPlus
+                  tone={
+                    rhoMin !== null && rhoMin < 0
+                      ? 'critical'
+                      : rhoMin !== null && rhoMin < 0.2
+                        ? 'caution'
+                        : 'spatial'
+                  }
+                  size="md"
                 />
               </div>
-            </div>
-          );
-        })}
-      </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              Global robustness (rho_min) · {view.rhoGlobal.availability} ({view.rhoGlobal.provenance}{view.rhoGlobal.reason ? ` · ${view.rhoGlobal.reason}` : ''})
+            </TooltipContent>
+          </Tooltip>
+        </div>
+
+        {/* Time-To-Violation (TTV) honest card */}
+        <div className="ares-inner-well px-2.5 py-2 font-mono text-[10px]">
+          <div className="flex items-center justify-between text-[var(--color-ink-meta)]">
+            <span>EWMA-OLS TIME-TO-VIOLATION</span>
+            <span className="text-amber-300">ILLUSTRATIVE_SCENARIO_RANGE</span>
+          </div>
+          <div className="ares-tabular-metric mt-0.5 text-sm font-semibold text-[var(--color-ink-display)]">
+            {ttvFormatted.primaryText}
+          </div>
+          <div className="text-[9px] text-[var(--color-ink-muted)]">
+            {ttvFormatted.secondaryText}
+          </div>
+        </div>
+
+        {/* Normalized Signal Temporal Logic predicate bars */}
+        <div className="ares-inner-well space-y-1.5 p-2.5">
+          <div className="font-mono text-[10px] font-semibold text-[var(--color-ink-meta)]">
+            PREDICATE MARGINS rho_k in (-inf, +1.0]
+          </div>
+          {view.predicates.map((pred) => {
+            const val = pred.metric.value;
+            const pct = val === null ? 0 : Math.max(0, Math.min(100, ((val + 0.5) / 1.5) * 100));
+            const violated = val !== null && val < 0;
+            return (
+              <Tooltip key={pred.key}>
+                <TooltipTrigger asChild>
+                  <div
+                    data-availability={pred.metric.availability}
+                    className={`space-y-0.5 rounded px-1 py-0.5 font-mono text-[10px] ${val === null ? 'ares-missing-hatch cursor-help' : ''}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[var(--color-ink-body)]">{pred.label}</span>
+                      <span
+                        className={`ares-tabular-metric ${
+                          val === null
+                            ? 'text-[var(--color-status-caution)]'
+                            : violated
+                              ? 'text-rose-300'
+                              : val < 0.2
+                                ? 'text-amber-300'
+                                : 'text-cyan-200'
+                        }`}
+                      >
+                        {val === null ? '--' : val >= 0 ? `+${val.toFixed(2)}` : val.toFixed(2)} (rho)
+                      </span>
+                    </div>
+                    <div className={`h-1.5 w-full overflow-hidden rounded-full ${val === null ? 'bg-black/40' : 'bg-white/10'}`}>
+                      <div
+                        className={`h-full rounded-full ${
+                          violated
+                            ? 'bg-rose-500'
+                            : val !== null && val < 0.2
+                              ? 'bg-amber-400'
+                              : 'bg-cyan-400'
+                        }`}
+                        style={{ width: `${pct.toFixed(1)}%` }}
+                      />
+                    </div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {pred.label} · {pred.metric.availability} ({pred.metric.provenance}{pred.metric.reason ? ` · ${pred.metric.reason}` : ''})
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </div>
 
       {/* Quick UBERON hypergraph node jump pills */}
       <div className="flex flex-wrap gap-1 font-mono text-[9px]">
@@ -177,7 +225,8 @@ export function PhaseEvaluateLeftContext({
           );
         })}
       </div>
-    </BentoCardShell>
+      </BentoCardShell>
+    </TooltipProvider>
   );
 }
 

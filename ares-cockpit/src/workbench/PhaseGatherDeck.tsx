@@ -20,6 +20,12 @@ import { AnomalyDiagnosticsLens } from '../lenses/AnomalyDiagnosticsLens';
 import { DiagnosticImagingLens } from '../lenses/DiagnosticImagingLens';
 import { useWorkbenchStore } from '../stores/workbenchStore';
 import { announcePolite } from '../stores/a11yAnnouncer';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '../components/ui/tooltip';
 
 export type GatherRightTab = 'ANOMALY_DSP' | 'IMAGING_US' | 'OPTICAL_3D';
 
@@ -50,89 +56,147 @@ export function PhaseGatherLeftContext({
   const missing = bio.missing_channels ?? [];
 
   return (
-    <BentoCardShell
-      id="left-slot-2-gather-context"
-      tier="root"
-      eyebrow="01 GATHER | SENSOR & HABITAT FUSION"
-      title="ECLSS & CSA CANS Dosimetry"
-      className="min-h-0 flex-1"
-      bodyClassName="space-y-2.5"
-    >
-      <ClinicalDataNotice packet={packet} />
-      <p className="font-mono text-[10px] text-[var(--color-ink-meta)]">Habitat inputs: {view.cabinO2.provenance}. Dosimetry channel: {view.radiationDose.provenance}.</p>
-      <div className="grid grid-cols-2 gap-2">
-        <div className="ares-inner-well p-2">
-          <TabularCounter
-            label="Cabin ppCO2"
-            sublabel="LIMIT 4.0"
-            value={ppco2}
-            unit="mmHg"
-            decimals={2}
-            tone={ppco2 !== null && ppco2 >= 4.0 ? 'critical' : 'nominal'}
-            size="sm"
-            unavailableLabel="N/A"
-          />
+    <TooltipProvider delayDuration={180}>
+      <BentoCardShell
+        id="left-slot-2-gather-context"
+        tier="root"
+        eyebrow="01 GATHER | SENSOR & HABITAT FUSION"
+        title="ECLSS & CSA CANS Dosimetry"
+        className="min-h-0 flex-1"
+        bodyClassName="space-y-2.5"
+      >
+        <ClinicalDataNotice packet={packet} />
+        <p className="font-mono text-[10px] text-[var(--color-ink-meta)]">Habitat inputs: {view.cabinO2.provenance}. Dosimetry channel: {view.radiationDose.provenance}.</p>
+        <div className="grid grid-cols-2 gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div
+                data-availability={view.cabinCo2.availability}
+                className={ppco2 === null ? 'ares-missing-hatch rounded-[var(--radius-well)] p-2 cursor-help' : 'ares-inner-well p-2'}
+              >
+                <TabularCounter
+                  label="Cabin ppCO2"
+                  sublabel="LIMIT 4.0"
+                  value={ppco2}
+                  unit="mmHg"
+                  decimals={2}
+                  tone={ppco2 !== null && ppco2 >= 4.0 ? 'critical' : 'nominal'}
+                  size="sm"
+                  unavailableLabel="--"
+                  unavailableReason={view.cabinCo2.reason}
+                />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              Cabin ppCO2 · {view.cabinCo2.availability} ({view.cabinCo2.provenance}{view.cabinCo2.reason ? ` · ${view.cabinCo2.reason}` : ''})
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div
+                data-clinical-field="cabinO2"
+                data-availability={view.cabinO2.availability}
+                className={o2Kpa === null ? 'ares-missing-hatch rounded-[var(--radius-well)] p-2 cursor-help' : 'ares-inner-well p-2'}
+              >
+                <TabularCounter
+                  label="Cabin O2"
+                  sublabel="SOURCE VALUE"
+                  value={o2Kpa}
+                  unavailableLabel="--"
+                  unavailableReason={view.cabinO2.reason}
+                  unit="kPa"
+                  decimals={1}
+                  tone="nominal"
+                  size="sm"
+                />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              Cabin O2 · {view.cabinO2.availability} ({view.cabinO2.provenance}{view.cabinO2.reason ? ` · ${view.cabinO2.reason}` : ''})
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div
+                data-availability={view.radiationDose.availability}
+                className={radMsvD === null ? 'ares-missing-hatch rounded-[var(--radius-well)] p-2 cursor-help' : 'ares-inner-well p-2'}
+              >
+                <TabularCounter
+                  label="CSA CANS Dose"
+                  sublabel="SPE >1.50"
+                  value={radMsvD}
+                  unavailableLabel="--"
+                  unavailableReason={view.radiationDose.reason}
+                  unit="mSv/d"
+                  decimals={2}
+                  tone={radMsvD === null ? 'caution' : radMsvD > 1.5 ? 'critical' : radMsvD > 0.9 ? 'caution' : 'nominal'}
+                  size="sm"
+                />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              CSA CANS Dose · {view.radiationDose.availability} ({view.radiationDose.provenance}{view.radiationDose.reason ? ` · ${view.radiationDose.reason}` : ''})
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div
+                data-availability={view.cumulativeRadiation.availability}
+                className={cumRadMgy === null ? 'ares-missing-hatch rounded-[var(--radius-well)] p-2 cursor-help' : 'ares-inner-well p-2'}
+              >
+                <TabularCounter
+                  label="Cumulative Dose"
+                  sublabel="TRANSIT"
+                  value={cumRadMgy}
+                  unavailableLabel="--"
+                  unavailableReason={view.cumulativeRadiation.reason}
+                  unit="mGy"
+                  decimals={1}
+                  tone="spatial"
+                  size="sm"
+                />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              Cumulative Dose · {view.cumulativeRadiation.availability} ({view.cumulativeRadiation.provenance}{view.cumulativeRadiation.reason ? ` · ${view.cumulativeRadiation.reason}` : ''})
+            </TooltipContent>
+          </Tooltip>
         </div>
 
-        <div className="ares-inner-well p-2" data-clinical-field="cabinO2" data-availability={view.cabinO2.availability}>
-          <TabularCounter
-            label="Cabin O2"
-            sublabel="SOURCE VALUE"
-            value={o2Kpa}
-            unavailableLabel="N/A"
-            unit="kPa"
-            decimals={1}
-            tone="nominal"
-            size="sm"
-          />
+        <div className="ares-inner-well space-y-1 p-2.5 font-mono text-[10px]">
+          <div className="flex items-center justify-between text-[var(--color-ink-body)]">
+            <span>DATASET PROVENANCE</span>
+            <span className="text-emerald-300">
+              {packet.provenance_manifest.biometrics_source}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-[var(--color-ink-meta)]">
+            <span>CONTACTLESS DSP</span>
+            <span>60 GHZ RADAR + VOCAL JITTER READY</span>
+          </div>
+          <div className="flex items-center justify-between gap-2 text-[var(--color-ink-meta)]">
+            <span>MISSING CHANNELS</span>
+            {missing.length > 0 ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="ares-missing-hatch ares-tabular-metric cursor-help rounded px-1.5 py-0.5 text-[var(--color-status-caution)]">
+                    -- · {missing.length} MISSING
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Missing channels: {missing.join(', ')}
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <span className="text-emerald-300">NONE (ALL CORE LOCKED)</span>
+            )}
+          </div>
         </div>
-
-        <div className="ares-inner-well p-2">
-          <TabularCounter
-            label="CSA CANS Dose"
-            sublabel="SPE >1.50"
-            value={radMsvD}
-            unavailableLabel="N/A"
-            unit="mSv/d"
-            decimals={2}
-            tone={radMsvD === null ? 'caution' : radMsvD > 1.5 ? 'critical' : radMsvD > 0.9 ? 'caution' : 'nominal'}
-            size="sm"
-          />
-        </div>
-
-        <div className="ares-inner-well p-2">
-          <TabularCounter
-            label="Cumulative Dose"
-            sublabel="TRANSIT"
-            value={cumRadMgy}
-            unavailableLabel="N/A"
-            unit="mGy"
-            decimals={1}
-            tone="spatial"
-            size="sm"
-          />
-        </div>
-      </div>
-
-      <div className="ares-inner-well space-y-1 p-2.5 font-mono text-[10px]">
-        <div className="flex items-center justify-between text-[var(--color-ink-body)]">
-          <span>DATASET PROVENANCE</span>
-          <span className="text-emerald-300">
-            {packet.provenance_manifest.biometrics_source}
-          </span>
-        </div>
-        <div className="flex items-center justify-between text-[var(--color-ink-meta)]">
-          <span>CONTACTLESS DSP</span>
-          <span>60 GHZ RADAR + VOCAL JITTER READY</span>
-        </div>
-        <div className="flex items-center justify-between text-[var(--color-ink-meta)]">
-          <span>MISSING CHANNELS</span>
-          <span className={missing.length > 0 ? 'text-amber-300' : 'text-emerald-300'}>
-            {missing.length > 0 ? missing.join(', ') : 'NONE (ALL CORE LOCKED)'}
-          </span>
-        </div>
-      </div>
-    </BentoCardShell>
+      </BentoCardShell>
+    </TooltipProvider>
   );
 }
 

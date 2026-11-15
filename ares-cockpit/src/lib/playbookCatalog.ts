@@ -4,8 +4,10 @@
 
 import type {
   ActivePlaybook,
+  Aerospace360PlaybookId,
   CountermeasureAction,
   CrystallizedPlaybookId,
+  PlaybookId,
   SafetyGatesState,
 } from '../types/telemetry';
 
@@ -26,9 +28,67 @@ export type PlaybookShortCode =
   | '#14'
   | '#15';
 
-export interface PlaybookCatalogEntry {
-  playbook_id: CrystallizedPlaybookId;
-  short_code: PlaybookShortCode;
+export type Playbook360ShortCode =
+  | PlaybookShortCode
+  | '#16'
+  | '#17'
+  | '#18'
+  | '#19'
+  | '#20'
+  | '#21'
+  | '#22'
+  | '#23'
+  | '#24'
+  | '#25'
+  | '#26'
+  | '#27'
+  | '#28'
+  | '#29'
+  | '#30';
+
+export type Playbook360DomainId =
+  | 'CARDIORESPIRATORY'
+  | 'NEURO_OCULAR_VESTIBULAR'
+  | 'RADIATION_EVA_THERMAL'
+  | 'ENDOCRINE_RENAL_BEHAVIORAL';
+
+export interface Playbook360DomainTabMeta {
+  id: Playbook360DomainId;
+  label: string;
+  rangeLabel: string;
+  shortCodes: readonly Playbook360ShortCode[];
+}
+
+export const PLAYBOOK_360_DOMAIN_TABS: readonly Playbook360DomainTabMeta[] = [
+  {
+    id: 'CARDIORESPIRATORY',
+    label: 'Cardiorespiratory',
+    rangeLabel: '#01-#08',
+    shortCodes: ['#01', '#02', '#03', '#04', '#05', '#06', '#07', '#08'],
+  },
+  {
+    id: 'NEURO_OCULAR_VESTIBULAR',
+    label: 'Neuro-Ocular & Vestibular',
+    rangeLabel: '#09-#15',
+    shortCodes: ['#09', '#10', '#11', '#12', '#13', '#14', '#15'],
+  },
+  {
+    id: 'RADIATION_EVA_THERMAL',
+    label: 'Radiation, EVA & Thermal',
+    rangeLabel: '#16-#23',
+    shortCodes: ['#16', '#17', '#18', '#19', '#20', '#21', '#22', '#23'],
+  },
+  {
+    id: 'ENDOCRINE_RENAL_BEHAVIORAL',
+    label: 'Endocrine, Renal & Behavioral',
+    rangeLabel: '#24-#30',
+    shortCodes: ['#24', '#25', '#26', '#27', '#28', '#29', '#30'],
+  },
+];
+
+export interface PlaybookCatalogEntry<TId extends PlaybookId = PlaybookId> {
+  playbook_id: TId;
+  short_code: TId extends CrystallizedPlaybookId ? PlaybookShortCode : Playbook360ShortCode;
   short_label: string;
   title: string;
   normative_clause: string;
@@ -41,7 +101,10 @@ export const LBNP_MAX_SYS_BP_DROP_MMHG = 15.0;
 export const LBNP_MAX_SAFE_HR_BPM = 115.0;
 export const SPE_RADIATION_THRESHOLD_MSV_D = 1.5;
 
-export const CRYSTALLIZED_PLAYBOOK_CATALOG: Record<CrystallizedPlaybookId, PlaybookCatalogEntry> = {
+export const CRYSTALLIZED_PLAYBOOK_CATALOG: Record<
+  CrystallizedPlaybookId,
+  PlaybookCatalogEntry<CrystallizedPlaybookId>
+> = {
   PLAYBOOK_01_VENOUS_STASIS_LBNP: {
     playbook_id: 'PLAYBOOK_01_VENOUS_STASIS_LBNP',
     short_code: '#01',
@@ -447,7 +510,7 @@ export const CRYSTALLIZED_PLAYBOOK_CATALOG: Record<CrystallizedPlaybookId, Playb
   },
 };
 
-export const CRYSTALLIZED_PLAYBOOK_LIST: PlaybookCatalogEntry[] = [
+export const CRYSTALLIZED_PLAYBOOK_LIST: PlaybookCatalogEntry<CrystallizedPlaybookId>[] = [
   CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_01_VENOUS_STASIS_LBNP,
   CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_02_CONFIRMED_IJV_THROMBUS,
   CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED,
@@ -455,14 +518,14 @@ export const CRYSTALLIZED_PLAYBOOK_LIST: PlaybookCatalogEntry[] = [
   CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_05_SPE_RADIATION_SHELTER_CANS,
 ];
 
-export const ACUTE_VITALS_PLAYBOOK_LIST: PlaybookCatalogEntry[] = [
+export const ACUTE_VITALS_PLAYBOOK_LIST: PlaybookCatalogEntry<CrystallizedPlaybookId>[] = [
   CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_06_HYPOXEMIA_DESATURATION,
   CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_07_TACHYCARDIA_AUTONOMIC_STRESS,
   CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_08_SIGNAL_QUALITY_SENSOR_CHECK,
   CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_09_MULTIPARAMETER_DETERIORATION,
 ];
 
-export const EXPLORATION_MEDICINE_PLAYBOOK_LIST: PlaybookCatalogEntry[] = [
+export const EXPLORATION_MEDICINE_PLAYBOOK_LIST: PlaybookCatalogEntry<CrystallizedPlaybookId>[] = [
   CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_10_RENAL_LITHIASIS,
   CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_11_MARS_ENTRY_FLUID_LOADING,
   CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_12_CIRCADIAN_LIGHT_HYGIENE,
@@ -471,13 +534,16 @@ export const EXPLORATION_MEDICINE_PLAYBOOK_LIST: PlaybookCatalogEntry[] = [
   CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_15_EFAST_TRAUMA_TRIAGE,
 ];
 
-export const ALL_CRYSTALLIZED_PLAYBOOK_LIST: PlaybookCatalogEntry[] = [
+export const ALL_CRYSTALLIZED_PLAYBOOK_LIST: PlaybookCatalogEntry<CrystallizedPlaybookId>[] = [
   ...CRYSTALLIZED_PLAYBOOK_LIST,
   ...ACUTE_VITALS_PLAYBOOK_LIST,
   ...EXPLORATION_MEDICINE_PLAYBOOK_LIST,
 ];
 
-export const PLAYBOOK_BY_SHORT_CODE: Record<PlaybookShortCode, PlaybookCatalogEntry> = {
+export const PLAYBOOK_BY_SHORT_CODE: Record<
+  PlaybookShortCode,
+  PlaybookCatalogEntry<CrystallizedPlaybookId>
+> = {
   '#01': CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_01_VENOUS_STASIS_LBNP,
   '#02': CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_02_CONFIRMED_IJV_THROMBUS,
   '#03': CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED,
@@ -495,20 +561,534 @@ export const PLAYBOOK_BY_SHORT_CODE: Record<PlaybookShortCode, PlaybookCatalogEn
   '#15': CRYSTALLIZED_PLAYBOOK_CATALOG.PLAYBOOK_15_EFAST_TRAUMA_TRIAGE,
 };
 
+export const AEROSPACE_360_PLAYBOOK_CATALOG: Record<
+  Aerospace360PlaybookId,
+  PlaybookCatalogEntry<Aerospace360PlaybookId>
+> = {
+  PLAYBOOK_16_SEPSIS_SEPTIC_SHOCK: {
+    playbook_id: 'PLAYBOOK_16_SEPSIS_SEPTIC_SHOCK',
+    short_code: '#16',
+    short_label: 'SEPSIS',
+    title: 'Playbook #16: Sepsis & Septic Shock Surviving Sepsis Campaign 1-Hour Bundle',
+    normative_clause: 'NASA-STD-3001 [V1 3006] / ExMC Surviving Sepsis & Spaceflight Pharmacology',
+    default_causal_chain: [
+      'suspected_infection + qSOFA >= 2 -> sepsis_1h_bundle',
+      'MAP < 65 mmHg or lactate >= 4.0 mmol/L -> norepinephrine_titration',
+    ],
+    default_actions: [
+      {
+        action_id: 'ACT_SEPSIS_POCT_LACTATE_AND_MICROBIAL_CULTURES',
+        label: 'Obtain immediate POCT lactate and paired microbial cultures prior to antimicrobials',
+        category: 'DIAGNOSTIC_VERIFICATION',
+        delta_rho_per_hour: 0.1,
+      },
+      {
+        action_id: 'ACT_SEPSIS_1H_BROAD_SPECTRUM_IV_ANTIBIOTICS',
+        label: 'Administer 1-hour broad-spectrum IV Piperacillin-Tazobactam or Cefepime (Gate 5 allergy/renal-adjusted)',
+        category: 'PHARMACOLOGICAL_UNLOCKED',
+        delta_rho_per_hour: 0.35,
+      },
+      {
+        action_id: 'ACT_SEPSIS_30ML_KG_CRYSTALLOID_BOLUS',
+        label: 'Infuse 30 mL/kg balanced crystalloid bolus with POCUS lung B-line fluid-tolerance check',
+        category: 'HEMODYNAMIC_RESUSCITATION',
+        delta_rho_per_hour: 0.3,
+      },
+    ],
+  },
+  PLAYBOOK_17_HEMORRHAGIC_TRAUMA_TXA: {
+    playbook_id: 'PLAYBOOK_17_HEMORRHAGIC_TRAUMA_TXA',
+    short_code: '#17',
+    short_label: 'HEMORRHAGE',
+    title: 'Playbook #17: Hemorrhagic Trauma & TXA Window Protocol',
+    normative_clause: 'NASA-STD-3001 [V2 7043] / ExMC Hemorrhagic Trauma & TXA Capability',
+    default_causal_chain: [
+      'active_arterial_hemorrhage -> Gate1_anticoagulant_lock_active',
+      'injury_hours_elapsed <= 3.0 h -> TXA_1g_IV_eligible',
+    ],
+    default_actions: [
+      {
+        action_id: 'ACT_TRAUMA_CAT_TOURNIQUET_AND_QUIKCLOT_KAOLIN',
+        label: 'Apply CAT tourniquet proximal to arterial bleed and QuikClot kaolin hemostatic dressing',
+        category: 'HEMORRHAGE_CONTROL',
+        delta_rho_per_hour: 0.35,
+      },
+      {
+        action_id: 'ACT_HEMORRHAGE_TXA_1G_IV_WITHIN_3H',
+        label: 'Administer Tranexamic Acid (TXA) 1 g IV over 10 min within 3.0 h of injury',
+        category: 'PHARMACOLOGICAL_HEMOSTATIC',
+        delta_rho_per_hour: 0.25,
+      },
+      {
+        action_id: 'ACT_BALANCED_RESUSCITATION_WARM_CRYSTALLOID_CALCIUM',
+        label: 'Balanced resuscitation with warmed isotonic crystalloid and calcium replacement',
+        category: 'RESUSCITATION',
+        delta_rho_per_hour: 0.2,
+      },
+    ],
+  },
+  PLAYBOOK_18_TORSO_SHOCK_PERICARDIOCENTESIS: {
+    playbook_id: 'PLAYBOOK_18_TORSO_SHOCK_PERICARDIOCENTESIS',
+    short_code: '#18',
+    short_label: 'TAMPONADE',
+    title: 'Playbook #18: Torso Shock, Pericardiocentesis & Hemoperitoneum Protocol',
+    normative_clause: 'NASA-STD-3001 [V2 7043] / ExMC eFAST Torso Shock & Pericardiocentesis',
+    default_causal_chain: [
+      'torso_shock -> eFAST_tamponade_or_hemoperitoneum_triage',
+      'tamponade_risk -> closed_0g_pericardiocentesis_with_Gate1_lock',
+    ],
+    default_actions: [
+      {
+        action_id: 'ACT_POCUS_GUIDED_PERICARDIOCENTESIS_CLOSED_SYRINGE',
+        label: 'Perform POCUS-guided closed 3-way stopcock pericardiocentesis with pigtail drain (0g aerosol containment)',
+        category: 'INVASIVE_PROCEDURE',
+        delta_rho_per_hour: 0.4,
+      },
+      {
+        action_id: 'ACT_HEMOPERITONEUM_TXA_PELVIC_BINDER_PERMISSIVE_HYPOTENSION',
+        label: 'Initiate TXA, pelvic binder stabilization, and permissive hypotension (target SBP 80-90 mmHg)',
+        category: 'HEMORRHAGE_CONTROL',
+        delta_rho_per_hour: 0.3,
+      },
+    ],
+  },
+  PLAYBOOK_19_CONSERVATIVE_ACUTE_ABDOMEN_0G: {
+    playbook_id: 'PLAYBOOK_19_CONSERVATIVE_ACUTE_ABDOMEN_0G',
+    short_code: '#19',
+    short_label: 'ABDOMEN',
+    title: 'Playbook #19: Conservative 0g Acute Abdomen (NOM) Protocol',
+    normative_clause: 'NASA-STD-3001 [V1 3006] / ExMC Conservative Acute Abdomen NOM in 0g',
+    default_causal_chain: [
+      'acute_abdomen_0g -> open_laparotomy_forbidden_in_0g',
+      'antibiotic_first_NOM -> POCUS_percutaneous_drain_if_abscess',
+    ],
+    default_actions: [
+      {
+        action_id: 'ACT_ABDOMEN_0G_ANTIBIOTIC_FIRST_ERTAPENEM_OR_PIPTAZO',
+        label: 'Initiate antibiotic-first NOM: Ertapenem 1 g IV/IM q24h or Piperacillin-Tazobactam (Gate 5 allergy check)',
+        category: 'PHARMACOLOGICAL_ANTIMICROBIAL',
+        delta_rho_per_hour: 0.25,
+      },
+      {
+        action_id: 'ACT_BOWEL_REST_NG_SUCTION_IV_HYDRATION',
+        label: 'Enforce NPO bowel rest, closed nasogastric decompression suction, and IV hydration',
+        category: 'CLINICAL_COUNTERMEASURE',
+        delta_rho_per_hour: 0.15,
+      },
+    ],
+  },
+  PLAYBOOK_20_EVA_MUSCULOSKELETAL_SPINE_FRACTURE: {
+    playbook_id: 'PLAYBOOK_20_EVA_MUSCULOSKELETAL_SPINE_FRACTURE',
+    short_code: '#20',
+    short_label: 'SPINE/MSK',
+    title: 'Playbook #20: EVA Musculoskeletal, Lumbar Spine & Femoral Fracture Protocol',
+    normative_clause: 'NASA-STD-3001 [V1 3002] / ExMC EVA Musculoskeletal & Spine Stabilization',
+    default_causal_chain: [
+      'eva_musculoskeletal_trauma -> Gate4_EVA_no_go_active',
+      'limb_or_spine_injury -> splint_neurovascular_and_multimodal_analgesia',
+    ],
+    default_actions: [
+      {
+        action_id: 'ACT_EVA_GLOVE_HUT_DECOMPRESSION_SPLINT',
+        label: 'Remove EVA glove/HUT pressure source, splint affected extremity, and inspect neurovascular status',
+        category: 'MECHANICAL_INTERVENTION',
+        delta_rho_per_hour: 0.15,
+      },
+      {
+        action_id: 'ACT_LUMBAR_DISC_NEURO_CAUDA_EQUINA_SCREEN',
+        label: 'Perform focused L1-L5 radiculopathy and cauda equina neurological screen',
+        category: 'DIAGNOSTIC_VERIFICATION',
+        delta_rho_per_hour: 0.05,
+      },
+      {
+        action_id: 'ACT_MSK_MULTIMODAL_ANALGESIA_ACETAMINOPHEN_FENTANYL',
+        label: 'Administer multimodal analgesia (Acetaminophen / Intranasal Fentanyl; Ketorolac gated by Gate 5)',
+        category: 'PHARMACOLOGICAL_ANALGESIA',
+        delta_rho_per_hour: 0.1,
+      },
+    ],
+  },
+  PLAYBOOK_21_DENTAL_MAXILLOFACIAL_EMERGENCY: {
+    playbook_id: 'PLAYBOOK_21_DENTAL_MAXILLOFACIAL_EMERGENCY',
+    short_code: '#21',
+    short_label: 'DENTAL',
+    title: "Playbook #21: Dental & Maxillofacial Emergency (Ludwig's Angina) Protocol",
+    normative_clause: 'NASA-STD-3001 [V2 7043] / ExMC Dental & Maxillofacial Airway Emergency',
+    default_causal_chain: [
+      'dental_maxillofacial_emergency -> barodontalgia_or_abscess_triage',
+      'ludwigs_angina_threat -> early_igel_airway_and_IV_antibiotics',
+    ],
+    default_actions: [
+      {
+        action_id: 'ACT_DENTAL_IRM_ZINC_OXIDE_EUGENOL_TEMP_FILLING',
+        label: 'Place IRM zinc oxide-eugenol temporary restoration for barodontalgia or crown/root defect',
+        category: 'DENTAL_INTERVENTION',
+        delta_rho_per_hour: 0.1,
+      },
+      {
+        action_id: 'ACT_DENTAL_INFERIOR_ALVEOLAR_LIDOCAINE_BLOCK',
+        label: 'Administer inferior alveolar nerve block with Lidocaine for acute dental pain control',
+        category: 'PHARMACOLOGICAL_ANALGESIA',
+        delta_rho_per_hour: 0.1,
+      },
+      {
+        action_id: 'ACT_DENTAL_ABSCESS_AMOX_CLAV_OR_CLINDAMYCIN',
+        label: 'Initiate Amoxicillin-Clavulanate or Clindamycin (Gate 5 allergy check) for odontogenic abscess',
+        category: 'PHARMACOLOGICAL_ANTIMICROBIAL',
+        delta_rho_per_hour: 0.15,
+      },
+    ],
+  },
+  PLAYBOOK_22_OCULAR_FOREIGN_BODY_CHEMICAL_BURN: {
+    playbook_id: 'PLAYBOOK_22_OCULAR_FOREIGN_BODY_CHEMICAL_BURN',
+    short_code: '#22',
+    short_label: 'OCULAR FB',
+    title: 'Playbook #22: Ocular Foreign Body, Chemical Burn & Seidel Check Protocol',
+    normative_clause: 'NASA-STD-3001 [V1 3003] / ExMC Ocular Foreign Body & Chemical Burn Lavage',
+    default_causal_chain: [
+      'ocular_chemical_or_fb_injury -> fluorescein_slit_lamp_Seidel_check',
+      'seidel_positive -> rigid_Fox_shield_zero_pressure_abort_irrigation',
+    ],
+    default_actions: [
+      {
+        action_id: 'ACT_OCULAR_TOPICAL_TETRACAINE_ANESTHETIC',
+        label: 'Instill topical Tetracaine ophthalmic anesthetic to facilitate examination',
+        category: 'PHARMACOLOGICAL_ANALGESIA',
+        delta_rho_per_hour: 0.05,
+      },
+      {
+        action_id: 'ACT_FLUORESCEIN_SLIT_LAMP_SEIDEL_PERFORATION_CHECK',
+        label: 'Perform fluorescein slit-lamp exam and Seidel test for globe perforation',
+        category: 'DIAGNOSTIC_VERIFICATION',
+        delta_rho_per_hour: 0.05,
+      },
+      {
+        action_id: 'ACT_ERYTHROMYCIN_OR_MOXIFLOXACIN_OPHTHALMIC',
+        label: 'Administer Erythromycin ointment or Moxifloxacin ophthalmic drops',
+        category: 'PHARMACOLOGICAL_ANTIMICROBIAL',
+        delta_rho_per_hour: 0.1,
+      },
+    ],
+  },
+  PLAYBOOK_23_ANAPHYLAXIS_AIRWAY_EMERGENCY: {
+    playbook_id: 'PLAYBOOK_23_ANAPHYLAXIS_AIRWAY_EMERGENCY',
+    short_code: '#23',
+    short_label: 'ANAPHYLAXIS',
+    title: 'Playbook #23: Anaphylaxis & Airway Emergency Protocol',
+    normative_clause: 'NASA-STD-3001 [V2 7043] / ExMC Anaphylaxis & Supraglottic Airway Capability',
+    default_causal_chain: [
+      'anaphylaxis_suspected -> IM_epinephrine_priority_0',
+      'airway_or_bronchospasm -> 100pct_O2_igel_and_crystalloid_bolus',
+    ],
+    default_actions: [
+      {
+        action_id: 'ACT_ANAPHYLAXIS_EPINEPHRINE_03_05MG_IM_THIGH',
+        label: 'IMMEDIATE (Index 0): Administer Epinephrine 0.3-0.5 mg IM anterolateral thigh q5-15 min',
+        category: 'EMERGENCY_RESUSCITATION',
+        delta_rho_per_hour: 0.45,
+      },
+      {
+        action_id: 'ACT_AIRWAY_100PCT_O2_AND_IGEL_SUPRAGLOTTIC_READY',
+        label: 'Deliver 100% O2 and stage i-gel supraglottic airway',
+        category: 'AIRWAY_EMERGENCY',
+        delta_rho_per_hour: 0.2,
+      },
+      {
+        action_id: 'ACT_ISOTONIC_CRYSTALLOID_BOLUS_20ML_KG',
+        label: 'Infuse 20 mL/kg isotonic crystalloid bolus for anaphylactic hypotension',
+        category: 'RESUSCITATION',
+        delta_rho_per_hour: 0.15,
+      },
+    ],
+  },
+  PLAYBOOK_24_MICROGRAVITY_CARDIAC_ARREST_CPR: {
+    playbook_id: 'PLAYBOOK_24_MICROGRAVITY_CARDIAC_ARREST_CPR',
+    short_code: '#24',
+    short_label: '0G CPR',
+    title: 'Playbook #24: Microgravity Cardiac Arrest & 0g CPR Protocol',
+    normative_clause: 'NASA-STD-3001 [V2 7043] / ExMC Microgravity Evetts-Russomano CPR & AED',
+    default_causal_chain: [
+      'pulseless_cardiac_arrest_0g -> Evetts_Russomano_or_Handstand_CPR',
+      'CMRS_stabilization + AED_hull_isolation -> ACLS_epinephrine_amiodarone',
+    ],
+    default_actions: [
+      {
+        action_id: 'ACT_0G_CPR_IMMEDIATE_EVETTS_RUSSOMANO_OR_HANDSTAND',
+        label: 'Initiate immediate 0g chest compressions (100-120/min, 50 mm depth) via Evetts-Russomano or Handstand technique',
+        category: 'EMERGENCY_RESUSCITATION',
+        delta_rho_per_hour: 0.5,
+      },
+      {
+        action_id: 'ACT_DEPLOY_CMRS_RESTRAINT_STRAPS',
+        label: 'Deploy Crew Medical Restraint System (CMRS) straps to stabilize patient and rescuer',
+        category: 'MECHANICAL_INTERVENTION',
+        delta_rho_per_hour: 0.2,
+      },
+      {
+        action_id: 'ACT_AED_ELECTRICAL_ISOLATION_FROM_HULL_BEFORE_SHOCK',
+        label: 'Verify AED electrical isolation from spacecraft hull before shock delivery',
+        category: 'ELECTRICAL_SAFETY_CRITICAL',
+        delta_rho_per_hour: 0.3,
+      },
+    ],
+  },
+  PLAYBOOK_25_ACUTE_URINARY_RETENTION_POCUS: {
+    playbook_id: 'PLAYBOOK_25_ACUTE_URINARY_RETENTION_POCUS',
+    short_code: '#25',
+    short_label: 'RETENTION',
+    title: 'Playbook #25: Acute Urinary Retention (AUR) POCUS Protocol',
+    normative_clause: 'NASA-STD-3001 [V2 6026] / ExMC Acute Urinary Retention & POCUS Catheterization',
+    default_causal_chain: [
+      'POCUS_bladder_volume >= 500 mL -> acute_urinary_retention',
+      'closed_foley_decompression -> Gate6_check_before_suprapubic_cystostomy',
+    ],
+    default_actions: [
+      {
+        action_id: 'ACT_AUR_STERILE_CLOSED_FOLEY_CATHETERIZATION',
+        label: 'Perform sterile closed-system Foley catheterization with gradual decompression in 0g',
+        category: 'UROLOGICAL_INTERVENTION',
+        delta_rho_per_hour: 0.3,
+      },
+      {
+        action_id: 'ACT_AUR_TAMSULOSIN_04MG_STOP_ANTICHOLINERGICS',
+        label: 'Initiate Tamsulosin 0.4 mg PO daily and discontinue anticholinergic medications',
+        category: 'PHARMACOLOGICAL_UROLOGY',
+        delta_rho_per_hour: 0.15,
+      },
+    ],
+  },
+  PLAYBOOK_26_ACUTE_RADIATION_SYNDROME: {
+    playbook_id: 'PLAYBOOK_26_ACUTE_RADIATION_SYNDROME',
+    short_code: '#26',
+    short_label: 'ARS/G-CSF',
+    title: 'Playbook #26: Acute Radiation Syndrome (ARS) Hematologic Nadir & Cytokine Rescue',
+    normative_clause: 'NASA-STD-3001 [V1 4001] / ExMC SPE Acute Radiation Syndrome Biodosimetry',
+    default_causal_chain: [
+      'SPE_BFO_dose >= 1.0 Gy -> ARS_hematologic_nadir_kinetics',
+      'ANC < 0.5 K/uL or PLT < 75 K/uL -> Gate6_radiation_neutropenic_invasive_locked',
+    ],
+    default_actions: [
+      {
+        action_id: 'ACT_ARS_SPE_STORM_SHELTER_AND_BIODOSIMETRY',
+        label: 'Maintain SPE radiation storm shelter and serial ALC/CBC biodosimetry monitoring',
+        category: 'RADIATION_PROTECTION',
+        delta_rho_per_hour: 0.15,
+      },
+      {
+        action_id: 'ACT_ARS_FILGRASTIM_G_CSF_DAILY',
+        label: 'Administer Filgrastim (G-CSF) 5 mcg/kg/day SC until ANC recovery > 1.0 K/uL',
+        category: 'PHARMACOLOGICAL_UNLOCKED',
+        delta_rho_per_hour: 0.3,
+      },
+      {
+        action_id: 'ACT_ARS_THROMBOCYTOPENIA_BLEEDING_PRECAUTIONS',
+        label: 'Enforce Gate 6 non-emergent invasive procedure lock and strict NSAID/anticoagulant avoidance',
+        category: 'CLINICAL_SAFETY_GATE_OVERRIDE',
+        delta_rho_per_hour: 0.15,
+      },
+    ],
+  },
+  PLAYBOOK_27_AEROSPACE_TOXICOLOGY_EXPOSURE: {
+    playbook_id: 'PLAYBOOK_27_AEROSPACE_TOXICOLOGY_EXPOSURE',
+    short_code: '#27',
+    short_label: 'TOX/SMAC',
+    title: 'Playbook #27: Aerospace Toxicology, Pyrolysis & Regolith Exposure Protocol',
+    normative_clause: 'NASA-STD-3001 [V2 6001] / JSC SMAC Spacecraft Toxicology (NH3/MMH/N2O4/CO/HCN)',
+    default_causal_chain: [
+      'SMAC_or_IDLH_exceedance -> PBA_isolation_and_decontamination',
+      'MMH/MetHb/HCN/ClO4- -> targeted_antidote_with_Gate5B_G6PD_guard',
+    ],
+    default_actions: [
+      {
+        action_id: 'ACT_TOX_DON_PBA_QDM_ISOLATE_THERMAL_LOOP',
+        label: 'Don PBA/QDM immediately and isolate leaking NH3 thermal control loop',
+        category: 'ENVIRONMENTAL_ISOLATION',
+        delta_rho_per_hour: 0.3,
+      },
+      {
+        action_id: 'ACT_TOX_OCULAR_DERMAL_DECONTAMINATION',
+        label: 'Perform closed-loop ocular/dermal saline decontamination for toxicant exposure',
+        category: 'DECONTAMINATION',
+        delta_rho_per_hour: 0.22,
+      },
+      {
+        action_id: 'ACT_PYROLYSIS_DON_PBA_100PCT_NORMOBARIC_O2',
+        label: 'Don PBA and deliver 100% normobaric O2 for accelerated COHb washout',
+        category: 'AIRWAY_RESPIRATORY_SUPPORT',
+        delta_rho_per_hour: 0.28,
+      },
+    ],
+  },
+  PLAYBOOK_28_EVA_DCS_AND_SUIT_EMERGENCY: {
+    playbook_id: 'PLAYBOOK_28_EVA_DCS_AND_SUIT_EMERGENCY',
+    short_code: '#28',
+    short_label: 'EVA/DCS',
+    title: 'Playbook #28: EVA Decompression Sickness, Pre-Breathe Lock & Suit Emergency',
+    normative_clause: 'NASA-STD-3001 [V1 3001] / ExMC EVA Suit Water Intrusion & Type II DCS/AGE',
+    default_causal_chain: [
+      'helmet_water_or_DCS_or_R360 > 1.40 -> Gate4B_EVA_no_go',
+      'TypeII_DCS_or_AGE -> airlock_BTA_hyperbaric_recompression_100pct_O2',
+    ],
+    default_actions: [
+      {
+        action_id: 'ACT_EVA_PARMITANO_WATER_INTRUSION_IMMEDIATE_ABORT',
+        label: 'PARMITANO PROTOCOL: Abort EVA immediately, minimize head-nod water migration, translate to airlock and prepare post-repress airway suction',
+        category: 'EVA_SUIT_LIFE_THREAT_ABORT',
+        delta_rho_per_hour: 0.45,
+      },
+      {
+        action_id: 'ACT_DCS_TYPE2_AGE_HYPERBARIC_RECOMPRESSION_BTA_AIRLOCK',
+        label: 'Initiate 100% O2 + airlock hyperbaric recompression via Bends Treatment Adapter (22.7 psi / USN TT6)',
+        category: 'HYPERBARIC_EMERGENCY',
+        delta_rho_per_hour: 0.4,
+      },
+      {
+        action_id: 'ACT_EVA_PREBREATHE_LOCK_CAMPOUT_OR_ISLE_PROTOCOL',
+        label: 'EVA LOCK: Conkin R360 > 1.40 requires campout / ISLE exercise 100% O2 pre-breathe before depressurization',
+        category: 'EVA_PREBREATHE_LOCK',
+        delta_rho_per_hour: 0.25,
+      },
+    ],
+  },
+  PLAYBOOK_29_BMED_PSYCHIATRIC_CRISIS: {
+    playbook_id: 'PLAYBOOK_29_BMED_PSYCHIATRIC_CRISIS',
+    short_code: '#29',
+    short_label: 'BMED CRISIS',
+    title: 'Playbook #29: Acute Psychiatric Crisis, Delirium Exclusion & 0g Rapid Tranquilization',
+    normative_clause: 'NASA-STD-3001 [V1 3003] / ExMC Behavioral Health & Organic Delirium Exclusion',
+    default_causal_chain: [
+      'acute_agitation_or_self_harm -> Gate7A_organic_delirium_exclusion_first',
+      'Gate7B_CMRS_restraint_only_if_imminent_harm + Gate7C_QTc_guard',
+    ],
+    default_actions: [
+      {
+        action_id: 'ACT_GATE7_TREAT_REVERSIBLE_ORGANIC_DELIRIUM_CAUSE_FIRST',
+        label: 'Gate 7A: Treat reversible organic/toxic-metabolic delirium cause first (O2, ECLSS CO2 scrubber, sepsis antibiotics, or toxicant isolation)',
+        category: 'CLINICAL_SAFETY_GATE_OVERRIDE',
+        delta_rho_per_hour: 0.45,
+      },
+      {
+        action_id: 'ACT_BMED_VERBAL_DEESCALATION_1ON1_WATCH_AIRLOCK_LOCKOUT',
+        label: 'Non-confrontational verbal de-escalation, 1-on-1 crew watch, software interlock on airlock/depressurization/propellant valves',
+        category: 'BEHAVIORAL_SAFETY',
+        delta_rho_per_hour: 0.25,
+      },
+      {
+        action_id: 'ACT_BMED_OLANZAPINE_5_10MG_ODT',
+        label: 'Administer Olanzapine 5-10 mg ODT (rapid oral dissolving tablet; zero 0g liquid aspiration risk)',
+        category: 'PHARMACOLOGICAL_TRANQUILIZATION',
+        delta_rho_per_hour: 0.3,
+      },
+    ],
+  },
+  PLAYBOOK_30_FEMALE_PELVIC_UROGYN_POCUS: {
+    playbook_id: 'PLAYBOOK_30_FEMALE_PELVIC_UROGYN_POCUS',
+    short_code: '#30',
+    short_label: 'FEMALE POCUS',
+    title: 'Playbook #30: Female Pelvic & Urogyn POCUS Triage Protocol',
+    normative_clause: 'NASA-STD-3001 [V1 3001] / ExMC Sex-Specific Female Pelvic & Urogyn POCUS',
+    default_causal_chain: [
+      'pelvic_emergency_flag -> POCUS_doppler_cul_de_sac_and_beta_hCG',
+      'ectopic_or_torsion -> TXA_resuscitation_or_detorsion_tele_gyn_consult',
+    ],
+    default_actions: [
+      {
+        action_id: 'ACT_ECTOPIC_HEMORRHAGE_TXA_IV_RESUSCITATION_TELE_SURGICAL_CONSULT',
+        label: 'Administer TXA, isotonic IV resuscitation, and urgent tele-surgical consultation',
+        category: 'EMERGENCY_RESUSCITATION',
+        delta_rho_per_hour: 0.35,
+      },
+      {
+        action_id: 'ACT_OVARIAN_TORSION_ANALGESIA_ULTRASOUND_DETORSION_PROTOCOL',
+        label: 'Provide analgesia and initiate ultrasound-guided detorsion / tele-gynecologic protocol',
+        category: 'GYNECOLOGIC_EMERGENCY',
+        delta_rho_per_hour: 0.25,
+      },
+      {
+        action_id: 'ACT_FEMALE_UTI_CEFTRIAXONE_OR_CIPROFLOXACIN_HYDRATION',
+        label: 'Initiate Ceftriaxone or Ciprofloxacin (Gate 5 check) with aggressive hydration',
+        category: 'PHARMACOLOGICAL_ANTIMICROBIAL',
+        delta_rho_per_hour: 0.2,
+      },
+    ],
+  },
+};
+
+export const AEROSPACE_360_ONLY_PLAYBOOK_LIST: PlaybookCatalogEntry<Aerospace360PlaybookId>[] = [
+  AEROSPACE_360_PLAYBOOK_CATALOG.PLAYBOOK_16_SEPSIS_SEPTIC_SHOCK,
+  AEROSPACE_360_PLAYBOOK_CATALOG.PLAYBOOK_17_HEMORRHAGIC_TRAUMA_TXA,
+  AEROSPACE_360_PLAYBOOK_CATALOG.PLAYBOOK_18_TORSO_SHOCK_PERICARDIOCENTESIS,
+  AEROSPACE_360_PLAYBOOK_CATALOG.PLAYBOOK_19_CONSERVATIVE_ACUTE_ABDOMEN_0G,
+  AEROSPACE_360_PLAYBOOK_CATALOG.PLAYBOOK_20_EVA_MUSCULOSKELETAL_SPINE_FRACTURE,
+  AEROSPACE_360_PLAYBOOK_CATALOG.PLAYBOOK_21_DENTAL_MAXILLOFACIAL_EMERGENCY,
+  AEROSPACE_360_PLAYBOOK_CATALOG.PLAYBOOK_22_OCULAR_FOREIGN_BODY_CHEMICAL_BURN,
+  AEROSPACE_360_PLAYBOOK_CATALOG.PLAYBOOK_23_ANAPHYLAXIS_AIRWAY_EMERGENCY,
+  AEROSPACE_360_PLAYBOOK_CATALOG.PLAYBOOK_24_MICROGRAVITY_CARDIAC_ARREST_CPR,
+  AEROSPACE_360_PLAYBOOK_CATALOG.PLAYBOOK_25_ACUTE_URINARY_RETENTION_POCUS,
+  AEROSPACE_360_PLAYBOOK_CATALOG.PLAYBOOK_26_ACUTE_RADIATION_SYNDROME,
+  AEROSPACE_360_PLAYBOOK_CATALOG.PLAYBOOK_27_AEROSPACE_TOXICOLOGY_EXPOSURE,
+  AEROSPACE_360_PLAYBOOK_CATALOG.PLAYBOOK_28_EVA_DCS_AND_SUIT_EMERGENCY,
+  AEROSPACE_360_PLAYBOOK_CATALOG.PLAYBOOK_29_BMED_PSYCHIATRIC_CRISIS,
+  AEROSPACE_360_PLAYBOOK_CATALOG.PLAYBOOK_30_FEMALE_PELVIC_UROGYN_POCUS,
+];
+
+export const PLAYBOOK_360_CATALOG: Record<PlaybookId, PlaybookCatalogEntry<PlaybookId>> = {
+  ...CRYSTALLIZED_PLAYBOOK_CATALOG,
+  ...AEROSPACE_360_PLAYBOOK_CATALOG,
+};
+
+export const ALL_360_PLAYBOOK_LIST: PlaybookCatalogEntry<PlaybookId>[] = [
+  ...ALL_CRYSTALLIZED_PLAYBOOK_LIST,
+  ...AEROSPACE_360_ONLY_PLAYBOOK_LIST,
+];
+
+export const PLAYBOOK_360_BY_SHORT_CODE: Record<
+  Playbook360ShortCode,
+  PlaybookCatalogEntry<PlaybookId>
+> = {
+  ...PLAYBOOK_BY_SHORT_CODE,
+  '#16': AEROSPACE_360_PLAYBOOK_CATALOG.PLAYBOOK_16_SEPSIS_SEPTIC_SHOCK,
+  '#17': AEROSPACE_360_PLAYBOOK_CATALOG.PLAYBOOK_17_HEMORRHAGIC_TRAUMA_TXA,
+  '#18': AEROSPACE_360_PLAYBOOK_CATALOG.PLAYBOOK_18_TORSO_SHOCK_PERICARDIOCENTESIS,
+  '#19': AEROSPACE_360_PLAYBOOK_CATALOG.PLAYBOOK_19_CONSERVATIVE_ACUTE_ABDOMEN_0G,
+  '#20': AEROSPACE_360_PLAYBOOK_CATALOG.PLAYBOOK_20_EVA_MUSCULOSKELETAL_SPINE_FRACTURE,
+  '#21': AEROSPACE_360_PLAYBOOK_CATALOG.PLAYBOOK_21_DENTAL_MAXILLOFACIAL_EMERGENCY,
+  '#22': AEROSPACE_360_PLAYBOOK_CATALOG.PLAYBOOK_22_OCULAR_FOREIGN_BODY_CHEMICAL_BURN,
+  '#23': AEROSPACE_360_PLAYBOOK_CATALOG.PLAYBOOK_23_ANAPHYLAXIS_AIRWAY_EMERGENCY,
+  '#24': AEROSPACE_360_PLAYBOOK_CATALOG.PLAYBOOK_24_MICROGRAVITY_CARDIAC_ARREST_CPR,
+  '#25': AEROSPACE_360_PLAYBOOK_CATALOG.PLAYBOOK_25_ACUTE_URINARY_RETENTION_POCUS,
+  '#26': AEROSPACE_360_PLAYBOOK_CATALOG.PLAYBOOK_26_ACUTE_RADIATION_SYNDROME,
+  '#27': AEROSPACE_360_PLAYBOOK_CATALOG.PLAYBOOK_27_AEROSPACE_TOXICOLOGY_EXPOSURE,
+  '#28': AEROSPACE_360_PLAYBOOK_CATALOG.PLAYBOOK_28_EVA_DCS_AND_SUIT_EMERGENCY,
+  '#29': AEROSPACE_360_PLAYBOOK_CATALOG.PLAYBOOK_29_BMED_PSYCHIATRIC_CRISIS,
+  '#30': AEROSPACE_360_PLAYBOOK_CATALOG.PLAYBOOK_30_FEMALE_PELVIC_UROGYN_POCUS,
+};
+
+export function getPlaybookDomainForShortCode(shortCode: Playbook360ShortCode): Playbook360DomainId {
+  for (const tab of PLAYBOOK_360_DOMAIN_TABS) {
+    if (tab.shortCodes.includes(shortCode)) return tab.id;
+  }
+  return 'CARDIORESPIRATORY';
+}
+
 export function isCrystallizedPlaybookId(id: string | null | undefined): id is CrystallizedPlaybookId {
   return typeof id === 'string' && id in CRYSTALLIZED_PLAYBOOK_CATALOG;
 }
 
-export function getCatalogEntry(id: string | null | undefined): PlaybookCatalogEntry | undefined {
+export function isPlaybook360Id(id: string | null | undefined): id is PlaybookId {
+  return typeof id === 'string' && id in PLAYBOOK_360_CATALOG;
+}
+
+export function getCatalogEntry(id: string | null | undefined): PlaybookCatalogEntry<PlaybookId> | undefined {
   if (!id) return undefined;
-  if (isCrystallizedPlaybookId(id)) {
-    return CRYSTALLIZED_PLAYBOOK_CATALOG[id];
+  if (isPlaybook360Id(id)) {
+    return PLAYBOOK_360_CATALOG[id];
   }
   const normalized = id.trim();
-  if (normalized in PLAYBOOK_BY_SHORT_CODE) {
-    return PLAYBOOK_BY_SHORT_CODE[normalized as PlaybookShortCode];
+  if (normalized in PLAYBOOK_360_BY_SHORT_CODE) {
+    return PLAYBOOK_360_BY_SHORT_CODE[normalized as Playbook360ShortCode];
   }
-  return ALL_CRYSTALLIZED_PLAYBOOK_LIST.find(
+  return ALL_360_PLAYBOOK_LIST.find(
     (entry) =>
       entry.playbook_id.includes(normalized) ||
       entry.short_code === normalized,

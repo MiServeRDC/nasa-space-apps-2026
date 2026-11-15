@@ -1,9 +1,9 @@
 // Spatial Command Palette & FastMCP Inspector Overlay (`CommandPaletteOverlay`).
 // Implements:
-// - `Cmd+K / Ctrl+K / Alt+Space` modal (`0` `backdrop-filter`, `#05070c` OLED surface)
+// - `Cmd+K / Ctrl+K / Alt+Space` modal (`0` blur, `#05070c` OLED surface) via `shadcn` `Command` (`cmdk`)
 // - `COMMANDS`: Tokenized quick-jump capsules (`UBERON:*` organs with reversible live 3D camera
-//   preview on selection & `ESC` restore, `GATHER/EVALUATE/ACT`, `MALE/FEMALE`, Playbooks `#01-#15`,
-//   and Drawers)
+//   preview on hover/selection & `ESC` restore, `GATHER/EVALUATE/ACT`, `MALE/FEMALE`, Aerospace 360
+//   Playbooks `#01-#30` across 4 domain tabs, and Drawers)
 // - `FASTMCP`: Executes all 8 `< 150-token` (`<= 600-byte`) `FASTMCP_TOOLS` via Tauri IPC ->
 //   `POST ${httpBaseUrl}/api/mcp` -> deterministic local fallback, displaying Context-Mode
 //   byte/token budget and `<untrusted_...>` prompt-injection spotlighting
@@ -19,7 +19,21 @@ import {
   type CopilotAskResponse,
 } from '../lib/voiceIntentRouter';
 import { CANONICAL_REGIONS } from '../modules/body-3d-heatmap/uberonSpatialMapping';
-import { ALL_CRYSTALLIZED_PLAYBOOK_LIST } from '../lib/playbookCatalog';
+import {
+  ALL_360_PLAYBOOK_LIST,
+  getPlaybookDomainForShortCode,
+  PLAYBOOK_360_DOMAIN_TABS,
+  type Playbook360DomainId,
+} from '../lib/playbookCatalog';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandShortcut,
+} from '../components/ui/command';
 import {
   FASTMCP_TOOLS,
   type FastMcpToolDef,
@@ -45,8 +59,11 @@ export interface CommandPaletteOverlayProps {
 
 interface QuickCommandItem {
   id: string;
+  group: 'ANATOMY' | 'WORKBENCH' | 'PLAYBOOK';
   capsule: string;
   title: string;
+  searchKeywords: string;
+  domain360?: Playbook360DomainId;
   previewUberon?: (typeof CANONICAL_REGIONS)[number]['region'];
   run: () => void;
 }
@@ -109,7 +126,8 @@ export function CommandPaletteOverlay({
 
   const [tab, setTab] = useState<CommandPaletteTabId>(initialTab);
   const [query, setQuery] = useState('');
-  const [activeIdx, setActiveIdx] = useState(0);
+  const [domainFilter, setDomainFilter] = useState<'ALL' | Playbook360DomainId>('ALL');
+  const [selectedCmdId, setSelectedCmdId] = useState('');
   const [graphQuery, setGraphQuery] = useState('OSD-51');
   const [pathFrom, setPathFrom] = useState('OSD-818');
   const [pathTo, setPathTo] = useState('bm_hr');
@@ -126,7 +144,8 @@ export function CommandPaletteOverlay({
       initialRegionBeforeOpenRef.current = useWorkbenchStore.getState().selectedUberonRegion;
       setTab(initialTab);
       setQuery('');
-      setActiveIdx(0);
+      setDomainFilter('ALL');
+      setSelectedCmdId('');
       window.setTimeout(() => searchInputRef.current?.focus(), 10);
     }
   }, [initialTab, open]);
@@ -145,8 +164,10 @@ export function CommandPaletteOverlay({
   const quickCommands = useMemo<QuickCommandItem[]>(() => {
     const organCmds: QuickCommandItem[] = CANONICAL_REGIONS.map((meta) => ({
       id: `uberon-${meta.uberonCurie}`,
+      group: 'ANATOMY',
       capsule: meta.uberonCurie,
       title: `Focus 3D Organ: ${meta.label}`,
+      searchKeywords: `${meta.uberonCurie} ${meta.label} ${meta.region}`,
       previewUberon: meta.region,
       run: () => {
         selectUberonRegion(meta.region);
@@ -158,20 +179,26 @@ export function CommandPaletteOverlay({
     const coreCmds: QuickCommandItem[] = [
       {
         id: 'reference-atlas',
+        group: 'WORKBENCH',
         capsule: 'REFERENCE',
         title: 'Open reference anatomy atlas (existing source geometry)',
+        searchKeywords: 'reference atlas anatomy source geometry',
         run: () => { window.open('/anatomy', '_blank', 'noopener,noreferrer'); handleCommitClose(); },
       },
       {
         id: 'reference-lab',
+        group: 'WORKBENCH',
         capsule: 'REFERENCE',
         title: 'Open anatomy pipeline lab (synthetic reference only)',
+        searchKeywords: 'anatomy pipeline lab synthetic',
         run: () => { window.open('/anatomy-lab', '_blank', 'noopener,noreferrer'); handleCommitClose(); },
       },
       {
         id: 'phase-gather',
+        group: 'WORKBENCH',
         capsule: 'PHASE:01',
         title: 'Switch to 01 GATHER Multimodal Sensor & Ultrasound Bay',
+        searchKeywords: 'phase 01 gather ultrasound sensor',
         run: () => {
           setPhase('GATHER');
           handleCommitClose();
@@ -179,8 +206,10 @@ export function CommandPaletteOverlay({
       },
       {
         id: 'phase-evaluate',
+        group: 'WORKBENCH',
         capsule: 'PHASE:02',
         title: 'Switch to 02 EVALUATE NQS-STL & Quantile Cones',
+        searchKeywords: 'phase 02 evaluate stl quantile cones',
         run: () => {
           setPhase('EVALUATE');
           handleCommitClose();
@@ -188,8 +217,10 @@ export function CommandPaletteOverlay({
       },
       {
         id: 'phase-act',
+        group: 'WORKBENCH',
         capsule: 'PHASE:03',
         title: 'Switch to 03 ACT Branched Safety Gate Playbook DAG',
+        searchKeywords: 'phase 03 act safety gate playbook dag',
         run: () => {
           setPhase('ACT');
           handleCommitClose();
@@ -197,8 +228,10 @@ export function CommandPaletteOverlay({
       },
       {
         id: 'morph-male',
+        group: 'WORKBENCH',
         capsule: 'TWIN:MALE',
         title: 'Morph 3D Biodigital Twin to MALE Anthropometric Baseline',
+        searchKeywords: 'twin male anthropometric profile morph',
         run: () => {
           onChangeSex('MALE');
           handleCommitClose();
@@ -206,8 +239,10 @@ export function CommandPaletteOverlay({
       },
       {
         id: 'morph-female',
+        group: 'WORKBENCH',
         capsule: 'TWIN:FEMALE',
         title: 'Morph 3D Biodigital Twin to FEMALE Anthropometric Baseline',
+        searchKeywords: 'twin female anthropometric profile morph',
         run: () => {
           onChangeSex('FEMALE');
           handleCommitClose();
@@ -215,8 +250,10 @@ export function CommandPaletteOverlay({
       },
       {
         id: 'drawer-portal',
+        group: 'WORKBENCH',
         capsule: 'DRAWER:DSN',
         title: 'Open Mars-Earth DSN Store-and-Forward & 24-Dataset Atlas',
+        searchKeywords: 'drawer dsn portal osdr dataset mars earth',
         run: () => {
           handleCommitClose();
           openDrawer('MISSION_PORTAL');
@@ -224,8 +261,10 @@ export function CommandPaletteOverlay({
       },
       {
         id: 'drawer-audit',
+        group: 'WORKBENCH',
         capsule: 'DRAWER:SHA256',
         title: 'Open SHA-256 Audit Ledger & NASA-STD-3001 Privacy Governance',
+        searchKeywords: 'drawer audit sha256 governance privacy',
         run: () => {
           handleCommitClose();
           openDrawer('AUDIT_PROVENANCE');
@@ -233,8 +272,10 @@ export function CommandPaletteOverlay({
       },
       {
         id: 'studio-toggle',
+        group: 'WORKBENCH',
         capsule: 'STUDIO:29.8S',
         title: 'Open <= 29.8s OpenScreenStudio Director Timeline Bar',
+        searchKeywords: 'studio timeline director 29.8s',
         run: () => {
           setStudioBarOpen(true);
           handleCommitClose();
@@ -242,10 +283,13 @@ export function CommandPaletteOverlay({
       },
     ];
 
-    const playbookCmds: QuickCommandItem[] = ALL_CRYSTALLIZED_PLAYBOOK_LIST.map((pb) => ({
+    const playbookCmds: QuickCommandItem[] = ALL_360_PLAYBOOK_LIST.map((pb) => ({
       id: `pb-${pb.playbook_id}`,
+      group: 'PLAYBOOK',
       capsule: `MEDOPS:${pb.short_code}`,
       title: pb.title,
+      searchKeywords: `${pb.short_code} ${pb.short_label} ${pb.playbook_id} ${pb.title} ${pb.normative_clause}`,
+      domain360: getPlaybookDomainForShortCode(pb.short_code),
       run: () => {
         selectPlaybook(pb.playbook_id);
         setPhase('ACT');
@@ -264,13 +308,33 @@ export function CommandPaletteOverlay({
     setStudioBarOpen,
   ]);
 
-  const filteredCommands = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return quickCommands;
-    return quickCommands.filter(
-      (c) => c.capsule.toLowerCase().includes(q) || c.title.toLowerCase().includes(q),
-    );
-  }, [query, quickCommands]);
+  const previewByCommandId = useMemo(() => {
+    const map = new Map<string, AnatomicalRegionWireId>();
+    for (const cmd of quickCommands) {
+      if (cmd.previewUberon) {
+        map.set(cmd.id, cmd.previewUberon);
+      }
+    }
+    return map;
+  }, [quickCommands]);
+
+  const anatomyCommands = useMemo(
+    () => quickCommands.filter((c) => c.group === 'ANATOMY'),
+    [quickCommands],
+  );
+  const workbenchCommands = useMemo(
+    () => quickCommands.filter((c) => c.group === 'WORKBENCH'),
+    [quickCommands],
+  );
+  const playbookCommands = useMemo(
+    () =>
+      quickCommands.filter(
+        (c) =>
+          c.group === 'PLAYBOOK' &&
+          (domainFilter === 'ALL' || c.domain360 === domainFilter),
+      ),
+    [domainFilter, quickCommands],
+  );
 
   const executeFastMcpTool = async (tool: FastMcpToolDef) => {
     const args: Record<string, string> = {};
@@ -446,68 +510,124 @@ export function CommandPaletteOverlay({
           </button>
         </div>
 
-        {/* Tab 1: Quick Commands + Reversible Live 3D Organ Camera Preview */}
+        {/* Tab 1: shadcn Command + Aerospace 360 Playbook Domain Tabs + Reversible Live 3D Organ Preview */}
         {tab === 'COMMANDS' ? (
           <div className="flex min-h-0 flex-1 flex-col p-3">
-            <input
-              ref={searchInputRef}
-              type="search"
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setActiveIdx(0);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'ArrowDown') {
-                  e.preventDefault();
-                  const next = Math.min(filteredCommands.length - 1, activeIdx + 1);
-                  setActiveIdx(next);
-                  const preview = filteredCommands[next]?.previewUberon;
-                  if (preview) selectUberonRegion(preview);
-                } else if (e.key === 'ArrowUp') {
-                  e.preventDefault();
-                  const prev = Math.max(0, activeIdx - 1);
-                  setActiveIdx(prev);
-                  const preview = filteredCommands[prev]?.previewUberon;
-                  if (preview) selectUberonRegion(preview);
-                } else if (e.key === 'Enter' && filteredCommands[activeIdx]) {
-                  e.preventDefault();
-                  filteredCommands[activeIdx].run();
-                }
-              }}
-              placeholder="Type UBERON:0004712, Playbook #01-#15, GATHER, FEMALE, DSN..."
-              aria-label="Filter spatial workbench commands"
-              className="ares-touch-target w-full rounded-xl border border-white/15 bg-black px-3.5 text-xs text-[var(--color-ink-display)] focus:border-cyan-400 focus:outline-none"
-            />
-
-            <div className="mt-2 min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
-              {filteredCommands.map((cmd, idx) => {
-                const selected = idx === activeIdx;
+            {/* Aerospace 360 Domain Filter Tabs for #01-#30 */}
+            <div
+              role="group"
+              aria-label="Aerospace 360 Playbook domain tabs"
+              className="mb-2 flex flex-wrap gap-1 font-mono text-[9.5px]"
+            >
+              <button
+                type="button"
+                data-testid="cmd-domain-ALL"
+                aria-pressed={domainFilter === 'ALL'}
+                onClick={() => setDomainFilter('ALL')}
+                className={`ares-interactive rounded-lg border px-2 py-1 font-semibold ${
+                  domainFilter === 'ALL'
+                    ? 'border-cyan-400/70 bg-cyan-400/15 text-cyan-200'
+                    : 'border-white/10 bg-black text-[var(--color-ink-meta)]'
+                }`}
+              >
+                ALL 30
+              </button>
+              {PLAYBOOK_360_DOMAIN_TABS.map((dom) => {
+                const selected = domainFilter === dom.id;
                 return (
                   <button
-                    key={cmd.id}
+                    key={dom.id}
                     type="button"
-                    onMouseEnter={() => {
-                      setActiveIdx(idx);
-                      if (cmd.previewUberon) {
-                        selectUberonRegion(cmd.previewUberon);
-                      }
-                    }}
-                    onClick={cmd.run}
-                    className={`flex min-h-[44px] w-full items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left ${
+                    data-testid={`cmd-domain-${dom.id}`}
+                    aria-pressed={selected}
+                    onClick={() => setDomainFilter(dom.id)}
+                    className={`ares-interactive rounded-lg border px-2 py-1 font-semibold ${
                       selected
-                        ? 'border-cyan-400/65 bg-cyan-500/15 text-cyan-100'
-                        : 'border-white/5 bg-black/60 text-[var(--color-ink-display)]'
+                        ? 'border-cyan-400/70 bg-cyan-400/15 text-cyan-200'
+                        : 'border-white/10 bg-black text-[var(--color-ink-meta)]'
                     }`}
                   >
-                    <span className="truncate font-sans text-xs">{cmd.title}</span>
-                    <span className="shrink-0 rounded border border-cyan-400/40 bg-black px-2 py-0.5 text-[10px] text-cyan-300">
-                      {cmd.capsule}
-                    </span>
+                    {dom.label} {dom.rangeLabel}
                   </button>
                 );
               })}
             </div>
+
+            <Command
+              value={selectedCmdId}
+              onValueChange={(nextId) => {
+                setSelectedCmdId(nextId);
+                const region = previewByCommandId.get(nextId);
+                if (region) selectUberonRegion(region);
+              }}
+              className="min-h-0 flex-1 border-[var(--color-border)] bg-[var(--color-surface-l0)]"
+            >
+              <CommandInput
+                ref={searchInputRef}
+                value={query}
+                onValueChange={setQuery}
+                placeholder="Type UBERON:0004712, Playbook #01-#30, GATHER, FEMALE, DSN..."
+                aria-label="Filter spatial workbench commands"
+              />
+              <CommandList className="max-h-[48dvh] min-h-0 flex-1">
+                <CommandEmpty>No matching Aerospace 360 command or playbook.</CommandEmpty>
+
+                {domainFilter === 'ALL' ? (
+                  <>
+                    <CommandGroup heading="Anatomical 3D Focus (UBERON)">
+                      {anatomyCommands.map((cmd) => (
+                        <CommandItem
+                          key={cmd.id}
+                          value={`${cmd.id} ${cmd.capsule} ${cmd.title} ${cmd.searchKeywords}`}
+                          onMouseEnter={() => {
+                            if (cmd.previewUberon) selectUberonRegion(cmd.previewUberon);
+                          }}
+                          onSelect={cmd.run}
+                          className="min-h-[40px]"
+                        >
+                          <span className="truncate font-sans text-xs">{cmd.title}</span>
+                          <CommandShortcut className="border-cyan-400/40 text-cyan-300">
+                            {cmd.capsule}
+                          </CommandShortcut>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+
+                    <CommandGroup heading="Workbench Phases, Twin & Drawers">
+                      {workbenchCommands.map((cmd) => (
+                        <CommandItem
+                          key={cmd.id}
+                          value={`${cmd.id} ${cmd.capsule} ${cmd.title} ${cmd.searchKeywords}`}
+                          onSelect={cmd.run}
+                          className="min-h-[40px]"
+                        >
+                          <span className="truncate font-sans text-xs">{cmd.title}</span>
+                          <CommandShortcut className="border-cyan-400/40 text-cyan-300">
+                            {cmd.capsule}
+                          </CommandShortcut>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </>
+                ) : null}
+
+                <CommandGroup heading={`Aerospace 360 MedOps Playbooks (${playbookCommands.length})`}>
+                  {playbookCommands.map((cmd) => (
+                    <CommandItem
+                      key={cmd.id}
+                      value={`${cmd.id} ${cmd.capsule} ${cmd.title} ${cmd.searchKeywords}`}
+                      onSelect={cmd.run}
+                      className="min-h-[40px]"
+                    >
+                      <span className="truncate font-sans text-xs">{cmd.title}</span>
+                      <CommandShortcut className="border-cyan-400/40 text-cyan-300">
+                        {cmd.capsule}
+                      </CommandShortcut>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
           </div>
         ) : null}
 

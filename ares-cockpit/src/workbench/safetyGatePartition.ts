@@ -5,6 +5,7 @@
 import type {
   AnatomicalRegionWireId,
   CountermeasureAction,
+  ExtendedSafetyGates,
   SafetyGatesState,
 } from '../types/telemetry';
 import type { DiagnosticImagingTab } from '../types/workbench';
@@ -22,9 +23,18 @@ export type SafetyGateCode =
   | 'GATE_4A_THORACOSTOMY_LOCK'
   | 'GATE_4B_EVA_NO_GO';
 
+export type ExtendedSafetyGateCode =
+  | 'GATE_5A_NSAID_RENAL_BLEED'
+  | 'GATE_5B_ALLERGY_G6PD_QTC'
+  | 'GATE_5C_EXMC_POTENCY_SUB'
+  | 'GATE_6_ARS_INVASIVE_LOCK'
+  | 'GATE_7_BMED_DELIRIUM_GUARD';
+
+export type UnifiedSafetyGateCode = SafetyGateCode | ExtendedSafetyGateCode;
+
 export interface InhibitedPlaybookAction {
   action: CountermeasureAction;
-  gateCode: SafetyGateCode;
+  gateCode: UnifiedSafetyGateCode;
   gateTitle: string;
   rationale: string;
   verifyLabel: string;
@@ -34,7 +44,7 @@ export interface InhibitedPlaybookAction {
 
 export interface AutonomousSafetyOverride {
   id: string;
-  gateCode: SafetyGateCode | 'SPE_STORM_SHELTER';
+  gateCode: UnifiedSafetyGateCode | 'SPE_STORM_SHELTER';
   severity: 'CRITICAL' | 'WARNING';
   headline: string;
   detail: string;
@@ -47,11 +57,22 @@ export interface InterlockGateSummaryItem {
   detail: string;
 }
 
+export interface Gate1To7MatrixItem {
+  code: UnifiedSafetyGateCode;
+  pillCode: '1' | '2' | '3' | '4A' | '4B' | '5A' | '5B' | '5C' | '6' | '7';
+  shortLabel: string;
+  status: 'LOCKED' | 'ARMED' | 'TRIGGERED' | 'UNLOCKED' | 'UNAVAILABLE' | 'ACTIVE';
+  detail: string;
+  rationale: string;
+}
+
 export interface PartitionedSafetyDagResult {
   unlockedActions: CountermeasureAction[];
   inhibitedActions: InhibitedPlaybookAction[];
   autonomousOverrides: AutonomousSafetyOverride[];
   interlockMatrix: InterlockGateSummaryItem[];
+  extendedInterlockMatrix: Gate1To7MatrixItem[];
+  gates1To7Matrix: Gate1To7MatrixItem[];
   preSyncopeTriggered: boolean;
 }
 
@@ -63,6 +84,7 @@ export interface SafetyDagPartitionContext {
   hrBpm?: number | null;
   gaiPct?: number | null;
   radiationDoseMsvD?: number | null;
+  extendedGates?: Partial<ExtendedSafetyGates> | null;
 }
 
 export function isAnticoagulantCandidate(
@@ -267,11 +289,155 @@ export function partitionPlaybookActionsWithSafetyGates(
     },
   ];
 
+  const ext = context.extendedGates ?? null;
+  const gate5aTriggered = Boolean(ext?.gate5_nsaid_renal_bleeding_locked);
+  const gate5bTriggered = Boolean(ext?.gate5_allergy_or_qtc_locked);
+  const gate5cActive = Boolean(ext?.gate5_formulary_substitution_active);
+  const gate6Triggered = Boolean(ext?.gate6_radiation_neutropenic_invasive_locked);
+  const gate7Triggered = Boolean(ext?.gate7_bmed_delirium_or_restraint_guard_active);
+
+  if (gate5aTriggered) {
+    autonomousOverrides.push({
+      id: 'override-gate5a-nsaid-renal-bleed',
+      gateCode: 'GATE_5A_NSAID_RENAL_BLEED',
+      severity: 'WARNING',
+      headline: 'GATE 5A INTERLOCK: NSAID / KETOROLAC CONTRAINDICATED',
+      detail: 'Thrombocytopenia (PLT < 100 K/uL), AKI risk (Cr > 1.30 / eGFR < 60), or active hemorrhage.',
+    });
+  }
+  if (gate5bTriggered) {
+    autonomousOverrides.push({
+      id: 'override-gate5b-allergy-g6pd-qtc',
+      gateCode: 'GATE_5B_ALLERGY_G6PD_QTC',
+      severity: 'CRITICAL',
+      headline: 'GATE 5B PHARMACOLOGY LOCK: ALLERGY / G6PD / QTc >= 500ms',
+      detail: 'Matched documented drug allergy, G6PD hemolysis trigger, or QTc prolongation >= 500 ms.',
+    });
+  }
+  if (gate6Triggered) {
+    autonomousOverrides.push({
+      id: 'override-gate6-ars-invasive',
+      gateCode: 'GATE_6_ARS_INVASIVE_LOCK',
+      severity: 'CRITICAL',
+      headline: 'GATE 6 ARS NADIR LOCK: INVASIVE INTERVENTIONS INHIBITED',
+      detail: 'Neutropenic/thrombocytopenic nadir (ANC < 0.5 K/uL or PLT < 75 K/uL) restricts non-emergent procedures.',
+    });
+  }
+  if (gate7Triggered) {
+    autonomousOverrides.push({
+      id: 'override-gate7-bmed-delirium',
+      gateCode: 'GATE_7_BMED_DELIRIUM_GUARD',
+      severity: 'CRITICAL',
+      headline: 'GATE 7 BMED GUARD: EXCLUDE ORGANIC DELIRIUM FIRST',
+      detail: 'Rule out hypoxia/CO2/sepsis delirium (7A), enforce airlock lockout (7B), verify QTc before antipsychotic (7C).',
+    });
+  }
+
+  const extendedInterlockMatrix: Gate1To7MatrixItem[] = [
+    {
+      code: 'GATE_5A_NSAID_RENAL_BLEED',
+      pillCode: '5A',
+      shortLabel: 'GATE 5A: NSAID/RENAL',
+      status: gate5aTriggered ? 'TRIGGERED' : 'ARMED',
+      detail: gate5aTriggered
+        ? 'Ketorolac & NSAIDs inhibited (renal/bleed lock)'
+        : 'PLT >= 100 K/uL & renal NSAID guard nominal',
+      rationale:
+        'Blocks Ketorolac/NSAIDs whenever PLT < 100 K/uL, Cr > 1.30 mg/dL, eGFR < 60, or acute GI/intracranial/thoracic bleeding is active.',
+    },
+    {
+      code: 'GATE_5B_ALLERGY_G6PD_QTC',
+      pillCode: '5B',
+      shortLabel: 'GATE 5B: ALLERGY/QTc',
+      status: gate5bTriggered ? 'TRIGGERED' : 'ARMED',
+      detail: gate5bTriggered
+        ? 'Allergy, G6PD hemolysis, or QTc >= 500ms lock'
+        : 'Allergy, G6PD & QTc guardrails nominal',
+      rationale:
+        'Checks crew drug allergies (Penicillin/Cephalosporin/Sulfonamide), G6PD oxidative drug safety (Methylene Blue), and QTc >= 500 ms lockouts.',
+    },
+    {
+      code: 'GATE_5C_EXMC_POTENCY_SUB',
+      pillCode: '5C',
+      shortLabel: 'GATE 5C: ExMC POTENCY',
+      status: gate5cActive ? 'ACTIVE' : 'ARMED',
+      detail: gate5cActive
+        ? 'Auto-substituting <90% USP degraded Mars agent'
+        : 'ExMC Mars-transit shelf potency >= 90% USP',
+      rationale:
+        'Substitutes radiation/thermal-degraded (<90% USP) pharmaceuticals with shelf-stable Mars transit alternatives (e.g. Cefepime/Ertapenem).',
+    },
+    {
+      code: 'GATE_6_ARS_INVASIVE_LOCK',
+      pillCode: '6',
+      shortLabel: 'GATE 6: ARS NADIR',
+      status: gate6Triggered ? 'LOCKED' : 'ARMED',
+      detail: gate6Triggered
+        ? 'ARS nadir: non-emergent invasive actions locked'
+        : 'No SPE hematologic nadir invasive restriction',
+      rationale:
+        'Enforces invasive procedure lock during Acute Radiation Syndrome nadir (ANC < 0.5 K/uL or PLT < 75 K/uL) unless immediate life threat.',
+    },
+    {
+      code: 'GATE_7_BMED_DELIRIUM_GUARD',
+      pillCode: '7',
+      shortLabel: 'GATE 7: BMED GUARD',
+      status: gate7Triggered ? 'TRIGGERED' : 'ARMED',
+      detail: gate7Triggered
+        ? '7A organic exclusion + 7B airlock + 7C QTc guard'
+        : 'Behavioral emergency organic-first guard armed',
+      rationale:
+        'Gate 7A excludes organic delirium (O2/CO2/sepsis/tox) before behavioral sedation; Gate 7B guards CMRS & airlock lockout; Gate 7C checks QTc >= 470 ms.',
+    },
+  ];
+
+  const coreRationales: Record<SafetyGateCode, { pillCode: '1' | '2' | '3' | '4A' | '4B'; rationale: string }> = {
+    GATE_1_ANTICOAG_LOCK: {
+      pillCode: '1',
+      rationale:
+        'Prohibits systemic anticoagulants for venous stasis alone until B-Mode POCUS confirms non-compressible IJV thrombus.',
+    },
+    GATE_2_LBNP_AUTO_VENT: {
+      pillCode: '2',
+      rationale:
+        'Arms automatic Chibis/LBNP vent to 0 mmHg upon pre-syncope (dSBP > 15 mmHg or HR > 115 bpm).',
+    },
+    GATE_3_ANKLE_DAMPING: {
+      pillCode: '3',
+      rationale:
+        'Locks high-impact plyometrics and adds +25% 0.38g EVA ankle damping when Gait Asymmetry Index exceeds 12.0%.',
+    },
+    GATE_4A_THORACOSTOMY_LOCK: {
+      pillCode: '4A',
+      rationale:
+        'Prohibits thoracic needle decompression / thoracostomy until eFAST confirms absent pleural lung sliding (barcode sign).',
+    },
+    GATE_4B_EVA_NO_GO: {
+      pillCode: '4B',
+      rationale:
+        'Enforces deontic EVA airlock egress lockout during hemodynamic instability, DCS risk (Conkin R360 > 1.40), or SPE alert.',
+    },
+  };
+
+  const gates1To7Matrix: Gate1To7MatrixItem[] = [
+    ...interlockMatrix.map((item) => ({
+      code: item.code,
+      pillCode: coreRationales[item.code].pillCode,
+      shortLabel: item.shortLabel,
+      status: item.status,
+      detail: item.detail,
+      rationale: coreRationales[item.code].rationale,
+    })),
+    ...extendedInterlockMatrix,
+  ];
+
   return {
     unlockedActions,
     inhibitedActions,
     autonomousOverrides,
     interlockMatrix,
+    extendedInterlockMatrix,
+    gates1To7Matrix,
     preSyncopeTriggered,
   };
 }
