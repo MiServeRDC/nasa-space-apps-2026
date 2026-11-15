@@ -157,6 +157,12 @@ export function CommandPaletteOverlay({
 
     const coreCmds: QuickCommandItem[] = [
       {
+        id: 'reference-lab',
+        capsule: 'REFERENCE',
+        title: 'Open anatomy pipeline lab (synthetic reference only)',
+        run: () => { window.open('/anatomy-lab', '_blank', 'noopener,noreferrer'); handleCommitClose(); },
+      },
+      {
         id: 'phase-gather',
         capsule: 'PHASE:01',
         title: 'Switch to 01 GATHER Multimodal Sensor & Ultrasound Bay',

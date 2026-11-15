@@ -6,6 +6,7 @@ export function validateAnatomyManifest(m: AnatomyModelManifest): string[] {
   const errors: string[] = [];
   if (!['MALE','FEMALE','UNSPECIFIED'].includes(m.referenceSex)) errors.push('Invalid reference sex');
   if (m.schemaVersion !== 1 || m.modelUnits !== 'm' || !m.id.trim()) errors.push('Invalid model identity/version');
+  if(m.revisionSha256 !== undefined && !/^[0-9a-f]{64}$/.test(m.revisionSha256)) errors.push('Invalid model revision');
   const assets = new Set<string>(); const structures = new Set<string>();
   for (const a of m.assets) {
     if (!a.id || assets.has(a.id)) errors.push('Duplicate/empty asset ID');
@@ -57,7 +58,14 @@ export class AnatomyRegistry {
   }
   annotationsForModel(annotations: readonly AnatomyAnnotation[], modelId: string): AnatomyAnnotation[] {
     // Positions/text are never transplanted across donors by ontology alone.
-    return annotations.filter(a => a.modelId === modelId && this.structure(modelId, a.structureId)?.coverage !== 'MISSING' && this.structure(modelId, a.structureId) !== null).map(a => ({...a}));
+    const model=this.models.get(modelId);if(!model)return [];
+    return annotations.filter(a=>{
+      const structure=model.structures.find(s=>s.id===a.structureId);
+      if(a.modelId!==modelId||!structure||structure.coverage==='MISSING')return false;
+      if(!a.anchor)return true;
+      if(!model.revisionSha256||a.modelRevision!==model.revisionSha256||a.anchor.positionM.length!==3||a.anchor.positionM.some(n=>!Number.isFinite(n)))return false;
+      return structure.meshes.some(ref=>ref.nodeIds.includes(a.anchor!.nodeId)&&model.assets.find(asset=>asset.id===ref.assetId)?.sha256===a.anchor!.assetSha256);
+    }).map(a=>structuredClone(a));
   }
 }
 

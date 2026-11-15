@@ -1,0 +1,308 @@
+{
+  "model": {
+    "schemaVersion": 1,
+    "id": "ARES_SYNTHETIC_CALIBRATION_V1",
+    "label": "Synthetic pipeline fixture (not anatomy)",
+    "revisionSha256": "c7cdd487bb6cb03b640e61bcea982048d112702ccea906400afe0131110c85f5",
+    "modelUnits": "m",
+    "referenceSex": "UNSPECIFIED",
+    "assets": [
+      {
+        "id": "core-lod0-meshopt.glb",
+        "path": "/anatomy/fixture/core-lod0-meshopt.glb",
+        "sha256": "776a56396ba3214fb0d4310b56c477361c7587d188bc2fb72b69acc6b3940143",
+        "sourceUrl": "https://github.com/MiServeRDC/nasa-space-apps-2026",
+        "sourceVersion": "ARES_FIXTURE_RECIPE_V1",
+        "sourceSex": "UNSPECIFIED",
+        "sourceDonorReference": null,
+        "license": "CC0-1.0",
+        "credit": "ARES contributors; original synthetic calibration solids, not anatomical data",
+        "adaptations": [
+          "Generated spheres, flat reference rendering, explicit Meshopt encoding and per-structure LOD simplification"
+        ],
+        "units": "m",
+        "axes": "GLTF_Y_UP_RIGHT_HANDED",
+        "sourceToModel": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "registration": {
+          "method": "IDENTITY",
+          "reviewed": true,
+          "report": null
+        },
+        "lod": 0,
+        "pickingMap": null
+      },
+      {
+        "id": "overlay-lod0-meshopt.glb",
+        "path": "/anatomy/fixture/overlay-lod0-meshopt.glb",
+        "sha256": "33b1f8cf83c0136e1ed19c3ed1400c15c722537b5efae16e5f64ef54beab91b7",
+        "sourceUrl": "https://github.com/MiServeRDC/nasa-space-apps-2026",
+        "sourceVersion": "ARES_FIXTURE_RECIPE_V1",
+        "sourceSex": "UNSPECIFIED",
+        "sourceDonorReference": null,
+        "license": "CC0-1.0",
+        "credit": "ARES contributors; original synthetic calibration solids, not anatomical data",
+        "adaptations": [
+          "Generated spheres, flat reference rendering, explicit Meshopt encoding and per-structure LOD simplification"
+        ],
+        "units": "m",
+        "axes": "GLTF_Y_UP_RIGHT_HANDED",
+        "sourceToModel": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "registration": {
+          "method": "IDENTITY",
+          "reviewed": true,
+          "report": null
+        },
+        "lod": 0,
+        "pickingMap": null
+      },
+      {
+        "id": "core-lod1-meshopt.glb",
+        "path": "/anatomy/fixture/core-lod1-meshopt.glb",
+        "sha256": "022921df67d237b43e88e410c9a02f319ed3fed1bb6b295ca5a06b643a4da7a3",
+        "sourceUrl": "https://github.com/MiServeRDC/nasa-space-apps-2026",
+        "sourceVersion": "ARES_FIXTURE_RECIPE_V1",
+        "sourceSex": "UNSPECIFIED",
+        "sourceDonorReference": null,
+        "license": "CC0-1.0",
+        "credit": "ARES contributors; original synthetic calibration solids, not anatomical data",
+        "adaptations": [
+          "Generated spheres, flat reference rendering, explicit Meshopt encoding and per-structure LOD simplification"
+        ],
+        "units": "m",
+        "axes": "GLTF_Y_UP_RIGHT_HANDED",
+        "sourceToModel": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "registration": {
+          "method": "IDENTITY",
+          "reviewed": true,
+          "report": null
+        },
+        "lod": 1,
+        "pickingMap": null
+      },
+      {
+        "id": "overlay-lod1-meshopt.glb",
+        "path": "/anatomy/fixture/overlay-lod1-meshopt.glb",
+        "sha256": "61c8921f6da8828d68916fd61fc10f2e294dd3f4706a4acce5681565a88fae6e",
+        "sourceUrl": "https://github.com/MiServeRDC/nasa-space-apps-2026",
+        "sourceVersion": "ARES_FIXTURE_RECIPE_V1",
+        "sourceSex": "UNSPECIFIED",
+        "sourceDonorReference": null,
+        "license": "CC0-1.0",
+        "credit": "ARES contributors; original synthetic calibration solids, not anatomical data",
+        "adaptations": [
+          "Generated spheres, flat reference rendering, explicit Meshopt encoding and per-structure LOD simplification"
+        ],
+        "units": "m",
+        "axes": "GLTF_Y_UP_RIGHT_HANDED",
+        "sourceToModel": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "registration": {
+          "method": "IDENTITY",
+          "reviewed": true,
+          "report": null
+        },
+        "lod": 1,
+        "pickingMap": null
+      }
+    ],
+    "structures": [
+      {
+        "id": "calibration-left",
+        "label": "calibration left",
+        "sourceConceptId": "ARES_FIXTURE:calibration-left",
+        "laterality": "LEFT",
+        "ontology": null,
+        "coverage": "NATIVE_REFERENCE",
+        "meshes": [
+          {
+            "assetId": "core-lod0-meshopt.glb",
+            "nodeIds": [
+              "calibration-left-node0-mesh0-primitive0"
+            ]
+          },
+          {
+            "assetId": "core-lod1-meshopt.glb",
+            "nodeIds": [
+              "calibration-left-node0-mesh0-primitive0"
+            ]
+          }
+        ],
+        "clinicalBindings": [],
+        "unavailableReason": null
+      },
+      {
+        "id": "calibration-right",
+        "label": "calibration right",
+        "sourceConceptId": "ARES_FIXTURE:calibration-right",
+        "laterality": "RIGHT",
+        "ontology": null,
+        "coverage": "NATIVE_REFERENCE",
+        "meshes": [
+          {
+            "assetId": "core-lod0-meshopt.glb",
+            "nodeIds": [
+              "calibration-right-node1-mesh1-primitive0"
+            ]
+          },
+          {
+            "assetId": "core-lod1-meshopt.glb",
+            "nodeIds": [
+              "calibration-right-node1-mesh1-primitive0"
+            ]
+          }
+        ],
+        "clinicalBindings": [],
+        "unavailableReason": null
+      },
+      {
+        "id": "calibration-cover",
+        "label": "calibration cover",
+        "sourceConceptId": "ARES_FIXTURE:calibration-cover",
+        "laterality": "UNSPECIFIED",
+        "ontology": null,
+        "coverage": "NATIVE_REFERENCE",
+        "meshes": [
+          {
+            "assetId": "overlay-lod0-meshopt.glb",
+            "nodeIds": [
+              "calibration-cover-node2-mesh2-primitive0"
+            ]
+          },
+          {
+            "assetId": "overlay-lod1-meshopt.glb",
+            "nodeIds": [
+              "calibration-cover-node2-mesh2-primitive0"
+            ]
+          }
+        ],
+        "clinicalBindings": [],
+        "unavailableReason": null
+      }
+    ]
+  },
+  "chunks": [
+    {
+      "path": "/anatomy/fixture/core-lod0.glb",
+      "sha256": "b09e0d5dc386573f832d11d5b95978842b96e8f6e1b3f8ecace8601eb15e694a",
+      "layer": "core",
+      "lod": 0,
+      "compressed": false
+    },
+    {
+      "path": "/anatomy/fixture/core-lod0-meshopt.glb",
+      "sha256": "776a56396ba3214fb0d4310b56c477361c7587d188bc2fb72b69acc6b3940143",
+      "layer": "core",
+      "lod": 0,
+      "compressed": true
+    },
+    {
+      "path": "/anatomy/fixture/overlay-lod0.glb",
+      "sha256": "1f41084b3679d5babf65e03b67cf044f7ad019a4372e4760fe396f8d1984af4b",
+      "layer": "overlay",
+      "lod": 0,
+      "compressed": false
+    },
+    {
+      "path": "/anatomy/fixture/overlay-lod0-meshopt.glb",
+      "sha256": "33b1f8cf83c0136e1ed19c3ed1400c15c722537b5efae16e5f64ef54beab91b7",
+      "layer": "overlay",
+      "lod": 0,
+      "compressed": true
+    },
+    {
+      "path": "/anatomy/fixture/core-lod1.glb",
+      "sha256": "de3307bfedea2cb3319011df05410506ee4dff3d6a97de7d1b294d4193c1401a",
+      "layer": "core",
+      "lod": 1,
+      "compressed": false
+    },
+    {
+      "path": "/anatomy/fixture/core-lod1-meshopt.glb",
+      "sha256": "022921df67d237b43e88e410c9a02f319ed3fed1bb6b295ca5a06b643a4da7a3",
+      "layer": "core",
+      "lod": 1,
+      "compressed": true
+    },
+    {
+      "path": "/anatomy/fixture/overlay-lod1.glb",
+      "sha256": "b844c81997b6ba79d9fda3d967ac4f25b8f202b55eb71f806e3b8612ec0b9b72",
+      "layer": "overlay",
+      "lod": 1,
+      "compressed": false
+    },
+    {
+      "path": "/anatomy/fixture/overlay-lod1-meshopt.glb",
+      "sha256": "61c8921f6da8828d68916fd61fc10f2e294dd3f4706a4acce5681565a88fae6e",
+      "layer": "overlay",
+      "lod": 1,
+      "compressed": true
+    }
+  ]
+}

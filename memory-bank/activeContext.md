@@ -1,5 +1,24 @@
 # Active Context: ARES-Health (NASA Space Apps Challenge 2026)
 
+## Greenfield phase 5 controlled pipeline complete (2026-11-15)
+
+Branch work/MiServeRDC-greenfield-phase01, no main merge/push. Added static GLB
+extraction CLI, exact source node/mesh/primitive provenance, transforms/reflection,
+validated topology, two LODs and plain/Meshopt chunks with deterministic hashes,
+build-tool/source fingerprints and credits. New owned model session handles byte
+budgets, abort/late decode, batching, semantic ray picking and deterministic release.
+Optional /anatomy-lab is reachable in the command palette; synthetic calibration
+solids only. Reference selection never changes physiology. Anchors now require
+exact revision/asset/node. See docs/evaluation/GREENFIELD_PHASE5_RESULTS.md.
+Validation: 124 frontend tests, lint/build, production offline/failure/resource
+browser suite and earlier cockpit browser regressions passed. Twelve switches
+retain 2 renderer geometries; unload returns to 0. Private Vite caches prevent
+cross-run dependency contamination. Fast probe/Cargo check/Clippy pass locally.
+Next phase 6: real male reference population and selection UX; source license
+review, female coverage, registration and anatomical review remain explicit gates.
+No real source geometry was added; only a small original synthetic fixture.
+
+
 ## Greenfield phase 4 source inventory complete with declared gaps (2026-11-15)
 
 Branch work/MiServeRDC-greenfield-phase01; no main merge/push. Added reproducible

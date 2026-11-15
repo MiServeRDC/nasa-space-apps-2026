@@ -255,3 +255,14 @@ current DBCLS terms and Z-Anatomy's per-contribution attribution. Crossref CLI
 retrieved the paper. Named geometry candidates and exact source gaps are in
 [the matrix](../anatomy/COVERAGE_MATRIX.md). Full source blobs stay outside git.
 No heuristic threshold, copied fit or clinical validity claim is introduced.
+
+
+## Phase 5 semantic anatomy pipeline (2026-11-15)
+
+[Pipeline architecture](ANATOMY_PIPELINE.md) and [local results](../evaluation/GREENFIELD_PHASE5_RESULTS.md)
+record static GLB extraction, explicit source-to-model matrices, per-structure LOD,
+EXT_meshopt_compression, triangle identity ranges and owned cancellation/disposal.
+Primary references: Three.js r171 GLTFLoader/BufferGeometry cleanup and
+zeux/meshoptimizer v0.18 JavaScript encoder/simplifier APIs; actual package/source
+fingerprints are in the generated fixture build report. Synthetic LOD errors are
+engineering settings, not registration tolerances or clinical constants.

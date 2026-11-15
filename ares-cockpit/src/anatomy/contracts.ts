@@ -21,8 +21,11 @@ export interface AnatomicalStructure {
   unavailableReason: string | null;
 }
 export interface AnatomyModelManifest {
-  schemaVersion: 1; id: string; label: string; modelUnits: 'm'; referenceSex: 'MALE' | 'FEMALE' | 'UNSPECIFIED';
+  schemaVersion: 1; id: string; label: string; modelUnits: 'm'; revisionSha256?: string; referenceSex: 'MALE' | 'FEMALE' | 'UNSPECIFIED';
   assets: AnatomyAsset[]; structures: AnatomicalStructure[];
 }
-export interface AnatomyAnnotation { id: string; modelId: string; structureId: string; text: string }
+export interface AnatomyAnnotation {
+  id: string; modelId: string; structureId: string; text: string; modelRevision?: string;
+  anchor?: {assetSha256: string; nodeId: string; positionM: [number,number,number]};
+}
 export interface AnatomySelection { modelId: string; structureId: string }

@@ -159,3 +159,23 @@
   does not establish compatible registration. Do not copy community fit constants.
 - Sources and evidence: docs/anatomy/SOURCE_DECISIONS.json, SOURCE_INVENTORY.json,
   COVERAGE_MATRIX.md and GREENFIELD_PHASE4_RESULTS.md. No physiology change.
+
+
+## Semantic geometry and async ownership invariants (2026-11-15)
+
+- Keep source node/mesh/primitive IDs across extraction, exact indexing, codec and
+  LOD. A display batch is not an anatomy identity; triangle ranges recover the ID.
+  Remove hidden geometry before rendering/picking; source labels alone do not prove
+  anatomy. Reference selection must not mutate What-If or clinical values.
+- Materialize normalized/interleaved attributes before transforms; reverse winding
+  under reflection. Compact unreferenced LOD vertices so zero unused normals do not
+  mask bad topology or need fake normal substitution. Never copy a fixture's LOD
+  error policy into a clinical/anatomical tolerance.
+- A superseded decode may finish but cannot publish. Own/release imported and
+  display geometries separately; no unbounded model cache. Preflight decoded/batch
+  and streamed-file budgets. Anchors bind to revision, asset hash and output node.
+- Browser test Vite dependency caches must be isolated per invocation. A shared
+  concurrent run produced an R3F context error; private caches passed sequential
+  and concurrent checks. Do not disable the assertion to hide such failures.
+- Evidence: ANATOMY_PIPELINE.md and GREENFIELD_PHASE5_RESULTS.md. Engineering API
+  references are primary Three.js/Meshoptimizer docs; no physiology is introduced.

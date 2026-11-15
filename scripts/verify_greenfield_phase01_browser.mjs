@@ -26,12 +26,12 @@ const mock=httpServer((req,res)=>{res.setHeader('Access-Control-Allow-Origin','*
 await new Promise(r=>mock.listen(0,'127.0.0.1',r));
 const base=`http://127.0.0.1:${mock.address().port}`;
 process.env.VITE_ARES_HTTP_URL=base;
-const vite=await createServer({root:join(root,'ares-cockpit'),server:{host:'127.0.0.1',port:0},logLevel:'error'});
+const vite=await createServer({root:join(root,'ares-cockpit'),cacheDir:join(artifacts,'node_modules/.vite'),server:{host:'127.0.0.1',port:0},logLevel:'error'});
 let browser;const timers=new Set();let socket;let connections=0;let advancing=true;let sending=true;
 try {
  await vite.listen();const ui=`http://127.0.0.1:${vite.httpServer.address().port}`;
  browser=await chromium.launch({executablePath:process.env.BROWSER_PATH,headless:true});
- const page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];page.on('pageerror',e=>{errors.push(e.message);console.error(e.stack);});
  await page.routeWebSocket(`${base.replace('http','ws')}/ws/telemetry`,ws=>{socket=ws;connections++;if(!snapshotAvailable){ws.close({code:1012,reason:'controlled offline'});return;}
   const send=()=>{if(!sending)return;if(advancing){frame.timestamp_ms+=50;frame.relative_recording_time_s+=0.05;}ws.send(JSON.stringify(frame));};send();
   const timer=setInterval(send,50);timers.add(timer);ws.onClose(()=>{clearInterval(timer);timers.delete(timer);});});

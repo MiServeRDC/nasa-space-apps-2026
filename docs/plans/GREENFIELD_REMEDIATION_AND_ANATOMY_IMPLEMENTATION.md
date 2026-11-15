@@ -1,6 +1,6 @@
 # Greenfield cockpit remediation and reference anatomy implementation plan
 
-Date: 2026-11-15. Status: **phases 0-2 and phase 3 contract foundation delivered; phase 4 inventory complete with gaps; phases 5-10 pending**.
+Date: 2026-11-15. Status: **phases 0-2 and phase 3 contracts delivered; phase 4 inventory complete with gaps; phase 5 controlled pipeline complete; phases 6-10 pending**.
 Scope: `ares-cockpit/`, its wire-contract boundaries and reproducible asset tooling.
 Reviewed frontend: `feat/cockpit-greenfield-awwwards` at `e4e7531`, based on `3516da4`.
 Compared main during review: `2314b5a`. Refresh both refs before implementation.
@@ -14,6 +14,8 @@ thresholds, establish clinical effectiveness, or authorize automatic main merge.
 Implementation evidence: [phases 0-1 results](../evaluation/GREENFIELD_PHASE01_RESULTS.md) and [phase 2/3 contract results](../evaluation/GREENFIELD_PHASE23_RESULTS.md).
 
 Phase 4 evidence: [source inventory results](../evaluation/GREENFIELD_PHASE4_RESULTS.md).
+
+Phase 5 evidence: [conversion and picking results](../evaluation/GREENFIELD_PHASE5_RESULTS.md).
 
 ## 1. Evidence and corrections to the supplied research brief
 

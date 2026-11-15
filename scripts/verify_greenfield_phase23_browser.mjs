@@ -9,7 +9,7 @@ const {createServer}=await import(pathToFileURL(join(root,'ares-cockpit/node_mod
 const {chromium}=await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE));
 const artifacts=await mkdtemp(join(tmpdir(),'ares-greenfield-phase23-'));
 process.env.VITE_ARES_HTTP_URL='http://127.0.0.1:19879';
-const vite=await createServer({root:join(root,'ares-cockpit'),server:{host:'127.0.0.1',port:0},logLevel:'error'});
+const vite=await createServer({root:join(root,'ares-cockpit'),cacheDir:join(artifacts,'node_modules/.vite'),server:{host:'127.0.0.1',port:0},logLevel:'error'});
 let browser;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const checks=[];
@@ -30,7 +30,7 @@ try {
  }
  for(const mode of ['no-webgl','renderer-failure','context-loss','asset-failure','speech-rejected','local-speech-error']) {
   console.log(`Checking ${mode}`);
-  const page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  const page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];page.on('pageerror',e=>{errors.push(e.message);console.error(e.stack);});
   await page.route('http://127.0.0.1:19879/**',r=>r.fulfill({status:503,contentType:'application/json',body:'{}'}));
   await page.routeWebSocket('ws://127.0.0.1:19879/ws/telemetry',ws=>ws.close({code:1012,reason:'offline contract test'}));
   await page.addInitScript(({mode})=>{
