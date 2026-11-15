@@ -5,7 +5,9 @@
 Baseline `origin/main` `fb70b72`; branch `work/MiServeRDC-integration-qualification`.
 Final branch rebased onto `af30a03` (intervening changes only README.md).
 Verified the actual current App/production cockpit against a real owned Rust process,
-not the historical greenfield shell. No main merge/push or hosted Actions.
+not the historical greenfield shell. Qualification used no hosted Actions.
+The user authorized integrating these corrections into main on 2026-11-15;
+delivery uses a dedicated branch and pull request, with local validation.
 
 Fixed replay leaking modeled organ procedures into ACT (now NONE/standby unless
 detector-grounded), plus frontend overlay-off failing to change backend mode.
@@ -29,7 +31,7 @@ remain unqualified. Model status remains ILLUSTRATIVE_UNVALIDATED.
 
 Details/reproduction: docs/evaluation/FINAL_INTEGRATION_QUALIFICATION.md and
 scripts/verify_cockpit_live.mjs. Next: review/integrate these changes through the
-normal branch/PR process; separately repair/qualify optional LanceDB before using it.
+authorized branch/PR process; separately repair/qualify optional LanceDB before using it.
 
 
 ## Aerospace 360 Phase 1 & Phase 2 + P0/P1 Hardening (2026-11-15) [COMPLETED (TESTED) — 323/323 Rust Workspace Tests]

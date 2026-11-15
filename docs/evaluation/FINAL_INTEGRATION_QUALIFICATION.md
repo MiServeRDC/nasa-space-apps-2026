@@ -5,7 +5,9 @@ Date: 2026-11-15. Baseline: `origin/main` at `fb70b72` (includes
 `work/MiServeRDC-integration-qualification`, in an isolated worktree.
 The final branch is rebased onto `origin/main` `af30a03`; the two intervening
 commits changed only README.md, with no executable-source differences.
-No merge, push or hosted GitHub Actions were performed.
+The qualification itself performed no merge, push or hosted GitHub Actions.
+The user subsequently authorized integration into main through a pull request;
+no hosted workflows are added or triggered by this change.
 
 ## Outcome
 
