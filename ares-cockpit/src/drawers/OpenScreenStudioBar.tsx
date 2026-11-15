@@ -138,24 +138,24 @@ export function OpenScreenStudioBar({ onScrubProgress }: OpenScreenStudioBarProp
     <>
       {/* Optional Secondary Drei `<View />` Camera Overlay in `SPLIT` or `PIP` Layout */}
       {layoutMode === 'PIP' ? (
-        <div className="pointer-events-auto fixed right-[380px] bottom-[92px] z-30 hidden w-64 rounded-2xl border border-cyan-400/50 bg-[#05070c] p-1.5 shadow-2xl xl:block">
+        <div className="pointer-events-auto relative z-30 w-full max-w-sm rounded-2xl border border-cyan-400/50 bg-[#05070c] p-1.5 shadow-2xl">
           <SecondaryMeshViewport
             specimen="IJV_LUMEN_SEGMENT"
             scalarLoad={0.62}
             observed
-            label="PIP // L-IJV LUMEN CAMERA"
+            label="PIP // ILLUSTRATIVE IJV REFERENCE"
             className="h-36 w-full"
           />
         </div>
       ) : null}
 
       {layoutMode === 'SPLIT' ? (
-        <div className="pointer-events-auto fixed top-[48px] right-[380px] z-30 hidden w-72 rounded-2xl border border-cyan-400/50 bg-[#05070c] p-1.5 shadow-2xl xl:block">
+        <div className="pointer-events-auto relative z-30 w-full max-w-sm rounded-2xl border border-cyan-400/50 bg-[#05070c] p-1.5 shadow-2xl">
           <SecondaryMeshViewport
             specimen="OCULAR_SANS_GLOBE"
             scalarLoad={0.58}
             observed
-            label="SPLIT // OCULAR ONSD CAMERA"
+            label="SPLIT // ILLUSTRATIVE OCULAR REFERENCE"
             className="h-44 w-full"
           />
         </div>
@@ -167,7 +167,7 @@ export function OpenScreenStudioBar({ onScrubProgress }: OpenScreenStudioBarProp
         data-scrubbing={isScrubbing ? 'true' : 'false'}
         onPointerDown={(e) => e.stopPropagation()}
         onWheel={(e) => e.stopPropagation()}
-        className="fixed right-3 bottom-2 left-3 z-[60] mx-auto max-w-5xl rounded-2xl border border-white/15 bg-[#06090f] px-3 py-2 font-mono text-[10px] shadow-2xl"
+        className="relative z-20 mx-auto w-full max-w-5xl rounded-2xl border border-white/15 bg-[#06090f] px-3 py-2 font-mono text-[10px] shadow-2xl"
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
           {/* Play / Pause + Timecode */}

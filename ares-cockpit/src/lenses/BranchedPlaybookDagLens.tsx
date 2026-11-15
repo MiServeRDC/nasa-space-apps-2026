@@ -423,19 +423,19 @@ export function BranchedPlaybookDagLens({
           <span className="rounded border border-cyan-400/40 bg-cyan-500/10 px-1.5 py-0.5 font-semibold text-cyan-200">
             {activePrecedence.priorityLabel}
           </span>
-          <span className="text-[var(--color-ink-meta)]">{resolved.normativeClause}</span>
+
         </div>
         <div className="font-sans text-xs font-semibold text-[var(--color-ink-display)]">
           {resolved.title}
         </div>
-        <div className="flex flex-wrap gap-1 pt-0.5 font-mono text-[9px] text-[var(--color-ink-meta)]">
+        <details className="phase8-disclosure"><summary>Clinical rationale and technical references</summary><p>{resolved.normativeClause}</p><div className="flex flex-wrap gap-1 pt-0.5 font-mono text-xs text-[var(--color-ink-meta)]">
           {resolved.causalChain.map((node, idx) => (
             <span key={node} className="rounded bg-white/5 px-1.5 py-0.5">
               {idx > 0 ? '-> ' : ''}
               {node}
             </span>
           ))}
-        </div>
+        </div></details>
       </div>
 
       {/* DAG Branch A: Permitted Executable Countermeasures (Solid Connector Rail) */}

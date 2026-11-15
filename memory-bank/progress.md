@@ -1,5 +1,15 @@
 # Progress Tracking: ARES-Health (Autonomous Resilient Edge-native System for Astronaut Health)
 
+## Greenfield phase 8 operational triage and responsive flow delivered (2026-11-15)
+
+Dedicated work/MiServeRDC-greenfield-phase01; no main/push/hosted Actions.
+Delivered 2D packet-only triage summary (`TriageOverview.tsx`), decoupled operational/presentation display modes in `workbenchStore.ts`, replaced height-locked layout with responsive document flow, contained canvas inside local stage aperture, and extracted controls outside 3D aperture.
+Integrated `useReducedMotion.ts` for automated reduced-motion compliance.
+Verified 156/156 frontend unit/integration tests, 0 TS errors, clean production bundle, fast probe 4/4 passing (0 unwrap/expect in crates, cargo check and clippy 0 warnings).
+Headless Chrome / Playwright browser matrix verified on 1440, 1024, 768, 390, and 740x390 viewports with zero horizontal overflow, 200% zoom continuity, focus restoration on Escape, and no-WebGL 2D alert-to-action path.
+See `docs/evaluation/GREENFIELD_PHASE8_RESULTS.md`.
+Next: Phase 9 (Measure and optimize resources) and Phase 10 (End-to-end qualification and controlled integration).
+
 ## Greenfield phase 7 partial female reference/tooling delivered (2026-11-15)
 
 Dedicated work/MiServeRDC-greenfield-phase01; no main/push/hosted Actions.

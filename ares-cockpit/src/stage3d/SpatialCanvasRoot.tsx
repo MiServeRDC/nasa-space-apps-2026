@@ -110,7 +110,7 @@ export function SpatialCanvasRoot({
 
   return (
     <div
-      className={`fixed inset-0 z-0 pointer-events-none select-none ${className}`.trim()}
+      className={`fixed inset-0 z-30 pointer-events-none select-none ${className}`.trim()}
       data-webgl-context-lost={contextLost ? 'true' : 'false'}
       aria-hidden="true"
     >

@@ -54,7 +54,7 @@ try {
     assert.equal(errors.length,0);await page.screenshot({path:join(artifacts,`${mode}.png`)});
     if(mode==='no-webgl') {
       const note=page.getByRole('button',{name:/Press and hold/}).first();await note.waitFor();
-      const box=await note.boundingBox();await page.mouse.move(box.x+10,box.y+10);await page.mouse.down();await sleep(1700);await page.mouse.up();
+      await note.scrollIntoViewIfNeeded();const box=await note.boundingBox();await page.mouse.move(box.x+10,box.y+10);await page.mouse.down();await sleep(1700);await page.mouse.up();
       await page.getByRole('button',{name:'AUDIT [L]',exact:true}).click();
       await page.getByRole('button',{name:'VERIFY LOCAL HASHES / ENGINE LINKS',exact:true}).click();
       await page.getByText(/Local note hashes verified \(1\)/).waitFor();
@@ -71,7 +71,7 @@ try {
       await page.locator('[data-spatial-fallback="true"]').waitFor({state:'detached'});
     } else {
       await page.route('**/anatomy/*.glb',r=>r.fulfill({status:200,contentType:'model/gltf-binary',body:'invalid glb fixture'}));
-      await page.getByRole('button',{name:'SKELETAL GLB',exact:true}).click();await sleep(700);
+      await page.getByRole('button',{name:'Skeletal layer',exact:true}).click();await sleep(700);
     }
     await page.getByRole('button',{name:/03 ACT/}).click();await page.getByRole('group',{name:'Select MedOps Playbook #01 through #15'}).waitFor();
     assert.equal(errors.length,0);

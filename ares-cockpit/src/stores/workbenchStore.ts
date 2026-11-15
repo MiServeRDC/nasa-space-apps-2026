@@ -44,6 +44,8 @@ export interface WorkbenchState {
   isScrubbing: boolean;
   degradedGpu: boolean;
   twinAutoRotate: boolean;
+  displayMode: 'operational'|'presentation';
+  setDisplayMode: (mode:'operational'|'presentation')=>void;
 
   setPhase: (phase: PhaseMode) => void;
   setTwinSex: (sex: BiologicalSex) => void;
@@ -111,11 +113,14 @@ const INITIAL_STATE = {
   isScrubbing: false,
   degradedGpu: false,
   twinAutoRotate: true,
+  displayMode: 'operational' as const,
 };
 
 export const useWorkbenchStore = create<WorkbenchState>()(
   subscribeWithSelector((set, get) => ({
     ...INITIAL_STATE,
+
+    setDisplayMode: (displayMode) => set({displayMode}),
 
     setPhase: (phase) => set({ phase }),
 

@@ -1,3 +1,4 @@
+import {useReducedMotionPreference} from '../lib/useReducedMotion';
 // Scoped Drei `<View />` secondary 3D viewport (`SecondaryMeshViewport`) sharing the single
 // WebGL2 `<SpatialCanvasRoot>` context via `gl.scissor` / `gl.viewport` (`<View.Port />`).
 // Powers:
@@ -91,6 +92,7 @@ function SecondarySpecimenScene({
   const wbScrub = useWorkbenchStore((s) => s.isScrubbing);
   const stScrub = useStudioTimelineStore((s) => s.isScrubbing);
   const isScrubbing = wbScrub || stScrub;
+  const reduced=useReducedMotionPreference(),presentation=useWorkbenchStore(s=>s.displayMode==='presentation');
 
   const groupRef = useRef<THREE.Group>(null);
   const fallbackRefs = useRef<{
@@ -102,7 +104,7 @@ function SecondarySpecimenScene({
 
   // StrictMode-safe imperative specimen creation + Risk 4 disposal
   useEffect(() => {
-    const host = groupRef.current;
+    const host=groupRef.current;
     const geom = buildProceduralSpecimenGeometry(specimen);
     const shellMat = createDigitalTwinMaterial({
       side: THREE.FrontSide,
@@ -200,7 +202,7 @@ function SecondarySpecimenScene({
       fb.shellMat.uniforms.uDPR.value = dpr;
       fb.coreMat.uniforms.uTime.value = t;
     }
-    if (groupRef.current && !isScrubbing) {
+    if (groupRef.current && !isScrubbing && presentation && !reduced) {
       groupRef.current.rotation.y += delta * 0.18;
     }
   });
@@ -241,6 +243,7 @@ export function SecondaryMeshViewport({
   }, []);
 
   return (
+    <figure className="min-w-0">
     <div
       ref={containerRef}
       role="region"
@@ -249,7 +252,7 @@ export function SecondaryMeshViewport({
       onPointerDown={(e) => e.stopPropagation()}
       onWheel={(e) => e.stopPropagation()}
     >
-      <View index={2} track={containerRef as unknown as React.RefObject<HTMLElement>}>
+      <View index={2} className="absolute inset-0">
         <SecondarySpecimenScene
           specimen={specimen}
           assetUrl={assetUrl}
@@ -258,10 +261,6 @@ export function SecondaryMeshViewport({
           trackEl={mountedEl}
         />
       </View>
-      <div className="pointer-events-none absolute bottom-2 left-2.5 right-2.5 flex items-center justify-between text-[10px] font-mono tracking-wider text-slate-400">
-        <span>{label.toUpperCase()}</span>
-        <span>{observed ? 'EMPIRICAL / MODEL MESH' : 'UNOBSERVED - STIPPLED'}</span>
-      </div>
-    </div>
+    </div><figcaption className="py-2 text-xs leading-relaxed text-slate-300">{label}. Illustrative reference, not acquired imaging.</figcaption></figure>
   );
 }

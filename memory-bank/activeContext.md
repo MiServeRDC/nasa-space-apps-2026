@@ -1,5 +1,24 @@
 # Active Context: ARES-Health (NASA Space Apps Challenge 2026)
 
+## Greenfield phase 8 operational triage and responsive flow delivered (2026-11-15)
+
+Dedicated work/MiServeRDC-greenfield-phase01; no main/push/hosted Actions.
+Implemented 2D packet-only clinical overview (`TriageOverview.tsx`): Problem, Evidence (Heart rate, SpO2, Respiration, HRV), Missing Channels, Next Permitted Step. Navigation-only to playbooks or measurements, retaining all hard safety gates and hold-to-confirm semantics.
+Decoupled `displayMode` in `workbenchStore.ts` into `operational` (quiet default, no autorotation) and `presentation` (autorotation active if reduced-motion is not set). Both share identical clinical telemetry, selection, and safety gates.
+Refactored layout in `WorkbenchShell.tsx`, `index.css`, and `SpatialStageHud.tsx`: replaced height-locked viewport grid with responsive document flow.
+Extracted hotspot/layer controls outside the 3D body aperture onto dedicated bars, preventing occlusion of anatomy and touch interference on mobile.
+Contained primary canvas inside measured local stage aperture (`data-stage-aperture`).
+Integrated `useReducedMotion.ts` respecting `(prefers-reduced-motion: reduce)` to disable autorotation and camera transitions.
+Guaranteed full 2D alert-to-action navigation without touching 3D or WebGL.
+Preserved keyboard orchestrator, dialog `Escape` focus restoration to activator, and focus following phase transitions.
+Tests: 156 frontend tests passing (`node --test`), TypeScript lint and build passing in 2.32s with 0 errors.
+Fast probe 4/4 passing (0 unwrap/expect in crates, cargo check and clippy 0 warnings).
+Real browser qualification via headless Chrome/Playwright (`scripts/verify_greenfield_phase8_browser.mjs`):
+1440x1000, 1024x900, 768x1024, 390x844, and narrow landscape 740x390 across both Operational and Presentation modes passed. Zero horizontal overflow, real rendered geometry verified in primary stage and studio split view, 200% layout zoom tested, no-WebGL fallback alert-to-action path available in 2D.
+Artifacts recorded in `/var/folders/0t/wclc3zfx6vn6vrcmw_bz2s9w0000gn/T/ares-greenfield-phase8-rKLQUI/`.
+See `docs/evaluation/GREENFIELD_PHASE8_RESULTS.md`.
+Next: Phase 9 (Measure and optimize resources) and Phase 10 (End-to-end qualification and controlled integration).
+
 ## Greenfield phase 7 partial female reference/tooling delivered (2026-11-15)
 
 Dedicated work/MiServeRDC-greenfield-phase01; no main/push/hosted Actions.

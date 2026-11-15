@@ -1,3 +1,4 @@
+import {useReducedMotionPreference} from '../lib/useReducedMotion';
 // Unified single-`useFrame` spherical camera spring rig, optical `setViewOffset` frustum centering,
 // Risk 3 pointer-capture scrubbing `OrbitControls` freeze, manual flight abort, Command Palette
 // `ESC` snapshot restore, and accessible keyboard 3D `UBERON:` node mirrors.
@@ -244,13 +245,17 @@ export function UnifiedCameraController({
     camera.updateMatrixWorld();
   });
 
-  const reducedMotion = isReducedMotionPreferred();
+  const reducedMotion = useReducedMotionPreference();
+  const presentation = useWorkbenchStore(s=>s.displayMode==='presentation');
   const autoRotateActive =
+    presentation &&
     twinAutoRotate &&
     !effectiveScrubbing &&
     !selectedUberonRegion &&
     !presetOverride &&
     !reducedMotion;
+
+  useEffect(()=>{resolvedDomEl?.setAttribute('data-auto-rotate-active',String(autoRotateActive));return ()=>resolvedDomEl?.removeAttribute('data-auto-rotate-active');},[autoRotateActive,resolvedDomEl]);
 
   return (
     <OrbitControls

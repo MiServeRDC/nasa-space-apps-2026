@@ -300,7 +300,14 @@ export function dispatchWorkbenchKeyDown(
       event.preventDefault();
       event.stopPropagation?.();
       if (restoreFocusId && doc) {
-        doc.getElementById(restoreFocusId)?.focus?.();
+        const target=doc.getElementById(restoreFocusId);
+        if(target?.closest?.('[inert]')&&typeof window!=='undefined'){
+          // React must commit the close and clear background inert before focus returns.
+          window.requestAnimationFrame(()=>window.requestAnimationFrame(()=>{
+            const current=doc.getElementById(restoreFocusId);
+            if(!current?.closest?.('[inert]'))current?.focus?.();
+          }));
+        }else target?.focus?.();
       }
       return {
         handled: true,
