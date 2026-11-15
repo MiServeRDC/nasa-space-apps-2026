@@ -9,6 +9,7 @@ members = [
     "crates/ares-security-privacy",
     "crates/ares-server-cli",
     "crates/ares-desktop-os",
+    "crates/ares-storage-lsah",
 ]
 
 [workspace.package]

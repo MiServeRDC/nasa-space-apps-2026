@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! Fase 22 (J2): `crates/ares-desktop-os` — `ARES-MedOS` Pure-Rust Workstation OS Shell.
 //!
 //! Embedda in-process tutti i crate dell'engine (`SharedMissionState`), mantiene un
@@ -5,6 +7,10 @@
 //! monitora le 4 partizioni `ARINC 653` e lo stato `OWLT` Marte, ed espone i dispatcher IPC
 //! in-process verso la shell nativa e la `FastMCP` Command Palette.
 
+pub mod ipc_bridge;
+pub mod voice_whisper;
+
+use crate::voice_whisper::{OfflineVoiceTranscript, transcribe_pcm16_16khz_offline};
 use ares_core_types::binary_ipc::{
     ARES_BINARY_FRAME_BYTES, BinaryTelemetryFrame, DEONTIC_EIMO_AUTONOMOUS, DEONTIC_EVA_FORBIDDEN,
     DEONTIC_SHELTER_MANDATORY, DEONTIC_VIOLATES_POLICY, FLAG_BEAT_INTERVALS_NOT_AVAILABLE,
@@ -19,18 +25,21 @@ use ares_core_types::binary_ipc::{
 use ares_core_types::constants::MAX_MCP_CONTEXT_MODE_BYTES;
 use ares_core_types::telemetry::{HrvUnavailableReason, ScenarioOverlayMode};
 use ares_security_privacy::sanitizer::StrictMcpSanitizer;
+use ares_server_cli::edge_llm_bridge::{CopilotAskRequest, CopilotAskResponse};
 use ares_server_cli::fastmcp_router::{
     JsonRpcRequest, JsonRpcResponse, handle_fastmcp_jsonrpc_request,
 };
-use ares_server_cli::wire_contract::{StressTestPatchRequest, WireTelemetryPacket};
-use ares_server_cli::ws_server::{ServerRuntimeError, SharedMissionState};
+use ares_server_cli::wire_contract::{
+    AnomalyInjectionRequest, StressTestPatchRequest, WireTelemetryPacket,
+};
+use ares_server_cli::ws_server::{InjectAnomalyError, ServerRuntimeError, SharedMissionState};
 use ares_telemetry_ingest::wearable_packet::{
     WEARABLE_SYNC_WORD, WFLAG_EVA_SUIT_NODE, WFLAG_SEU_RECOVERY_EVENT, WMASK_HR_BPM,
     WMASK_IMU_RMS, WMASK_RESP_BRPM, WMASK_SPO2_PCT, ValidatedTelemetryFrame, WearableSensorPacket,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
@@ -61,8 +70,61 @@ pub enum DesktopShellError {
     #[error("serialization failure: {0}")]
     Serialization(String),
 
+    #[error("edge copilot error: {0}")]
+    EdgeCopilot(String),
+
+    #[error("offline voice ASR error: {0}")]
+    OfflineVoice(String),
+
+    #[error("anomaly injection refused: {0}")]
+    AnomalyInjection(#[from] InjectAnomalyError),
+
     #[error("smoke test invariant failed: {0}")]
     SmokeTestFailed(String),
+}
+
+/// Resolves the bundled or workspace `data/bidmc` directory across macOS `.app`, Linux `.AppImage`,
+/// env override (`ARES_MEDOS_DATA_DIR`), and local workspace invocations.
+pub fn resolve_medos_data_dir(explicit: Option<&Path>) -> Result<PathBuf, DesktopShellError> {
+    if let Some(p) = explicit {
+        if p.join("bidmc_01_Numerics.csv").is_file() {
+            return Ok(p.to_path_buf());
+        }
+        return Err(DesktopShellError::MissingDataDir(p.to_path_buf()));
+    }
+
+    let mut candidates: Vec<PathBuf> = Vec::new();
+    if let Ok(env_dir) = std::env::var("ARES_MEDOS_DATA_DIR") {
+        candidates.push(PathBuf::from(env_dir));
+    }
+    if let Ok(exe) = std::env::current_exe()
+        && let Some(parent) = exe.parent()
+    {
+        candidates.push(parent.join("data").join("bidmc"));
+        candidates.push(parent.join("..").join("Resources").join("data").join("bidmc"));
+        candidates.push(parent.join("..").join("lib").join("ares-medos").join("data").join("bidmc"));
+    }
+    candidates.push(PathBuf::from("data/bidmc"));
+    candidates.push(PathBuf::from("../../data/bidmc"));
+    candidates.push(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("..")
+            .join("data")
+            .join("bidmc"),
+    );
+
+    for candidate in &candidates {
+        if candidate.join("bidmc_01_Numerics.csv").is_file() {
+            return Ok(candidate.clone());
+        }
+    }
+
+    Err(DesktopShellError::MissingDataDir(
+        explicit
+            .map(Path::to_path_buf)
+            .unwrap_or_else(|| PathBuf::from("data/bidmc")),
+    ))
 }
 
 /// Configurazione deterministica di avvio per `AresMedOsWorkstationShell`.
@@ -404,6 +466,16 @@ impl AresMedOsWorkstationShell {
             .ok_or(DesktopShellError::StateLockUnavailable)
     }
 
+    /// In-process IPC dispatcher: schedules or clears a synthetic demo vitals anomaly.
+    pub fn ipc_inject_anomaly(
+        &self,
+        request: AnomalyInjectionRequest,
+    ) -> Result<WireTelemetryPacket, DesktopShellError> {
+        self.mission
+            .inject_anomaly_wire(request.kind)
+            .map_err(DesktopShellError::from)
+    }
+
     /// In-process IPC dispatcher: executes a Context-Mode `FastMCP` JSON-RPC 2.0 request.
     pub fn ipc_invoke_fastmcp_tool(
         &self,
@@ -431,6 +503,29 @@ impl AresMedOsWorkstationShell {
                 self.ws_mirror_bound.load(Ordering::Relaxed),
             )
             .ok_or(DesktopShellError::StateLockUnavailable)
+    }
+
+    /// In-process IPC dispatcher: runs an air-gapped Phase 32 Edge Copilot query
+    /// with `< 400 us` deterministic Type-1 fallback.
+    pub async fn ipc_ask_edge_copilot(
+        &self,
+        request: CopilotAskRequest,
+    ) -> Result<CopilotAskResponse, DesktopShellError> {
+        self.mission
+            .ask_edge_copilot(request)
+            .await
+            .map_err(|e| DesktopShellError::EdgeCopilot(e.to_string()))
+    }
+
+    /// In-process IPC dispatcher: transcribes offline 16 kHz mono PCM16 audio into text.
+    pub fn ipc_transcribe_pcm16_offline(
+        &self,
+        pcm_i16: &[i16],
+        sample_rate_hz: u32,
+        model_path: Option<&Path>,
+    ) -> Result<OfflineVoiceTranscript, DesktopShellError> {
+        transcribe_pcm16_16khz_offline(pcm_i16, sample_rate_hz, model_path)
+            .map_err(|e| DesktopShellError::OfflineVoice(e.to_string()))
     }
 
     /// Runs the full deterministic 8-crate workstation verification smoke test:

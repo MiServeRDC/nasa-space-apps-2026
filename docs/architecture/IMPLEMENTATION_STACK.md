@@ -9,6 +9,26 @@
 
 ## 1. Scopo del Registro (Ispirato a `spatiotemporal-mcp-engine`)
 
+### Optimization evidence addendum (2026-11-14)
+
+- Streaming intervals: [Gibbs/Candes 2021](https://arxiv.org/abs/2106.00170),
+  [Szabadvary, COPA 2024](https://proceedings.mlr.press/v230/hallberg-szabadvary24a.html)
+  and [Wu et al., ICLR 2025](https://arxiv.org/abs/2502.00818) motivate separate
+  coverage/width evaluation across horizons and distribution shifts. No theorem
+  from these papers is claimed for the current clipped empirical EWMA controller.
+  The experimental gain divided by horizon is our engineering candidate, not a
+  literature-derived constant. It remains off: real development coverage worsens
+  despite improved synthetic width stability. No new physiological thresholds.
+- UI/engine implementation follows [React lazy](https://react.dev/reference/react/lazy),
+  [R3F scaling](https://r3f.docs.pmnd.rs/advanced/scaling-performance),
+  [Drei PerformanceMonitor](https://drei.docs.pmnd.rs/performances/performance-monitor),
+  [Tokio shared state](https://tokio.rs/tokio/tutorial/shared-state) and
+  [graceful shutdown](https://tokio.rs/tokio/topics/shutdown). Rendering FPS bounds
+  and pixel-density limits are UI policies, unrelated to clinical inference.
+- Reproduction and limits: [optimization operations](../operations/PROJECT_OPTIMIZATION.md),
+  [8-hour synthetic stress](../evaluation/FORECAST_STRESS_8H.md),
+  [development comparison](../evaluation/FORECAST_CONTROLLER_DEVELOPMENT.md).
+
 Questo documento traccia formalmente:
 1. **Quali crate costituiscono il "Motore Rust" (Core Engine) e l'intero Backend Rust** di ARES-Health.
 2. **Tutte le librerie open-source dell'ecosistema Rust 2024** utilizzate in ciascun crate, con file coinvolti e motivazione architetturale.
@@ -51,8 +71,23 @@ Studio di fattibilita: [`docs/architecture/RUST_OS_AND_SHELL_FEASIBILITY_STUDY.m
 9. **Frontend Dual-Transport & OS Chrome (`ares-cockpit/`, Fase 23 `J3`):** Decoder zero-copy `DataView` (`binaryTelemetryDecoder.ts`), `ares-cockpit/src/modules/os-shell/OsSystemStatusBar.tsx` (`#000000` OLED, Martian Sol clock, OWLT Marte, partizioni `ARINC 653`, zona deontica habitat, radiazione `CANS`), `ares-cockpit/src/modules/os-shell/OsCommandPalette.tsx` (`Alt+Space` / `Cmd+K` per tutti gli 8 tool `FastMCP`), e fallback automatico `BROWSER_WEBSOCKET`.
 10. **Target Aerospaziali Tier B & Tier C (Fase 24 `J4`):** Framing `WearableSensorPacket` (`32 B` `#[repr(C)]` CRC-16-CCITT + `supervisor_restart_count` SEU) in `crates/ares-telemetry-ingest/src/wearable_packet.rs`, manifesti dichiarativi in `deploy/medos/` (`Asterinas` Framekernel `14.0%` TCB, `System76 COSMIC` Wayland Kiosk `120 Hz` `wgpu`, `Oxide Hubris` / `Embassy` wearable) e launcher `scripts/launch_ares_medos.sh`.
 
-### Livello 4 — Blocco K (System-Wide Verification, Chaos & `NASA-STD-3001` Certification Harness — Fasi 25–28 `[PLANNED — READY FOR EXECUTION]`)
-11. **Piani di Verifica & Certificazione End-to-End (`docs/plans/phase_25_K1_*.md` .. `phase_28_K4_*.md`):** Property-based verification (`proptest`) su RK4, Poiseuille-Womersley, non-crossing quantili DHF e layout binari (`K1`), Chaos/SEU bit-flip & dropout suite (`K2`), parity binaria Rust/TypeScript, dual-clock `1 Hz`/`20 Hz` & `FastMCP` `POST /api/mcp` E2E (`K3`), e matrice di tracciabilita `NASA-STD-3001` + benchmark di latenza/RAM (`K4`).
+### Livello 4 — Blocco K (System-Wide Verification, Chaos & `NASA-STD-3001` Certification Harness — Fasi 25–28 `[COMPLETED (TESTED)]`)
+11. **Suite di Verifica & Certificazione End-to-End ([`BLOCK_K_SYSTEM_TESTING_ARCHITECTURE.md`](../plans/BLOCK_K_SYSTEM_TESTING_ARCHITECTURE.md), `docs/plans/phase_25_K1_*.md` .. `phase_28_K4_*.md`):** Property-based verification (`proptest`) su RK4, Poiseuille-Womersley, non-crossing quantili DHF e layout binari (`K1`), Chaos/SEU bit-flip & dropout suite (`K2`), parity binaria Rust/TypeScript, dual-clock `1 Hz`/`20 Hz` & `FastMCP` `POST /api/mcp` E2E (`K3`), e matrice di tracciabilita `NASA-STD-3001` + benchmark di latenza/RAM (`K4` — `126/126` test passanti, `--release` 1-tick `p99.9 = 5.58 µs`).
+
+### Livello 5 — Blocco L (Gap Closure, Operational Deployment, Edge AI Copilot, Clinical Calibration & NASA Submission — Fasi 29–34 `[COMPLETED (TESTED)]`)
+12. **Piani di Chiusura Operativa & Calibrazione ([`BLOCK_L_GAP_CLOSURE_ARCHITECTURE.md`](../plans/BLOCK_L_GAP_CLOSURE_ARCHITECTURE.md), `docs/plans/phase_29_L1_*.md` .. `phase_34_L6_*.md`):**
+    * **`L1` Cockpit Live Bindings & 3D (`ares-cockpit/`):** Collegamento live `PlaybookRunner.tsx` (`#01..#05` + Gate 1/2/3 + POCUS), `StlChart` (`NqsQuantileForecastSnapshot` `+15m..+24h` + Issue `#11`/`#12`), e `BodyHeatmap.tsx` (`UBERON:` + `.glb` locale CSP `'self'`).
+    * **`L2` Native `Tauri v2` + Real `iceoryx2`/`Zenoh` (`crates/ares-desktop-os`, `crates/ares-server-cli`):** Feature `tauri-runtime`/`tauri-native` (`WKWebView` Metal / `WebKitGTK` Vulkan, `Channel<Response>` `128 B` `< 50 µs`), `shm_bus.rs` (`--features shm-ipc`, `iceoryx2::ZeroCopySend` `< 100 ns`, `Zenoh` DSN `OWLT 852 s`, `ARINC 653` `try_dispatch < 150 ns`) e `ARES-MedOS.app`.
+    * **`L3` Level-1 `GATHER` DSP (`crates/ares-telemetry-ingest`):** Moduli Pure-Rust zero-heap (`< 15 µs`, `< 28 KB`) `radar_csi_dsp.rs` (`60/5.2 GHz` + biquad `60/120 Hz`), `vocal_acoustic_dsp.rs` (`YIN`, jitter, shimmer, `HNR`, `None` su silenzio) e `waveform_rr_extractor.rs` (`125–500 Hz` Pan-Tompkins + Malik $\pm 20\%$, preservando `BidmcReplayer` `rmssd_ms: None`).
+    * **`L4` Edge LLM + Voice Copilot + `SafeTensors` (`ares-nqs-stl`, `ares-server-cli`, `ares-desktop-os`, `ares-cockpit/`):** Loader `SafeTensors` verificato `SHA-256`, bridge LLM air-gapped (`Ollama`/`llama.cpp` loopback/LAN) con `StrictMcpSanitizer` + fallback Type-1 `< 400 µs` (`DO-178C` DAL-E), e voce offline `whisper-rs` / Web Speech API (`[V2 10001]` / `[V2 10027]`).
+    * **`L5` Clinical Calibration & Parquet Adapters (`ares-core-types`, `ares-causal-graph`, `ares-nqs-stl`, `ares-calibrate`):** Feature `--features parquet-ingest` (`arrow-array`/`parquet`), `SubjectDisjointSplit` anti-leakage, `CQR` + Clopper-Pearson + Brier/ECE, e macchina a stati `ModelValidationStatus` (chiusura Issue `#12`).
+    * **`L6` NASA Space Apps 2026 Submission (`docs/submission/`, `scripts/build_submission_docs.sh`):** Pipeline Typst `0.15.1` (`SOURCE_DATE_EPOCH`) per deck `7` slide OLED + `PANORAMICA_GENERALE_PROGETTO.pdf`, storyboard/sottotitoli `.srt` `30s`/`180s` e `6` gate CI Issue `#12`.
+
+### Livello 6 — Blocco M (3-Tier LSAH Persistence Issue `#26`, Multi-Branch Team Unification & E2E Certification — Fasi 35–37 `[PLANNED]`)
+13. **Persistenza Clinica Longitudinale a 3 Tier & Unificazione Finale ([`BLOCK_M_GAP_CLOSURE_ARCHITECTURE.md`](../plans/BLOCK_M_GAP_CLOSURE_ARCHITECTURE.md), `docs/plans/phase_35_M1_*.md` .. `phase_37_M3_*.md`):**
+    * **`M1` 3-Tier LSAH Persistence (`crates/ares-storage-lsah`, Issue `#26` di `@MiServeRDC`):** Nuovo 9° crate con `HotRingBuffer` (`60–300 s @ 20 Hz`, `HotLsahSlot` `256 B` zero-alloc post-init + `WarmStagingSwapBuffer` wait-free), `WarmColumnarVectorBackend` (`ArrowIpcZstdHnswBackend` default `62` crate offline + `--features lancedb-warm` `lancedb 0.40.0` opzionale) con indice `HNSW` deterministico su firme ecografiche POCUS `128-D`/`256-D` (`Sol 180` vs `Sol 1`), e `ColdTierArchiver` (`ChaCha20-Poly1305` con nonce monotono `96-bit` + `AAD` bidirezionale su `Sha256AuditLogger` + `DsnDownlinkOutbox`).
+    * **`M2` Multi-Branch Team Unification (`work/{fertech02,MiServeRDC,carolina2910,LelloXV}`):** Unificazione controllata di `vitals_anomaly.rs` + `50` CSV `BIDMC` (`bidmc_04..53`), atlante 3D Z-Anatomy `.glb` (`CC-BY-SA-4.0`) + `UBERON:`, `AiInjuryModal` air-gapped e replay nativo `1 Hz`.
+    * **`M3` End-to-End DB, Cockpit & Submission Certification:** Batteria a `8` gate (`M3-G01..M3-G08`) su 9 crate, `53` soggetti `BIDMC`, `5` layer `.glb`, `FastMCP` (`<= 600 B`) e rigenerazione deterministica `Typst 0.15.1`.
 
 ---
 
@@ -72,6 +107,7 @@ Studio di fattibilita: [`docs/architecture/RUST_OS_AND_SHELL_FEASIBILITY_STUDY.m
 | **[`tauri`](https://github.com/tauri-apps/tauri)** | `2.x` (`optional`) | `crates/ares-desktop-os` | Shell nativa Tier A (`WKWebView` Metal / `WebKitGTK` / `WebView2`, `Channel<Response>` `InvokeResponseBody::Raw` `< 0.05 ms`, zero Chromium). |
 | **[`iceoryx2`](https://github.com/eclipse-iceoryx/iceoryx2) & [`zenoh`](https://github.com/eclipse-zenoh/zenoh)** | `0.5` / `1.0` (`--features shm-ipc`) | `crates/ares-server-cli` | IPC `POSIX shm` lock-free *daemonless* (`ZeroCopySend`, `< 100 ns`) per partizionamento Tier B `ARINC 653` e sync DSN intermittente Terra-Marte. |
 | **Target Esterni Tier B / Tier C (`deploy/medos/`)** | Declarative Manifests | `deploy/medos/` | [`asterinas/asterinas`](https://github.com/asterinas/asterinas) (`14.0%` TCB), [`pop-os/cosmic-comp`](https://github.com/pop-os/cosmic-comp) + [`iced-rs/iced`](https://github.com/iced-rs/iced) + [`smithay/smithay`](https://github.com/smithay/smithay), [`oxidecomputer/hubris`](https://github.com/oxidecomputer/hubris), [`embassy-rs/embassy`](https://github.com/embassy-rs/embassy), [`tock/tock`](https://github.com/tock/tock), [`rtic-rs/rtic`](https://github.com/rtic-rs/rtic), [`rerun-io/rerun`](https://github.com/rerun-io/rerun) & [`emilk/egui`](https://github.com/emilk/egui). |
+| **[`arrow-rs`](https://github.com/apache/arrow-rs) (`arrow-array`, `arrow-schema`, `arrow-ipc`), [`zstd`](https://github.com/gyscos/zstd-rs), [`parking_lot`](https://github.com/Amanieu/parking_lot) & [`lancedb`](https://github.com/lancedb/lancedb)** | `58.4` / `0.13` / `0.12` / `0.40` (`--features lancedb-warm`) | `crates/ares-storage-lsah` | Persistenza **LSAH a 3 Tier (`Issue #26`)**: ring zero-alloc `HotLsahSlot` (`256 B`), `WarmColumnarVectorBackend` (`ArrowIpc+Zstd+HNSW` default `62` crate offline + `lancedb` opzionale) per similarity search `Sol 180` vs `Sol 1` su firme POCUS `128-D`/`256-D`, e archivio Cold `ChaCha20-Poly1305` con nonce monotono + `Sha256AuditLogger` `AAD`. |
 
 ---
 
@@ -143,9 +179,39 @@ In conformità all'invariante obbligatorio della skill `.agents/skills/deep-scho
 17. **V. Cheptsov & A. Khoroshilov (`ARINC 653` Partitioning, *Proc. ISP RAS 2018/2023* `DOI: 10.1109/ispras60948.2023.10508165`), `NASA cFE/cFS` (`nasa/cFS`), `Eclipse iceoryx2` & `NASA-STD-3001 Vol. 2 Rev F` (`[V2 10001]`–`[V2 10152]`):**
     * *Contributo in `ARES-MedOS` (`Fasi 21–23 J1–J3`):* Giustifica il frame binario `128 B` `#[repr(C, align(64))] BinaryTelemetryFrame` (`validity_mask` null-safe), il ring SPMC `SeqlockTelemetryRing` (`< 100 ns`), il bridge `Tauri v2` `Channel<Response>` (`< 0.05 ms`, `~30–50 MB` RAM) in `crates/ares-desktop-os`, gli endpoint HTTP `/api/os-status`, `/api/binary-frame` e `/api/mcp` in `ws_server.rs`, e l'interfaccia OLED `#000000` + palette `Alt+Space` `FastMCP` in `ares-cockpit/src/modules/os-shell/`.
 
-### H. System-Wide Verification, Clinical Chaos & `NASA-STD-3001` Certification Harness (Blocco K, Fasi 25–28 `[PLANNED — READY FOR EXECUTION]`)
+### H. System-Wide Verification, Clinical Chaos & `NASA-STD-3001` Certification Harness (Blocco K, Fasi 25–28 `[COMPLETED (TESTED)]`)
 18. **Claessen & Hughes (`QuickCheck` / Rust `proptest`), Avizienis et al. (*IEEE TDSC 2004* Fault Injection) & `NASA-STD-3001 Vol. 1 Rev C / Vol. 2 Rev F`:**
-    * *Contributo in Blocco K (`Fasi 25–28`):* Definisce i 4 piani di verifica end-to-end (`phase_25_K1`..`phase_28_K4`) per invarianti RK4/Womersley/DHF/binari (`K1`), SEU & dropout chaos (`K2`), parity binaria Rust/TypeScript + dual-clock `1 Hz`/`20 Hz` + `FastMCP` E2E (`K3`), e matrice normativa `NASA-STD-3001` + benchmark deterministici di latenza/RAM (`K4`).
+    * *Contributo in Blocco K (`Fasi 25–28`):* Definisce ed esegue i 4 piani di verifica end-to-end (`phase_25_K1`..`phase_28_K4`) per invarianti RK4/Womersley/DHF/binari (`K1`), SEU & dropout chaos (`K2`), parity binaria Rust/TypeScript + dual-clock `1 Hz`/`20 Hz` + `FastMCP` E2E (`K3`), e matrice normativa `NASA-STD-3001` + benchmark deterministici di latenza/RAM (`K4`).
+
+### I. Gap Closure, Operational Deployment, Edge AI Copilot, Clinical Calibration & NASA Space Apps Submission (Blocco L, Fasi 29–34 `[COMPLETED (TESTED)]`)
+Architettura master: [`docs/plans/BLOCK_L_GAP_CLOSURE_ARCHITECTURE.md`](../plans/BLOCK_L_GAP_CLOSURE_ARCHITECTURE.md) | Piani: [`phase_29_L1`](../plans/phase_29_L1_cockpit_live_bindings_3d_cones.md), [`phase_30_L2`](../plans/phase_30_L2_tauri_native_window_iceoryx2_ipc.md), [`phase_31_L3`](../plans/phase_31_L3_gather_radar_vocal_waveform_dsp.md), [`phase_32_L4`](../plans/phase_32_L4_edge_llm_voice_copilot_safetensors.md), [`phase_33_L5`](../plans/phase_33_L5_clinical_calibration_24dataset_parquet.md), [`phase_34_L6`](../plans/phase_34_L6_nasa_submission_pitch_slides_pdf.md).
+19. **Ontologia Anatomica `UBERON:`, Conformal PID & Ergonomia Spaziale HSI (`Fase 29 / L1`):**
+    * *Fonti & Standard:* Mungall et al. (*Genome Biology* 2012, `DOI: 10.1186/gb-2012-13-1-r5` — `UBERON:`), Koenker & Bassett (*Econometrica* 1978, `DOI: 10.2307/1913643`), Angelopoulos, Candès & Tibshirani (*NeurIPS 2023*, `arXiv:2307.16895`), `nasa/NASA-3D-Resources`, `mrdoob/three.js` `GLTFLoader` (`MIT`), `MIL-STD-1472H` (`>= 44x44 pt` touch targets su OLED `#000000`).
+    * *Contributo in `L1`:* Cablaggio live di `PlaybookRunner.tsx` (`#01..#05` + Gate 1/2/3 + conferma POCUS), `StlChart` (`NqsQuantileForecastSnapshot` `+15m..+24h`) e `BodyHeatmap.tsx` (`UBERON:` `observed=false` + loader `.glb` locale con verifica magic `0x46546C67` e CSP `'self'`).
+20. **Shell Desktop Nativa `Tauri v2` & Bus POSIX SHM `iceoryx2` / `Zenoh` DSN (`Fase 30 / L2`):**
+    * *Fonti & Stack:* `tauri-apps/tauri` v2 + `wry` (`Apache-2.0 OR MIT`), `eclipse-iceoryx/iceoryx2` (`ZeroCopySend` `< 100 ns`), `eclipse-zenoh/zenoh` (SHM + `OwltMarsCommState` `852 s` + blackout outbox) e partizionamento wait-free `ARINC 653` (`try_dispatch < 150 ns`).
+    * *Contributo in `L2`:* Finestra nativa `ARES-MedOS.app` (`WKWebView`/Metal & `WebKitGTK`/Vulkan, `Channel<Response>` `InvokeResponseBody::Raw` `128 B` `< 50 µs`) con feature gate headless CI `tauri-runtime` e bus `shm_bus.rs` (`--features shm-ipc`).
+21. **Pure-Rust Level-1 `GATHER` DSP (`Fase 31 / L3`):**
+    * *Fonti & Algoritmi:* Droitcour et al. (*IEEE TMTT* 2004, `DOI: 10.1109/TMTT.2004.823552`) & Boric-Lubecke et al. (*IEEE Microw. Mag.* 2009, `DOI: 10.1109/MMM.2009.934516`), Orfanidis (1996) & Bristow-Johnson (biquad `60/120 Hz` DF2T SOS + Jury stability), de Cheveigné & Kawahara (*JASA* 2002 `YIN`, `DOI: 10.1121/1.1458024`), Boersma (1993 `HNR`/jitter/shimmer), Pan & Tompkins (*IEEE TBME* 1985, `DOI: 10.1109/TBME.1985.325532`), Task Force ESC/NASPE (*Circulation* 1996, `DOI: 10.1161/01.CIR.93.5.1043`), Malik et al. (1989 $\pm 20\%$ ectopic filter), PhysioNet `CEBS` & NASA `ARCHeR`.
+    * *Contributo in `L3`:* Implementa `radar_csi_dsp.rs`, `vocal_acoustic_dsp.rs` e `waveform_rr_extractor.rs` a zero allocazioni heap in `crates/ares-telemetry-ingest`, mantenendo `BidmcReplayer` (`1 Hz`) rigorosamente a `rmssd_ms: None` + `BEAT_INTERVALS_NOT_AVAILABLE` (Issue `#11`).
+22. **Edge AI Copilot Air-Gapped, Voice Offline & `SafeTensors` (`Fase 32 / L4`):**
+    * *Fonti & Stack:* `huggingface/safetensors` (`Apache-2.0`), `huggingface/candle` (`MIT OR Apache-2.0`), Greshake et al. (*ACM AISec* 2023, `DOI: 10.1145/3605764.3623985`) & Hines et al. (2024 Spotlighting, `arXiv:2403.14720`), `ggml-org/llama.cpp` & `ollama/ollama` (`MIT`), Radford et al. (*ICML* 2023 Whisper, `arXiv:2212.04356`) + `ggerganov/whisper.cpp` (`MIT`) + `tazz4843/whisper-rs` (`Unlicense OR MIT`), W3C/WICG Web Speech API, RTCA `DO-178C` / EUROCAE `ED-12C`.
+    * *Contributo in `L4`:* Caricamento `SafeTensors` verificato `SHA-256` (`< 5 ms` + fallback deterministico), copilot conversazionale isolato DAL-E su loopback/LAN (`<= 2500 ms` + fallback Type-1 `< 400 µs`), e interfaccia vocale sterile hands-free (`Space`/`Alt+V`, `"ARES"`, `[V2 10027]`).
+23. **Calibrazione Clinica `Subject-Disjoint`, CQR & Adapter Parquet (`Fase 33 / L5`):**
+    * *Fonti & Dataset:* Romano, Patterson & Candès (*NeurIPS* 2019 CQR, `arXiv:1905.03222`), Clopper & Pearson (*Biometrika* 1934, `DOI: 10.1093/biomet/26.4.404`), Brier (*Mon. Wea. Rev.* 1950), Gneiting & Raftery (*JASA* 2007, `DOI: 10.1198/016214506000001437`), Winkler (*JASA* 1972), Naeini, Cooper & Hauskrecht (*AAAI* 2015 ECE, `DOI: 10.1609/aaai.v29i1.9602`), `apache/arrow-rs` (`--features parquet-ingest`), PhysioNet `Fantasia` (`DOI: 10.13026/C2RG61`), `CEBS` (`DOI: 10.13026/C2KW23`), `PPG-DaLiA` (`DOI: 10.3390/s19143079`), Laurie et al. (*JAMA Ophthalmol.* 2019 & *J. Physiol.* 2021 `AGBRESA` HDBR).
+    * *Contributo in `L5`:* Harness anti-leakage `ares-calibrate` e macchina a stati `ModelValidationStatus` in `ares-core-types` per chiudere la verifica empirica di Issue `#12` senza mai sbloccare stati validati su dati sintetici.
+24. **Pipeline Deterministica di Sottomissione NASA Space Apps 2026 (`Fase 34 / L6`):**
+    * *Fonti & Standard:* `typst/typst` (`v0.15.1`, `Apache-2.0`, Madje & Haug 2022), `touying-typ/touying` & `polylux-typ/polylux` (`MIT`), `SOURCE_DATE_EPOCH`, Matroska SubRip `.srt`, W3C `WCAG 2.2 SC 1.2.2`, BBC Subtitle Guidelines, ISO 32000-2:2020 (PDF 2.0), `qpdf`/`poppler`/`pypdf`, e NASA Space Apps Project Submission Guide.
+    * *Contributo in `L6`:* Compilazione offline riproducibile di deck `7` slide `16:9` OLED e `PANORAMICA_GENERALE_PROGETTO.pdf`, storyboard/sottotitoli `.srt` (`30s`/`180s`) e `6` gate automatici CI in `scripts/build_submission_docs.sh`.
+
+### J. 3-Tier LSAH Persistence Engine (`Issue #26`), Columnar/Vector Indexing (`Lance` & `HNSW`), Real-Time Lock-Free Rings & Multi-Branch Unification (Blocco M, Fasi 35–37 `[PLANNED]`)
+Architettura master: [`docs/plans/BLOCK_M_GAP_CLOSURE_ARCHITECTURE.md`](../plans/BLOCK_M_GAP_CLOSURE_ARCHITECTURE.md) | Piani: [`phase_35_M1`](../plans/phase_35_M1_lsah_3tier_persistence_issue26.md), [`phase_36_M2`](../plans/phase_36_M2_branch_unification_merge.md), [`phase_37_M3`](../plans/phase_37_M3_end_to_end_db_cockpit_verification.md) | Bibliografia completa: [`docs/scientific_references.md` (Sezione 12)](../scientific_references.md).
+25. **Adaptive Columnar/Vector Storage, Pure-Rust `HNSW` & Wait-Free Staging (`Fase 35 / M1 — GitHub Issue #26`):**
+    * *Fonti & Standard:* Weston Pace et al. (*Lance*, `arXiv:2504.15247v1`), Yu. A. Malkov & D. A. Yashunin (*IEEE TPAMI* 2020 `HNSW`, `DOI: 10.1109/TPAMI.2018.2889473`), Nan Chen et al. (*LEFT-RS* 2025, `arXiv:2512.21701v1`), Bertolotti & Manduchi (2017, `DOI: 10.1201/b11651-10`), Cho, Ravindran & Jensen (*DATE* 2006, `DOI: 10.1109/date.2006.243800`), IETF *RFC 8878* (`Zstandard`), `apache/arrow-rs` (`58.4.0`) e `lancedb/lancedb` (`0.40.0`).
+    * *Contributo in `M1`:* Introduce `crates/ares-storage-lsah` con `HotLsahSlot` (`256 B` `#[repr(C, align(64))]`, `0` allocazioni heap post-init, `< 250 ns`), `WarmStagingSwapBuffer` wait-free (`200x` riduzione usura NAND flash), `WarmColumnarVectorBackend` (`ArrowIpcZstdHnswBackend` default `62` crate 100% offline + `--features lancedb-warm` opzionale con guardia air-gap), bitmap `NULL` fedeli per Issue `#11` e similarity search `Sol 180` vs `Sol 1` su firme POCUS `128-D`/`256-D` con vincolo Issue `#12` (`ProceduralBModeSimulation` / `IllustrativeUnvalidated`, **Hard Gate 1** bloccato).
+26. **Embedded `ChaCha20-Poly1305` Monotonic Nonce, `Sha256AuditLogger` `AAD`, NASA `LSAH`/`MDA` & Multi-Branch Certification (`Fasi 35–37 / M1–M3`):**
+    * *Fonti & Standard:* Fabrizio De Santis, Andreas Schauer & Georg Sigl (*DATE* 2017, `DOI: 10.23919/date.2017.7927078`), IETF *RFC 8103* (`DOI: 10.17487/rfc8103`) & *RFC 8439* (`DOI: 10.17487/rfc8439`), Albert Assad & Olivier L. de Weck (*Acta Astronautica* 2015, `DOI: 10.1016/j.actaastro.2014.10.009`), Stegeman et al. (*Carcinogenesis* 2025, `DOI: 10.1093/carcin/bgaf076`), NASA `LSAH` & `ExMC Gap Med 07`, `NASA-STD-3001 [V1 3003]/[V1 3006]`, PhysioNet `BIDMC v1.0.0` (`53` soggetti) e Z-Anatomy / BodyParts3D (`CC-BY-SA-4.0`).
+    * *Contributo in `M1–M3`:* Sigillatura Cold `.lsah.cold.aead` con nonce monotono `(key_epoch_id, mission_sol, chunk_seq)` + `AAD` bidirezionale su `Sha256AuditLogger` + `DsnDownlinkOutbox`, unificazione dei `4` branch del team (`M2`), e batteria di certificazione E2E a `8` gate (`M3-G01..M3-G08`).
 
 
 ## Issue #11: HRV validity correction
@@ -158,3 +224,73 @@ Sources: [NeuroKit HRV input documentation](https://neuropsychology.github.io/Ne
 ## Issue #12: model evidence scope
 
 [MODEL_EVIDENCE_AUDIT.md](MODEL_EVIDENCE_AUDIT.md) is the authoritative current source-to-output and parameter register. Checked sources support research context and source-data interpretation, not calibration of the implemented coefficients, risk scores or forecast bands. Current scenario outputs are `ILLUSTRATIVE_UNVALIDATED`; accepted gates are heuristic, and historical `ci95` names do not establish 95% coverage. Unit tests, monotonicity and CRCs establish software properties only. No threshold/policy change or new model is introduced.
+
+
+## Greenfield remediation and anatomy planning evidence (2026-11-15)
+
+Plan: [GREENFIELD_REMEDIATION_AND_ANATOMY_IMPLEMENTATION.md](../plans/GREENFIELD_REMEDIATION_AND_ANATOMY_IMPLEMENTATION.md).
+The plan's source register records official HRA asset/crosswalk evidence, the
+Andreassen 2023 lower-limb paper and University of Denver dataset, current official
+BodyParts3D terms, existing Z-Anatomy derivative obligations, EBI OLS identifiers
+and the Human-Atlas pipeline as an inspected community reference. Crossref CLI
+retrieved DOI 10.1038/s41597-022-01905-2. HRA v1.10 female HEAD size is 374,505,632
+bytes; its crosswalk does not explicitly name vagus/IJV/soleus/calcaneus. Coverage
+remains to inspect, not assume. No registration tolerance, physiological constant
+or clinical validity claim is introduced. No implementation or model download.
+
+
+## Greenfield phases 0-1 implementation (2026-11-15)
+
+Typed nullable clinical display and exact channel/unit forecast selection are implemented.
+No new physiology constants or inference model. See [results](../evaluation/GREENFIELD_PHASE01_RESULTS.md)
+for pinned refs, local asset decoding, software regressions and remaining phase 2 gates.
+
+
+## Anatomy phase 4 source evidence (2026-11-15)
+
+[Inventory results](../evaluation/GREENFIELD_PHASE4_RESULTS.md) record official HRA
+raw-data license metadata, versioned DOIs and glTF JSON/crosswalk hashes; Denver
+DOI 10.56902/COB.vh.2022.1 and Andreassen et al. DOI 10.1038/s41597-022-01905-2;
+current DBCLS terms and Z-Anatomy's per-contribution attribution. Crossref CLI
+retrieved the paper. Named geometry candidates and exact source gaps are in
+[the matrix](../anatomy/COVERAGE_MATRIX.md). Full source blobs stay outside git.
+No heuristic threshold, copied fit or clinical validity claim is introduced.
+
+
+## Phase 5 semantic anatomy pipeline (2026-11-15)
+
+[Pipeline architecture](ANATOMY_PIPELINE.md) and [local results](../evaluation/GREENFIELD_PHASE5_RESULTS.md)
+record static GLB extraction, explicit source-to-model matrices, per-structure LOD,
+EXT_meshopt_compression, triangle identity ranges and owned cancellation/disposal.
+Primary references: Three.js r171 GLTFLoader/BufferGeometry cleanup and
+zeux/meshoptimizer v0.18 JavaScript encoder/simplifier APIs; actual package/source
+fingerprints are in the generated fixture build report. Synthetic LOD errors are
+engineering settings, not registration tolerances or clinical constants.
+
+## Greenfield phase 7: female source frames and registration (2026-11-15)
+
+HRA united-female v1.10 and v1.5 full GLBs acquired and SHA-256 locked, with original
+release metadata/license snapshots and exact selected mesh/primitive ledger.
+Authoritative records: https://doi.org/10.48539/HBM637.DWBM.744 and
+https://doi.org/10.48539/HBM352.BTSQ.586 . Selected source world transforms are
+preserved; v1.5 remains separate from v1.10. Female release naming does not prove
+individual contributor donor/sex; Allen-labelled nervous contributions remain
+unverified. No arbitrary fitting constants or male completion are imported.
+
+The development registration helper uses Horn's symmetric 4x4 quaternion solution
+for proper rotation (JOSA A, 1987, DOI 10.1364/JOSAA.4.000629; author manuscript
+https://people.csail.mit.edu/bkph/papers/Absolute_Orientation_Scanned.pdf), followed
+by least-squares uniform scale/translation as in Umeyama (IEEE TPAMI, 1991,
+DOI 10.1109/34.88573). It uses one-sided least squares for scale, not Horn's
+symmetric RMS-ratio scale variant. Independent holdout residuals remain separate;
+no anatomical acceptance threshold or real-source alignment is invented. Authoring
+policy requires 4 non-coplanar fit and 3 independent check points; the paper's
+mathematical minimum of 3 non-collinear fit points is not claimed to be 4.
+
+Source context: Andreassen et al., Scientific Data 10, 34 (2023), DOI
+10.1038/s41597-022-01905-2; original dataset DOI 10.56902/COB.vh.2022.1. Its
+institutional description documents corrected cryosection offsets and CT alignment;
+Visible Human provenance alone is insufficient for cross-package registration.
+Original Denver download remains 403 and no anatomical composite is accepted.
+See docs/anatomy/FEMALE_REGISTRATION_REVIEW.md. Scholarly API query verified
+Umeyama's canonical DOI; the author-hosted Horn manuscript supplies the method.

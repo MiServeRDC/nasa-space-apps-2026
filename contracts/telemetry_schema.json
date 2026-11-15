@@ -32,8 +32,11 @@
     },
     "astronaut_id": {
       "type": "string",
-      "enum": ["ASTRO-01", "ASTRO-02", "ASTRO-03", "ASTRO-04", "BIDMC-SUBJECT-01", "BIDMC-SUBJECT-02", "BIDMC-SUBJECT-03"],
-      "description": "Identifier of the monitored crew member or terrestrial replay subject."
+      "oneOf": [
+        { "enum": ["ASTRO-01", "ASTRO-02", "ASTRO-03", "ASTRO-04"] },
+        { "pattern": "^BIDMC-SUBJECT-(0[1-9]|[1-4][0-9]|5[0-3])$" }
+      ],
+      "description": "Identifier of the monitored crew member or terrestrial replay subject (BIDMC-SUBJECT-01..53)."
     },
     "provenance_manifest": {
       "type": "object",
@@ -41,7 +44,7 @@
       "properties": {
         "biometrics_source": {
           "type": "string",
-          "enum": ["RECORDED_TERRESTRIAL_BIDMC_CSV", "RECORDED_TERRESTRIAL_WAVEFORM", "SIMULATED_SCENARIO_INPUT"],
+          "enum": ["RECORDED_TERRESTRIAL_BIDMC_CSV", "RECORDED_TERRESTRIAL_WAVEFORM", "SIMULATED_SCENARIO_INPUT", "HARDWARE_WEARABLE"],
           "description": "Explicit provenance of the primary biometric vitals."
         },
         "biometrics_native_rate_hz": {
@@ -364,6 +367,274 @@
         "step_instruction": {
           "type": "string"
         }
+      }
+    },
+    "vitals_anomaly": {
+      "type": ["object", "null"],
+      "description": "Per-subject anomaly detector output on the recorded vitals (DERIVED_COMPUTED). Thresholds are nominal; measured recall and alert rates are in docs/evaluation/ANOMALY_DETECTOR_EVAL.md.",
+      "required": ["baseline_ready", "overall", "channels"],
+      "properties": {
+        "recording_time_s": { "type": "number" },
+        "baseline_ready": { "type": "boolean" },
+        "baseline_samples": { "type": "integer" },
+        "baseline_required": { "type": "integer" },
+        "overall": {
+          "type": "string",
+          "enum": ["NORMAL", "ATTENTION", "ALARM"]
+        },
+        "mahalanobis_d2": { "type": ["number", "null"] },
+        "channels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["channel", "status", "evaluable", "reason"],
+            "properties": {
+              "channel": { "type": "string" },
+              "status": { "type": "string", "enum": ["NORMAL", "ATTENTION", "ALARM"] },
+              "evaluable": { "type": "boolean" },
+              "detector": {
+                "type": ["string", "null"],
+                "enum": ["ROBUST_Z_SCORE", "CUSUM_DRIFT", "MAHALANOBIS", "SENSOR_DROPOUT", null]
+              },
+              "value": { "type": ["number", "null"] },
+              "baseline_median": { "type": ["number", "null"] },
+              "baseline_sigma": { "type": ["number", "null"] },
+              "z_score": { "type": ["number", "null"] },
+              "duration_s": { "type": "number" },
+              "reason": { "type": "string" }
+            }
+          }
+        },
+        "injection": {
+          "type": ["object", "null"],
+          "properties": {
+            "kind": { "type": "string" },
+            "description": { "type": "string" },
+            "onset_s": { "type": "number" },
+            "elapsed_s": { "type": "number" },
+            "duration_s": { "type": "number" }
+          }
+        }
+      }
+    },
+    "aerospace_360": {
+      "$ref": "#/$defs/AerospaceMedical360State"
+    }
+  },
+  "$defs": {
+    "PlaybookId": {
+      "type": "string",
+      "enum": [
+        "PLAYBOOK_01_VENOUS_STASIS_LBNP",
+        "PLAYBOOK_02_CONFIRMED_IJV_THROMBUS",
+        "PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED",
+        "PLAYBOOK_04_SANS_TRANSLAMINAR_MITIGATION",
+        "PLAYBOOK_05_SPE_RADIATION_SHELTER_CANS",
+        "PLAYBOOK_06_HYPOXEMIA_DESATURATION",
+        "PLAYBOOK_07_HEART_RATE_ANOMALY",
+        "PLAYBOOK_08_SENSOR_SIGNAL_LOSS",
+        "PLAYBOOK_09_MULTIPARAMETER_DETERIORATION",
+        "PLAYBOOK_10_RENAL_LITHIASIS",
+        "PLAYBOOK_11_MARS_ENTRY_FLUID_LOADING",
+        "PLAYBOOK_12_CIRCADIAN_LIGHT_HYGIENE",
+        "PLAYBOOK_13_VIRAL_IMMUNE_VALACYCLOVIR",
+        "PLAYBOOK_14_CO2_SCRUBBER_SANS",
+        "PLAYBOOK_15_EFAST_TRAUMA_TRIAGE",
+        "PLAYBOOK_16_SEPSIS_SEPTIC_SHOCK",
+        "PLAYBOOK_17_HEMORRHAGIC_TRAUMA_TXA",
+        "PLAYBOOK_18_TORSO_SHOCK_PERICARDIOCENTESIS",
+        "PLAYBOOK_19_CONSERVATIVE_ACUTE_ABDOMEN_0G",
+        "PLAYBOOK_20_EVA_MUSCULOSKELETAL_SPINE_FRACTURE",
+        "PLAYBOOK_21_DENTAL_MAXILLOFACIAL_EMERGENCY",
+        "PLAYBOOK_22_OCULAR_FOREIGN_BODY_CHEMICAL_BURN",
+        "PLAYBOOK_23_ANAPHYLAXIS_AIRWAY_EMERGENCY",
+        "PLAYBOOK_24_MICROGRAVITY_CARDIAC_ARREST_CPR",
+        "PLAYBOOK_25_ACUTE_URINARY_RETENTION_POCUS",
+        "PLAYBOOK_26_ACUTE_RADIATION_SYNDROME",
+        "PLAYBOOK_27_AEROSPACE_TOXICOLOGY_EXPOSURE",
+        "PLAYBOOK_28_EVA_DCS_AND_SUIT_EMERGENCY",
+        "PLAYBOOK_29_BMED_PSYCHIATRIC_CRISIS",
+        "PLAYBOOK_30_FEMALE_PELVIC_UROGYN_POCUS"
+      ],
+      "description": "Deterministic MedOps Playbook identifiers (#01..=#30) synchronized with binary_ipc.rs and binaryTelemetryDecoder.ts."
+    },
+    "ModelValidationStatus": {
+      "type": "string",
+      "enum": [
+        "ILLUSTRATIVE_UNVALIDATED",
+        "INTERNALLY_BENCHMARKED_TERRESTRIAL",
+        "CLINICALLY_CALIBRATED_SUBJECT_TO_REVIEW"
+      ]
+    },
+    "BiologicalSex": {
+      "type": "string",
+      "enum": ["Male", "Female"]
+    },
+    "ContraceptiveRegimen": {
+      "type": "string",
+      "enum": [
+        "None",
+        "CombinedEthinylestradiolCoc",
+        "ProgestinOnlyOral",
+        "LevonorgestrelIud",
+        "SubdermalImplant"
+      ]
+    },
+    "CrewBiologicalProfile": {
+      "type": "object",
+      "properties": {
+        "biological_sex": { "$ref": "#/$defs/BiologicalSex" },
+        "age_years": { "type": "number" },
+        "body_mass_kg": { "type": "number" },
+        "height_cm": { "type": "number" },
+        "baseline_hematocrit_pct": { "type": ["number", "null"] },
+        "baseline_hemoglobin_g_dl": { "type": ["number", "null"] },
+        "contraceptive_regimen": { "$ref": "#/$defs/ContraceptiveRegimen" },
+        "drug_allergies": { "type": "array", "items": { "type": "string" } },
+        "g6pd_deficient": { "type": "boolean" },
+        "baseline_qtc_ms": { "type": ["number", "null"] }
+      }
+    },
+    "LbnpBaselineState": {
+      "type": "object",
+      "properties": {
+        "pre_lbnp_sbp_baseline_mmhg": { "type": "number" },
+        "pre_lbnp_hr_baseline_bpm": { "type": "number" },
+        "captured_at_timestamp_ms": { "type": "integer" }
+      }
+    },
+    "EclssCoupledSummary": {
+      "type": "object",
+      "properties": {
+        "max_ppco2_mmhg": { "type": "number" },
+        "cabin_ppco2_mmhg": { "type": ["number", "null"] },
+        "helmet_ppco2_mmhg": { "type": ["number", "null"] },
+        "affected_crew_count": { "type": "integer", "minimum": 0 },
+        "root_cause_label": { "type": "string" },
+        "scrubber_override_active": { "type": "boolean" },
+        "emergency_pba_o2_mask_required": { "type": "boolean" },
+        "validation_status": { "$ref": "#/$defs/ModelValidationStatus" }
+      }
+    },
+    "RadiationArsState": {
+      "type": "object",
+      "properties": {
+        "cumulative_mission_dose_msv": { "type": "number" },
+        "estimated_acute_bfo_dose_gy": { "type": "number" },
+        "predicted_anc_k_ul": { "type": "number" },
+        "predicted_plt_k_ul": { "type": "number" },
+        "severe_neutropenia": { "type": "boolean" },
+        "febrile_neutropenia_emergency": { "type": "boolean" },
+        "filgrastim_indicated": { "type": "boolean" },
+        "sex_age_reid_multiplier": { "type": "number" },
+        "days_post_spe": { "type": "number" },
+        "validation_status": { "$ref": "#/$defs/ModelValidationStatus" }
+      }
+    },
+    "AcuteEmergencyState": {
+      "type": "object",
+      "properties": {
+        "shock_index": { "type": ["number", "null"] },
+        "pulseless_cardiac_arrest": { "type": "boolean" },
+        "anaphylaxis_suspected": { "type": "boolean" },
+        "active_arterial_hemorrhage": { "type": "boolean" },
+        "injury_hours_elapsed": { "type": ["number", "null"] },
+        "acute_abdomen_nom_suspected": { "type": "boolean" },
+        "dental_ludwigs_angina_threat": { "type": "boolean" },
+        "ocular_chemical_or_fb_injury": { "type": "boolean" },
+        "seidel_perforation_positive": { "type": "boolean" },
+        "eva_musculoskeletal_trauma": { "type": "boolean" },
+        "acute_urinary_retention_ml": { "type": ["number", "null"] },
+        "pelvic_emergency_flag": { "type": "boolean" },
+        "active_acute_playbook_code": { "type": ["integer", "null"], "minimum": 16, "maximum": 30 },
+        "validation_status": { "$ref": "#/$defs/ModelValidationStatus" }
+      }
+    },
+    "ToxicologyDcsState": {
+      "type": "object",
+      "properties": {
+        "nh3_ppm": { "type": "number" },
+        "mmh_ppm": { "type": "number" },
+        "no2_ppm": { "type": "number" },
+        "co_ppm": { "type": "number" },
+        "hcn_ppm": { "type": "number" },
+        "hcl_ppm": { "type": "number" },
+        "methemoglobin_pct": { "type": "number" },
+        "perchlorate_exposure_mg_kg_d": { "type": "number" },
+        "nis_thyroid_uptake_fraction": { "type": "number" },
+        "haldane_tissue_ratio_r360": { "type": "number" },
+        "spencer_vge_grade": { "type": "integer", "minimum": 0, "maximum": 4 },
+        "helmet_water_intrusion_detected": { "type": "boolean" },
+        "lcvg_pump_fault": { "type": "boolean" },
+        "eva_prebreathe_locked": { "type": "boolean" },
+        "dcs_type2_or_age_active": { "type": "boolean" },
+        "validation_status": { "$ref": "#/$defs/ModelValidationStatus" }
+      }
+    },
+    "PharmacologySepsisState": {
+      "type": "object",
+      "properties": {
+        "qsofa_score": { "type": "integer", "minimum": 0, "maximum": 3 },
+        "suspected_infection": { "type": "boolean" },
+        "sepsis_protocol_active": { "type": "boolean" },
+        "septic_shock_active": { "type": "boolean" },
+        "recommended_crystalloid_bolus_ml": { "type": "number" },
+        "effective_qtc_ms": { "type": "number" },
+        "estimated_egfr_ml_min": { "type": ["number", "null"] },
+        "lowest_formulary_potency_pct": { "type": "number" },
+        "depleted_or_subpotent_drugs": { "type": "array", "items": { "type": "string" } },
+        "validation_status": { "$ref": "#/$defs/ModelValidationStatus" }
+      }
+    },
+    "BMedTriageClass": {
+      "type": "string",
+      "enum": [
+        "Nominal",
+        "MildAdjustmentOrFatigue",
+        "ModerateDepressionOrAnxiety",
+        "SecondaryOrganicToxicMetabolicDelirium",
+        "PrimaryAcutePsychiatricCrisis",
+        "ImminentSelfOrVehicleHarmCrisis"
+      ]
+    },
+    "BehavioralHealthState": {
+      "type": "object",
+      "properties": {
+        "phq9_score": { "type": ["integer", "null"], "minimum": 0, "maximum": 27 },
+        "gad7_score": { "type": ["integer", "null"], "minimum": 0, "maximum": 21 },
+        "cssrs_suicidal_ideation_level": { "type": ["integer", "null"], "minimum": 0, "maximum": 5 },
+        "acute_agitation_or_psychosis": { "type": "boolean" },
+        "imminent_harm_to_self_or_vehicle": { "type": "boolean" },
+        "organic_delirium_mimic_detected": { "type": "boolean" },
+        "triage_classification": { "$ref": "#/$defs/BMedTriageClass" },
+        "airlock_software_lockout_active": { "type": "boolean" },
+        "cmrs_restraint_authorized": { "type": "boolean" },
+        "validation_status": { "$ref": "#/$defs/ModelValidationStatus" }
+      }
+    },
+    "ExtendedSafetyGates": {
+      "type": "object",
+      "properties": {
+        "gate5_nsaid_renal_bleeding_locked": { "type": "boolean" },
+        "gate5_allergy_or_qtc_locked": { "type": "boolean" },
+        "gate5_formulary_substitution_active": { "type": "boolean" },
+        "gate6_radiation_neutropenic_invasive_locked": { "type": "boolean" },
+        "gate7_bmed_delirium_or_restraint_guard_active": { "type": "boolean" }
+      }
+    },
+    "AerospaceMedical360State": {
+      "type": ["object", "null"],
+      "description": "Optional 360-degree aerospace medical envelope covering sex-specific physiology, LBNP baseline, ECLSS CO2 coupling, SPE/ARS radiation, acute 0g emergencies, toxicology/DCS, space pharmacology/sepsis, behavioral health, and extended safety gates (Gates 5-7).",
+      "properties": {
+        "crew_profile": { "$ref": "#/$defs/CrewBiologicalProfile" },
+        "lbnp_baseline": { "oneOf": [{ "$ref": "#/$defs/LbnpBaselineState" }, { "type": "null" }] },
+        "eclss_coupled": { "oneOf": [{ "$ref": "#/$defs/EclssCoupledSummary" }, { "type": "null" }] },
+        "radiation_ars": { "oneOf": [{ "$ref": "#/$defs/RadiationArsState" }, { "type": "null" }] },
+        "acute_emergency": { "oneOf": [{ "$ref": "#/$defs/AcuteEmergencyState" }, { "type": "null" }] },
+        "toxicology_dcs": { "oneOf": [{ "$ref": "#/$defs/ToxicologyDcsState" }, { "type": "null" }] },
+        "pharmacology_sepsis": { "oneOf": [{ "$ref": "#/$defs/PharmacologySepsisState" }, { "type": "null" }] },
+        "behavioral_health": { "oneOf": [{ "$ref": "#/$defs/BehavioralHealthState" }, { "type": "null" }] },
+        "extended_safety_gates": { "$ref": "#/$defs/ExtendedSafetyGates" }
       }
     }
   }

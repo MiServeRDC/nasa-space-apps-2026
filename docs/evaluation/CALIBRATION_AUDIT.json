@@ -1,0 +1,355 @@
+{
+  "schema_version": 1,
+  "verify_only": true,
+  "bidmc_sha256_verified_files": 3,
+  "timestral_model_id": "timestral-dhf-v1",
+  "timestral_checkpoint_origin": "DeterministicStub { seed_hex: \"0xA8E5_2026_0117_0015\", fallback_reason: \"no checkpoint directory configured; deterministic initialization active\" }",
+  "adapters": [
+    {
+      "adapter_name": "biocypher_bidmc_parquet_v1",
+      "status": {
+        "BUNDLED_AND_VERIFIED": {
+          "files_verified": 3,
+          "manifest_sha256_verified": true
+        }
+      },
+      "stats": {
+        "nodes_added": 27,
+        "edges_added": 135,
+        "slices_parsed": 27,
+        "missing_samples_observed": 26
+      }
+    },
+    {
+      "adapter_name": "biocypher_physionet_waveforms_v1",
+      "status": {
+        "EXTERNAL_DATASET_NOT_BUNDLED": {
+          "dataset_code": "PHYSIONET_WAVEFORMS",
+          "expected_dir": "data/external_cohorts_absent/physionet"
+        }
+      },
+      "stats": {
+        "nodes_added": 0,
+        "edges_added": 0,
+        "slices_parsed": 0,
+        "missing_samples_observed": 0
+      }
+    },
+    {
+      "adapter_name": "biocypher_nasa_osdr_omics_v1",
+      "status": {
+        "EXTERNAL_DATASET_NOT_BUNDLED": {
+          "dataset_code": "NASA_OSDR_OMICS",
+          "expected_dir": "data/external_cohorts_absent/nasa_osdr"
+        }
+      },
+      "stats": {
+        "nodes_added": 0,
+        "edges_added": 0,
+        "slices_parsed": 0,
+        "missing_samples_observed": 0
+      }
+    },
+    {
+      "adapter_name": "biocypher_dlr_hdbr_v1",
+      "status": {
+        "EXTERNAL_DATASET_NOT_BUNDLED": {
+          "dataset_code": "DLR_ENVIHAB_HDBR",
+          "expected_dir": "data/external_cohorts_absent/dlr_hdbr"
+        }
+      },
+      "stats": {
+        "nodes_added": 0,
+        "edges_added": 0,
+        "slices_parsed": 0,
+        "missing_samples_observed": 0
+      }
+    }
+  ],
+  "bayesian_pocus_audit": {
+    "pre_pocus_min_observed": 0.0084,
+    "pre_pocus_max_observed": 0.4158,
+    "pre_pocus_cap": 0.45,
+    "post_pocus_min_observed": 0.9281767955801105,
+    "post_pocus_max_observed": 0.9446958365677718,
+    "post_pocus_floor": 0.92,
+    "post_pocus_ceiling": 0.995,
+    "uncalibrated_empty_gap": [
+      0.45,
+      0.92
+    ],
+    "grid_samples_evaluated": 648,
+    "empty_gap_invariants_hold": true
+  },
+  "calibration_audit": {
+    "schema_version": 1,
+    "contains_synthetic_data": false,
+    "anti_leakage_verified": true,
+    "split_subjects": {
+      "TRAIN": [
+        "bidmc_02"
+      ],
+      "CALIBRATION": [
+        "bidmc_01"
+      ],
+      "HELD_OUT_TEST": [
+        "bidmc_03"
+      ]
+    },
+    "horizon_cells": [
+      {
+        "horizon_s": 15,
+        "is_short_technical_subhorizon": true,
+        "channel_name": "hr_bpm",
+        "missingness_bin": "ZERO_PCT",
+        "status": "EVALUATED",
+        "timestral_cqr_coverage": {
+          "k_covered": 20,
+          "n_total": 28,
+          "empirical_coverage": 0.7142857142857143,
+          "ci95_low": 0.5133316845510598,
+          "ci95_high": 0.8677634874288744,
+          "covers_target_90pct": false
+        },
+        "mean_interval_width": 2.5901639344262435,
+        "winkler_score_alpha_10": 14.920374707259924,
+        "pinball_loss_mean": 0.48891491022638517,
+        "persistence_winkler_score": 24.857142857142858,
+        "rolling_median_iqr_winkler_score": 264.85714285714283,
+        "false_alarm_rate": 0.0,
+        "missed_violation_rate": 0.0
+      },
+      {
+        "horizon_s": 15,
+        "is_short_technical_subhorizon": true,
+        "channel_name": "hr_bpm",
+        "missingness_bin": "ONE_TO_FIFTEEN_PCT",
+        "status": {
+          "CALIBRATION_SAMPLE_INSUFFICIENT": {
+            "n_cal": 5,
+            "min_required": 9
+          }
+        },
+        "timestral_cqr_coverage": null,
+        "mean_interval_width": null,
+        "winkler_score_alpha_10": null,
+        "pinball_loss_mean": null,
+        "persistence_winkler_score": null,
+        "rolling_median_iqr_winkler_score": null,
+        "false_alarm_rate": null,
+        "missed_violation_rate": null
+      },
+      {
+        "horizon_s": 30,
+        "is_short_technical_subhorizon": true,
+        "channel_name": "hr_bpm",
+        "missingness_bin": "ZERO_PCT",
+        "status": "EVALUATED",
+        "timestral_cqr_coverage": {
+          "k_covered": 14,
+          "n_total": 14,
+          "empirical_coverage": 1.0,
+          "ci95_low": 0.7683642383498834,
+          "ci95_high": 1.0,
+          "covers_target_90pct": true
+        },
+        "mean_interval_width": 4.065573770491795,
+        "winkler_score_alpha_10": 4.065573770491795,
+        "pinball_loss_mean": 0.20281030444964854,
+        "persistence_winkler_score": 4.0,
+        "rolling_median_iqr_winkler_score": 273.42857142857144,
+        "false_alarm_rate": 0.0,
+        "missed_violation_rate": 0.0
+      },
+      {
+        "horizon_s": 30,
+        "is_short_technical_subhorizon": true,
+        "channel_name": "hr_bpm",
+        "missingness_bin": "ONE_TO_FIFTEEN_PCT",
+        "status": {
+          "CALIBRATION_SAMPLE_INSUFFICIENT": {
+            "n_cal": 3,
+            "min_required": 9
+          }
+        },
+        "timestral_cqr_coverage": null,
+        "mean_interval_width": null,
+        "winkler_score_alpha_10": null,
+        "pinball_loss_mean": null,
+        "persistence_winkler_score": null,
+        "rolling_median_iqr_winkler_score": null,
+        "false_alarm_rate": null,
+        "missed_violation_rate": null
+      },
+      {
+        "horizon_s": 60,
+        "is_short_technical_subhorizon": true,
+        "channel_name": "hr_bpm",
+        "missingness_bin": "ZERO_PCT",
+        "status": {
+          "CALIBRATION_SAMPLE_INSUFFICIENT": {
+            "n_cal": 5,
+            "min_required": 9
+          }
+        },
+        "timestral_cqr_coverage": null,
+        "mean_interval_width": null,
+        "winkler_score_alpha_10": null,
+        "pinball_loss_mean": null,
+        "persistence_winkler_score": null,
+        "rolling_median_iqr_winkler_score": null,
+        "false_alarm_rate": null,
+        "missed_violation_rate": null
+      },
+      {
+        "horizon_s": 60,
+        "is_short_technical_subhorizon": true,
+        "channel_name": "hr_bpm",
+        "missingness_bin": "ONE_TO_FIFTEEN_PCT",
+        "status": {
+          "CALIBRATION_SAMPLE_INSUFFICIENT": {
+            "n_cal": 2,
+            "min_required": 9
+          }
+        },
+        "timestral_cqr_coverage": null,
+        "mean_interval_width": null,
+        "winkler_score_alpha_10": null,
+        "pinball_loss_mean": null,
+        "persistence_winkler_score": null,
+        "rolling_median_iqr_winkler_score": null,
+        "false_alarm_rate": null,
+        "missed_violation_rate": null
+      },
+      {
+        "horizon_s": 120,
+        "is_short_technical_subhorizon": true,
+        "channel_name": "hr_bpm",
+        "missingness_bin": "ZERO_PCT",
+        "status": {
+          "CALIBRATION_SAMPLE_INSUFFICIENT": {
+            "n_cal": 2,
+            "min_required": 9
+          }
+        },
+        "timestral_cqr_coverage": null,
+        "mean_interval_width": null,
+        "winkler_score_alpha_10": null,
+        "pinball_loss_mean": null,
+        "persistence_winkler_score": null,
+        "rolling_median_iqr_winkler_score": null,
+        "false_alarm_rate": null,
+        "missed_violation_rate": null
+      },
+      {
+        "horizon_s": 120,
+        "is_short_technical_subhorizon": true,
+        "channel_name": "hr_bpm",
+        "missingness_bin": "ONE_TO_FIFTEEN_PCT",
+        "status": {
+          "CALIBRATION_SAMPLE_INSUFFICIENT": {
+            "n_cal": 1,
+            "min_required": 9
+          }
+        },
+        "timestral_cqr_coverage": null,
+        "mean_interval_width": null,
+        "winkler_score_alpha_10": null,
+        "pinball_loss_mean": null,
+        "persistence_winkler_score": null,
+        "rolling_median_iqr_winkler_score": null,
+        "false_alarm_rate": null,
+        "missed_violation_rate": null
+      },
+      {
+        "horizon_s": 900,
+        "is_short_technical_subhorizon": false,
+        "channel_name": "all_channels",
+        "missingness_bin": "ZERO_PCT",
+        "status": {
+          "INSUFFICIENT_RECORDING_DURATION": {
+            "max_recording_span_s": 480.0,
+            "required_horizon_s": 900
+          }
+        },
+        "timestral_cqr_coverage": null,
+        "mean_interval_width": null,
+        "winkler_score_alpha_10": null,
+        "pinball_loss_mean": null,
+        "persistence_winkler_score": null,
+        "rolling_median_iqr_winkler_score": null,
+        "false_alarm_rate": null,
+        "missed_violation_rate": null
+      },
+      {
+        "horizon_s": 3600,
+        "is_short_technical_subhorizon": false,
+        "channel_name": "all_channels",
+        "missingness_bin": "ZERO_PCT",
+        "status": {
+          "INSUFFICIENT_RECORDING_DURATION": {
+            "max_recording_span_s": 480.0,
+            "required_horizon_s": 3600
+          }
+        },
+        "timestral_cqr_coverage": null,
+        "mean_interval_width": null,
+        "winkler_score_alpha_10": null,
+        "pinball_loss_mean": null,
+        "persistence_winkler_score": null,
+        "rolling_median_iqr_winkler_score": null,
+        "false_alarm_rate": null,
+        "missed_violation_rate": null
+      },
+      {
+        "horizon_s": 21600,
+        "is_short_technical_subhorizon": false,
+        "channel_name": "all_channels",
+        "missingness_bin": "ZERO_PCT",
+        "status": {
+          "INSUFFICIENT_RECORDING_DURATION": {
+            "max_recording_span_s": 480.0,
+            "required_horizon_s": 21600
+          }
+        },
+        "timestral_cqr_coverage": null,
+        "mean_interval_width": null,
+        "winkler_score_alpha_10": null,
+        "pinball_loss_mean": null,
+        "persistence_winkler_score": null,
+        "rolling_median_iqr_winkler_score": null,
+        "false_alarm_rate": null,
+        "missed_violation_rate": null
+      },
+      {
+        "horizon_s": 86400,
+        "is_short_technical_subhorizon": false,
+        "channel_name": "all_channels",
+        "missingness_bin": "ZERO_PCT",
+        "status": {
+          "INSUFFICIENT_RECORDING_DURATION": {
+            "max_recording_span_s": 480.0,
+            "required_horizon_s": 86400
+          }
+        },
+        "timestral_cqr_coverage": null,
+        "mean_interval_width": null,
+        "winkler_score_alpha_10": null,
+        "pinball_loss_mean": null,
+        "persistence_winkler_score": null,
+        "rolling_median_iqr_winkler_score": null,
+        "false_alarm_rate": null,
+        "missed_violation_rate": null
+      }
+    ],
+    "pocus_calibration_audit": null,
+    "sost_rk4_sensitivity": {
+      "max_constant_load_diff_pmol_l_up_to_1000d": 0.000011369096640123644,
+      "max_step_change_load_diff_pmol_l_at_sol_180": 43.740161990443816,
+      "legacy_effective_cap_days": 60.0,
+      "adaptive_substep_dt_days": 0.25
+    },
+    "resolved_validation_status": "ILLUSTRATIVE_UNVALIDATED"
+  },
+  "resolved_validation_status": "ILLUSTRATIVE_UNVALIDATED"
+}

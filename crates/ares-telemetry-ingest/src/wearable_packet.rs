@@ -11,11 +11,27 @@ use core::mem::{align_of, offset_of, size_of};
 pub const WEARABLE_SYNC_WORD: u16 = 0xAA55;
 pub const WEARABLE_PACKET_BYTES: usize = 32;
 
+pub const WEARABLE_V2_SYNC_WORD: u16 = 0xAA56;
+pub const WEARABLE_V2_PACKET_BYTES: usize = 64;
+
 pub const WMASK_RR_INTERVAL: u8 = 1 << 0;
 pub const WMASK_HR_BPM: u8 = 1 << 1;
 pub const WMASK_SPO2_PCT: u8 = 1 << 2;
 pub const WMASK_RESP_BRPM: u8 = 1 << 3;
 pub const WMASK_IMU_RMS: u8 = 1 << 4;
+
+// Extended V2 channel masks (channel_mask_ext)
+pub const WMASK_EXT_SBP: u16 = 1 << 0;
+pub const WMASK_EXT_DBP: u16 = 1 << 1;
+pub const WMASK_EXT_PTT: u16 = 1 << 2;
+pub const WMASK_EXT_CORE_TEMP: u16 = 1 << 3;
+pub const WMASK_EXT_SKIN_TEMP: u16 = 1 << 4;
+pub const WMASK_EXT_SLEEP_STAGE: u16 = 1 << 5;
+pub const WMASK_EXT_MELANOPIC_LUX: u16 = 1 << 6;
+pub const WMASK_EXT_PERSONAL_DOSIMETRY: u16 = 1 << 7;
+pub const WMASK_EXT_SUIT_METABOLIC: u16 = 1 << 8;
+pub const WMASK_EXT_HELMET_PPCO2: u16 = 1 << 9;
+pub const WMASK_EXT_AMBIENT_NOISE: u16 = 1 << 10;
 
 pub const WFLAG_SEU_RECOVERY_EVENT: u16 = 1 << 0;
 pub const WFLAG_BLE_RETRANSMIT: u16 = 1 << 1;
@@ -234,6 +250,19 @@ impl WearableSensorPacket {
             radiation_dose_rate_msv_d,
             sqi_score: (f64::from(self.sqi_score_x10000) / 10_000.0).clamp(0.0, 1.0),
             missing_channels,
+            sbp_mmhg: None,
+            dbp_mmhg: None,
+            ptt_ms: None,
+            core_temp_celsius: None,
+            skin_temp_celsius: None,
+            sleep_stage_code: None,
+            melanopic_edi_lux: None,
+            personal_dose_rate_ugy_h: None,
+            let_quality_factor: None,
+            suit_metabolic_watts: None,
+            helmet_ppco2_mmhg: None,
+            cabin_ppco2_mmhg: None,
+            platelet_count_k_ul: None,
         }
     }
 
@@ -269,6 +298,445 @@ impl WearableSensorPacket {
             seu_recovery_event: (self.flags & WFLAG_SEU_RECOVERY_EVENT) != 0,
             eva_suit_node: (self.flags & WFLAG_EVA_SUIT_NODE) != 0,
             imu_rms_g,
+        }
+    }
+}
+
+/// Pacchetto binario fisso da 64 byte per la Exploration Wearable Suite V2.
+/// Allineamento a 8 byte, zero padding implicito del compilatore.
+#[repr(C, align(8))]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ExplorationWearablePacketV2 {
+    pub sync_word: u16,
+    pub node_id: u8,
+    pub channel_mask: u8,
+    pub channel_mask_ext: u16,
+    pub supervisor_restart_count: u16,
+    pub sequence_num: u32,
+    pub uptime_ms: u32,
+    pub imu_rms_g: f32,
+    pub hr_bpm_x100: u16,
+    pub spo2_pct_x100: u16,
+    pub resp_brpm_x100: u16,
+    pub rr_interval_ms_x10: u16,
+    pub sqi_score_x10000: u16,
+    pub sbp_mmhg_x10: u16,
+    pub dbp_mmhg_x10: u16,
+    pub ptt_ms_x10: u16,
+    pub core_temp_c_x100: u16,
+    pub skin_temp_c_x100: u16,
+    pub sleep_stage_code: u8,
+    pub reserved_u8: u8,
+    pub melanopic_edi_lux: u16,
+    pub personal_dose_rate_ugy_h: u16,
+    pub let_quality_factor_x100: u16,
+    pub suit_metabolic_watts: u16,
+    pub helmet_ppco2_mmhg_x100: u16,
+    pub ambient_noise_dba_x10: u16,
+    pub flags: u16,
+    pub reserved_future: u32,
+    pub flags_ext: u16,
+    pub crc16_ccitt: u16,
+}
+
+const _: () = assert!(size_of::<ExplorationWearablePacketV2>() == WEARABLE_V2_PACKET_BYTES);
+const _: () = assert!(align_of::<ExplorationWearablePacketV2>() == 8);
+const _: () = assert!(offset_of!(ExplorationWearablePacketV2, sync_word) == 0);
+const _: () = assert!(offset_of!(ExplorationWearablePacketV2, channel_mask_ext) == 4);
+const _: () = assert!(offset_of!(ExplorationWearablePacketV2, sequence_num) == 8);
+const _: () = assert!(offset_of!(ExplorationWearablePacketV2, uptime_ms) == 12);
+const _: () = assert!(offset_of!(ExplorationWearablePacketV2, imu_rms_g) == 16);
+const _: () = assert!(offset_of!(ExplorationWearablePacketV2, sbp_mmhg_x10) == 30);
+const _: () = assert!(offset_of!(ExplorationWearablePacketV2, core_temp_c_x100) == 36);
+const _: () = assert!(offset_of!(ExplorationWearablePacketV2, sleep_stage_code) == 40);
+const _: () = assert!(offset_of!(ExplorationWearablePacketV2, melanopic_edi_lux) == 42);
+const _: () = assert!(offset_of!(ExplorationWearablePacketV2, personal_dose_rate_ugy_h) == 44);
+const _: () = assert!(offset_of!(ExplorationWearablePacketV2, suit_metabolic_watts) == 48);
+const _: () = assert!(offset_of!(ExplorationWearablePacketV2, crc16_ccitt) == 62);
+
+impl ExplorationWearablePacketV2 {
+    /// Serializza il pacchetto nei 64 byte little-endian calcolando automaticamente il CRC-16-CCITT.
+    pub fn to_le_bytes_with_crc(&self) -> [u8; WEARABLE_V2_PACKET_BYTES] {
+        let mut buf = [0u8; WEARABLE_V2_PACKET_BYTES];
+        buf[0..2].copy_from_slice(&self.sync_word.to_le_bytes());
+        buf[2] = self.node_id;
+        buf[3] = self.channel_mask;
+        buf[4..6].copy_from_slice(&self.channel_mask_ext.to_le_bytes());
+        buf[6..8].copy_from_slice(&self.supervisor_restart_count.to_le_bytes());
+        buf[8..12].copy_from_slice(&self.sequence_num.to_le_bytes());
+        buf[12..16].copy_from_slice(&self.uptime_ms.to_le_bytes());
+        buf[16..20].copy_from_slice(&self.imu_rms_g.to_le_bytes());
+        buf[20..22].copy_from_slice(&self.hr_bpm_x100.to_le_bytes());
+        buf[22..24].copy_from_slice(&self.spo2_pct_x100.to_le_bytes());
+        buf[24..26].copy_from_slice(&self.resp_brpm_x100.to_le_bytes());
+        buf[26..28].copy_from_slice(&self.rr_interval_ms_x10.to_le_bytes());
+        buf[28..30].copy_from_slice(&self.sqi_score_x10000.to_le_bytes());
+        buf[30..32].copy_from_slice(&self.sbp_mmhg_x10.to_le_bytes());
+        buf[32..34].copy_from_slice(&self.dbp_mmhg_x10.to_le_bytes());
+        buf[34..36].copy_from_slice(&self.ptt_ms_x10.to_le_bytes());
+        buf[36..38].copy_from_slice(&self.core_temp_c_x100.to_le_bytes());
+        buf[38..40].copy_from_slice(&self.skin_temp_c_x100.to_le_bytes());
+        buf[40] = self.sleep_stage_code;
+        buf[41] = self.reserved_u8;
+        buf[42..44].copy_from_slice(&self.melanopic_edi_lux.to_le_bytes());
+        buf[44..46].copy_from_slice(&self.personal_dose_rate_ugy_h.to_le_bytes());
+        buf[46..48].copy_from_slice(&self.let_quality_factor_x100.to_le_bytes());
+        buf[48..50].copy_from_slice(&self.suit_metabolic_watts.to_le_bytes());
+        buf[50..52].copy_from_slice(&self.helmet_ppco2_mmhg_x100.to_le_bytes());
+        buf[52..54].copy_from_slice(&self.ambient_noise_dba_x10.to_le_bytes());
+        buf[54..56].copy_from_slice(&self.flags.to_le_bytes());
+        buf[56..60].copy_from_slice(&self.reserved_future.to_le_bytes());
+        buf[60..62].copy_from_slice(&self.flags_ext.to_le_bytes());
+        let crc = compute_crc16_ccitt(&buf[0..62]);
+        buf[62..64].copy_from_slice(&crc.to_le_bytes());
+        buf
+    }
+
+    /// Alias compatibile di `to_le_bytes_with_crc`.
+    #[inline]
+    pub fn to_le_bytes(&self) -> [u8; WEARABLE_V2_PACKET_BYTES] {
+        self.to_le_bytes_with_crc()
+    }
+
+    /// Decodifica e verifica `sync_word` e `CRC-16-CCITT` senza panici.
+    pub fn decode_and_verify(bytes: &[u8]) -> Result<Self, IngestError> {
+        if bytes.len() != WEARABLE_V2_PACKET_BYTES {
+            return Err(IngestError::InvalidWearablePacketLength {
+                expected: WEARABLE_V2_PACKET_BYTES,
+                actual: bytes.len(),
+            });
+        }
+        let sync_word = u16::from_le_bytes([bytes[0], bytes[1]]);
+        if sync_word != WEARABLE_V2_SYNC_WORD {
+            return Err(IngestError::InvalidWearableSyncWord { found: sync_word });
+        }
+        let expected_crc = compute_crc16_ccitt(&bytes[0..62]);
+        let found_crc = u16::from_le_bytes([bytes[62], bytes[63]]);
+        if expected_crc != found_crc {
+            return Err(IngestError::InvalidWearableCrc {
+                expected: expected_crc,
+                found: found_crc,
+            });
+        }
+        Ok(Self {
+            sync_word,
+            node_id: bytes[2],
+            channel_mask: bytes[3],
+            channel_mask_ext: u16::from_le_bytes([bytes[4], bytes[5]]),
+            supervisor_restart_count: u16::from_le_bytes([bytes[6], bytes[7]]),
+            sequence_num: u32::from_le_bytes([bytes[8], bytes[9], bytes[10], bytes[11]]),
+            uptime_ms: u32::from_le_bytes([bytes[12], bytes[13], bytes[14], bytes[15]]),
+            imu_rms_g: f32::from_le_bytes([bytes[16], bytes[17], bytes[18], bytes[19]]),
+            hr_bpm_x100: u16::from_le_bytes([bytes[20], bytes[21]]),
+            spo2_pct_x100: u16::from_le_bytes([bytes[22], bytes[23]]),
+            resp_brpm_x100: u16::from_le_bytes([bytes[24], bytes[25]]),
+            rr_interval_ms_x10: u16::from_le_bytes([bytes[26], bytes[27]]),
+            sqi_score_x10000: u16::from_le_bytes([bytes[28], bytes[29]]),
+            sbp_mmhg_x10: u16::from_le_bytes([bytes[30], bytes[31]]),
+            dbp_mmhg_x10: u16::from_le_bytes([bytes[32], bytes[33]]),
+            ptt_ms_x10: u16::from_le_bytes([bytes[34], bytes[35]]),
+            core_temp_c_x100: u16::from_le_bytes([bytes[36], bytes[37]]),
+            skin_temp_c_x100: u16::from_le_bytes([bytes[38], bytes[39]]),
+            sleep_stage_code: bytes[40],
+            reserved_u8: bytes[41],
+            melanopic_edi_lux: u16::from_le_bytes([bytes[42], bytes[43]]),
+            personal_dose_rate_ugy_h: u16::from_le_bytes([bytes[44], bytes[45]]),
+            let_quality_factor_x100: u16::from_le_bytes([bytes[46], bytes[47]]),
+            suit_metabolic_watts: u16::from_le_bytes([bytes[48], bytes[49]]),
+            helmet_ppco2_mmhg_x100: u16::from_le_bytes([bytes[50], bytes[51]]),
+            ambient_noise_dba_x10: u16::from_le_bytes([bytes[52], bytes[53]]),
+            flags: u16::from_le_bytes([bytes[54], bytes[55]]),
+            reserved_future: u32::from_le_bytes([bytes[56], bytes[57], bytes[58], bytes[59]]),
+            flags_ext: u16::from_le_bytes([bytes[60], bytes[61]]),
+            crc16_ccitt: found_crc,
+        })
+    }
+
+    /// Alias compatibile di `decode_and_verify`.
+    #[inline]
+    pub fn from_le_bytes(bytes: &[u8]) -> Result<Self, IngestError> {
+        Self::decode_and_verify(bytes)
+    }
+
+    /// Converte il pacchetto verificato in una riga `BidmcNumericRow`.
+    pub fn to_bidmc_numeric_row(&self, record_id: &str) -> BidmcNumericRow {
+        let mut missing_channels = Vec::new();
+        let hr_bpm = if (self.channel_mask & WMASK_HR_BPM) != 0 {
+            Some(f64::from(self.hr_bpm_x100) / 100.0)
+        } else {
+            missing_channels.push("heart_rate_bpm".to_string());
+            None
+        };
+        missing_channels.push("pulse_rate_bpm".to_string());
+        let resp_brpm = if (self.channel_mask & WMASK_RESP_BRPM) != 0 {
+            Some(f64::from(self.resp_brpm_x100) / 100.0)
+        } else {
+            missing_channels.push("resp_rate_brpm".to_string());
+            None
+        };
+        let spo2_pct = if (self.channel_mask & WMASK_SPO2_PCT) != 0 {
+            Some(f64::from(self.spo2_pct_x100) / 100.0)
+        } else {
+            missing_channels.push("spo2_pct".to_string());
+            None
+        };
+
+        BidmcNumericRow {
+            record_id: record_id.to_string(),
+            relative_time_s: f64::from(self.uptime_ms) / 1000.0,
+            hr_bpm,
+            pulse_bpm: None,
+            resp_brpm,
+            spo2_pct,
+            missing_channels,
+        }
+    }
+
+    /// Converte il pacchetto in `Biometrics`, estraendo tutti i canali attivi.
+    pub fn to_biometrics(&self, default_radiation_msv_d: f64) -> Biometrics {
+        let mut missing_channels = Vec::new();
+        let heart_rate_bpm = if (self.channel_mask & WMASK_HR_BPM) != 0 {
+            Some(f64::from(self.hr_bpm_x100) / 100.0)
+        } else {
+            missing_channels.push("heart_rate_bpm".to_string());
+            None
+        };
+        let spo2_pct = if (self.channel_mask & WMASK_SPO2_PCT) != 0 {
+            Some(f64::from(self.spo2_pct_x100) / 100.0)
+        } else {
+            missing_channels.push("spo2_pct".to_string());
+            None
+        };
+        let resp_rate_brpm = if (self.channel_mask & WMASK_RESP_BRPM) != 0 {
+            Some(f64::from(self.resp_brpm_x100) / 100.0)
+        } else {
+            missing_channels.push("resp_rate_brpm".to_string());
+            None
+        };
+        let has_rr = (self.channel_mask & WMASK_RR_INTERVAL) != 0 && self.rr_interval_ms_x10 > 0;
+        if !has_rr {
+            missing_channels.push("rmssd_ms".to_string());
+        }
+
+        let sbp_mmhg = if (self.channel_mask_ext & WMASK_EXT_SBP) != 0 {
+            Some(f64::from(self.sbp_mmhg_x10) / 10.0)
+        } else {
+            missing_channels.push("sbp_mmhg".to_string());
+            None
+        };
+        let dbp_mmhg = if (self.channel_mask_ext & WMASK_EXT_DBP) != 0 {
+            Some(f64::from(self.dbp_mmhg_x10) / 10.0)
+        } else {
+            missing_channels.push("dbp_mmhg".to_string());
+            None
+        };
+        let ptt_ms = if (self.channel_mask_ext & WMASK_EXT_PTT) != 0 {
+            Some(f64::from(self.ptt_ms_x10) / 10.0)
+        } else {
+            missing_channels.push("ptt_ms".to_string());
+            None
+        };
+        let core_temp_celsius = if (self.channel_mask_ext & WMASK_EXT_CORE_TEMP) != 0 {
+            Some(f64::from(self.core_temp_c_x100) / 100.0)
+        } else {
+            missing_channels.push("core_temp_celsius".to_string());
+            None
+        };
+        let skin_temp_celsius = if (self.channel_mask_ext & WMASK_EXT_SKIN_TEMP) != 0 {
+            Some(f64::from(self.skin_temp_c_x100) / 100.0)
+        } else {
+            missing_channels.push("skin_temp_celsius".to_string());
+            None
+        };
+        let sleep_stage_code = if (self.channel_mask_ext & WMASK_EXT_SLEEP_STAGE) != 0 {
+            Some(self.sleep_stage_code)
+        } else {
+            None
+        };
+        let melanopic_edi_lux = if (self.channel_mask_ext & WMASK_EXT_MELANOPIC_LUX) != 0 {
+            Some(f64::from(self.melanopic_edi_lux))
+        } else {
+            None
+        };
+        let personal_dose_rate_ugy_h = if (self.channel_mask_ext & WMASK_EXT_PERSONAL_DOSIMETRY) != 0 {
+            Some(f64::from(self.personal_dose_rate_ugy_h) / 10.0)
+        } else {
+            None
+        };
+        let let_quality_factor = if (self.channel_mask_ext & WMASK_EXT_PERSONAL_DOSIMETRY) != 0 {
+            Some(f64::from(self.let_quality_factor_x100) / 100.0)
+        } else {
+            None
+        };
+        let suit_metabolic_watts = if (self.channel_mask_ext & WMASK_EXT_SUIT_METABOLIC) != 0 {
+            Some(f64::from(self.suit_metabolic_watts))
+        } else {
+            None
+        };
+        let helmet_ppco2_mmhg = if (self.channel_mask_ext & WMASK_EXT_HELMET_PPCO2) != 0 {
+            Some(f64::from(self.helmet_ppco2_mmhg_x100) / 100.0)
+        } else {
+            None
+        };
+
+        let effective_radiation_msv_d = if let (Some(rate), Some(q)) = (personal_dose_rate_ugy_h, let_quality_factor) {
+            (rate * q * 24.0) / 1000.0
+        } else {
+            default_radiation_msv_d
+        };
+
+        Biometrics {
+            heart_rate_bpm,
+            pulse_rate_bpm: None,
+            resp_rate_brpm,
+            spo2_pct,
+            rmssd_ms: None,
+            hrv_unavailable_reason: if has_rr {
+                None
+            } else {
+                Some(HrvUnavailableReason::BeatIntervalsNotAvailable)
+            },
+            sdnn_ms: None,
+            pnn50_pct: None,
+            lf_hf_ratio: None,
+            vocal_f0_hz: None,
+            vocal_jitter_pct: None,
+            radiation_dose_rate_msv_d: effective_radiation_msv_d,
+            sqi_score: (f64::from(self.sqi_score_x10000) / 10_000.0).clamp(0.0, 1.0),
+            missing_channels,
+            sbp_mmhg,
+            dbp_mmhg,
+            ptt_ms,
+            core_temp_celsius,
+            skin_temp_celsius,
+            sleep_stage_code,
+            melanopic_edi_lux,
+            personal_dose_rate_ugy_h,
+            let_quality_factor,
+            suit_metabolic_watts,
+            helmet_ppco2_mmhg,
+            cabin_ppco2_mmhg: None,
+            platelet_count_k_ul: None,
+        }
+    }
+}
+
+/// Accumulatore online circolare a zero allocazioni per intervalli R-R con filtro ectopico di Malik (+/- 20%).
+#[derive(Debug, Clone, Copy)]
+pub struct WearableRrWindowAccumulator {
+    buffer: [u16; 64],
+    head: usize,
+    count: usize,
+    last_valid_rmssd: Option<f64>,
+}
+
+impl Default for WearableRrWindowAccumulator {
+    fn default() -> Self {
+        Self {
+            buffer: [0u16; 64],
+            head: 0,
+            count: 0,
+            last_valid_rmssd: None,
+        }
+    }
+}
+
+impl WearableRrWindowAccumulator {
+    pub const MIN_BEATS_FOR_RMSSD: usize = 16;
+
+    /// Inserisce un nuovo intervallo R-R in millisecondi * 10 (es. 825.0 ms = 8250).
+    /// Rigetta intervalli non fisiologici (< 300 ms o > 2000 ms) e salti > 20% (regola di Malik).
+    #[inline]
+    pub fn push_interval_ms_x10(&mut self, interval_ms_x10: u16) -> bool {
+        let ms = f64::from(interval_ms_x10) / 10.0;
+        if !(300.0..=2000.0).contains(&ms) {
+            return false;
+        }
+
+        if self.count > 0 {
+            let last_idx = if self.head == 0 { 63 } else { self.head - 1 };
+            let last_ms = f64::from(self.buffer[last_idx]) / 10.0;
+            let ratio = ms / last_ms;
+            if !(0.80..=1.20).contains(&ratio) {
+                return false;
+            }
+        }
+
+        self.buffer[self.head] = interval_ms_x10;
+        self.head = (self.head + 1) % 64;
+        if self.count < 64 {
+            self.count += 1;
+        }
+        true
+    }
+
+    /// Calcola la radice dell'errore quadratico medio delle differenze successive (RMSSD) in millisecondi.
+    /// Preserva l'ultimo valore valido nei tick in cui non arrivano battiti nuovi (Condition 3).
+    #[inline]
+    pub fn compute_rmssd_ms(&mut self) -> Option<f64> {
+        if self.count < Self::MIN_BEATS_FOR_RMSSD {
+            return self.last_valid_rmssd;
+        }
+
+        let mut sum_squared_diff = 0.0;
+        let mut diff_count = 0usize;
+        let start_offset = if self.count == 64 { self.head } else { 0 };
+
+        for i in 0..(self.count - 1) {
+            let idx_a = (start_offset + i) % 64;
+            let idx_b = (start_offset + i + 1) % 64;
+            let diff = (f64::from(self.buffer[idx_b]) - f64::from(self.buffer[idx_a])) / 10.0;
+            sum_squared_diff += diff * diff;
+            diff_count += 1;
+        }
+
+        if diff_count == 0 {
+            return self.last_valid_rmssd;
+        }
+
+        let rmssd = (sum_squared_diff / diff_count as f64).sqrt();
+        self.last_valid_rmssd = Some(rmssd);
+        Some(rmssd)
+    }
+
+    #[inline]
+    pub fn last_rmssd_ms(&self) -> Option<f64> {
+        self.last_valid_rmssd
+    }
+
+    #[inline]
+    pub fn beat_count(&self) -> usize {
+        self.count
+    }
+}
+
+/// Identificatore e parser unificato per pacchetti wearable V1 (32 B) e V2 (64 B).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum WearablePacketKind {
+    V1(WearableSensorPacket),
+    V2(ExplorationWearablePacketV2),
+}
+
+impl WearablePacketKind {
+    /// Riconosce automaticamente il formato del pacchetto (0xAA55 vs 0xAA56) e decodifica.
+    pub fn decode_auto(bytes: &[u8]) -> Result<Self, IngestError> {
+        if bytes.len() < 2 {
+            return Err(IngestError::InvalidWearablePacketLength {
+                expected: WEARABLE_PACKET_BYTES,
+                actual: bytes.len(),
+            });
+        }
+        let sync = u16::from_le_bytes([bytes[0], bytes[1]]);
+        match sync {
+            WEARABLE_SYNC_WORD => {
+                let pkt = WearableSensorPacket::decode_and_verify(bytes)?;
+                Ok(Self::V1(pkt))
+            }
+            WEARABLE_V2_SYNC_WORD => {
+                let pkt = ExplorationWearablePacketV2::decode_and_verify(bytes)?;
+                Ok(Self::V2(pkt))
+            }
+            _ => Err(IngestError::InvalidWearableSyncWord { found: sync }),
         }
     }
 }
@@ -370,5 +838,122 @@ mod tests {
             .iter()
             .any(|f| f == "HUBRIS_SEU_SUPERVISOR_RECOVERY"));
         assert!((validated.row.relative_time_s - 42.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_exploration_wearable_packet_v2_64b_layout_crc_and_biometrics() {
+        assert_eq!(size_of::<ExplorationWearablePacketV2>(), 64);
+        assert_eq!(align_of::<ExplorationWearablePacketV2>(), 8);
+
+        let v2 = ExplorationWearablePacketV2 {
+            sync_word: WEARABLE_V2_SYNC_WORD,
+            node_id: 1, // Smart Ring
+            channel_mask: WMASK_HR_BPM | WMASK_SPO2_PCT | WMASK_RESP_BRPM,
+            channel_mask_ext: WMASK_EXT_SBP
+                | WMASK_EXT_DBP
+                | WMASK_EXT_PTT
+                | WMASK_EXT_CORE_TEMP
+                | WMASK_EXT_SKIN_TEMP
+                | WMASK_EXT_SLEEP_STAGE
+                | WMASK_EXT_MELANOPIC_LUX
+                | WMASK_EXT_PERSONAL_DOSIMETRY
+                | WMASK_EXT_SUIT_METABOLIC
+                | WMASK_EXT_HELMET_PPCO2,
+            supervisor_restart_count: 0,
+            sequence_num: 2048,
+            uptime_ms: 120_000,
+            imu_rms_g: 0.05,
+            hr_bpm_x100: 6850,
+            spo2_pct_x100: 9890,
+            resp_brpm_x100: 1420,
+            rr_interval_ms_x10: 8760,
+            sqi_score_x10000: 9600,
+            sbp_mmhg_x10: 1185,
+            dbp_mmhg_x10: 765,
+            ptt_ms_x10: 2150,
+            core_temp_c_x100: 3710,
+            skin_temp_c_x100: 3380,
+            sleep_stage_code: 2, // N3 Slow-Wave
+            reserved_u8: 0,
+            melanopic_edi_lux: 480,
+            personal_dose_rate_ugy_h: 185, // 18.5 uGy/h
+            let_quality_factor_x100: 250,   // Q = 2.50
+            suit_metabolic_watts: 240,
+            helmet_ppco2_mmhg_x100: 215, // 2.15 mmHg
+            ambient_noise_dba_x10: 420,  // 42.0 dBA
+            flags: 0,
+            reserved_future: 0,
+            flags_ext: 0,
+            crc16_ccitt: 0,
+        };
+
+        let raw = v2.to_le_bytes_with_crc();
+        assert_eq!(raw.len(), 64);
+        assert_eq!(u16::from_le_bytes([raw[0], raw[1]]), WEARABLE_V2_SYNC_WORD);
+
+        let decoded = ExplorationWearablePacketV2::decode_and_verify(&raw).expect("valid v2 packet");
+        assert_eq!(decoded.sequence_num, 2048);
+        assert_eq!(decoded.sbp_mmhg_x10, 1185);
+        assert_eq!(decoded.core_temp_c_x100, 3710);
+
+        let bio = decoded.to_biometrics(0.45);
+        assert_eq!(bio.sbp_mmhg, Some(118.5));
+        assert_eq!(bio.dbp_mmhg, Some(76.5));
+        assert_eq!(bio.ptt_ms, Some(215.0));
+        assert_eq!(bio.core_temp_celsius, Some(37.10));
+        assert_eq!(bio.skin_temp_celsius, Some(33.80));
+        assert_eq!(bio.sleep_stage_code, Some(2));
+        assert_eq!(bio.melanopic_edi_lux, Some(480.0));
+        assert_eq!(bio.suit_metabolic_watts, Some(240.0));
+        assert_eq!(bio.helmet_ppco2_mmhg, Some(2.15));
+
+        // Dose equivalent calculation: (18.5 * 2.5 * 24) / 1000 = 1.11 mSv/d
+        assert!((bio.radiation_dose_rate_msv_d - 1.11).abs() < 1e-4);
+
+        // Auto-decode test via WearablePacketKind
+        let kind = WearablePacketKind::decode_auto(&raw).expect("auto decode v2");
+        match kind {
+            WearablePacketKind::V2(pkt) => assert_eq!(pkt.sequence_num, 2048),
+            WearablePacketKind::V1(_) => panic!("expected V2 packet"),
+        }
+    }
+
+    #[test]
+    fn test_wearable_rr_window_accumulator_malik_filtering_and_persistence() {
+        let mut accum = WearableRrWindowAccumulator::default();
+        assert_eq!(accum.compute_rmssd_ms(), None);
+
+        // Push intervals outside 300..2000 ms must be rejected
+        assert!(!accum.push_interval_ms_x10(2500)); // 250 ms -> rejected
+        assert!(!accum.push_interval_ms_x10(25000)); // 2500 ms -> rejected
+
+        // Push 10 nominal beats (800 ms = 8000)
+        for _ in 0..10 {
+            assert!(accum.push_interval_ms_x10(8000));
+        }
+        assert_eq!(accum.beat_count(), 10);
+        // < 16 beats -> returns None
+        assert_eq!(accum.compute_rmssd_ms(), None);
+
+        // Ectopic beat rejection (> 20% jump vs 800 ms -> e.g. 1000 ms = +25%)
+        assert!(!accum.push_interval_ms_x10(10000));
+        assert_eq!(accum.beat_count(), 10);
+
+        // Push 10 alternating beats (800 ms, 840 ms -> +5% variation)
+        for i in 0..10 {
+            let val = if i % 2 == 0 { 8000 } else { 8400 };
+            assert!(accum.push_interval_ms_x10(val));
+        }
+        assert_eq!(accum.beat_count(), 20);
+
+        // Now >= 16 beats: RMSSD should be valid
+        let rmssd = accum.compute_rmssd_ms();
+        assert!(rmssd.is_some());
+        let val = rmssd.unwrap();
+        assert!(val > 0.0);
+
+        // Condition 3: subsequent call with no new beats must retain last valid RMSSD
+        assert_eq!(accum.compute_rmssd_ms(), Some(val));
+        assert_eq!(accum.last_rmssd_ms(), Some(val));
     }
 }

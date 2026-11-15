@@ -7,7 +7,34 @@ use ares_core_types::telemetry::{
     JugularFlowGrade, ModelValidationStatus, ProvenanceManifest, SafetyGates, ScenarioOverlayMode,
     StressTestScenarioInput, SystemPhase, TelemetryPacket, TtvIntervalKind,
 };
-use serde::{Deserialize, Serialize};
+use ares_telemetry_ingest::anomaly_injection::InjectedAnomalyKind;
+use serde::{Deserialize, Deserializer, Serialize};
+
+fn deserialize_anomaly_kind<'de, D>(deserializer: D) -> Result<Option<InjectedAnomalyKind>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let opt = Option::<String>::deserialize(deserializer)?;
+    match opt.as_deref() {
+        None | Some("CLEAR") => Ok(None),
+        Some(other) => {
+            let quoted = serde_json::Value::String(other.to_string());
+            serde_json::from_value::<InjectedAnomalyKind>(quoted)
+                .map(Some)
+                .map_err(serde::de::Error::custom)
+        }
+    }
+}
+
+/// Request body for `POST /api/inject-anomaly` and Tauri `ipc_inject_anomaly`.
+/// `kind: null` or `"CLEAR"` clears the active synthetic anomaly injection.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+pub struct AnomalyInjectionRequest {
+    #[serde(default, deserialize_with = "deserialize_anomaly_kind")]
+    pub kind: Option<InjectedAnomalyKind>,
+    #[serde(default)]
+    pub magnitude: Option<f64>,
+}
 
 /// Canonical base epoch matching pinned contract fixtures (`2026-11-14T12:00:00Z`).
 const CONTRACT_BASE_EPOCH_MS: u64 = 1_794_657_600_000;
@@ -30,6 +57,24 @@ pub struct StressTestPatchRequest {
     pub pocus_thrombus_confirmed: Option<bool>,
     pub systolic_bp_drop_mmhg: Option<f64>,
     pub cabin_ppco2_mmhg: Option<f64>,
+    #[serde(default)]
+    pub helmet_ppco2_mmhg: Option<f64>,
+    #[serde(default)]
+    pub affected_crew_count: Option<usize>,
+    #[serde(default)]
+    pub platelet_count_k_ul: Option<f64>,
+    #[serde(default)]
+    pub efast_scan: Option<ares_medops_playbooks::pocus_multiorgan::PocusEfastScan>,
+    #[serde(default)]
+    pub renal_pocus: Option<ares_medops_playbooks::pocus_multiorgan::PocusRenalBladderScan>,
+    #[serde(default)]
+    pub clear_pocus_scans: Option<bool>,
+    #[serde(default)]
+    pub crew_profile: Option<ares_core_types::medical_360::CrewBiologicalProfile>,
+    #[serde(default)]
+    pub pelvic_pocus: Option<ares_core_types::medical_360::PocusPelvicScan>,
+    #[serde(default)]
+    pub medical_360_scenario: Option<ares_core_types::medical_360::Aerospace360ScenarioInput>,
 }
 
 impl From<StressTestScenarioInput> for StressTestPatchRequest {
@@ -46,6 +91,15 @@ impl From<StressTestScenarioInput> for StressTestPatchRequest {
             pocus_thrombus_confirmed: Some(s.pocus_thrombus_confirmed),
             systolic_bp_drop_mmhg: Some(s.systolic_bp_drop_mmhg),
             cabin_ppco2_mmhg: None,
+            helmet_ppco2_mmhg: None,
+            affected_crew_count: None,
+            platelet_count_k_ul: None,
+            efast_scan: None,
+            renal_pocus: None,
+            clear_pocus_scans: None,
+            crew_profile: None,
+            pelvic_pocus: None,
+            medical_360_scenario: None,
         }
     }
 }
@@ -218,6 +272,8 @@ pub struct WireMedOpsGates {
     pub anticoagulation_locked: bool,
     pub gait_suit_damping_pct: f64,
     pub lbnp_autosafe_vent: bool,
+    pub gate4_invasive_decompression_locked: bool,
+    pub gate4_eva_fitness_no_go: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -291,18 +347,34 @@ pub struct WireTelemetryPacket {
     pub what_if_overlay: WireWhatIfOverlay,
     pub nqs_stl: ares_core_types::telemetry::NqsStlMargins,
     pub sans_ocular: Option<ares_core_types::telemetry::SansOcular>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub spot_poct: Option<ares_core_types::telemetry::SpotPoctPanel>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub renal_nephrolithiasis: Option<ares_core_types::telemetry::RenalNephrolithiasis>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub orthostatic_fluid: Option<ares_core_types::telemetry::OrthostaticFluid>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mars_circadian_sleep: Option<ares_core_types::telemetry::MarsCircadianSleep>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub neuro_immune_viral: Option<ares_core_types::telemetry::NeuroImmuneViral>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub aerospace_360: Option<ares_core_types::medical_360::AerospaceMedical360State>,
     pub timestral_quantiles: serde_json::Value,
+    /// Per-channel anomaly status (`VitalsAnomalyReport`) plus the active synthetic demo injection.
+    #[serde(default)]
+    pub vitals_anomaly: serde_json::Value,
     pub hypergraph_spatial: serde_json::Value,
     pub recompute_latency_us: u64,
 }
 
 fn schema_astronaut_id(source_record_id: &str) -> String {
-    match source_record_id {
-        "bidmc_01" => "BIDMC-SUBJECT-01".to_string(),
-        "bidmc_02" => "BIDMC-SUBJECT-02".to_string(),
-        "bidmc_03" => "BIDMC-SUBJECT-03".to_string(),
-        _ => "ASTRO-01".to_string(),
+    if let Some(suffix) = source_record_id.strip_prefix("bidmc_")
+        && let Ok(num) = suffix.parse::<u32>()
+        && (1..=53).contains(&num)
+    {
+        return format!("BIDMC-SUBJECT-{num:02}");
     }
+    "ASTRO-01".to_string()
 }
 
 fn schema_alarm_level(severity: AlertSeverity) -> String {
@@ -345,6 +417,7 @@ pub struct WirePacketContext<'a> {
     pub pocus_posterior: f64,
     pub causal_chain: Vec<String>,
     pub timestral_quantiles: serde_json::Value,
+    pub vitals_anomaly: serde_json::Value,
     pub hypergraph_spatial: serde_json::Value,
     pub recompute_latency_us: u64,
 }
@@ -369,7 +442,11 @@ impl WireTelemetryPacket {
         };
 
         let mut provenance_manifest = p.provenance_manifest.clone();
-        provenance_manifest.biometrics_source = BiometricsSource::RecordedTerrestrialBidmcCsv;
+        if provenance_manifest.biometrics_source != BiometricsSource::SimulatedScenarioInput
+            && provenance_manifest.biometrics_source != BiometricsSource::HardwareWearable
+        {
+            provenance_manifest.biometrics_source = BiometricsSource::RecordedTerrestrialBidmcCsv;
+        }
         provenance_manifest.scenario_overlay_mode = scenario_overlay_mode;
 
         let mut quality_flags = Vec::new();
@@ -378,6 +455,9 @@ impl WireTelemetryPacket {
         }
         if !p.biometrics.missing_channels.is_empty() {
             quality_flags.push("CHANNEL_NAN_DROPOUT".to_string());
+        }
+        if provenance_manifest.biometrics_source == BiometricsSource::SimulatedScenarioInput {
+            quality_flags.push("INJECTED_SYNTHETIC_ANOMALY".to_string());
         }
 
         let biometrics = WireBiometrics {
@@ -506,6 +586,14 @@ impl WireTelemetryPacket {
                     0.0
                 },
                 lbnp_autosafe_vent: p.active_playbook.safety_gates.lbnp_auto_vent_armed,
+                gate4_invasive_decompression_locked: p
+                    .active_playbook
+                    .safety_gates
+                    .gate4_invasive_decompression_locked,
+                gate4_eva_fitness_no_go: p
+                    .active_playbook
+                    .safety_gates
+                    .gate4_eva_fitness_no_go,
             },
             triggered_playbooks: vec![p.active_playbook.playbook_id.clone()],
             priority_actions: p
@@ -579,7 +667,14 @@ impl WireTelemetryPacket {
             what_if_overlay,
             nqs_stl: p.nqs_stl,
             sans_ocular,
+            spot_poct: p.spot_poct.clone(),
+            renal_nephrolithiasis: p.renal_nephrolithiasis,
+            orthostatic_fluid: p.orthostatic_fluid,
+            mars_circadian_sleep: p.mars_circadian_sleep,
+            neuro_immune_viral: p.neuro_immune_viral,
+            aerospace_360: p.aerospace_360.clone(),
             timestral_quantiles: ctx.timestral_quantiles,
+            vitals_anomaly: ctx.vitals_anomaly,
             hypergraph_spatial: ctx.hypergraph_spatial,
             recompute_latency_us: ctx.recompute_latency_us,
         }

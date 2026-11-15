@@ -1,0 +1,254 @@
+{
+  "schemaVersion": 1,
+  "pipeline": "ARES_STATIC_ANATOMY_V1",
+  "pipelineSha256": "2669f1b0718657ec632077ece4e85289c9111e8604ce6710c603c89f5c3e3fa0",
+  "tools": {
+    "three": "171",
+    "meshoptimizer": "0.18.1"
+  },
+  "sourceSha256": "ead39ba6abf3103cc5037c231c66d166489e86e80baa52f4ba091a9fa7e71818",
+  "sourceToModel": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1
+  ],
+  "credit": "ARES contributors; original synthetic calibration solids, not anatomical data",
+  "license": "CC0-1.0",
+  "sourceUrl": "https://github.com/MiServeRDC/nasa-space-apps-2026",
+  "lodRatios": [
+    1,
+    0.5
+  ],
+  "lodMaxRelativeError": 0.05,
+  "artifacts": [
+    {
+      "file": "core-lod0.glb",
+      "layer": "core",
+      "lod": 0,
+      "compressed": false,
+      "sha256": "b09e0d5dc386573f832d11d5b95978842b96e8f6e1b3f8ecace8601eb15e694a",
+      "bytes": 10984,
+      "decodedGeometryBytes": 6576,
+      "triangles": 360,
+      "structures": [
+        {
+          "id": "calibration-left",
+          "sourceNodeIndex": 0,
+          "sourceNodeName": "calibration-left",
+          "sourceMeshIndex": 0,
+          "sourcePrimitiveIndex": 0,
+          "selectedRootIndex": 0,
+          "outputNodeName": "calibration-left-node0-mesh0-primitive0",
+          "simplifierRelativeError": 0
+        },
+        {
+          "id": "calibration-right",
+          "sourceNodeIndex": 1,
+          "sourceNodeName": "calibration-right",
+          "sourceMeshIndex": 1,
+          "sourcePrimitiveIndex": 0,
+          "selectedRootIndex": 1,
+          "outputNodeName": "calibration-right-node1-mesh1-primitive0",
+          "simplifierRelativeError": 0
+        }
+      ]
+    },
+    {
+      "file": "core-lod0-meshopt.glb",
+      "layer": "core",
+      "lod": 0,
+      "compressed": true,
+      "sha256": "776a56396ba3214fb0d4310b56c477361c7587d188bc2fb72b69acc6b3940143",
+      "bytes": 8060,
+      "decodedGeometryBytes": 6576,
+      "triangles": 360,
+      "structures": [
+        {
+          "id": "calibration-left",
+          "sourceNodeIndex": 0,
+          "sourceNodeName": "calibration-left",
+          "sourceMeshIndex": 0,
+          "sourcePrimitiveIndex": 0,
+          "selectedRootIndex": 0,
+          "outputNodeName": "calibration-left-node0-mesh0-primitive0",
+          "simplifierRelativeError": 0
+        },
+        {
+          "id": "calibration-right",
+          "sourceNodeIndex": 1,
+          "sourceNodeName": "calibration-right",
+          "sourceMeshIndex": 1,
+          "sourcePrimitiveIndex": 0,
+          "selectedRootIndex": 1,
+          "outputNodeName": "calibration-right-node1-mesh1-primitive0",
+          "simplifierRelativeError": 0
+        }
+      ]
+    },
+    {
+      "file": "overlay-lod0.glb",
+      "layer": "overlay",
+      "lod": 0,
+      "compressed": false,
+      "sha256": "1f41084b3679d5babf65e03b67cf044f7ad019a4372e4760fe396f8d1984af4b",
+      "bytes": 5604,
+      "decodedGeometryBytes": 3288,
+      "triangles": 180,
+      "structures": [
+        {
+          "id": "calibration-cover",
+          "sourceNodeIndex": 2,
+          "sourceNodeName": "calibration-cover",
+          "sourceMeshIndex": 2,
+          "sourcePrimitiveIndex": 0,
+          "selectedRootIndex": 2,
+          "outputNodeName": "calibration-cover-node2-mesh2-primitive0",
+          "simplifierRelativeError": 0
+        }
+      ]
+    },
+    {
+      "file": "overlay-lod0-meshopt.glb",
+      "layer": "overlay",
+      "lod": 0,
+      "compressed": true,
+      "sha256": "33b1f8cf83c0136e1ed19c3ed1400c15c722537b5efae16e5f64ef54beab91b7",
+      "bytes": 4192,
+      "decodedGeometryBytes": 3288,
+      "triangles": 180,
+      "structures": [
+        {
+          "id": "calibration-cover",
+          "sourceNodeIndex": 2,
+          "sourceNodeName": "calibration-cover",
+          "sourceMeshIndex": 2,
+          "sourcePrimitiveIndex": 0,
+          "selectedRootIndex": 2,
+          "outputNodeName": "calibration-cover-node2-mesh2-primitive0",
+          "simplifierRelativeError": 0
+        }
+      ]
+    },
+    {
+      "file": "core-lod1.glb",
+      "layer": "core",
+      "lod": 1,
+      "compressed": false,
+      "sha256": "de3307bfedea2cb3319011df05410506ee4dff3d6a97de7d1b294d4193c1401a",
+      "bytes": 6656,
+      "decodedGeometryBytes": 3336,
+      "triangles": 180,
+      "structures": [
+        {
+          "id": "calibration-left",
+          "sourceNodeIndex": 0,
+          "sourceNodeName": "calibration-left",
+          "sourceMeshIndex": 0,
+          "sourcePrimitiveIndex": 0,
+          "selectedRootIndex": 0,
+          "outputNodeName": "calibration-left-node0-mesh0-primitive0",
+          "simplifierRelativeError": 0.04160090908408165
+        },
+        {
+          "id": "calibration-right",
+          "sourceNodeIndex": 1,
+          "sourceNodeName": "calibration-right",
+          "sourceMeshIndex": 1,
+          "sourcePrimitiveIndex": 0,
+          "selectedRootIndex": 1,
+          "outputNodeName": "calibration-right-node1-mesh1-primitive0",
+          "simplifierRelativeError": 0.04160075634717941
+        }
+      ]
+    },
+    {
+      "file": "core-lod1-meshopt.glb",
+      "layer": "core",
+      "lod": 1,
+      "compressed": true,
+      "sha256": "022921df67d237b43e88e410c9a02f319ed3fed1bb6b295ca5a06b643a4da7a3",
+      "bytes": 5832,
+      "decodedGeometryBytes": 3336,
+      "triangles": 180,
+      "structures": [
+        {
+          "id": "calibration-left",
+          "sourceNodeIndex": 0,
+          "sourceNodeName": "calibration-left",
+          "sourceMeshIndex": 0,
+          "sourcePrimitiveIndex": 0,
+          "selectedRootIndex": 0,
+          "outputNodeName": "calibration-left-node0-mesh0-primitive0",
+          "simplifierRelativeError": 0.04160090908408165
+        },
+        {
+          "id": "calibration-right",
+          "sourceNodeIndex": 1,
+          "sourceNodeName": "calibration-right",
+          "sourceMeshIndex": 1,
+          "sourcePrimitiveIndex": 0,
+          "selectedRootIndex": 1,
+          "outputNodeName": "calibration-right-node1-mesh1-primitive0",
+          "simplifierRelativeError": 0.04160075634717941
+        }
+      ]
+    },
+    {
+      "file": "overlay-lod1.glb",
+      "layer": "overlay",
+      "lod": 1,
+      "compressed": false,
+      "sha256": "b844c81997b6ba79d9fda3d967ac4f25b8f202b55eb71f806e3b8612ec0b9b72",
+      "bytes": 3440,
+      "decodedGeometryBytes": 1668,
+      "triangles": 90,
+      "structures": [
+        {
+          "id": "calibration-cover",
+          "sourceNodeIndex": 2,
+          "sourceNodeName": "calibration-cover",
+          "sourceMeshIndex": 2,
+          "sourcePrimitiveIndex": 0,
+          "selectedRootIndex": 2,
+          "outputNodeName": "calibration-cover-node2-mesh2-primitive0",
+          "simplifierRelativeError": 0.026723116636276245
+        }
+      ]
+    },
+    {
+      "file": "overlay-lod1-meshopt.glb",
+      "layer": "overlay",
+      "lod": 1,
+      "compressed": true,
+      "sha256": "61c8921f6da8828d68916fd61fc10f2e294dd3f4706a4acce5681565a88fae6e",
+      "bytes": 3096,
+      "decodedGeometryBytes": 1668,
+      "triangles": 90,
+      "structures": [
+        {
+          "id": "calibration-cover",
+          "sourceNodeIndex": 2,
+          "sourceNodeName": "calibration-cover",
+          "sourceMeshIndex": 2,
+          "sourcePrimitiveIndex": 0,
+          "selectedRootIndex": 2,
+          "outputNodeName": "calibration-cover-node2-mesh2-primitive0",
+          "simplifierRelativeError": 0.026723116636276245
+        }
+      ]
+    }
+  ]
+}

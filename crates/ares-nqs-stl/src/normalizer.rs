@@ -78,6 +78,30 @@ pub fn compute_atomic_nqs_margins(
     (rho_tau_w, rho_ared, rho_sost, rho_rmssd, rho_sans)
 }
 
+/// Normalizza il margine renale rho_renal a partire dall'indice RSR di ossalato di calcio (Nominale <= 1.5, Critico >= 4.5).
+#[inline]
+pub fn normalize_renal_rsr_margin(rsr: f64) -> f64 {
+    normalize_predicate_nqs(rsr, 1.50, 4.50, PredicatePolarity::LowerIsSafer)
+}
+
+/// Normalizza il margine ortostatico rho_orthostatic a partire dallo Shock Index (Nominale = 0.65, Critico >= 1.20).
+#[inline]
+pub fn normalize_orthostatic_margin(shock_index: f64) -> f64 {
+    normalize_predicate_nqs(shock_index, 0.65, 1.20, PredicatePolarity::LowerIsSafer)
+}
+
+/// Normalizza il margine circadiano-cognitivo rho_circadian a partire dalla probabilita di lapse PVT-B (Nominale = 0.05, Critico >= 0.65).
+#[inline]
+pub fn normalize_circadian_margin(pvt_lapse_probability: f64) -> f64 {
+    normalize_predicate_nqs(pvt_lapse_probability, 0.05, 0.65, PredicatePolarity::LowerIsSafer)
+}
+
+/// Normalizza il margine immunitario rho_immune a partire dal rischio di riattivazione virale % (Nominale <= 20%, Critico >= 75%).
+#[inline]
+pub fn normalize_immune_margin(viral_risk_pct: f64) -> f64 {
+    normalize_predicate_nqs(viral_risk_pct, 20.0, 75.0, PredicatePolarity::LowerIsSafer)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

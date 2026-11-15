@@ -1,15 +1,22 @@
+#![forbid(unsafe_code)]
+
 //! `ares-nqs-stl` -- Normalized Quantitative Semantics STL (`NQS-STL`),
 //! O(1) Lemire-Donze monotonic wedge, EWMA-OLS & Grey-Box Timestral TTV predictor,
 //! Mission Readiness Index (`MRI %`), and Pure-Rust Timestral Probabilistic Forecaster.
 
+pub mod calibration_harness;
 pub mod error;
+pub mod ewma_forecaster;
 pub mod mri_index;
 pub mod normalizer;
 pub mod sliding_window;
+pub mod stl_360;
 pub mod timestral_backbone;
 pub mod timestral_bridge;
 pub mod timestral_quantiles;
+pub mod timestral_safetensors;
 pub mod ttv_predictor;
+pub mod vitals_anomaly;
 
 // Module aliases preserving exact naming from phase_16_H2 and phase_17_H3 plans.
 pub use timestral_bridge as async_forecaster_bridge;
@@ -19,22 +26,44 @@ pub use ares_core_types::{
     AbstentionCertificate, ChannelQuantileCone, ConformalGateStatus, MonotoneQuantileTriplet,
     NqsQuantileForecastSnapshot,
 };
-pub use error::NqsStlError;
-pub use mri_index::evaluate_nqs_stl_and_mri;
+pub use ewma_forecaster::{EwmaForecasterConfig, EwmaResidualForecaster};
+pub use vitals_anomaly::{VitalsAnomalyConfig, VitalsAnomalyDetector};
+pub use calibration_harness::{
+    CalibrationAuditReport, CalibrationSamplePair, ClopperPearsonBounds,
+    ConformalizedQuantileCalibrator, HorizonCellMetrics, HorizonEvaluationStatus, MissingnessBin,
+    PersistenceCqrBaseline, ProbabilisticCalibrationAudit, ReliabilityBinSummary,
+    RollingMedianIqrBaseline, SostRk4SensitivityAudit, assign_subject_split_role,
+    canonical_subject_id, clopper_pearson_exact_95, compute_brier_and_ece_10_bins,
+    evaluate_horizon_cells, pinball_loss, regularized_incomplete_beta,
+    resolve_validation_status_fail_closed, resolve_validation_status_with_report_hash,
+    run_sost_rk4_sensitivity_audit, verify_anti_leakage_invariants, winkler_score,
+};
+pub use error::{LeakageViolationError, NqsStlError, SplitRole};
+pub use mri_index::{evaluate_nqs_stl_and_mri, evaluate_nqs_stl_and_mri_ext};
 pub use sliding_window::LemireMinWedge;
 pub use timestral_backbone::{
     ARES_TIMESTRAL_CHANNELS, CausalScaler, ChannelCausalStats, CircularTelemetryBuffer,
-    DualAxisAttention, FusedSwiGlu, LayerKind, PHYSIOLOGICAL_CHANNELS, PatchRepresentation,
-    RmsNorm, SinCosRoPe, TimestralBackbone, TimestralConfig,
+    DualAxisAttention, FusedSwiGlu, LayerKind, LinearLayer, PHYSIOLOGICAL_CHANNELS,
+    PatchRepresentation, RmsNorm, SinCosRoPe, TimestralBackbone, TimestralBlockWeights,
+    TimestralConfig,
 };
 pub use timestral_bridge::{
     AresMultivariateSample, AresTemporalForecasterEngine, AresTemporalForecasterHandle,
-    KnownFutureCovariates, compute_greybox_forecast_snapshot,
+    DEFAULT_TIMESTRAL_MODEL_ID, KnownFutureCovariates, compute_greybox_forecast_snapshot,
 };
 pub use timestral_quantiles::{ConformalAbstentionGate, MonotoneQuantileHead, QuantileHead};
+pub use timestral_safetensors::{
+    CheckpointLoaderBackend, CheckpointOrigin, DETERMINISTIC_STUB_SEED_HEX,
+    LoadedTimestralBundle, ModelArtifactEntry, ModelsManifest, SafeTensorDtype, SafeTensorView,
+    SafeTensorsArchive, active_loader_backend, compute_sha256_hex, decode_tensor_view_to_f64,
+    encode_f64_slice_as_dtype, load_timestral_or_deterministic_fallback,
+    load_verified_timestral_checkpoint, serialize_deterministic_timestral_checkpoint,
+    serialize_f64_map_to_safetensors, serialize_safetensors_v1,
+};
 
 use ares_core_types::telemetry::{
-    AlertSeverity, Biometrics, JugularHemodynamics, Musculoskeletal, NqsStlMargins, SansOcular,
+    AlertSeverity, Biometrics, JugularHemodynamics, MarsCircadianSleep, Musculoskeletal,
+    NeuroImmuneViral, NqsStlMargins, OrthostaticFluid, RenalNephrolithiasis, SansOcular,
 };
 use std::sync::Arc;
 
@@ -103,7 +132,43 @@ impl NqsEngine {
         jugular: &JugularHemodynamics,
         sans: &SansOcular,
     ) -> NqsEngineEvaluation {
-        let (mut margins, severity) = evaluate_nqs_stl_and_mri(biometrics, musculo, jugular, sans);
+        self.evaluate_tick_ext(
+            recording_time_s,
+            biometrics,
+            musculo,
+            jugular,
+            sans,
+            None,
+            None,
+            None,
+            None,
+        )
+    }
+
+    /// Synchronous 20 Hz hot-path evaluation including Block N multi-organ margins.
+    #[allow(clippy::too_many_arguments)]
+    pub fn evaluate_tick_ext(
+        &mut self,
+        recording_time_s: f64,
+        biometrics: &Biometrics,
+        musculo: &Musculoskeletal,
+        jugular: &JugularHemodynamics,
+        sans: &SansOcular,
+        renal: Option<&RenalNephrolithiasis>,
+        orthostatic: Option<&OrthostaticFluid>,
+        circadian: Option<&MarsCircadianSleep>,
+        immune: Option<&NeuroImmuneViral>,
+    ) -> NqsEngineEvaluation {
+        let (mut margins, severity) = evaluate_nqs_stl_and_mri_ext(
+            biometrics,
+            musculo,
+            jugular,
+            sans,
+            renal,
+            orthostatic,
+            circadian,
+            immune,
+        );
         let sliding_min_rho_global = if let Some(rho) = margins.rho_global {
             Some(self.lemire_wedge.push_and_evaluate(recording_time_s, rho))
         } else {
@@ -166,6 +231,19 @@ mod tests {
             radiation_dose_rate_msv_d: 0.4,
             sqi_score: 0.92,
             missing_channels: vec!["pulse_rate_bpm".to_string(), "spo2_pct".to_string()],
+            sbp_mmhg: None,
+            dbp_mmhg: None,
+            ptt_ms: None,
+            core_temp_celsius: None,
+            skin_temp_celsius: None,
+            sleep_stage_code: None,
+            melanopic_edi_lux: None,
+            personal_dose_rate_ugy_h: None,
+            let_quality_factor: None,
+            suit_metabolic_watts: None,
+            helmet_ppco2_mmhg: None,
+            cabin_ppco2_mmhg: None,
+            platelet_count_k_ul: None,
         };
         let musculo = Musculoskeletal {
             ared_daily_load_kgf: 128.0,

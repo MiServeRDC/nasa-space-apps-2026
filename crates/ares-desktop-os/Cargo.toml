@@ -5,6 +5,13 @@ edition = "2024"
 description = "ARES-MedOS Pure-Rust Mission Workstation OS Shell, Seqlock 128B Binary IPC Bridge, and FastMCP Command Palette Runtime"
 license = "MIT OR Apache-2.0"
 
+[features]
+default = []
+tauri-runtime = []
+tauri-native = ["tauri-runtime"]
+shm-ipc = ["ares-server-cli/shm-ipc"]
+offline-voice = []
+
 [dependencies]
 anyhow = "1.0"
 ares-causal-graph = { path = "../ares-causal-graph" }

@@ -1,0 +1,39 @@
+1
+00:00:00,150 --> 00:00:02,650
+En route to Mars, a 48-minute round-trip
+radio delay blocks cloud telemedicine.
+
+2
+00:00:02,750 --> 00:00:04,950
+Astronauts need autonomous, air-gapped
+decision support directly on board.
+
+3
+00:00:05,050 --> 00:00:09,800
+ARES-Health runs 100% offline in Safe Rust,
+replaying recorded BIDMC telemetry at 1 Hz
+
+4
+00:00:09,900 --> 00:00:14,900
+with strict null honesty and a 3D OLED
+cockpit backed by FastMCP (<150 tokens).
+
+5
+00:00:15,000 --> 00:00:20,100
+Sub-millisecond What-If sliders evaluate
+coupled muscle-bone-jugular scenario ODEs,
+
+6
+00:00:20,200 --> 00:00:24,950
+O(1) Signal Temporal Logic margins, and
+non-crossing Timestral forecast cones.
+
+7
+00:00:25,050 --> 00:00:27,850
+Type-1 MedOps playbooks enforce POCUS clot
+locks and LBNP anti-syncope auto-venting.
+
+8
+00:00:27,950 --> 00:00:29,800
+ARES-Health: Gather, Evaluate, Act.
+Open-source edge autonomy for deep space.

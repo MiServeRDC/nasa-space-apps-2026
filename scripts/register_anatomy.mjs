@@ -1,0 +1,11 @@
+import {readFile,writeFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {resolve} from 'node:path';
+import {fitAnatomyRegistration} from './anatomyRegistration.mjs';
+const [input,source,target,output]=process.argv.slice(2);
+if(!input||!source||!target||!output)throw Error('Usage: LANDMARKS.json SOURCE_ASSET TARGET_ASSET REPORT.json');
+if([input,source,target].some(p=>resolve(p)===resolve(output)))throw Error('Report must be separate from immutable inputs');
+const bytes=await readFile(input),spec=JSON.parse(bytes),digest=b=>createHash('sha256').update(b).digest('hex');
+for(const [key,path]of [['source',source],['target',target]])if(digest(await readFile(path))!==spec[key]?.sha256)throw Error(`Registration ${key} file hash mismatch`);
+const report={...fitAnatomyRegistration(spec),inputSha256:digest(bytes),implementationSha256:digest(await readFile(new URL('./anatomyRegistration.mjs',import.meta.url)))};
+await writeFile(output,JSON.stringify(report,null,2)+'\n');console.log('Computed unreviewed fit; independent residuals in report. No automatic anatomical acceptance.');

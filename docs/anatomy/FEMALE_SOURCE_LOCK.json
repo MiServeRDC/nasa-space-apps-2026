@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-11-15",
+  "scope": "PARTIAL_FEMALE_REFERENCE_NOT_REGISTERED_COMPOSITE",
+  "sources": [
+    {
+      "id": "hra-female-v1.10",
+      "file": "hra-v1.10.glb",
+      "url": "https://cdn.humanatlas.io/digital-objects/ref-organ/united-female/v1.10/assets/3d-vh-f-united.glb",
+      "bytes": 374505632,
+      "sha256": "95f0c3d2f918582608692ca1139e8bdb18c147a16470e9ee9af8b276bd77c422",
+      "metadataUrl": "https://cdn.humanatlas.io/digital-objects/ref-organ/united-female/v1.10/metadata.json",
+      "metadataSha256": "b9f137b1176c31419c68b78ac87f0926f874dad22f56d4dde7df3e2f15bab501",
+      "doi": "https://doi.org/10.48539/HBM637.DWBM.744",
+      "license": "CC-BY-4.0",
+      "credit": "Kristen Browne; Heidi Schlehlein",
+      "coordinateFrame": "HRA united-female v1.10 glTF world frame; no cross-source registration",
+      "referenceSex": "FEMALE",
+      "donorReference": "This reference organ, Female-united set (https://humanatlas.io/3d-reference-library) was created using data from the\nVisible Human Dataset, provided by the National Library of Medicine (Spitzer and Whitlock 2002).\n\n**Bibliography:**\n\n* Spitzer, Victor M., and David G. Whitlock. 2002. \u201cThe Visible Human Dataset: The Anatomical Platform for Human Simulation.\u201d *The Anatomical Record* 253 (2): 49\u201357. https://doi.org/10.1002/(SICI)1097-0185(199804)253:2<49::AID-AR8>3.0.CO;2-9.",
+      "selectedRoots": [
+        {
+          "nodeIndex": 36,
+          "nodeName": "VH_F_sclera_R"
+        },
+        {
+          "nodeIndex": 77,
+          "nodeName": "VH_F_sclera_L"
+        },
+        {
+          "nodeIndex": 81,
+          "nodeName": "VH_F_right_optic_nerve"
+        },
+        {
+          "nodeIndex": 84,
+          "nodeName": "VH_F_left_optic_nerve"
+        },
+        {
+          "nodeIndex": 85,
+          "nodeName": "Allen_brain"
+        },
+        {
+          "nodeIndex": 373,
+          "nodeName": "VH_F_spinal_cord"
+        },
+        {
+          "nodeIndex": 606,
+          "nodeName": "VH_F_left_kidney"
+        },
+        {
+          "nodeIndex": 637,
+          "nodeName": "VH_F_right_kidney"
+        },
+        {
+          "nodeIndex": 715,
+          "nodeName": "VH_F_heart"
+        },
+        {
+          "nodeIndex": 876,
+          "nodeName": "VH_F_aorta"
+        },
+        {
+          "nodeIndex": 891,
+          "nodeName": "VH_F_lungs"
+        },
+        {
+          "nodeIndex": 1006,
+          "nodeName": "VH_F_pelvis"
+        },
+        {
+          "nodeIndex": 1017,
+          "nodeName": "VH_F_vertebra"
+        },
+        {
+          "nodeIndex": 1111,
+          "nodeName": "VH_F_femur_R"
+        },
+        {
+          "nodeIndex": 1141,
+          "nodeName": "VH_F_femur_L"
+        }
+      ],
+      "metadataSnapshot": "docs/anatomy/sources/hra-female-v1.10-metadata.json"
+    },
+    {
+      "id": "hra-female-v1.5",
+      "file": "hra-v1.5.glb",
+      "url": "https://cdn.humanatlas.io/digital-objects/ref-organ/united-female/v1.5/assets/3d-vh-f-united.glb",
+      "bytes": 211624968,
+      "sha256": "472567a56896b9b7890508da6501fbf858e56aaa30745365f7a71ade782b529c",
+      "metadataUrl": "https://cdn.humanatlas.io/digital-objects/ref-organ/united-female/v1.5/metadata.json",
+      "metadataSha256": "a06aea4d28e03b751b87f7f07d5126aacd6c41770a31097f05ecef8b6ead27bc",
+      "doi": "https://doi.org/10.48539/HBM352.BTSQ.586",
+      "license": "CC-BY-4.0",
+      "credit": "Kristen Browne; Heidi Schlehlein",
+      "coordinateFrame": "HRA united-female v1.5 glTF world frame; no cross-source registration",
+      "referenceSex": "FEMALE",
+      "donorReference": "[This reference organ set](https://humanatlas.io/3d-reference-library) was created using data from the Visible Human\nFemale, provided by the National Library of Medicine.",
+      "selectedRoots": [
+        {
+          "nodeIndex": 965,
+          "nodeName": "VH_F_pubis"
+        },
+        {
+          "nodeIndex": 979,
+          "nodeName": "VH_F_ischium"
+        }
+      ],
+      "metadataSnapshot": "docs/anatomy/sources/hra-female-v1.5-metadata.json"
+    }
+  ],
+  "unavailableSources": [
+    {
+      "id": "denver-vhf-final-stl",
+      "url": "https://digitalcommons.du.edu/cgi/viewcontent.cgi?filename=3&article=1001&context=visiblehuman&type=additional",
+      "status": 403,
+      "license": "CC-BY-4.0",
+      "doi": "https://doi.org/10.56902/COB.vh.2022.1",
+      "required": [
+        "soleus bilateral",
+        "calcaneus bilateral"
+      ],
+      "sha256": null
+    }
+  ]
+}

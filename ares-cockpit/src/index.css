@@ -1,28 +1,871 @@
 @import "tailwindcss";
 
-/* OLED #000000 high-contrast palette (NASA-STD-3001 Vol. 2 [V2 10001]).
-   System fonts only: the cockpit is air-gapped and loads no remote assets. */
-@theme {
-  --color-oled: #000000;
-  --color-panel: #0a0a0a;
-  --color-line: #1f2937;
-  --color-nominal: #22d3ee;
-  --color-advisory: #facc15;
-  --color-warning: #fb923c;
-  --color-critical: #f43f5e;
-  --color-ok: #4ade80;
-  --font-mono: "JetBrains Mono", "Cascadia Mono", Consolas, ui-monospace, monospace;
+/* ==========================================================================
+   1. SELF-HOSTED VARIABLE WOFF2 & METRIC-MATCHED ZERO-CLS FALLBACKS
+   ========================================================================== */
+@font-face {
+  font-family: 'Geist-Fallback';
+  src: local('Arial'), local('Helvetica Neue');
+  size-adjust: 104.2%;
+  ascent-override: 95.8%;
+  descent-override: 24.2%;
+  line-gap-override: 0.0%;
 }
 
-html, body, #root {
-  height: 100%;
+@font-face {
+  font-family: 'GeistMono-Fallback';
+  src: local('Menlo'), local('Consolas'), local('Courier New');
+  size-adjust: 98.4%;
+  ascent-override: 92.5%;
+  descent-override: 23.5%;
+  line-gap-override: 0.0%;
+}
+
+@font-face {
+  font-family: 'Geist Variable';
+  src: url('/fonts/Geist-Variable.woff2') format('woff2-variations');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Geist Mono Variable';
+  src: url('/fonts/GeistMono-Variable.woff2') format('woff2-variations');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ==========================================================================
+   2. TAILWIND CSS v4 @theme TOKENS (PURE #000000 OLED + OKLCH ELEVATION)
+   ========================================================================== */
+@theme {
+  --color-background: #000000;
+  --color-oled: #000000;
+  --color-void: #000000;
+  --color-panel: #0a0a0a;
+  --color-surface: oklch(0.13 0.008 250);
+  --color-surface-elevated: oklch(0.17 0.012 250);
+
+  --color-surface-l1: oklch(0.13 0.008 250);
+  --color-surface-l1-glass: oklch(0.13 0.008 250 / 0.76);
+  --color-surface-l2: oklch(0.17 0.012 250);
+  --color-surface-l3: oklch(0.10 0.006 250);
+  --color-surface-l4: oklch(0.20 0.006 250 / 0.96);
+
+  --color-primary: oklch(0.96 0.002 250);
+  --color-secondary: oklch(0.65 0.008 250);
+  --color-ink-display: oklch(0.96 0.002 250);
+  --color-ink-body: oklch(0.85 0.004 250);
+  --color-ink-meta: oklch(0.65 0.008 250);
+  --color-ink-muted: oklch(0.48 0.010 250);
+
+  --color-accent: oklch(0.72 0.16 235);
+  --color-accent-spatial: oklch(0.72 0.16 235);
+  --color-status-nominal: oklch(0.72 0.17 152);
+  --color-status-caution: oklch(0.78 0.16 75);
+  --color-status-critical: oklch(0.64 0.22 25);
+  --color-status-simulated: oklch(0.68 0.17 300);
+  --color-simulated: oklch(0.68 0.17 300);
+
+  --color-border: oklch(1 0 0 / 0.09);
+  --color-border-active: oklch(1 0 0 / 0.16);
+
+  /* Compatibility aliases for existing cockpit modules */
+  --color-line: #1f242d;
+  --color-nominal: #22d3ee;
+  --color-advisory: #f59e0b;
+  --color-warning: #f59e0b;
+  --color-critical: #f43f5e;
+  --color-ok: #10b981;
+
+  --font-sans: 'Geist Variable', 'Geist-Fallback', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'Geist Mono Variable', 'GeistMono-Fallback', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-h1: 'Geist Variable', 'Geist-Fallback', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-h2: 'Geist Variable', 'Geist-Fallback', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body: 'Geist Variable', 'Geist-Fallback', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-micro: 'Geist Mono Variable', 'GeistMono-Fallback', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --text-h1: 28px;
+  --text-h2: 20px;
+  --text-body: 14px;
+  --text-mono: 13px;
+  --text-micro: 11px;
+
+  --tracking-h1: -0.02em;
+  --tracking-h2: -0.01em;
+  --tracking-micro: 0.08em;
+
+  --radius-none: 0px;
+  --radius-micro: 2px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-shell: 14px;
+  --radius-full: 9999px;
+
+  --spacing-base: 4px;
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 24px;
+  --spacing-horizon-min: 36px;
+  --spacing-horizon-max: 44px;
+  --spacing-rail-left-min: 280px;
+  --spacing-rail-left-max: 310px;
+  --spacing-rail-right-min: 300px;
+  --spacing-rail-right-max: 340px;
+  --spacing-touch-target: 48px;
+
+  --ease-spring-snappy: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-mechanical: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@supports not (color: oklch(0 0 0)) {
+  :root {
+    --color-surface: #05080a;
+    --color-surface-elevated: #0b1015;
+    --color-surface-l1: #05080a;
+    --color-surface-l1-glass: rgba(11, 12, 15, 0.82);
+    --color-surface-l2: #0b1015;
+    --color-surface-l3: #020305;
+    --color-surface-l4: rgba(21, 23, 29, 0.97);
+    --color-primary: #f1f2f3;
+    --color-secondary: #8c9094;
+    --color-ink-display: #f4f4f6;
+    --color-ink-body: #d1d3d8;
+    --color-ink-meta: #9296a0;
+    --color-ink-muted: #5e636e;
+    --color-accent: #22d3ee;
+    --color-accent-spatial: #22d3ee;
+    --color-status-nominal: #22c55e;
+    --color-status-caution: #f59e0b;
+    --color-status-critical: #ef4444;
+    --color-status-simulated: #a97cf0;
+    --color-simulated: #a97cf0;
+    --color-border: rgba(255, 255, 255, 0.09);
+    --color-border-active: rgba(255, 255, 255, 0.16);
+  }
+  .ares-missing-hatch {
+    background-color: #06070a;
+    background-image: repeating-linear-gradient(
+      -45deg,
+      rgba(245, 158, 11, 0.10) 0px,
+      rgba(245, 158, 11, 0.10) 4px,
+      transparent 4px,
+      transparent 9px
+    );
+    border: 1px dashed rgba(245, 158, 11, 0.35);
+  }
+}
+
+/* ==========================================================================
+   3. TYPED CSS HOUDINI @property FOR GPU-COMPOSITED SPECULAR BORDERS
+   ========================================================================== */
+@property --border-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 135deg;
+}
+
+@property --mouse-x {
+  syntax: "<length-percentage>";
+  inherits: false;
+  initial-value: 50%;
+}
+
+@property --mouse-y {
+  syntax: "<length-percentage>";
+  inherits: false;
+  initial-value: 0%;
+}
+
+@property --specular-alpha {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0.24;
+}
+
+:root {
+  color-scheme: dark;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+
+  --space-outer: clamp(12px, 1.3vw, 24px);
+  --space-gap: clamp(10px, 0.9vw, 18px);
+  --radius-shell: clamp(12px, 0.9vw, 14px);
+  --radius-well: 10px;
+  --touch-target-min: 48px;
+  --horizon-height: 40px;
+
+  --text-display: clamp(1.75rem, 1.2rem + 1.8vw, 2.75rem);
+  --text-heading: clamp(1.0rem, 0.92rem + 0.35vw, 1.25rem);
+  --text-body: clamp(0.875rem, 0.84rem + 0.16vw, 0.96875rem);
+  --text-micro: clamp(0.6875rem, 0.66rem + 0.1vw, 0.78125rem);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100dvh;
   margin: 0;
+  padding: 0;
+  background-color: #000000;
+  color: var(--color-ink-display);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+select,
+input,
+textarea {
+  font: inherit;
+}
+
+button,
+select,
+summary,
+input[type="range"] {
+  cursor: pointer;
+}
+
+button:disabled,
+input:disabled {
+  cursor: not-allowed;
+}
+
+button,
+a,
+select,
+input,
+textarea,
+summary {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background-color: rgba(34, 211, 238, 0.28);
+  color: #f4f4f6;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
   background: #000000;
-  color: #e5e7eb;
-  font-family: Inter, "Segoe UI", system-ui, sans-serif;
+}
+::-webkit-scrollbar-thumb {
+  background: #222630;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #22d3ee;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ==========================================================================
+   4. LIQUID GLASS 2.0 SPECULAR CARDS (MAX 4 BLURRED ROOT SHELLS, 0 OUTER SHADOW)
+   ========================================================================== */
+.hud-specular-card,
+.ares-root-shell {
+  position: relative;
+  border-radius: var(--radius-shell);
+  background-color: var(--color-surface-l1-glass);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.22);
+  border: 1px solid var(--color-border);
+  transition:
+    background-color 180ms var(--ease-spring-snappy),
+    border-color 180ms var(--ease-spring-snappy),
+    transform 120ms var(--ease-mechanical);
+}
+
+.hud-specular-card::before,
+.ares-root-shell::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background:
+    radial-gradient(
+      320px circle at var(--mouse-x) var(--mouse-y),
+      rgba(255, 255, 255, var(--specular-alpha)) 0%,
+      rgba(34, 211, 238, 0.16) 38%,
+      transparent 75%
+    ),
+    conic-gradient(
+      from var(--border-angle) at 50% 50%,
+      rgba(255, 255, 255, 0.16) 0deg,
+      transparent 95deg,
+      rgba(34, 211, 238, 0.12) 190deg,
+      transparent 290deg,
+      rgba(255, 255, 255, 0.16) 360deg
+    );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 200ms var(--ease-spring-snappy);
+}
+
+.hud-specular-card:hover::before,
+.hud-specular-card[data-state="pinned"]::before,
+.ares-root-shell:hover::before,
+.ares-root-shell[data-state="pinned"]::before {
+  opacity: 1;
+}
+
+/* Nested L2 well: strictly ZERO backdrop-filter to preserve Retina 60 FPS */
+.ares-inner-well {
+  border-radius: var(--radius-well);
+  background-color: var(--color-surface-l2);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
+}
+
+/* ==========================================================================
+   5. TACTILE PRIMARY / COARSE >= 48x48PX TARGETS, 5-STATE PHYSICS & DUAL-RING FOCUS
+   ========================================================================== */
+.ares-touch-target,
+.ares-primary-action,
+[data-primary-action="true"] {
+  min-width: var(--touch-target-min);
+  min-height: var(--touch-target-min);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 input[type="range"] {
   accent-color: #22d3ee;
   width: 100%;
+  min-height: var(--touch-target-min);
+  touch-action: pan-x;
+}
+
+.ares-interactive {
+  transition:
+    transform 120ms var(--ease-mechanical),
+    background-color 160ms var(--ease-spring-snappy),
+    border-color 160ms var(--ease-spring-snappy);
+}
+
+.ares-interactive:hover:not([aria-disabled="true"]) {
+  background-color: var(--color-surface-l2);
+  border-color: var(--color-border-active);
+}
+
+.ares-interactive:active:not([aria-disabled="true"]) {
+  transform: scale(0.985);
+}
+
+.ares-interactive[data-state="pinned"] {
+  background-color: var(--color-surface-l2);
+  border-color: oklch(0.72 0.16 235 / 0.45);
+}
+
+.ares-interactive[aria-disabled="true"],
+.ares-inhibited-surface {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(244, 63, 94, 0.05) 0px,
+    rgba(244, 63, 94, 0.05) 6px,
+    transparent 6px,
+    transparent 12px
+  );
+  border-color: rgba(244, 63, 94, 0.24);
+  color: var(--color-ink-muted);
+}
+
+/* Honest 45-degree missingness hatch for null / unmeasured telemetry channels (Issue #11) */
+.ares-missing-hatch {
+  background-color: oklch(0.11 0.008 250);
+  background-image: repeating-linear-gradient(
+    -45deg,
+    oklch(0.78 0.16 75 / 0.10) 0px,
+    oklch(0.78 0.16 75 / 0.10) 4px,
+    transparent 4px,
+    transparent 9px
+  );
+  border: 1px dashed oklch(0.78 0.16 75 / 0.35);
+}
+
+/* Guaranteed >= 3:1 focus ring over bright 3D shaders (inner black moat + outer cyan halo) */
+:focus-visible {
+  outline: 2px solid #000000;
+  outline-offset: 1px;
+  box-shadow: 0 0 0 4px #22d3ee, 0 0 12px rgba(34, 211, 238, 0.45);
+}
+
+.ares-stage-callout {
+  color: var(--color-ink-display);
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.96),
+    0 0 8px rgba(0, 0, 0, 0.88),
+    0 0 16px rgba(0, 0, 0, 0.72);
+  background: radial-gradient(
+    ellipse at center,
+    rgba(0, 0, 0, 0.68) 0%,
+    rgba(0, 0, 0, 0.28) 65%,
+    transparent 100%
+  );
+}
+
+.ares-tabular-metric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums lining-nums slashed-zero;
+  font-feature-settings: "tnum" 1, "zero" 1, "cv02" 1, "ss01" 1;
+  font-kerning: none;
+  contain: layout style;
+}
+
+/* ==========================================================================
+   6. 4-TIER RESPONSIVE WORKBENCH TOPOLOGY (2560PX -> 1440PX -> 1024PX -> 390PX)
+   ========================================================================== */
+/* Scope 48px minimum hit-target floor strictly to touch / coarse-pointer & narrow viewports. */
+@media (pointer: coarse), (max-width: 1023px) {
+  button,
+  select,
+  summary,
+  [role="tab"],
+  [role="slider"],
+  .workbench-frame :is(button, select, summary, input:not([type="hidden"])),
+  .phase8-button,
+  .phase8-link {
+    min-width: var(--touch-target-min);
+    min-height: var(--touch-target-min);
+  }
+}
+
+/* ==========================================================================
+   7. DEGRADED GPU (< 45 FPS) & REDUCED TRANSPARENCY / MOTION GLOBAL OVERRIDES
+   ========================================================================== */
+html.is-degraded-gpu *,
+.is-degraded-gpu *,
+html.reduce-transparency *,
+.reduce-transparency * {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html.is-degraded-gpu .hud-specular-card,
+html.is-degraded-gpu .ares-root-shell,
+html.is-degraded-gpu .hud-glass,
+.is-degraded-gpu.hud-specular-card,
+.is-degraded-gpu .hud-specular-card,
+.is-degraded-gpu .hud-glass,
+html.reduce-transparency .hud-specular-card,
+html.reduce-transparency .ares-root-shell,
+html.reduce-transparency .hud-glass {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background-color: #0a0a0a !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  *,
+  *::before,
+  *::after {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  .hud-specular-card,
+  .ares-root-shell,
+  .hud-glass {
+    background-color: #0a0a0a !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ==========================================================================
+   8. PURE #000000 OLED COMPATIBILITY BRIDGE FOR EXISTING MODULES (PHASES 1-4)
+   ========================================================================== */
+.ares-atmosphere {
+  position: relative;
+  background-color: #000000;
+}
+
+.hud-glass {
+  position: relative;
+  background-color: var(--color-surface-l1-glass);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  border: 1px solid var(--color-border);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.16);
+}
+
+.hud-glass-interactive {
+  transition:
+    border-color 180ms var(--ease-spring-snappy),
+    background-color 180ms var(--ease-spring-snappy);
+}
+
+.hud-glass-interactive:hover {
+  background-color: var(--color-surface-l2);
+  border-color: oklch(0.72 0.16 235 / 0.36);
+}
+
+.hud-stage-3d {
+  background-color: #000000;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.hud-pill {
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+@keyframes telemetry-lock-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.16);
+    opacity: 0.78;
+  }
+}
+
+@keyframes telemetry-halo-expand {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.72;
+  }
+  100% {
+    transform: scale(2.25);
+    opacity: 0;
+  }
+}
+
+.telemetry-dot-live {
+  animation: telemetry-lock-pulse 1.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.telemetry-halo-live {
+  animation: telemetry-halo-expand 1.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.bedside-monitor,
+.health-trend,
+.act-engine,
+.act-current {
+  background-color: #0a0a0a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-shell);
+}
+
+.health-choice {
+  min-height: var(--touch-target-min);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.5rem;
+  padding: 0.45rem 0.75rem;
+  background: #000000;
+  color: var(--color-ink-meta);
+  font-size: 0.75rem;
+}
+
+.health-choice[aria-pressed="true"] {
+  background: rgba(34, 211, 238, 0.12);
+  border-color: #22d3ee;
+  color: #22d3ee;
+}
+
+.monitor-vital {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Phase B Spatial Bento Cockpit layout (desktop zero-scroll 3-column bento grid + mobile stack fallback). */
+.workbench-frame {
+  height: auto;
+  min-height: 100dvh;
+  overflow: visible;
+  background-color: var(--color-oled);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.workbench-frame[data-mode="simulated"]::after {
+  display: none;
+}
+.phase8-content {
+  position: relative;
+}
+.ares-workbench-grid {
+  display: grid;
+  height: auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  align-items: start;
+  gap: 14px;
+  max-width: 1600px;
+  margin: auto;
+  padding: 12px;
+}
+.ares-workbench-grid > * {
+  min-width: 0;
+  pointer-events: auto;
+}
+.triage-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-left-width: 3px;
+  border-radius: var(--radius-shell);
+  background: var(--color-surface-l1);
+  color: var(--color-ink-display);
+}
+.triage-overview h1,
+.triage-headline {
+  font: 600 13px / 1.3 var(--font-sans);
+  color: var(--color-ink-display);
+  margin: 0;
+}
+.triage-source,
+.triage-missing {
+  font-size: 10px;
+  line-height: 1.45;
+  color: var(--color-ink-meta);
+  overflow-wrap: anywhere;
+}
+.triage-details summary,
+.stage-details summary,
+.phase8-disclosure summary {
+  cursor: pointer;
+  padding: 0;
+  line-height: 1.3;
+  color: var(--color-accent-spatial);
+}
+.phase8-button {
+  padding: 5px 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-l2);
+  border-radius: var(--radius-md);
+  color: var(--color-ink-display);
+  font-size: 11px;
+  line-height: 1.3;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    background-color 160ms var(--ease-spring-snappy),
+    border-color 160ms var(--ease-spring-snappy);
+}
+.phase8-button:hover:not(:disabled) {
+  border-color: var(--color-border-active);
+}
+.phase8-button[aria-pressed="true"] {
+  background: oklch(0.72 0.16 235 / 0.16);
+  border-color: oklch(0.72 0.16 235 / 0.55);
+  color: var(--color-ink-display);
+}
+.phase8-button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.phase8-link {
+  display: inline-block;
+  padding: 2px 0;
+  color: var(--color-accent-spatial);
+  text-decoration: underline;
+}
+.clinical-context {
+  grid-column: 1;
+  grid-row: 1;
+}
+.clinical-dock {
+  grid-column: 2;
+  grid-row: 1;
+}
+.clinical-stage {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  position: relative;
+  border-radius: var(--radius-shell);
+  overflow: hidden;
+  background: transparent;
+}
+.stage-aperture {
+  height: 460px;
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  touch-action: none;
+  z-index: 10;
+}
+.workbench-tools {
+  max-width: 1560px;
+  margin: 12px auto;
+  padding: 12px;
+  position: relative;
+  z-index: 45;
+  background: transparent;
+}
+.copilot-flow {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+}
+.copilot-flow form {
+  flex-wrap: wrap;
+}
+.copilot-flow input {
+  min-width: 0;
+}
+.workbench-frame [data-tier] {
+  min-width: 0;
+}
+.workbench-frame [data-tier] > div {
+  overflow-y: visible;
+}
+.workbench-frame details p {
+  line-height: 1.5;
+}
+
+@media (min-width: 1024px) {
+  .workbench-frame {
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+    padding-bottom: 0;
+  }
+  .phase8-content {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+  }
+  .ares-workbench-grid {
+    grid-template-columns: clamp(276px, 23vw, 304px) minmax(0, 1fr) clamp(300px, 25vw, 344px);
+    grid-template-rows: minmax(0, 1fr);
+    height: calc(100dvh - 40px);
+    min-height: 0;
+    max-width: none;
+    width: 100%;
+    margin: 0;
+    padding: 8px 10px;
+    gap: 10px;
+    align-items: stretch;
+    overflow: hidden;
+  }
+  .clinical-context {
+    grid-column: 1;
+    grid-row: 1;
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-gutter: stable;
+  }
+  .clinical-stage {
+    grid-column: 2;
+    grid-row: 1;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .clinical-dock {
+    grid-column: 3;
+    grid-row: 1;
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-gutter: stable;
+  }
+  .stage-aperture {
+    height: 100%;
+    min-height: 0;
+  }
+  .workbench-tools {
+    position: fixed;
+    left: 50%;
+    bottom: 8px;
+    transform: translateX(-50%);
+    z-index: 45;
+    width: max-content;
+    max-width: min(460px, calc(100vw - 660px));
+    margin: 0;
+    padding: 0;
+    pointer-events: none;
+  }
+  .workbench-tools > * {
+    pointer-events: auto;
+  }
+  .workbench-frame[data-display-mode="presentation"] .ares-workbench-grid {
+    grid-template-columns: clamp(260px, 21vw, 288px) minmax(0, 1fr) clamp(288px, 23vw, 320px);
+  }
+}
+
+@media (min-width: 1360px) {
+  .ares-workbench-grid {
+    grid-template-columns: minmax(276px, 304px) minmax(0, 1fr) minmax(300px, 344px);
+    padding: 8px 12px;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 699px) {
+  .ares-workbench-grid {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 12px;
+    gap: 14px;
+  }
+  .clinical-context,
+  .clinical-dock,
+  .clinical-stage {
+    grid-column: 1;
+    grid-row: auto;
+  }
+  .clinical-dock {
+    order: 3;
+  }
+  .clinical-stage {
+    order: 4;
+  }
+  .stage-aperture {
+    height: 420px;
+  }
+  .workbench-tools {
+    padding: 12px;
+  }
 }

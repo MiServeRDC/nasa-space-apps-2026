@@ -32,6 +32,9 @@ pub enum IngestError {
 
     #[error("CRC-16-CCITT wearable non valido: atteso 0x{expected:04X}, trovato 0x{found:04X}")]
     InvalidWearableCrc { expected: u16, found: u16 },
+
+    #[error("errore modulo DSP GATHER: {0}")]
+    Dsp(#[from] crate::radar_csi_dsp::DspError),
 }
 
 /// Singolo campione numerico a 1 Hz estratto da `bidmc_*_Numerics.csv`.

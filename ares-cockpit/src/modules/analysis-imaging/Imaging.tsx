@@ -91,7 +91,7 @@ export function PocusIjv({ csa, vmax, thrombus }: { csa: number; vmax: number; t
 }
 
 /** Simulated ocular ultrasound with optic nerve sheath diameter caliper 3 mm behind the globe. */
-export function OcularOnsd({ onsd, sigma }: { onsd: number; sigma: number }) {
+export function OcularOnsd({ onsd, sigma }: { onsd: number; sigma: number | null }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const ctx = ref.current?.getContext('2d');
@@ -127,7 +127,7 @@ export function OcularOnsd({ onsd, sigma }: { onsd: number; sigma: number }) {
     const yCal = nerveTop + 3 * pxPerMm;
     const color = onsd > 5.8 ? '#f43f5e' : onsd > 5.4 ? '#facc15' : '#22d3ee';
     ctx.fillStyle = color + '33';
-    const sPx = sigma * pxPerMm;
+    const sPx = (sigma ?? 0) * pxPerMm;
     ctx.fillRect(globe.x - halfSheath - sPx, yCal - 3, 2 * (halfSheath + sPx), 6);
     ctx.strokeStyle = color;
     ctx.lineWidth = 2;
@@ -139,7 +139,7 @@ export function OcularOnsd({ onsd, sigma }: { onsd: number; sigma: number }) {
     ctx.fillText(`${onsd.toFixed(2)} mm`, globe.x - halfSheath, yCal + 16);
     ctx.fillStyle = '#9ca3af';
     ctx.fillText('3 mm', globe.x + halfSheath + 28, (nerveTop + yCal) / 2 + 4);
-    overlay(ctx, ['OCULAR / OPTIC NERVE', `ONSD ${onsd.toFixed(2)} mm`, `+/- ${(1.96 * sigma).toFixed(2)} mm (95%)`], 'SIMULATED B-MODE');
+    overlay(ctx, ['OCULAR / OPTIC NERVE', `ONSD ${onsd.toFixed(2)} mm`, sigma === null ? 'Uncertainty unavailable' : `+/- ${(1.96 * sigma).toFixed(2)} mm (95%)`], 'SIMULATED B-MODE');
   }, [onsd, sigma]);
   return <canvas ref={ref} width={W} height={H} className="w-full rounded border border-line" />;
 }
@@ -189,6 +189,12 @@ export function EcgStrip({
         const y = EH * 0.65;
         ctx.moveTo(0, y);
         ctx.lineTo(EW, y);
+        ctx.stroke();
+        ctx.lineWidth = 1;
+        ctx.font = 'bold 13px monospace';
+        ctx.fillStyle = '#facc15';
+        const unavailableText = 'Heart rate unavailable';
+        ctx.fillText(unavailableText, (EW - ctx.measureText(unavailableText).width) / 2, EH * 0.45);
       } else {
         const period = 60 / h;
         const secondsShown = 4;
@@ -201,8 +207,8 @@ export function EcgStrip({
           const y = EH * 0.65 - v * EH * 0.45;
           if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
         }
+        ctx.stroke();
       }
-      ctx.stroke();
       ctx.lineWidth = 1;
       ctx.font = '12px monospace';
       ctx.fillStyle = missingHr ? '#facc15' : rejected ? '#f43f5e' : '#4ade80';
@@ -218,5 +224,14 @@ export function EcgStrip({
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
   }, []);
-  return <canvas ref={ref} width={720} height={150} className="w-full rounded border border-line" />;
+  return (
+    <canvas
+      ref={ref}
+      width={720}
+      height={150}
+      role="img"
+      aria-label="Synthetic ECG illustration driven by heart rate"
+      className="monitor-trace w-full rounded border border-line"
+    />
+  );
 }

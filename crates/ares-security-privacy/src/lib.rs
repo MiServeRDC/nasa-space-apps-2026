@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 //! `ares-security-privacy` — Blocco F (Fase 12 F1).
 //!
 //! Implementa la governance della privacy medica per ruolo (`NASA-STD-3001 Vol. 1 Ch. 7`),
@@ -58,6 +60,19 @@ mod tests {
                 radiation_dose_rate_msv_d: 0.45,
                 sqi_score: 0.92,
                 missing_channels: vec![],
+                sbp_mmhg: None,
+                dbp_mmhg: None,
+                ptt_ms: None,
+                core_temp_celsius: None,
+                skin_temp_celsius: None,
+                sleep_stage_code: None,
+                melanopic_edi_lux: None,
+                personal_dose_rate_ugy_h: None,
+                let_quality_factor: None,
+                suit_metabolic_watts: None,
+                helmet_ppco2_mmhg: None,
+                cabin_ppco2_mmhg: None,
+                platelet_count_k_ul: None,
             },
             musculoskeletal: Musculoskeletal {
                 ared_daily_load_kgf: 128.0,
@@ -96,6 +111,10 @@ mod tests {
                 ttv_interval_kind: Some(
                     ares_core_types::telemetry::TtvIntervalKind::IllustrativeScenarioRange,
                 ),
+                rho_renal: Some(0.44),
+                rho_orthostatic: Some(0.65),
+                rho_circadian: Some(0.81),
+                rho_immune: Some(0.70),
             },
             active_playbook: ActivePlaybook {
                 playbook_id: "PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED".to_string(),
@@ -105,9 +124,18 @@ mod tests {
                     anticoagulant_lock_active: true,
                     lbnp_auto_vent_armed: true,
                     eva_suit_damping_active: false,
+                    gate4_invasive_decompression_locked: true,
+                    gate4_eva_fitness_no_go: false,
+                    ..SafetyGates::default()
                 },
                 actions: vec![],
             },
+            spot_poct: None,
+            renal_nephrolithiasis: None,
+            orthostatic_fluid: None,
+            mars_circadian_sleep: None,
+            neuro_immune_viral: None,
+            aerospace_360: None,
         }
     }
 

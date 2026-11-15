@@ -3,6 +3,7 @@
 // The authoritative evaluators live in crates/ares-causal-graph and crates/ares-nqs-stl.
 
 import type { AlarmLevel, TelemetryPacket } from '../types/telemetry';
+import { deriveOfflineActivePlaybook } from './playbookCatalog';
 
 export const BLOOD_VISCOSITY_POISE = 0.035;
 export const LBNP_SBP_DROP_LIMIT_MMHG = 15;
@@ -125,6 +126,10 @@ export interface ScenarioState {
   onsdMm: number; onsdSigmaMm: number; daysSinceScan: number;
   soleusMm: number; soleusLossPct: number; irisin: number; sclerostin: number;
   bmdLossPct: number; gaiPct: number;
+  urinaryCalciumMgD: number;
+  nephrolithiasisRisk: 'LOW' | 'MODERATE' | 'ELEVATED';
+  cumulativeRadiationMsv: number;
+  coreTempC: number;
   rho: Record<PredicateKey, number>;
   worst: PredicateKey;
   rhoMin: number; mri: number; sigma: number;
@@ -168,6 +173,18 @@ export function evaluate(w: WhatIf, lastScanDay: number = w.mission_day): Scenar
   const bmdLossPct = clamp((day / 30) * 0.9 * clamp(sclerostin / P.sclerostinNominal - 0.7, 0, 3), 0, 30);
   const gaiPct = P.gaiNominal + 0.6 * soleusLossPct;
 
+  // 6. Renal calcium excretion (nephrolithiasis risk) & Space environmental deconditioning
+  // Grounded in crates/ares-causal-graph/src/mechanotransduction.rs line 76:
+  const urinaryCalciumMgD = clamp(175.0 + 4.2 * Math.max(0, sclerostin - P.sclerostinNominal), 140.0, 420.0);
+  const nephrolithiasisRisk: 'LOW' | 'MODERATE' | 'ELEVATED' =
+    urinaryCalciumMgD > 250 ? 'ELEVATED' : urinaryCalciumMgD > 200 ? 'MODERATE' : 'LOW';
+
+  // Cosmic ionizing radiation dose (GCR background: 0.45 mSv/day per telemetry schema & ares-core-types)
+  const cumulativeRadiationMsv = Number((day * 0.45).toFixed(1));
+
+  // Core Body Temperature: circadian & convective shift (+0.65 to +0.8 °C 'Spaceflight Fever', Gunga et al. 2017)
+  const coreTempC = Number((37.0 + 0.65 * decon + 0.25 * Math.max(0, ared - 0.8)).toFixed(1));
+
   const rho: Record<PredicateKey, number> = {
     tau_w: nqs(tauW, P.tauWNominal, P.tauWCritical),
     onsd: nqs(onsdMm, P.onsdNominal, P.onsdCritical),
@@ -187,6 +204,7 @@ export function evaluate(w: WhatIf, lastScanDay: number = w.mission_day): Scenar
   return {
     decon, hr, sbp, sbpBaseline, spo2, resp, sqi, hrAccepted, csa, vmax, tauW,
     onsdMm, onsdSigmaMm, daysSinceScan, soleusMm, soleusLossPct, irisin, sclerostin, bmdLossPct, gaiPct,
+    urinaryCalciumMgD, nephrolithiasisRisk, cumulativeRadiationMsv, coreTempC,
     rho, worst, rhoMin, mri, sigma,
   };
 }
@@ -211,12 +229,85 @@ export function buildPacket(w: WhatIf, tick: number, thrombus: boolean | null, l
   const s = evaluate(w, lastScanDay);
   const P = SEX_PROFILES[w.sex];
   const ttv = timeToViolationDays(w, lastScanDay);
+
+  const sansStress = clamp((1 - s.rho.onsd) / 2, 0, 1);
+  const ijvStress = clamp((1 - s.rho.tau_w) / 2, 0, 1);
+  const soleusStress = clamp((1 - Math.min(s.rho.soleus, s.rho.sclerostin)) / 2, 0, 1);
+  const heartStress = s.hrAccepted ? clamp((s.hr - P.hrBase) / (P.hrLimit - P.hrBase), 0, 1) : 0;
+  const cnsStress = clamp((w.ppco2_mmhg - P.ppco2Nominal) / (P.ppco2Critical - P.ppco2Nominal), 0, 1);
+
+  const spatialCells = [
+    {
+      region: 'EyeOcularSans',
+      key: 'eye_ocular_sans',
+      uberon_curie: 'UBERON:0000970',
+      centroid: [0.0, 0.82, 0.05] as [number, number, number],
+      local_intensity: sansStress,
+      propagated_intensity: clamp(Math.max(sansStress, 0.4 * ijvStress), 0, 1),
+      observed: true,
+    },
+    {
+      region: 'InternalJugularVein',
+      key: 'internal_jugular_vein',
+      uberon_curie: 'UBERON:0001586',
+      centroid: [-0.06, 0.62, 0.04] as [number, number, number],
+      local_intensity: ijvStress,
+      propagated_intensity: clamp(Math.max(ijvStress, 0.55 * heartStress), 0, 1),
+      observed: true,
+    },
+    {
+      region: 'HeartCardioAutonomic',
+      key: 'heart_cardio_autonomic',
+      uberon_curie: 'UBERON:0000948',
+      centroid: [0.0, 0.3, 0.02] as [number, number, number],
+      local_intensity: heartStress,
+      propagated_intensity: clamp(Math.max(heartStress, 0.3 * soleusStress, 0.3 * cnsStress), 0, 1),
+      observed: s.hrAccepted,
+    },
+    {
+      region: 'SoleusCalcaneus',
+      key: 'soleus_calcaneus',
+      uberon_curie: 'UBERON:0001389',
+      centroid: [0.0, -0.65, -0.03] as [number, number, number],
+      local_intensity: soleusStress,
+      propagated_intensity: soleusStress,
+      observed: true,
+    },
+    {
+      region: 'BrainVestibularCns',
+      key: 'brain_vestibular_cns',
+      uberon_curie: 'UBERON:0000955',
+      centroid: [0.0, 0.9, -0.02] as [number, number, number],
+      local_intensity: cnsStress,
+      propagated_intensity: clamp(Math.max(cnsStress, 0.35 * ijvStress, 0.25 * soleusStress), 0, 1),
+      observed: true,
+    },
+  ];
+  const hottestCell = spatialCells.reduce((best, cur) =>
+    cur.propagated_intensity > best.propagated_intensity ? cur : best,
+  );
+
+  const activePlaybook = deriveOfflineActivePlaybook({
+    rhoTauW: s.rho.tau_w,
+    rhoSans: s.rho.onsd,
+    gaiPct: s.gaiPct,
+    thrombusConfirmed: thrombus,
+    radiationDoseRateMsvD: 0.5,
+    lbnpMmhg: w.lbnp_mmhg,
+    hrBpm: s.hrAccepted ? s.hr : null,
+    sbpDropMmhg: s.sbpBaseline - s.sbp,
+  });
+
+  const qSpreadHr = 4.5 + s.sigma * 12;
+  const qSpreadResp = 1.6 + s.sigma * 4;
+
   return {
     timestamp_ms: Date.now(),
     relative_recording_time_s: tick / 20,
     source_record_id: `SIM-SCENARIO-MARS-${Math.round(w.mission_day)}`,
     mission_elapsed_days: w.mission_day,
     astronaut_id: w.sex === 'FEMALE' ? 'ASTRO-02' : 'ASTRO-01',
+    model_validation_status: 'ILLUSTRATIVE_UNVALIDATED',
     provenance_manifest: {
       biometrics_source: 'SIMULATED_SCENARIO_INPUT',
       biometrics_native_rate_hz: 20,
@@ -269,11 +360,99 @@ export function buildPacket(w: WhatIf, tick: number, thrombus: boolean | null, l
       ttv_most_likely_days: ttv,
       ttv_horizon_days: 100,
       ttv_no_crossing_within_horizon: ttv === null,
+      ttv_interval_kind: ttv !== null ? 'ILLUSTRATIVE_SCENARIO_RANGE' : undefined,
       mission_readiness_index: s.mri,
       alarm_level: s.hrAccepted ? alarmFor(s.rhoMin) : 'DATA_DEGRADED_MISSING_CHANNELS',
       per_predicate_rho: { ...s.rho },
     },
-    active_playbook: null,
+    active_playbook: activePlaybook,
+    hypergraph_spatial: {
+      hottest_region: hottestCell.region,
+      cells: spatialCells,
+      habitat_zone: w.lbnp_mmhg < 0 ? 'LBNP_CHAMBER' : w.ared_load_pct > 50 ? 'ARED_EXERCISE_BAY' : 'SLEEP_QUARTERS',
+      violates_policy: false,
+      rho_current_location: s.rhoMin,
+      biokg_clause: null,
+    },
+    timestral_quantiles: {
+      model_validation_status: 'ILLUSTRATIVE_UNVALIDATED',
+      confidence_state: 'ABSTAINED_FALLBACK_DETERMINISTIC',
+      conformal_status: 'ABSTAINED_FALLBACK_DETERMINISTIC',
+      forecast_method: 'HYBRID_TIMESTRAL_AND_EWMA_SHORT_HORIZON',
+      ewma_short_horizon_max_s: 120,
+      abstention_certificate: {
+        abstained: true,
+        status: 'ABSTAINED_FALLBACK_DETERMINISTIC',
+        reason: 'LOCAL_WHATIF_SIMULATOR_NO_CONFORMAL_CALIBRATION_AND_NO_RR_INTERVALS',
+        empirical_coverage_error: 0,
+        adaptive_alpha_t: 0.1,
+        interval_width: qSpreadHr * 2,
+        sqi_score: s.sqi,
+        missing_ratio: s.hrAccepted ? 0.25 : 0.5,
+        timestamp_s: tick / 20,
+      },
+      short_horizon_s: 900,
+      heart_rate_bpm_cone: s.hrAccepted
+        ? { q05: s.hr - qSpreadHr, q50: s.hr, q95: s.hr + qSpreadHr }
+        : null,
+      resp_rate_brpm_cone: {
+        q05: Math.max(4, s.resp - qSpreadResp),
+        q50: s.resp,
+        q95: s.resp + qSpreadResp,
+      },
+      rmssd_ms_cone: null,
+      rho_global_cone: null,
+      ttv_hours_cone: null,
+      channel_cones: [
+        ...(s.hrAccepted
+          ? [
+              {
+                channel_name: 'hr_bpm',
+                horizon_15m: { q05: s.hr - qSpreadHr * 0.4, q50: s.hr, q95: s.hr + qSpreadHr * 0.4 },
+                horizon_1h: { q05: s.hr - qSpreadHr * 0.7, q50: s.hr, q95: s.hr + qSpreadHr * 0.7 },
+                horizon_6h: { q05: s.hr - qSpreadHr, q50: s.hr, q95: s.hr + qSpreadHr },
+                horizon_24h: { q05: s.hr - qSpreadHr * 1.3, q50: s.hr, q95: s.hr + qSpreadHr * 1.3 },
+              },
+            ]
+          : []),
+        {
+          channel_name: 'resp_brpm',
+          horizon_15m: { q05: Math.max(4, s.resp - qSpreadResp * 0.4), q50: s.resp, q95: s.resp + qSpreadResp * 0.4 },
+          horizon_1h: { q05: Math.max(4, s.resp - qSpreadResp * 0.7), q50: s.resp, q95: s.resp + qSpreadResp * 0.7 },
+          horizon_6h: { q05: Math.max(4, s.resp - qSpreadResp), q50: s.resp, q95: s.resp + qSpreadResp },
+          horizon_24h: { q05: Math.max(4, s.resp - qSpreadResp * 1.3), q50: s.resp, q95: s.resp + qSpreadResp * 1.3 },
+        },
+      ],
+      short_horizon_cones: [
+        ...(s.hrAccepted
+          ? [
+              {
+                channel_name: 'hr_bpm',
+                ewma_level: s.hr,
+                horizon_5s: { q05: s.hr - 1.5, q50: s.hr, q95: s.hr + 1.5 },
+                horizon_10s: { q05: s.hr - 2.2, q50: s.hr, q95: s.hr + 2.2 },
+                horizon_30s: { q05: s.hr - 3.6, q50: s.hr, q95: s.hr + 3.6 },
+                horizon_60s: { q05: s.hr - 5.0, q50: s.hr, q95: s.hr + 5.0 },
+                horizon_120s: { q05: s.hr - 6.8, q50: s.hr, q95: s.hr + 6.8 },
+              },
+            ]
+          : []),
+        {
+          channel_name: 'resp_brpm',
+          ewma_level: s.resp,
+          horizon_5s: { q05: Math.max(4, s.resp - 0.6), q50: s.resp, q95: s.resp + 0.6 },
+          horizon_10s: { q05: Math.max(4, s.resp - 0.9), q50: s.resp, q95: s.resp + 0.9 },
+          horizon_30s: { q05: Math.max(4, s.resp - 1.4), q50: s.resp, q95: s.resp + 1.4 },
+          horizon_60s: { q05: Math.max(4, s.resp - 2.0), q50: s.resp, q95: s.resp + 2.0 },
+          horizon_120s: { q05: Math.max(4, s.resp - 2.8), q50: s.resp, q95: s.resp + 2.8 },
+        },
+      ],
+      short_horizon_abstention: 'LOCAL_WHATIF_UNCONFORMALIZED_EWMA_PREVIEW',
+      ttv_q05_days: null,
+      ttv_q50_days: null,
+      ttv_q95_days: null,
+    },
+    vitals_anomaly: null,
     quality_flags: s.hrAccepted
       ? ['LOCAL_OFFLINE_SIMULATION', 'BEAT_INTERVALS_NOT_AVAILABLE']
       : ['LOCAL_OFFLINE_SIMULATION', 'SQI_REJECTED', 'BEAT_INTERVALS_NOT_AVAILABLE'],

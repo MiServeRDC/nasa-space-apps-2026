@@ -1,27 +1,38 @@
+#![forbid(unsafe_code)]
+
 //! `ares-core-types`: Contratti telemetrici condivisi, manifesto di provenienza,
 //! costanti normative NASA-STD-3001, errori fortemente tipizzati e trait di sicurezza.
 
+pub mod anomaly;
 pub mod binary_ipc;
 pub mod constants;
 pub mod error;
+pub mod medical_360;
 pub mod security;
 pub mod telemetry;
 
+pub use anomaly::{
+    AnomalyDetectorKind, AnomalyStatus, ChannelAnomalyState, EWMA_SHORT_HORIZONS_SECONDS,
+    ForecastMethod, ShortHorizonCone, VitalsAnomalyReport,
+};
 pub use binary_ipc::{
     ARES_BINARY_FRAME_BYTES, ARES_BINARY_MAGIC, ARES_BINARY_VERSION, BinaryFrameMeta,
-    BinaryTelemetryFrame, SeqlockTelemetryRing,
+    BinaryTelemetryFrame, FLAG_TERRESTRIAL_BENCHMARKED_ONLY, SeqlockTelemetryRing,
 };
 pub use constants::*;
 pub use error::AresCoreError;
+pub use medical_360::*;
 pub use security::{
     AuditChainRecord, CrewPrivacyFilter, CrewRole, McpInputSanitizer, MedOpsAuditLogger,
     NoOpSecurity,
 };
 pub use telemetry::{
     ActivePlaybook, AlertSeverity, Biometrics, BiometricsSource, CountermeasureAction,
-    JugularFlowGrade, JugularHemodynamics, Musculoskeletal, NqsStlMargins, ProvenanceManifest,
-    SafetyGates, SansOcular, ScenarioOverlayMode, StressTestScenarioInput, SystemPhase,
-    TelemetryPacket,
+    JugularFlowGrade, JugularHemodynamics, MarsCircadianSleep, ModelValidationStatus,
+    Musculoskeletal, NeuroImmuneViral, NqsStlMargins, OrthostaticFluid, ProvenanceManifest,
+    RenalNephrolithiasis, SafetyGates, SansOcular, ScenarioOverlayMode, Sha256DigestHex,
+    SpotPoctPanel, StressTestScenarioInput, SystemPhase, TelemetryPacket,
+    TerrestrialBenchmarkScope, ValidationManifest,
 };
 
 use serde::{Deserialize, Serialize};
@@ -154,6 +165,10 @@ pub struct AbstentionCertificate {
     pub timestamp_s: f64,
 }
 
+const fn default_ewma_short_horizon_max_s() -> u32 {
+    120
+}
+
 /// Immutable grey-box forecast snapshot published by the 1 Hz worker and read lock-free at 20 Hz.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct NqsQuantileForecastSnapshot {
@@ -172,6 +187,14 @@ pub struct NqsQuantileForecastSnapshot {
     pub channel_cones: Vec<ChannelQuantileCone>,
     pub pessimistic_ttv_q05_hours: Option<f64>,
     pub inference_latency_us: u64,
+    #[serde(default)]
+    pub forecast_method: ForecastMethod,
+    #[serde(default = "default_ewma_short_horizon_max_s")]
+    pub ewma_short_horizon_max_s: u32,
+    #[serde(default)]
+    pub short_horizon_cones: Vec<ShortHorizonCone>,
+    #[serde(default)]
+    pub short_horizon_abstention: Option<AbstentionCertificate>,
 }
 
 impl NqsQuantileForecastSnapshot {
@@ -221,6 +244,10 @@ impl NqsQuantileForecastSnapshot {
             channel_cones: Vec::new(),
             pessimistic_ttv_q05_hours: ttv.map(|cone| cone.q05),
             inference_latency_us: 0,
+            forecast_method: ForecastMethod::DeterministicColdStart,
+            ewma_short_horizon_max_s: default_ewma_short_horizon_max_s(),
+            short_horizon_cones: Vec::new(),
+            short_horizon_abstention: None,
         }
     }
 
@@ -238,6 +265,9 @@ impl NqsQuantileForecastSnapshot {
             cone.assert_monotone()?;
         }
         for cone in &self.channel_cones {
+            cone.assert_monotone()?;
+        }
+        for cone in &self.short_horizon_cones {
             cone.assert_monotone()?;
         }
         Ok(())
@@ -285,6 +315,19 @@ mod tests {
                 radiation_dose_rate_msv_d: 0.45,
                 sqi_score: 0.85,
                 missing_channels: vec!["pulse_rate_bpm".to_string(), "spo2_pct".to_string()],
+                sbp_mmhg: None,
+                dbp_mmhg: None,
+                ptt_ms: None,
+                core_temp_celsius: None,
+                skin_temp_celsius: None,
+                sleep_stage_code: None,
+                melanopic_edi_lux: None,
+                personal_dose_rate_ugy_h: None,
+                let_quality_factor: None,
+                suit_metabolic_watts: None,
+                helmet_ppco2_mmhg: None,
+                cabin_ppco2_mmhg: None,
+                platelet_count_k_ul: None,
             },
             musculoskeletal: Musculoskeletal {
                 ared_daily_load_kgf: 125.0,
@@ -323,6 +366,10 @@ mod tests {
                 ttv_interval_kind: Some(
                     crate::telemetry::TtvIntervalKind::IllustrativeScenarioRange,
                 ),
+                rho_renal: Some(0.44),
+                rho_orthostatic: Some(0.65),
+                rho_circadian: Some(0.81),
+                rho_immune: Some(0.70),
             },
             active_playbook: ActivePlaybook {
                 playbook_id: "PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED".to_string(),
@@ -335,6 +382,9 @@ mod tests {
                     anticoagulant_lock_active: true,
                     lbnp_auto_vent_armed: true,
                     eva_suit_damping_active: false,
+                    gate4_invasive_decompression_locked: true,
+                    gate4_eva_fitness_no_go: false,
+                    ..SafetyGates::default()
                 },
                 actions: vec![CountermeasureAction {
                     action_id: "ACT_ARED_FROST_LOAD".to_string(),
@@ -343,6 +393,12 @@ mod tests {
                     delta_rho_per_hour: 0.11,
                 }],
             },
+            spot_poct: None,
+            renal_nephrolithiasis: None,
+            orthostatic_fluid: None,
+            mars_circadian_sleep: None,
+            neuro_immune_viral: None,
+            aerospace_360: None,
         }
     }
 
@@ -513,5 +569,82 @@ mod tests {
             value["nqs_stl"]["ttv_interval_kind"],
             "ILLUSTRATIVE_SCENARIO_RANGE"
         );
+    }
+
+    #[test]
+    fn phase_33_model_validation_status_state_machine_and_copy_invariants() {
+        fn assert_copy<T: Copy>() {}
+        assert_copy::<ModelValidationStatus>();
+        assert_copy::<TerrestrialBenchmarkScope>();
+        assert_copy::<Sha256DigestHex>();
+
+        let default_status = ModelValidationStatus::default();
+        assert_eq!(default_status, ModelValidationStatus::IllustrativeUnvalidated);
+        assert!(!default_status.is_flight_validated());
+        assert!(default_status.is_illustrative_only());
+        assert!(default_status.mandatory_ui_banner().contains("NOT CLINICALLY VALIDATED"));
+        assert_eq!(
+            serde_json::to_value(default_status).expect("serialize default"),
+            "ILLUSTRATIVE_UNVALIDATED"
+        );
+
+        let digest = Sha256DigestHex::from_hex(
+            "27D43794CF2E7150DB10E8BFE61D2BFDB26873A8F1629FFC5FBEE5C9A4EB6EF5",
+        )
+        .expect("valid hex");
+        assert_eq!(
+            digest.to_hex(),
+            "27d43794cf2e7150db10e8bfe61d2bfdb26873a8f1629ffc5fbee5c9a4eb6ef5"
+        );
+        assert!(Sha256DigestHex::from_hex("short").is_err());
+
+        let bench = ModelValidationStatus::InternallyBenchmarkedTerrestrial {
+            dataset_scope: TerrestrialBenchmarkScope::BidmcPlusFantasiaBeatIntervals,
+            coverage_pct: 90.5,
+            brier_score: 0.11,
+            artifact_sha256: digest,
+        };
+        assert!(!bench.is_flight_validated());
+        assert!(bench.is_terrestrial_benchmarked());
+        assert!(bench.mandatory_ui_banner().contains("TERRESTRIAL BENCHMARK ONLY"));
+        let bench_json = serde_json::to_string(&bench).expect("serialize bench");
+        let bench_roundtrip: ModelValidationStatus =
+            serde_json::from_str(&bench_json).expect("deserialize bench");
+        assert_eq!(bench_roundtrip, bench);
+
+        let clinical = ModelValidationStatus::ClinicallyCalibratedSubjectToReview;
+        assert!(clinical.is_flight_validated());
+        assert!(clinical.mandatory_ui_banner().contains("FLIGHT SURGEON REVIEW"));
+        assert_eq!(
+            serde_json::to_value(clinical).expect("serialize clinical"),
+            "CLINICALLY_CALIBRATED_SUBJECT_TO_REVIEW"
+        );
+
+        let mut manifest = ValidationManifest {
+            schema_version: 1,
+            reviewer_id: "MD-FLIGHT-SURGEON-01".to_string(),
+            commit_sha: "abc1234".to_string(),
+            unresolved_mappings: 0,
+            review_signature_sha256: Some(digest),
+            paired_cohorts_verified: true,
+            bidmc_only: false,
+            paired_modalities: vec!["fantasia_rr".to_string(), "dlr_agbresa_onsd".to_string()],
+            subject_disjoint_split_verified: true,
+            zero_leakage_dhf_horizons_verified: true,
+            calibration_report_sha256: digest,
+            brier_score: 0.12,
+            ece_10_bins: 0.05,
+            beats_or_ties_baselines: true,
+            contains_synthetic_data: false,
+            workflow_study_sha256: Some(digest),
+            workflow_study_path: Some("docs/validation/cmo_study.json".to_string()),
+        };
+        assert!(manifest.passes_all_five_clinical_gates());
+
+        manifest.bidmc_only = true;
+        assert!(!manifest.passes_all_five_clinical_gates());
+        manifest.bidmc_only = false;
+        manifest.contains_synthetic_data = true;
+        assert!(!manifest.passes_all_five_clinical_gates());
     }
 }

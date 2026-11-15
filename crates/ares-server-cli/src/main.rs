@@ -1,11 +1,15 @@
+#![forbid(unsafe_code)]
+
 //! Entrypoint CLI per `ares-server-cli` (Dual-Transport: Axum 20 Hz WebSocket + FastMCP stdio + Timestral 1 Hz + ARES-DatasetGraph).
 
 use anyhow::{Context, Result, ensure};
 use ares_causal_graph::dataset_graph::AresUnifiedDatasetGraph;
+use ares_server_cli::anomaly_eval::{Split, evaluate_split, load_records, render_markdown};
 use ares_server_cli::mcp_stdio::run_mcp_stdio_loop;
 use ares_server_cli::ws_server::{SharedMissionState, build_axum_router};
 use clap::{Parser, ValueEnum};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::Duration;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -20,6 +24,15 @@ pub enum ServerMode {
     SmokeTest,
     /// Costruisce `AresUnifiedDatasetGraph` (24 dataset + slice BIDMC) ed esporta i 4 file del knowledge graph su disco.
     BuildGraph,
+    /// Valuta il detector di anomalie sui vitali con eventi iniettati sui record BIDMC e scrive il report Markdown.
+    EvalAnomaly,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum EvalSplitArg {
+    Dev,
+    HeldOut,
+    All,
 }
 
 #[derive(Debug, Parser)]
@@ -44,6 +57,26 @@ pub struct CliArgs {
     /// Percorso della root del repository per l'esportazione di `data/knowledge_graph/` e `graphify-out/`.
     #[arg(long)]
     pub repo_root: Option<PathBuf>,
+
+    /// Directory con i record BIDMC aggiuntivi (04-53) usati solo da `--mode eval-anomaly`.
+    #[arg(long, default_value = "data/bidmc_eval")]
+    pub eval_dir: PathBuf,
+
+    /// Sottoinsieme di record da valutare con `--mode eval-anomaly`.
+    #[arg(long, value_enum, default_value_t = EvalSplitArg::All)]
+    pub eval_split: EvalSplitArg,
+
+    /// File Markdown di output per `--mode eval-anomaly` (stampa su stdout se assente).
+    #[arg(long)]
+    pub eval_out: Option<PathBuf>,
+
+    /// Enable local telemetry recording in this directory (off when omitted).
+    #[arg(long)]
+    pub storage_dir: Option<PathBuf>,
+
+    /// Primary telemetry input source mode (recorded-replay or live-wearable-hardware).
+    #[arg(long, value_enum, default_value_t = ares_server_cli::ws_server::TelemetrySourceMode::RecordedReplay)]
+    pub source: ares_server_cli::ws_server::TelemetrySourceMode,
 }
 
 fn resolve_repo_root(explicit: Option<&Path>, data_dir: &Path) -> PathBuf {
@@ -116,6 +149,8 @@ async fn main() -> Result<()> {
         .init();
 
     let args = CliArgs::parse();
+    ensure!(args.storage_dir.is_none() || matches!(args.mode, ServerMode::WsOnly | ServerMode::WsAndMcp),
+        "--storage-dir requires ws-only or ws-and-mcp mode");
     let repo_root = resolve_repo_root(args.repo_root.as_deref(), &args.data_dir);
 
     if args.mode == ServerMode::BuildGraph {
@@ -126,11 +161,37 @@ async fn main() -> Result<()> {
         return Ok(());
     }
 
+    if args.mode == ServerMode::EvalAnomaly {
+        let records = load_records(&[args.data_dir.as_path(), args.eval_dir.as_path()])
+            .context("impossibile caricare i record BIDMC per la valutazione")?;
+        ensure!(!records.is_empty(), "nessun record BIDMC trovato");
+        let splits: &[Split] = match args.eval_split {
+            EvalSplitArg::Dev => &[Split::Development],
+            EvalSplitArg::HeldOut => &[Split::HeldOut],
+            EvalSplitArg::All => &[Split::HeldOut, Split::Development],
+        };
+        let reports: Vec<_> = splits.iter().map(|s| evaluate_split(&records, *s)).collect();
+        let markdown = render_markdown(&reports);
+        match &args.eval_out {
+            Some(path) => {
+                if let Some(parent) = path.parent() {
+                    std::fs::create_dir_all(parent)
+                        .with_context(|| format!("impossibile creare {parent:?}"))?;
+                }
+                std::fs::write(path, &markdown)
+                    .with_context(|| format!("impossibile scrivere {path:?}"))?;
+            }
+            None => print!("{markdown}"),
+        }
+        return Ok(());
+    }
+
     let state = SharedMissionState::from_data_dir(&args.data_dir)
         .with_context(|| format!("impossibile inizializzare i dataset da {:?}", args.data_dir))?;
+    state.set_source_mode(args.source);
 
     match args.mode {
-        ServerMode::BuildGraph => unreachable!(),
+        ServerMode::BuildGraph | ServerMode::EvalAnomaly => unreachable!(),
         ServerMode::SmokeTest => {
             let mut last_pkt = None;
             for _ in 0..20 {
@@ -168,8 +229,12 @@ async fn main() -> Result<()> {
             .context("join error sul task stdio FastMCP")?
             .context("errore I/O nel loop stdio FastMCP"),
         ServerMode::WsOnly | ServerMode::WsAndMcp => {
+            if let Some(path) = args.storage_dir {
+                state.enable_storage(ares_storage_lsah::LsahStorageConfig::with_root_dir(path)).await
+                    .context("failed opening local telemetry storage")?;
+            }
             let ticker_state = state.clone();
-            tokio::spawn(async move {
+            let ticker = tokio::spawn(async move {
                 let frame_period = Duration::from_millis(50);
                 let mut interval = tokio::time::interval_at(
                     tokio::time::Instant::now() + frame_period,
@@ -182,7 +247,7 @@ async fn main() -> Result<()> {
             });
 
             let timestral_state = state.clone();
-            tokio::spawn(async move {
+            let forecaster = tokio::spawn(async move {
                 let mut interval = tokio::time::interval(Duration::from_secs(1));
                 loop {
                     interval.tick().await;
@@ -196,19 +261,27 @@ async fn main() -> Result<()> {
 
             if args.mode == ServerMode::WsAndMcp {
                 let mcp_state = state.clone();
-                tokio::task::spawn_blocking(move || {
+                std::thread::Builder::new().name("ares-mcp-stdio".into()).spawn(move || {
                     let _ = run_mcp_stdio_loop(mcp_state);
-                });
+                }).context("failed starting MCP stdio thread")?;
             }
 
-            let app = build_axum_router(state);
+            let app = build_axum_router(Arc::clone(&state));
             let listener = tokio::net::TcpListener::bind(&args.bind)
                 .await
                 .with_context(|| format!("impossibile eseguire il bind su {}", args.bind))?;
             tracing::info!(bind = %args.bind, "Server Axum 20 Hz + Timestral 1 Hz attivo");
-            axum::serve(listener, app)
-                .await
-                .context("errore runtime nel server Axum")
+            let shutdown_state = Arc::clone(&state);
+            let result = axum::serve(listener, app).with_graceful_shutdown(async move {
+                if let Err(error) = tokio::signal::ctrl_c().await {
+                    tracing::error!(%error, "failed waiting for shutdown signal");
+                }
+                shutdown_state.request_shutdown();
+            }).await;
+            ticker.abort(); forecaster.abort();
+            let _ = ticker.await; let _ = forecaster.await;
+            state.shutdown_storage().await.context("failed draining local telemetry storage")?;
+            result.context("errore runtime nel server Axum")
         }
     }
 }

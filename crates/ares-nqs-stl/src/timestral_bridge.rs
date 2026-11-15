@@ -7,13 +7,19 @@ use crate::timestral_backbone::{
     TimestralBackbone, TimestralConfig,
 };
 use crate::timestral_quantiles::{ConformalAbstentionGate, QuantileHead};
+use crate::timestral_safetensors::{
+    CheckpointOrigin, load_timestral_or_deterministic_fallback,
+};
 use crate::ttv_predictor::estimate_greybox_quantile_ttv_cone;
 use ares_core_types::telemetry::{Biometrics, JugularHemodynamics, Musculoskeletal, SansOcular};
 use ares_core_types::{
-    ChannelQuantileCone, ConformalGateStatus, MonotoneQuantileTriplet, NqsQuantileForecastSnapshot,
+    ChannelQuantileCone, ConformalGateStatus, ForecastMethod, MonotoneQuantileTriplet,
+    NqsQuantileForecastSnapshot,
 };
+use arc_swap::ArcSwap;
 use serde::{Deserialize, Serialize};
-use std::sync::{Arc, RwLock, TryLockError};
+use std::path::Path;
+use std::sync::Arc;
 use std::time::Instant;
 
 /// Canonical names of the 12 grey-box channels tracked by `AresMultivariateSample`.
@@ -120,53 +126,42 @@ impl Default for KnownFutureCovariates {
     }
 }
 
-/// Non-blocking thread-safe handle shared between the 1 Hz Timestral worker and the 20 Hz hot-path.
-/// Uses `try_read()` with deterministic fallback so the 20 Hz tick never blocks (~180 ns read).
+/// Non-blocking, lock-free handle shared between the 1 Hz Timestral worker and the 20 Hz hot-path.
+/// Backed by `ArcSwap`: the 20 Hz read is a wait-free atomic pointer load that always returns the
+/// most recently published snapshot (never a cold/stale fallback), and the 1 Hz publish is an
+/// atomic store. This removes the prior `RwLock::try_read()` contention window in which the hot
+/// path could receive the frozen initial snapshot instead of the last-good forecast.
 #[derive(Debug, Clone)]
 pub struct AresTemporalForecasterHandle {
-    latest_snapshot: Arc<RwLock<Arc<NqsQuantileForecastSnapshot>>>,
-    fallback_snapshot: Arc<NqsQuantileForecastSnapshot>,
+    latest_snapshot: Arc<ArcSwap<NqsQuantileForecastSnapshot>>,
 }
 
 impl AresTemporalForecasterHandle {
     pub fn new(initial: NqsQuantileForecastSnapshot) -> Self {
-        let arc_init = Arc::new(initial);
         Self {
-            latest_snapshot: Arc::new(RwLock::new(Arc::clone(&arc_init))),
-            fallback_snapshot: arc_init,
+            latest_snapshot: Arc::new(ArcSwap::from_pointee(initial)),
         }
     }
 
-    /// Non-blocking O(1) snapshot read (~180 ns) for the synchronous 20 Hz hot-path.
-    /// Uses `try_read()` and falls back to `fallback_snapshot` on write contention so
-    /// the 20 Hz loop never blocks on the 1 Hz inference thread.
+    /// Wait-free O(1) snapshot read for the synchronous 20 Hz hot-path. Always returns the most
+    /// recently published snapshot; the 20 Hz loop never blocks on the 1 Hz inference thread and
+    /// never observes a stale initial fallback.
     #[inline]
     pub fn read_latest_snapshot(&self) -> Arc<NqsQuantileForecastSnapshot> {
-        match self.latest_snapshot.try_read() {
-            Ok(guard) => Arc::clone(&guard),
-            Err(TryLockError::WouldBlock) => Arc::clone(&self.fallback_snapshot),
-            Err(TryLockError::Poisoned(poisoned)) => Arc::clone(&poisoned.into_inner()),
-        }
+        self.latest_snapshot.load_full()
     }
 
-    /// Direct non-blocking `try_read` probe returning `None` if a writer currently holds the lock.
+    /// Non-blocking snapshot probe. With the lock-free backing store a reader is never blocked by a
+    /// concurrent writer, so this always yields the latest published snapshot.
     #[inline]
     pub fn try_read_snapshot(&self) -> Option<Arc<NqsQuantileForecastSnapshot>> {
-        match self.latest_snapshot.try_read() {
-            Ok(guard) => Some(Arc::clone(&guard)),
-            Err(TryLockError::WouldBlock) => None,
-            Err(TryLockError::Poisoned(poisoned)) => Some(Arc::clone(&poisoned.into_inner())),
-        }
+        Some(self.latest_snapshot.load_full())
     }
 
-    /// Atomically publishes a newly computed 1 Hz forecast snapshot.
+    /// Atomically publishes a newly computed 1 Hz forecast snapshot via a lock-free store.
     #[inline]
     pub fn publish_snapshot(&self, next: NqsQuantileForecastSnapshot) {
-        let arc_next = Arc::new(next);
-        match self.latest_snapshot.write() {
-            Ok(mut guard) => *guard = arc_next,
-            Err(poisoned) => *poisoned.into_inner() = arc_next,
-        }
+        self.latest_snapshot.store(Arc::new(next));
     }
 }
 
@@ -251,8 +246,15 @@ pub fn compute_greybox_forecast_snapshot(
             .collect(),
         pessimistic_ttv_q05_hours: ttv_hours_cone.map(|cone| cone.q05),
         inference_latency_us,
+        forecast_method: ForecastMethod::TimestralGreyBox1Hz,
+        ewma_short_horizon_max_s: 120,
+        short_horizon_cones: Vec::new(),
+        short_horizon_abstention: None,
     }
 }
+
+/// Default Timestral checkpoint identifier inside `assets/models/MANIFEST.json`.
+pub const DEFAULT_TIMESTRAL_MODEL_ID: &str = "timestral-dhf-v1";
 
 /// Complete Pure-Rust Timestral Grey-Box Forecaster Engine (1 Hz inference + 20 Hz lock-free handle).
 #[derive(Debug, Clone)]
@@ -262,6 +264,7 @@ pub struct AresTemporalForecasterEngine {
     pub backbone: TimestralBackbone,
     pub quantile_head: QuantileHead,
     pub gate: ConformalAbstentionGate,
+    pub checkpoint_origin: CheckpointOrigin,
     buffer: CircularTelemetryBuffer,
     handle: AresTemporalForecasterHandle,
     last_rho_cone: Option<MonotoneQuantileTriplet>,
@@ -271,12 +274,30 @@ pub struct AresTemporalForecasterEngine {
 impl AresTemporalForecasterEngine {
     /// Initializes the engine with deterministic weights and a preallocated circular buffer.
     pub fn new(config: TimestralConfig) -> Result<Self, NqsStlError> {
+        Self::new_with_optional_checkpoint(config, None)
+    }
+
+    /// Initializes the engine from an optional verified SafeTensors checkpoint directory,
+    /// falling back cleanly to deterministic stub weights on missing or mismatched artifacts.
+    pub fn new_with_optional_checkpoint(
+        config: TimestralConfig,
+        models_dir: Option<&Path>,
+    ) -> Result<Self, NqsStlError> {
+        Self::new_with_optional_checkpoint_id(config, models_dir, DEFAULT_TIMESTRAL_MODEL_ID)
+    }
+
+    /// Initializes the engine from an optional verified SafeTensors checkpoint directory
+    /// for a specific `model_id` in `MANIFEST.json`.
+    pub fn new_with_optional_checkpoint_id(
+        config: TimestralConfig,
+        models_dir: Option<&Path>,
+        model_id: &str,
+    ) -> Result<Self, NqsStlError> {
         config.validate()?;
+        let bundle = load_timestral_or_deterministic_fallback(config.clone(), models_dir, model_id)?;
         let context_patches = 2usize;
         let buffer_cap = config.patch_len * context_patches;
         let scaler = CausalScaler::new(config.sigma_floor);
-        let backbone = TimestralBackbone::new_deterministic(config.clone())?;
-        let quantile_head = QuantileHead::new_deterministic(config.d_model, 1.0);
         let gate = ConformalAbstentionGate::default();
         let buffer = CircularTelemetryBuffer::new(config.num_channels, buffer_cap)?;
         let initial_snapshot =
@@ -286,14 +307,21 @@ impl AresTemporalForecasterEngine {
         Ok(Self {
             config,
             scaler,
-            backbone,
-            quantile_head,
+            backbone: bundle.backbone,
+            quantile_head: bundle.quantile_head,
             gate,
+            checkpoint_origin: bundle.origin,
             buffer,
             handle,
             last_rho_cone: None,
             context_patches,
         })
+    }
+
+    /// Returns the provenance (`LoadedVerifiedSafeTensors` or `DeterministicStub`) of the active weights.
+    #[inline]
+    pub fn checkpoint_origin(&self) -> &CheckpointOrigin {
+        &self.checkpoint_origin
     }
 
     /// Returns a cloneable non-blocking handle for the 20 Hz hot-path.
@@ -421,11 +449,24 @@ mod tests {
             }
         });
 
+        // Single-writer monotonic publishes: a lock-free reader must observe a
+        // non-decreasing recording time and must NEVER regress to a stale/initial
+        // snapshot. This is the regression guard for the old frozen-fallback bug, where
+        // `RwLock::try_read()` contention served the cold initial snapshot instead of the
+        // last-good forecast.
         let start = Instant::now();
+        let mut last_seen = -1.0_f64;
         for _ in 0..10_000 {
             let snap = handle.read_latest_snapshot();
             snap.assert_monotone()
                 .expect("every read snapshot must remain monotone");
+            assert!(
+                snap.source_recording_time_s >= last_seen,
+                "hot-path read regressed to a stale snapshot: {} after {}",
+                snap.source_recording_time_s,
+                last_seen
+            );
+            last_seen = snap.source_recording_time_s;
         }
         let elapsed = start.elapsed();
         writer.join().expect("writer thread finished cleanly");
@@ -435,16 +476,20 @@ mod tests {
             elapsed
         );
 
-        // Verify try_read fallback never blocks even when write lock is held externally
-        let _write_guard = handle
-            .latest_snapshot
-            .write()
-            .expect("acquire write lock for contention test");
-        assert!(handle.try_read_snapshot().is_none());
-        let fallback = handle.read_latest_snapshot();
-        fallback
+        // The lock-free probe always yields the latest snapshot (never None), and after
+        // the writer finishes the handle reflects the last published forecast (t = 200.0),
+        // not a frozen initial fallback.
+        let probe = handle
+            .try_read_snapshot()
+            .expect("lock-free try_read always returns the latest snapshot");
+        probe
             .assert_monotone()
-            .expect("fallback snapshot must be valid and monotone");
+            .expect("probed snapshot must be valid and monotone");
+        let final_snap = handle.read_latest_snapshot();
+        assert_eq!(
+            final_snap.source_recording_time_s, 200.0,
+            "after all publishes the hot path must observe the last-good snapshot, not a fallback"
+        );
     }
 
     #[test]

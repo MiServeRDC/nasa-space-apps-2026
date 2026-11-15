@@ -9,7 +9,6 @@ use crate::telemetry::{
 };
 use core::mem::{align_of, offset_of, size_of};
 use core::sync::atomic::{AtomicU64, Ordering, fence};
-use std::cell::UnsafeCell;
 
 pub const ARES_BINARY_MAGIC: u32 = 0x4152_4553; // "ARES"
 pub const ARES_BINARY_VERSION: u16 = 1;
@@ -62,6 +61,12 @@ pub const FLAG_ILLUSTRATIVE_UNVALIDATED: u32 = 1 << 7;
 pub const FLAG_CHANNEL_NAN_DROPOUT: u32 = 1 << 8;
 pub const FLAG_CONFORMAL_ABSTAINED: u32 = 1 << 9;
 pub const FLAG_SEU_RECOVERY_ACTIVE: u32 = 1 << 10;
+pub const FLAG_TERRESTRIAL_BENCHMARKED_ONLY: u32 = 1 << 11;
+pub const FLAG_GATE4A_DECOMPRESSION_LOCK: u32 = 1 << 12;
+pub const FLAG_GATE4B_EVA_NO_GO: u32 = 1 << 13;
+pub const FLAG_GATE5_PHARMA_LOCK: u32 = 1 << 14;
+pub const FLAG_GATE6_RADIATION_INVASIVE_LOCK: u32 = 1 << 15;
+pub const FLAG_GATE7_BMED_DELIRIUM_GUARD: u32 = 1 << 16;
 
 /// Reflected Castagnoli CRC-32C polynomial (`0x1EDC6F41` -> `0x82F63B78`).
 const CRC32C_POLY_REFLECTED: u32 = 0x82F6_3B78;
@@ -216,8 +221,95 @@ pub fn playbook_id_to_u16(playbook_id: &str) -> u16 {
         4
     } else if playbook_id.starts_with("PLAYBOOK_05") {
         5
+    } else if playbook_id.starts_with("PLAYBOOK_06") {
+        6
+    } else if playbook_id.starts_with("PLAYBOOK_07") {
+        7
+    } else if playbook_id.starts_with("PLAYBOOK_08") {
+        8
+    } else if playbook_id.starts_with("PLAYBOOK_09") {
+        9
+    } else if playbook_id.starts_with("PLAYBOOK_10") {
+        10
+    } else if playbook_id.starts_with("PLAYBOOK_11") {
+        11
+    } else if playbook_id.starts_with("PLAYBOOK_12") {
+        12
+    } else if playbook_id.starts_with("PLAYBOOK_13") {
+        13
+    } else if playbook_id.starts_with("PLAYBOOK_14") {
+        14
+    } else if playbook_id.starts_with("PLAYBOOK_15") {
+        15
+    } else if playbook_id.starts_with("PLAYBOOK_16") {
+        16
+    } else if playbook_id.starts_with("PLAYBOOK_17") {
+        17
+    } else if playbook_id.starts_with("PLAYBOOK_18") {
+        18
+    } else if playbook_id.starts_with("PLAYBOOK_19") {
+        19
+    } else if playbook_id.starts_with("PLAYBOOK_20") {
+        20
+    } else if playbook_id.starts_with("PLAYBOOK_21") {
+        21
+    } else if playbook_id.starts_with("PLAYBOOK_22") {
+        22
+    } else if playbook_id.starts_with("PLAYBOOK_23") {
+        23
+    } else if playbook_id.starts_with("PLAYBOOK_24") {
+        24
+    } else if playbook_id.starts_with("PLAYBOOK_25") {
+        25
+    } else if playbook_id.starts_with("PLAYBOOK_26") {
+        26
+    } else if playbook_id.starts_with("PLAYBOOK_27") {
+        27
+    } else if playbook_id.starts_with("PLAYBOOK_28") {
+        28
+    } else if playbook_id.starts_with("PLAYBOOK_29") {
+        29
+    } else if playbook_id.starts_with("PLAYBOOK_30") {
+        30
     } else {
         0
+    }
+}
+
+#[inline]
+pub fn playbook_id_from_u16(code: u16) -> Option<&'static str> {
+    match code {
+        1 => Some("PLAYBOOK_01_VENOUS_STASIS_LBNP"),
+        2 => Some("PLAYBOOK_02_CONFIRMED_IJV_THROMBUS"),
+        3 => Some("PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED"),
+        4 => Some("PLAYBOOK_04_SANS_TRANSLAMINAR_MITIGATION"),
+        5 => Some("PLAYBOOK_05_SPE_RADIATION_SHELTER_CANS"),
+        6 => Some("PLAYBOOK_06_HYPOXEMIA_DESATURATION"),
+        7 => Some("PLAYBOOK_07_HEART_RATE_ANOMALY"),
+        8 => Some("PLAYBOOK_08_SENSOR_SIGNAL_LOSS"),
+        9 => Some("PLAYBOOK_09_MULTIPARAMETER_DETERIORATION"),
+        10 => Some("PLAYBOOK_10_RENAL_LITHIASIS"),
+        11 => Some("PLAYBOOK_11_MARS_ENTRY_FLUID_LOADING"),
+        12 => Some("PLAYBOOK_12_CIRCADIAN_LIGHT_HYGIENE"),
+        13 => Some("PLAYBOOK_13_VIRAL_IMMUNE_VALACYCLOVIR"),
+        14 => Some("PLAYBOOK_14_CO2_SCRUBBER_SANS"),
+        15 => Some("PLAYBOOK_15_EFAST_TRAUMA_TRIAGE"),
+        16 => Some("PLAYBOOK_16_SEPSIS_SEPTIC_SHOCK"),
+        17 => Some("PLAYBOOK_17_HEMORRHAGIC_TRAUMA_TXA"),
+        18 => Some("PLAYBOOK_18_TORSO_SHOCK_PERICARDIOCENTESIS"),
+        19 => Some("PLAYBOOK_19_CONSERVATIVE_ACUTE_ABDOMEN_0G"),
+        20 => Some("PLAYBOOK_20_EVA_MUSCULOSKELETAL_SPINE_FRACTURE"),
+        21 => Some("PLAYBOOK_21_DENTAL_MAXILLOFACIAL_EMERGENCY"),
+        22 => Some("PLAYBOOK_22_OCULAR_FOREIGN_BODY_CHEMICAL_BURN"),
+        23 => Some("PLAYBOOK_23_ANAPHYLAXIS_AIRWAY_EMERGENCY"),
+        24 => Some("PLAYBOOK_24_MICROGRAVITY_CARDIAC_ARREST_CPR"),
+        25 => Some("PLAYBOOK_25_ACUTE_URINARY_RETENTION_POCUS"),
+        26 => Some("PLAYBOOK_26_ACUTE_RADIATION_SYNDROME"),
+        27 => Some("PLAYBOOK_27_AEROSPACE_TOXICOLOGY_EXPOSURE"),
+        28 => Some("PLAYBOOK_28_EVA_DCS_AND_SUIT_EMERGENCY"),
+        29 => Some("PLAYBOOK_29_BMED_PSYCHIATRIC_CRISIS"),
+        30 => Some("PLAYBOOK_30_FEMALE_PELVIC_UROGYN_POCUS"),
+        _ => None,
     }
 }
 
@@ -391,6 +483,12 @@ impl BinaryTelemetryFrame {
         if pkt.active_playbook.safety_gates.eva_suit_damping_active {
             quality_flags_mask |= FLAG_GATE3_EVA_DAMPING;
         }
+        if pkt.active_playbook.safety_gates.gate4_invasive_decompression_locked {
+            quality_flags_mask |= FLAG_GATE4A_DECOMPRESSION_LOCK;
+        }
+        if pkt.active_playbook.safety_gates.gate4_eva_fitness_no_go {
+            quality_flags_mask |= FLAG_GATE4B_EVA_NO_GO;
+        }
         if matches!(
             pkt.biometrics.hrv_unavailable_reason,
             Some(HrvUnavailableReason::BeatIntervalsNotAvailable)
@@ -398,11 +496,17 @@ impl BinaryTelemetryFrame {
         {
             quality_flags_mask |= FLAG_BEAT_INTERVALS_NOT_AVAILABLE;
         }
-        if matches!(
-            pkt.model_validation_status,
-            ModelValidationStatus::IllustrativeUnvalidated
-        ) {
-            quality_flags_mask |= FLAG_ILLUSTRATIVE_UNVALIDATED;
+        match pkt.model_validation_status {
+            ModelValidationStatus::IllustrativeUnvalidated => {
+                quality_flags_mask |= FLAG_ILLUSTRATIVE_UNVALIDATED;
+            }
+            ModelValidationStatus::InternallyBenchmarkedTerrestrial { .. } => {
+                // Keep FLAG_ILLUSTRATIVE_UNVALIDATED active alongside FLAG_TERRESTRIAL_BENCHMARKED_ONLY
+                // so cockpit displays indicate spaceflight physiological models remain unvalidated.
+                quality_flags_mask |=
+                    FLAG_ILLUSTRATIVE_UNVALIDATED | FLAG_TERRESTRIAL_BENCHMARKED_ONLY;
+            }
+            ModelValidationStatus::ClinicallyCalibratedSubjectToReview => {}
         }
         if !pkt.biometrics.missing_channels.is_empty() {
             quality_flags_mask |= FLAG_CHANNEL_NAN_DROPOUT;
@@ -414,6 +518,21 @@ impl BinaryTelemetryFrame {
         }
         if meta.seu_recovery_active {
             quality_flags_mask |= FLAG_SEU_RECOVERY_ACTIVE;
+        }
+        if let Some(ref a360) = pkt.aerospace_360 {
+            let ext = &a360.extended_safety_gates;
+            if ext.gate5_nsaid_renal_bleeding_locked
+                || ext.gate5_allergy_or_qtc_locked
+                || ext.gate5_formulary_substitution_active
+            {
+                quality_flags_mask |= FLAG_GATE5_PHARMA_LOCK;
+            }
+            if ext.gate6_radiation_neutropenic_invasive_locked {
+                quality_flags_mask |= FLAG_GATE6_RADIATION_INVASIVE_LOCK;
+            }
+            if ext.gate7_bmed_delirium_or_restraint_guard_active {
+                quality_flags_mask |= FLAG_GATE7_BMED_DELIRIUM_GUARD;
+            }
         }
 
         let mut frame = Self {
@@ -450,6 +569,16 @@ impl BinaryTelemetryFrame {
         let bytes = frame.to_le_bytes();
         frame.crc32c = u32::from_le_bytes([bytes[104], bytes[105], bytes[106], bytes[107]]);
         frame
+    }
+
+    /// Alias of `from_telemetry_packet` for Phase 33 (`L5`) encoder call sites.
+    #[inline]
+    pub fn encode_from_packet(
+        pkt: &TelemetryPacket,
+        quantile_snapshot: Option<&NqsQuantileForecastSnapshot>,
+        meta: BinaryFrameMeta,
+    ) -> Self {
+        Self::from_telemetry_packet(pkt, quantile_snapshot, meta)
     }
 
     /// Serializes the frame to exact 128 little-endian bytes with Castagnoli CRC-32C at `104..108`.
@@ -662,24 +791,22 @@ impl BinaryTelemetryFrame {
     }
 }
 
+const ARES_BINARY_FRAME_WORDS: usize = ARES_BINARY_FRAME_BYTES / core::mem::size_of::<u64>();
+
 /// Cache-line-aligned slot for lock-free SPMC Seqlock ring buffer.
 #[repr(C, align(64))]
 struct SeqlockSlot {
     seq: AtomicU64,
-    payload: UnsafeCell<[u8; ARES_BINARY_FRAME_BYTES]>,
+    payload: [AtomicU64; ARES_BINARY_FRAME_WORDS],
 }
 
 /// Lock-free Single-Producer Multi-Consumer (SPMC) Seqlock ring buffer.
-/// Guarantees zero producer blocking under UI stalls (ARINC 653 temporal isolation).
+/// Guarantees zero producer blocking under UI stalls (ARINC 653 temporal isolation)
+/// with 100% safe atomic word accesses (`#![forbid(unsafe_code)]`).
 pub struct SeqlockTelemetryRing<const N: usize> {
     write_cursor: AtomicU64,
     slots: [SeqlockSlot; N],
 }
-
-// SAFETY: Single-producer writes are bracketed by odd/even sequence transitions with
-// Release fences; multi-consumer readers perform speculative copies validated by Acquire
-// fences and seq equality before returning any bytes.
-unsafe impl<const N: usize> Sync for SeqlockTelemetryRing<N> {}
 
 impl<const N: usize> Default for SeqlockTelemetryRing<N> {
     fn default() -> Self {
@@ -691,16 +818,18 @@ impl<const N: usize> SeqlockTelemetryRing<N> {
     /// Allocates an empty Seqlock ring buffer. `N` must be a non-zero power of two.
     pub fn new() -> Self {
         const { assert!(N > 0 && N.is_power_of_two()) };
+        const { assert!(ARES_BINARY_FRAME_WORDS * 8 == ARES_BINARY_FRAME_BYTES) };
         Self {
             write_cursor: AtomicU64::new(0),
             slots: core::array::from_fn(|_| SeqlockSlot {
                 seq: AtomicU64::new(0),
-                payload: UnsafeCell::new([0u8; ARES_BINARY_FRAME_BYTES]),
+                payload: core::array::from_fn(|_| AtomicU64::new(0)),
             }),
         }
     }
 
     /// Publishes a 128-byte frame without ever blocking on readers.
+    #[allow(clippy::chunks_exact_to_as_chunks)]
     pub fn publish(&self, frame: &BinaryTelemetryFrame) {
         let idx = self.write_cursor.load(Ordering::Relaxed);
         let slot = &self.slots[(idx as usize) & (N - 1)];
@@ -708,16 +837,19 @@ impl<const N: usize> SeqlockTelemetryRing<N> {
         slot.seq.store(prev_seq.wrapping_add(1), Ordering::Release);
         fence(Ordering::Release);
         let raw = frame.to_le_bytes();
-        // SAFETY: `prev_seq + 1` is odd; only the single producer writes to this slot.
-        unsafe {
-            *slot.payload.get() = raw;
+        for (word_slot, chunk) in slot.payload.iter().zip(raw.chunks_exact(8)) {
+            let mut word_bytes = [0u8; 8];
+            word_bytes.copy_from_slice(chunk);
+            word_slot.store(u64::from_le_bytes(word_bytes), Ordering::Relaxed);
         }
+        fence(Ordering::Release);
         slot.seq.store(prev_seq.wrapping_add(2), Ordering::Release);
         self.write_cursor
             .store(idx.wrapping_add(1), Ordering::Release);
     }
 
     /// Reads the latest consistent 128-byte raw payload without locking the producer.
+    #[allow(clippy::chunks_exact_to_as_chunks)]
     pub fn read_latest_bytes(&self) -> Result<[u8; ARES_BINARY_FRAME_BYTES], AresCoreError> {
         let cursor = self.write_cursor.load(Ordering::Acquire);
         if cursor == 0 {
@@ -730,8 +862,11 @@ impl<const N: usize> SeqlockTelemetryRing<N> {
                 core::hint::spin_loop();
                 continue;
             }
-            // SAFETY: Speculative read validated immediately by `s1 == s2`.
-            let bytes = unsafe { *slot.payload.get() };
+            let mut bytes = [0u8; ARES_BINARY_FRAME_BYTES];
+            for (dst_chunk, word_slot) in bytes.chunks_exact_mut(8).zip(slot.payload.iter()) {
+                let word = word_slot.load(Ordering::Relaxed);
+                dst_chunk.copy_from_slice(&word.to_le_bytes());
+            }
             fence(Ordering::Acquire);
             let s2 = slot.seq.load(Ordering::Relaxed);
             if s1 == s2 {
@@ -810,6 +945,19 @@ mod tests {
                 radiation_dose_rate_msv_d: 0.45,
                 sqi_score: 0.88,
                 missing_channels: missing,
+                sbp_mmhg: Some(118.0),
+                dbp_mmhg: Some(78.0),
+                ptt_ms: Some(210.0),
+                core_temp_celsius: Some(36.8),
+                skin_temp_celsius: Some(33.5),
+                sleep_stage_code: Some(2),
+                melanopic_edi_lux: Some(450.0),
+                personal_dose_rate_ugy_h: Some(18.5),
+                let_quality_factor: Some(2.8),
+                suit_metabolic_watts: Some(220.0),
+                helmet_ppco2_mmhg: Some(2.1),
+                cabin_ppco2_mmhg: None,
+                platelet_count_k_ul: None,
             },
             musculoskeletal: Musculoskeletal {
                 ared_daily_load_kgf: 125.0,
@@ -846,6 +994,10 @@ mod tests {
                 ttv_ci95_high_hours: if with_hrv { Some(220.0) } else { None },
                 mri_pct: if with_hrv { Some(82.5) } else { None },
                 ttv_interval_kind: Some(TtvIntervalKind::IllustrativeScenarioRange),
+                rho_renal: Some(0.44),
+                rho_orthostatic: Some(0.65),
+                rho_circadian: Some(0.81),
+                rho_immune: Some(0.70),
             },
             active_playbook: ActivePlaybook {
                 playbook_id: "PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED".to_string(),
@@ -855,6 +1007,9 @@ mod tests {
                     anticoagulant_lock_active: true,
                     lbnp_auto_vent_armed: true,
                     eva_suit_damping_active: false,
+                    gate4_invasive_decompression_locked: true,
+                    gate4_eva_fitness_no_go: false,
+                    ..SafetyGates::default()
                 },
                 actions: vec![CountermeasureAction {
                     action_id: "ACT_ARED".to_string(),
@@ -863,6 +1018,12 @@ mod tests {
                     delta_rho_per_hour: 0.11,
                 }],
             },
+            spot_poct: None,
+            renal_nephrolithiasis: None,
+            orthostatic_fluid: None,
+            mars_circadian_sleep: None,
+            neuro_immune_viral: None,
+            aerospace_360: None,
         }
     }
 
@@ -1025,5 +1186,82 @@ mod tests {
         let latest = ring.read_latest().expect("latest frame present");
         assert_eq!(latest.seq, 5_000);
         assert_eq!(ring.write_count(), 5_000);
+    }
+
+    #[test]
+    fn test_binary_frame_sets_terrestrial_benchmarked_flag_preserving_illustrative_bit() {
+        use crate::telemetry::{Sha256DigestHex, TerrestrialBenchmarkScope};
+
+        let mut pkt = sample_packet(true, false);
+        pkt.model_validation_status = ModelValidationStatus::InternallyBenchmarkedTerrestrial {
+            dataset_scope: TerrestrialBenchmarkScope::BidmcNumericsShortSubHorizon,
+            coverage_pct: 91.2,
+            brier_score: 0.12,
+            artifact_sha256: Sha256DigestHex([0xAB; 32]),
+        };
+
+        let frame = BinaryTelemetryFrame::encode_from_packet(&pkt, None, BinaryFrameMeta::default());
+        assert_ne!(frame.quality_flags_mask & FLAG_ILLUSTRATIVE_UNVALIDATED, 0);
+        assert_ne!(
+            frame.quality_flags_mask & FLAG_TERRESTRIAL_BENCHMARKED_ONLY,
+            0
+        );
+
+        pkt.model_validation_status = ModelValidationStatus::ClinicallyCalibratedSubjectToReview;
+        let cal_frame =
+            BinaryTelemetryFrame::encode_from_packet(&pkt, None, BinaryFrameMeta::default());
+        assert_eq!(
+            cal_frame.quality_flags_mask & FLAG_ILLUSTRATIVE_UNVALIDATED,
+            0
+        );
+        assert_eq!(
+            cal_frame.quality_flags_mask & FLAG_TERRESTRIAL_BENCHMARKED_ONLY,
+            0
+        );
+    }
+
+    #[test]
+    fn test_playbook_id_all_15_mapping_and_roundtrip() {
+        let expected = [
+            ("PLAYBOOK_01_VENOUS_STASIS_LBNP", 1),
+            ("PLAYBOOK_02_CONFIRMED_IJV_THROMBUS", 2),
+            ("PLAYBOOK_03_SARCOPENIA_OSTEOPENIA_ARED", 3),
+            ("PLAYBOOK_04_SANS_TRANSLAMINAR_MITIGATION", 4),
+            ("PLAYBOOK_05_SPE_RADIATION_SHELTER_CANS", 5),
+            ("PLAYBOOK_06_HYPOXEMIA_DESATURATION", 6),
+            ("PLAYBOOK_07_HEART_RATE_ANOMALY", 7),
+            ("PLAYBOOK_08_SENSOR_SIGNAL_LOSS", 8),
+            ("PLAYBOOK_09_MULTIPARAMETER_DETERIORATION", 9),
+            ("PLAYBOOK_10_RENAL_LITHIASIS", 10),
+            ("PLAYBOOK_11_MARS_ENTRY_FLUID_LOADING", 11),
+            ("PLAYBOOK_12_CIRCADIAN_LIGHT_HYGIENE", 12),
+            ("PLAYBOOK_13_VIRAL_IMMUNE_VALACYCLOVIR", 13),
+            ("PLAYBOOK_14_CO2_SCRUBBER_SANS", 14),
+            ("PLAYBOOK_15_EFAST_TRAUMA_TRIAGE", 15),
+            ("PLAYBOOK_16_SEPSIS_SEPTIC_SHOCK", 16),
+            ("PLAYBOOK_17_HEMORRHAGIC_TRAUMA_TXA", 17),
+            ("PLAYBOOK_18_TORSO_SHOCK_PERICARDIOCENTESIS", 18),
+            ("PLAYBOOK_19_CONSERVATIVE_ACUTE_ABDOMEN_0G", 19),
+            ("PLAYBOOK_20_EVA_MUSCULOSKELETAL_SPINE_FRACTURE", 20),
+            ("PLAYBOOK_21_DENTAL_MAXILLOFACIAL_EMERGENCY", 21),
+            ("PLAYBOOK_22_OCULAR_FOREIGN_BODY_CHEMICAL_BURN", 22),
+            ("PLAYBOOK_23_ANAPHYLAXIS_AIRWAY_EMERGENCY", 23),
+            ("PLAYBOOK_24_MICROGRAVITY_CARDIAC_ARREST_CPR", 24),
+            ("PLAYBOOK_25_ACUTE_URINARY_RETENTION_POCUS", 25),
+            ("PLAYBOOK_26_ACUTE_RADIATION_SYNDROME", 26),
+            ("PLAYBOOK_27_AEROSPACE_TOXICOLOGY_EXPOSURE", 27),
+            ("PLAYBOOK_28_EVA_DCS_AND_SUIT_EMERGENCY", 28),
+            ("PLAYBOOK_29_BMED_PSYCHIATRIC_CRISIS", 29),
+            ("PLAYBOOK_30_FEMALE_PELVIC_UROGYN_POCUS", 30),
+        ];
+
+        for (id, code) in expected {
+            assert_eq!(playbook_id_to_u16(id), code);
+            assert_eq!(playbook_id_from_u16(code), Some(id));
+        }
+
+        assert_eq!(playbook_id_to_u16("PLAYBOOK_99_UNKNOWN"), 0);
+        assert_eq!(playbook_id_from_u16(0), None);
+        assert_eq!(playbook_id_from_u16(31), None);
     }
 }

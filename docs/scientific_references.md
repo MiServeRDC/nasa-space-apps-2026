@@ -295,4 +295,166 @@ Architettura di verifica completa documentata in [`docs/plans/BLOCK_K_SYSTEM_TES
   - *Fasi Collegate*: [`Fase 28 (K4)`](plans/phase_28_K4_nasa_std_3001_compliance_latency_memory_benchmark.md)
   - *Applicazione nel Progetto*: Matrice di tracciabilita normativa eseguibile `[V1 3001]`–`[V2 10152]` + `OCHMO MTB-007` e metodologia statistica `p50`/`p99`/`p99.9` dopo warm-up L1/L2 senza *coordinated omission*.
 
+---
+
+## 11. Blocco L: Gap Closure, Level-1 `GATHER` DSP, Native OS Packaging, Edge Copilot, Clinical Calibration (`CQR`) & NASA Space Apps Submission (Fasi 29–34)
+
+Architettura master di riferimento: [`BLOCK_L_GAP_CLOSURE_ARCHITECTURE.md`](plans/BLOCK_L_GAP_CLOSURE_ARCHITECTURE.md), coordinata con [`phase_29_L1`](plans/phase_29_L1_cockpit_live_bindings_3d_cones.md), [`phase_30_L2`](plans/phase_30_L2_tauri_native_window_iceoryx2_ipc.md), [`phase_31_L3`](plans/phase_31_L3_gather_radar_vocal_waveform_dsp.md), [`phase_32_L4`](plans/phase_32_L4_edge_llm_voice_copilot_safetensors.md), [`phase_33_L5`](plans/phase_33_L5_clinical_calibration_24dataset_parquet.md) e [`phase_34_L6`](plans/phase_34_L6_nasa_submission_pitch_slides_pdf.md).
+
+### 11.1 Cockpit Live Bindings, Ontologia `UBERON:`, Conformal PID & Native `Tauri v2` Shell (Fasi 29–30 / `L1`–`L2`)
+
+- **Uberon Multi-Species Anatomy Ontology (`UBERON:`):**
+  - *Autori*: Christopher J. Mungall, Carlo Torniai, Georgios V. Gkoutos, Suzanna E. Lewis, Melissa A. Haendel, *"Uberon, an integrative multi-species anatomy ontology"*, *Genome Biology*, Vol. 13, No. 1, R5, 2012 (`DOI: 10.1186/gb-2012-13-1-r5`).
+  - *Fasi Collegate*: [`Fase 29 (L1)`](plans/phase_29_L1_cockpit_live_bindings_3d_cones.md), [`Fase 18 (I1)`](plans/phase_18_I1_welford_longitudinal_compaction_spatial_deontic.md)
+  - *Applicazione nel Progetto*: Grounding semantico canonico delle 5 regioni anatomiche 3D (`UBERON:0000970`, `UBERON:0001586`, `UBERON:0000948`, `UBERON:0001389`, `UBERON:0000955`) in `uberonSpatialMapping.ts`, `BodyHeatmap.tsx` e `AnatomicalLayers.tsx`, inclusa la distinzione visiva `observed=false` per Issue `#11`.
+
+- **Quantile Regression & Conformal PID Control for Time Series:**
+  - *Autori*: Roger Koenker, Gilbert Bassett Jr., *"Regression Quantiles"*, *Econometrica*, Vol. 46, No. 1, pp. 33–50, 1978 (`DOI: 10.2307/1913643`); Anastasios N. Angelopoulos, Emmanuel J. Candès, Ryan J. Tibshirani, *"Conformal PID Control for Time Series Prediction"*, *NeurIPS 2023* (`arXiv:2307.16895`).
+  - *Fasi Collegate*: [`Fase 29 (L1)`](plans/phase_29_L1_cockpit_live_bindings_3d_cones.md), [`Fase 16 (H2)`](plans/phase_16_H2_dhf_monotone_quantiles_conformal_gate.md)
+  - *Applicazione nel Progetto*: Fondamento dei coni multi-orizzonte non incrocianti `Timestral` (`+15m`, `+1h`, `+6h`, `+24h`) e del badge `ConformalAbstentionGate` in `MriAndStl.tsx` (sotto etichettatura onesta `ILLUSTRATIVE_UNVALIDATED` / `ILLUSTRATIVE_SCENARIO_RANGE`).
+
+- **Air-Gapped 3D Anatomical Meshes (`nasa/NASA-3D-Resources`, `three.js GLTFLoader`) & `MIL-STD-1472H` Ergonomics:**
+  - *Fonti*: NASA 3D Resources (`https://github.com/nasa/NASA-3D-Resources`); Ricardo Cabello (`mrdoob/three.js` `GLTFLoader`, `https://github.com/mrdoob/three.js`, `MIT`); US Department of Defense *MIL-STD-1472H: Human Engineering* Section 5.4 (`>= 44x44 pt` touch targets).
+  - *Fasi Collegate*: [`Fase 29 (L1)`](plans/phase_29_L1_cockpit_live_bindings_3d_cones.md)
+  - *Applicazione nel Progetto*: Caricamento `.glb` locale air-gapped con guardia binaria `0x46546C67` in `NasaGlbAssetLayer.tsx` (compatibile con CSP `default-src 'self'`) e controlli tattili `>= 44x44 pt` in `PlaybookRunner.tsx` e `BodyHeatmap.tsx`.
+
+- **Native Desktop Shell `Tauri v2` / `wry` & Zero-Copy POSIX SHM (`iceoryx2` / `Zenoh` / `ARINC 653`):**
+  - *Fonti*: `tauri-apps/tauri` v2 & `wry` (`https://github.com/tauri-apps/tauri`, `Apache-2.0 OR MIT`); `eclipse-iceoryx/iceoryx2` (`ZeroCopySend`); `eclipse-zenoh/zenoh`.
+  - *Fasi Collegate*: [`Fase 30 (L2)`](plans/phase_30_L2_tauri_native_window_iceoryx2_ipc.md)
+  - *Applicazione nel Progetto*: `crates/ares-desktop-os` (`WKWebView`/Metal & `WebKitGTK`/Vulkan, `Channel<Response>` `InvokeResponseBody::Raw` `128 B` `< 50 us`, bundle `ARES-MedOS.app`), `crates/ares-server-cli/src/shm_bus.rs` (`--features shm-ipc`, `loan_uninit()` `< 100 ns`, `OwltMarsCommState` `852 s`, `try_dispatch` `< 150 ns`).
+
+### 11.2 Pure-Rust Level-1 `GATHER` DSP: Radar Doppler, Vocal Biomarkers & Waveform R-R Extraction (Fase 31 / `L3`)
+
+- **Contactless Silicon Doppler Radar Cardiopulmonary Monitoring (`60 GHz` / `5.2 GHz`):**
+  - *Autori*: Amy D. Droitcour, Olga Boric-Lubecke, Victor M. Lubecke, Jenshan Lin, Gregory T. A. Kovacs, *"Range correlation and I/Q performance benefits in single-chip silicon Doppler radars for noncontact cardiopulmonary monitoring"*, *IEEE Trans. Microw. Theory Tech.*, Vol. 52, No. 3, pp. 838–848, 2004 (`DOI: 10.1109/TMTT.2004.823552`); Olga Boric-Lubecke et al., *IEEE Microwave Magazine*, Vol. 10, No. 7, pp. 103–113, 2009 (`DOI: 10.1109/MMM.2009.934516`); NASA Artemis II `ARCHeR` nocturnal contactless monitoring reference.
+  - *Fasi Collegate*: [`Fase 31 (L3)`](plans/phase_31_L3_gather_radar_vocal_waveform_dsp.md)
+  - *Applicazione nel Progetto*: Demodulazione I/Q $\Delta\phi(t) = 4\pi d(t)/\lambda$ e rimozione clutter statico EMA in `crates/ares-telemetry-ingest/src/radar_csi_dsp.rs`.
+
+- **DF2T SOS Biquad Filtering & Jury Stability (`60/120 Hz` ECLSS Fan Notch):**
+  - *Autori*: Sophocles J. Orfanidis, *Introduction to Signal Processing* (Prentice Hall, 1996); Robert Bristow-Johnson, *Cookbook formulae for audio EQ biquad filter coefficients*.
+  - *Fasi Collegate*: [`Fase 31 (L3)`](plans/phase_31_L3_gather_radar_vocal_waveform_dsp.md)
+  - *Applicazione nel Progetto*: Cascata biquad IIR notch `60/120 Hz` in Direct-Form II Transposed con verifica analitica dei poli nel cerchio unitario (criterio di Jury) e guardia automatica di Nyquist in `radar_csi_dsp.rs`.
+
+- **Vocal Fundamental Frequency (`YIN`), `HNR`, Jitter & Shimmer Biomarkers:**
+  - *Autori*: Alain de Cheveigné, Hideki Kawahara, *"YIN, a fundamental frequency estimator for speech and music"*, *J. Acoust. Soc. Am.*, Vol. 111, No. 4, pp. 1917–1930, 2002 (`DOI: 10.1121/1.1458024`); Paul Boersma, *"Accurate short-term analysis of the fundamental frequency and the harmonics-to-noise ratio of a sampled sound"*, *Proc. Inst. Phonetic Sci.*, Vol. 17, pp. 97–110, 1993.
+  - *Fasi Collegate*: [`Fase 31 (L3)`](plans/phase_31_L3_gather_radar_vocal_waveform_dsp.md)
+  - *Applicazione nel Progetto*: Estrazione zero-heap di $F_0$, jitter, shimmer, `HNR`, spectral tilt e `pause_ratio` VAD in `crates/ares-telemetry-ingest/src/vocal_acoustic_dsp.rs` con emissione rigorosa `None` su frame silenti o non vocalizzati.
+
+- **Real-Time QRS Detection, HRV Standards, Ectopic Rejection & `CEBS` Benchmark:**
+  - *Autori*: Jiapu Pan, Willis J. Tompkins, *"A Real-Time QRS Detection Algorithm"*, *IEEE Trans. Biomed. Eng.*, BME-32(3):230–236, 1985 (`DOI: 10.1109/TBME.1985.325532`); Task Force of ESC & NASPE, *"Heart rate variability: Standards of measurement, physiological interpretation, and clinical use"*, *Circulation*, 93(5):1043–1065, 1996 (`DOI: 10.1161/01.CIR.93.5.1043`); Marek Malik et al., *"Heart rate variability"*, *Ann. Noninvasive Electrocardiol.*, 1989/1996 ($\pm 20\%$ ectopic beat rejection criterion); PhysioNet `CEBS` Database v1.0.0 (`https://physionet.org/content/cebsdb/1.0.0/`, `DOI: 10.13026/C2KW23`).
+  - *Fasi Collegate*: [`Fase 31 (L3)`](plans/phase_31_L3_gather_radar_vocal_waveform_dsp.md)
+  - *Applicazione nel Progetto*: Estrattore R-R streaming a `125–500 Hz` in `crates/ares-telemetry-ingest/src/waveform_rr_extractor.rs`, preservando l'invariante Issue `#11` (`BidmcReplayer` `1 Hz` numerico resta sempre `rmssd_ms: None` + `BEAT_INTERVALS_NOT_AVAILABLE`).
+
+### 11.3 Air-Gapped Edge LLM + Voice Copilot & `SafeTensors` Checkpoint Loader (Fase 32 / `L4`)
+
+- **Zero-Copy `SafeTensors` & Pure-Rust Tensor Validation (`huggingface/safetensors`, `huggingface/candle`):**
+  - *Fonti*: `https://github.com/huggingface/safetensors` (`Apache-2.0`); `https://github.com/huggingface/candle` (`MIT OR Apache-2.0`).
+  - *Fasi Collegate*: [`Fase 32 (L4)`](plans/phase_32_L4_edge_llm_voice_copilot_safetensors.md)
+  - *Applicazione nel Progetto*: Caricamento deterministico `F32`/`BF16` $\to$ `f64` senza esecuzione arbitraria di codice (`pickle`-free) in `crates/ares-nqs-stl/src/timestral_safetensors.rs` con pre-verifica `SHA-256` contro `assets/models/MANIFEST.json` e fallback pulito a `new_deterministic`.
+
+- **Indirect Prompt Injection Defense & Spotlighting (`ACM AISec 2023` / `2024`):**
+  - *Autori*: Kai Greshake, Sahar Abdelnabi, Shailesh Mishra, Christoph Endres, Thorsten Holz, Mario Fritz, *"Not What You've Signed Up For: Compromising Real-World LLM-Integrated Applications with Indirect Prompt Injection"*, *ACM AISec '23*, pp. 79–90, 2023 (`DOI: 10.1145/3605764.3623985`, `arXiv:2302.12173`); Keegan Hines et al., *"Defending Against Indirect Prompt Injection Attacks With Spotlighting"*, 2024 (`DOI: 10.48550/arXiv.2403.14720`, `arXiv:2403.14720`).
+  - *Fasi Collegate*: [`Fase 32 (L4)`](plans/phase_32_L4_edge_llm_voice_copilot_safetensors.md), [`Fase 12 (F1)`](plans/phase_12_F1_role_based_crew_privacy_sha256_audit_and_aead_plan.md)
+  - *Applicazione nel Progetto*: Isolamento tramite delimitatori escapati `<untrusted_telemetry_observation>` (`StrictMcpSanitizer`) e segregazione read-only dei soli `8` tool `FastMCP` in `crates/ares-server-cli/src/edge_llm_bridge.rs`.
+
+- **Local Quantized Inference (`llama.cpp` / `Ollama`), Offline ASR (`Whisper` / `whisper-rs`), Web Speech API & `DO-178C` Safety Barrier:**
+  - *Fonti*: `https://github.com/ggml-org/llama.cpp` (`MIT`) & `https://github.com/ollama/ollama` (`MIT`); Alec Radford et al., *"Robust Speech Recognition via Large-Scale Weak Supervision"*, *ICML 2023*, PMLR 202:28492–28518 (`arXiv:2212.04356`); `https://github.com/ggerganov/whisper.cpp` (`MIT`) & `https://github.com/tazz4843/whisper-rs` (`Unlicense OR MIT`); W3C/WICG *Web Speech API Specification* (`https://wicg.github.io/speech-api/`); RTCA SC-205 *DO-178C* / EUROCAE *ED-12C* (2011).
+  - *Fasi Collegate*: [`Fase 32 (L4)`](plans/phase_32_L4_edge_llm_voice_copilot_safetensors.md)
+  - *Applicazione nel Progetto*: Confinamento della componente conversazionale LLM al livello consultivo (`DAL-E`) con verificatore post-generazione dei Safety Gates 1–3 e fallback deterministico Type-1 `OfflineTemplateCopilot` (`< 400 us`), piu interfaccia vocale hands-free (`crates/ares-desktop-os/src/voice_whisper.rs`, `OsVoiceCopilot.tsx`, `[V2 10001]`, `[V2 10027]`).
+
+### 11.4 Clinical Calibration, Conformalized Quantile Regression (`CQR`), Exact Coverage & Multi-Agency Parquet Adapters (Fase 33 / `L5` — Chiusura Issue `#12`)
+
+- **Conformalized Quantile Regression (`CQR`) & Distribution-Free Predictive Coverage:**
+  - *Autori*: Yaniv Romano, Evan Patterson, Emmanuel J. Candès, *"Conformalized Quantile Regression"*, *NeurIPS 2019*, Vol. 32, pp. 3543–3553 (`arXiv:1905.03222`).
+  - *Fasi Collegate*: [`Fase 33 (L5)`](plans/phase_33_L5_clinical_calibration_24dataset_parquet.md)
+  - *Applicazione nel Progetto*: Calibrazione split-conformal a campione finito dei coni quantilici monotoni $[q_{0.05}, q_{0.95}]$ su soggetti disgiunti (`SubjectDisjointSplit`) in `crates/ares-nqs-stl/src/calibration_harness.rs`.
+
+- **Exact Binomial Confidence Limits (Clopper-Pearson Interval):**
+  - *Autori*: Charles J. Clopper, Egon S. Pearson, *"The Use of Confidence or Fiducial Limits Illustrated in the Case of the Binomial"*, *Biometrika*, Vol. 26, No. 4, pp. 404–413, 1934 (`DOI: 10.1093/biomet/26.4.404`).
+  - *Fasi Collegate*: [`Fase 33 (L5)`](plans/phase_33_L5_clinical_calibration_24dataset_parquet.md)
+  - *Applicazione nel Progetto*: Limiti esatti $[p_{\text{CP, low}}, p_{\text{CP, high}}]$ al $95\%$ della copertura empirica su finestre held-out non sovrapposte tramite inversione della funzione Beta incompleta regolarizzata.
+
+- **Strictly Proper Scoring Rules, Brier Score, Winkler Interval Score & `ECE`:**
+  - *Autori*: Glenn W. Brier, *"Verification of Forecasts Expressed in Terms of Probability"*, *Monthly Weather Review*, Vol. 78, No. 1, pp. 1–3, 1950 (`DOI: 10.1175/1520-0493(1950)078<0001:VOFEIT>2.0.CO;2`); Tilmann Gneiting, Adrian E. Raftery, *"Strictly Proper Scoring Rules, Prediction, and Estimation"*, *JASA*, Vol. 102, No. 477, pp. 359–378, 2007 (`DOI: 10.1198/016214506000001437`); Robert L. Winkler, *"A Decision-Theoretic Approach to Interval Estimation"*, *JASA*, Vol. 67, No. 337, pp. 187–191, 1972; Mahdi Pakdaman Naeini, Gregory F. Cooper, Milos Hauskrecht, *"Obtaining Well Calibrated Probabilities Using Bayesian Binning into Quantiles"*, *AAAI 2015*, pp. 2901–2907 (`DOI: 10.1609/aaai.v29i1.9602`).
+  - *Fasi Collegate*: [`Fase 33 (L5)`](plans/phase_33_L5_clinical_calibration_24dataset_parquet.md)
+  - *Applicazione nel Progetto*: Valutazione quantitativa di *Pinball Loss*, *Winkler Score* contro baseline `Persistence` / `RollingMedianIqr`, *Brier Score* e `ECE`/`MCE` su `10` bin per `evaluate_two_stage_bayesian_pocus` in `calibration_harness.rs` e `ares-calibrate`.
+
+- **Columnar Parquet Adapters & Reference Cohorts (`apache/arrow-rs`, `Fantasia`, `CEBS`, `PPG-DaLiA`, `AGBRESA` HDBR):**
+  - *Fonti*: `https://github.com/apache/arrow-rs` (`arrow-array`, `arrow-schema`, `parquet`, `MIT OR Apache-2.0`); N. Iyengar et al., *Am. J. Physiol.* 271:R1078–R1084, 1996 (PhysioNet `Fantasia`, `DOI: 10.13026/C2RG61`); M. A. García-González et al., *IEEE TBME* 2013 (`CEBS`, `DOI: 10.13026/C2KW23`); Attila Reiss et al., *Sensors* 19(14):3079, 2019 (`PPG-DaLiA`, `DOI: 10.3390/s19143079`, `DOI: 10.24432/C53890`); Stuart S. Laurie et al., *"Optic Disc Edema after 30 Days of Strict Head-Down Tilt Bed Rest"*, *JAMA Ophthalmology*, 137(5):515–522, 2019 (`DOI: 10.1001/jamaophthalmol.2018.6776`) & *J. Physiol.*, 599(14):3503–3515, 2021 (`DOI: 10.1113/JP281667`, `AGBRESA` HDBR).
+  - *Fasi Collegate*: [`Fase 33 (L5)`](plans/phase_33_L5_clinical_calibration_24dataset_parquet.md)
+  - *Applicazione nel Progetto*: Feature opzionale `--features parquet-ingest` e adapter multi-agenzia in `crates/ares-causal-graph/src/parquet_adapters.rs` con degradazione esplicita `AdapterStatus::ExternalDatasetNotBundled` (`0` nodi sintetici) e macchina a stati `ModelValidationStatus` per la chiusura rigorosa di Issue `#12`.
+
+### 11.5 Deterministic Typography, Accessibility Subtitling, PDF 2.0 & NASA Space Apps 2026 Submission Directives (Fase 34 / `L6`)
+
+- **Deterministic Typesetting (`typst/typst`), Slide Frameworks & `SOURCE_DATE_EPOCH`:**
+  - *Fonti*: Laurenz Madje, Martin Haug, *"Typst: A Programmable Markup-Based Typesetting System for the Sciences"* (TU Berlin, 2022) — `https://github.com/typst/typst` (`v0.15.1`, `Apache-2.0`); `https://github.com/touying-typ/touying` (`MIT`); `https://github.com/polylux-typ/polylux` (`MIT`); Reproducible Builds `SOURCE_DATE_EPOCH` (`https://reproducible-builds.org/specs/source-date-epoch/`).
+  - *Fasi Collegate*: [`Fase 34 (L6)`](plans/phase_34_L6_nasa_submission_pitch_slides_pdf.md)
+  - *Applicazione nel Progetto*: Compilazione offline deterministica di `docs/submission/NASA_2026_7_SLIDE_DECK.pdf` e `PANORAMICA_GENERALE_PROGETTO.pdf` via `scripts/build_submission_docs.sh`.
+
+- **SubRip (`.srt`), W3C `WCAG 2.2 SC 1.2.2`, ISO 32000-2:2020 (PDF 2.0) & NASA Space Apps Submission Guide:**
+  - *Fonti*: Matroska SubRip `S_TEXT/UTF8` Technical Specification (`https://www.matroska.org/technical/subtitles.html`); W3C *WCAG 2.2* Success Criterion `1.2.2` (*Captions Prerecorded*, `https://www.w3.org/TR/WCAG22/`); BBC Subtitle Guidelines ($\le 20\text{ CPS}$, $\le 2$ righe); ISO 32000-2:2020 (*PDF 2.0*); `qpdf` (`Apache-2.0`), `poppler` (`GPL-2.0`), `pypdf` (`BSD-3-Clause`); NASA Space Apps Project Submission Guide (`https://www.spaceappschallenge.org/resources/project-submission-guide/`).
+  - *Fasi Collegate*: [`Fase 34 (L6)`](plans/phase_34_L6_nasa_submission_pitch_slides_pdf.md)
+  - *Applicazione nel Progetto*: Validazione automatica di `PITCH_30S_SUBTITLES_EN.srt` (`<= 00:00:30,000`), `WALKTHROUGH_180S_SUBTITLES_EN.srt` (`<= 00:03:00,000`), doppio oracolo `N_pages == 7` (`typst query` + parser stdlib) e audit semantico Issue `#12` in `scripts/build_submission_docs.sh`.
+
+---
+
+## 12. Blocco M: 3-Tier LSAH Persistence Engine (Issue `#26`), Columnar/Vector Storage (`Lance` & `HNSW`), Lock-Free Real-Time Rings (`LEFT-RS`), Embedded `ChaCha20-Poly1305` AEAD & Multi-Branch Unification (Fasi 35–37)
+
+> Architettura di riferimento: [`docs/plans/BLOCK_M_GAP_CLOSURE_ARCHITECTURE.md`](plans/BLOCK_M_GAP_CLOSURE_ARCHITECTURE.md) | Piani di fase: [`Fase 35 (M1 — Issue #26)`](plans/phase_35_M1_lsah_3tier_persistence_issue26.md), [`Fase 36 (M2 — Multi-Branch Merge)`](plans/phase_36_M2_branch_unification_merge.md), [`Fase 37 (M3 — E2E Verification)`](plans/phase_37_M3_end_to_end_db_cockpit_verification.md).
+
+### 12.1 Adaptive Columnar Multimodal Storage & Approximate Nearest Neighbor Vector Search (`Lance`, `Apache Arrow IPC`, `Zstandard` & `HNSW` — Fase 35 / `M1`)
+
+- **Lance Adaptive Columnar Format (`Miniblock` vs. `Full Zip` Structural Encodings for NVMe + Vectors):**
+  - *Autori*: Weston Pace, Chang She, Lei Xu, Will Jones, Albert Lockett, Jun Wang, Raunak Shah, *"Lance: Efficient Random Access in Columnar Storage through Adaptive Structural Encodings"*, 2025 (`arXiv:2504.15247v1`, `DOI: 10.48550/arXiv.2504.15247`).
+  - *Fasi Collegate*: [`Fase 35 (M1)`](plans/phase_35_M1_lsah_3tier_persistence_issue26.md), [`Fase 37 (M3)`](plans/phase_37_M3_end_to_end_db_cockpit_verification.md)
+  - *Applicazione nel Progetto*: Fondamento architetturale del **Warm Tier** in `crates/ares-storage-lsah`: giustifica la normalizzazione in due tabelle distinte (`lsah_telemetry_frames` densa a `20 Hz` con null-bitmap nativi per Issue `#11` vs. `lsah_pocus_signatures` episodica con `FixedSizeList<Float32, D>` per scansioni ecografiche POCUS `D = 128 / 256`, evitando `~1.6 TB` di zero-padding su `900` Sol) e il trait modulare `WarmColumnarVectorBackend` che supporta sia il backend nativo snello `ArrowIpcZstdHnswBackend` (`default`, `62` crate 100% offline, `0` crate HTTP) sia `LanceDbEmbeddedWarmBackend` (`--features lancedb-warm`, `lancedb 0.40.0` / `lance 13.0.0` con guardia air-gap `validate_airgapped_lsah_dir()`).
+
+- **Hierarchical Navigable Small World (`HNSW`) Graphs for $O(\log N)$ Longitudinal Ultrasound Retrieval:**
+  - *Autori*: Yu. A. Malkov, D. A. Yashunin, *"Efficient and robust approximate nearest neighbor search using Hierarchical Navigable Small World graphs"*, *IEEE Transactions on Pattern Analysis and Machine Intelligence (TPAMI)*, Vol. 42, No. 4, pp. 824–836, 2020 (`DOI: 10.1109/TPAMI.2018.2889473`, `arXiv:1603.09320v4`).
+  - *Fasi Collegate*: [`Fase 35 (M1)`](plans/phase_35_M1_lsah_3tier_persistence_issue26.md)
+  - *Applicazione nel Progetto*: Implementazione pure-Rust deterministica (`SplitMix64` level sampling, `M = 16`, `M_max0 = 32`, `ef_construction = 64`, `ef_search = 32`, snapshot `.hnsw.bin` protetto da `CRC-32C`) in `crates/ares-storage-lsah/src/hnsw_index.rs` per il confronto longitudinale `Sol 180` vs. baseline `Sol 1` delle firme ecografiche `IJV` (`tau_w`, `IJV_CSA`, texture B-mode) in `< 260 us` (`Recall@5 >= 0.98`), mantenendo il vincolo Issue `#12` (`ProceduralBModeSimulation` / `IllustrativeUnvalidated`) e il blocco invalicabile del **Hard Safety Gate 1** (`advisory_only_gate1_locked = true`).
+
+- **Apache Arrow Columnar In-Memory/IPC Format & Zstandard (`RFC 8878`) Frame Compression:**
+  - *Fonti*: Apache Arrow Specification (`Format Version 1.0 / IPC File v2`, `https://arrow.apache.org/docs/format/Columnar.html`); Yann Collet, Murray Kucherawy, *"Zstandard Compression and the 'application/zstd' Media Type"*, IETF *RFC 8878*, February 2021 (`DOI: 10.17487/rfc8878`).
+  - *Fasi Collegate*: [`Fase 35 (M1)`](plans/phase_35_M1_lsah_3tier_persistence_issue26.md)
+  - *Applicazione nel Progetto*: Serializzazione colonnare `arrow-ipc 58.4.0` + `zstd 0.13.3` (`level = 3` nel Warm Tier, `level = 6` nel Cold Tier con rapporto di compressione `5x–9x`), preservando bit-per-bit i bitmap di validita `NULL` (`rmssd_ms == None` su tutti i `53` tracciati numerici `1 Hz` `BIDMC` in conformita a Issue `#11`) senza dipendere dal crate `parquet` assente dalla cache offline.
+
+### 12.2 Lock-Free / Wait-Free Real-Time Ring Buffering & Flash Wear-Leveling Isolation (`LEFT-RS` — Fase 35 / `M1`)
+
+- **Lock-Free Fault-Tolerant Resource Sharing & Wait-Free Producer/Consumer Isolation:**
+  - *Autori*: Nan Chen, Xiaotian Dai, Tong Cheng et al., *"LEFT-RS: A Lock-Free Fault-Tolerant Resource Sharing Protocol for Multicore Real-Time Systems"*, 2025 (`arXiv:2512.21701v1`, `DOI: 10.48550/arXiv.2512.21701`); Ivan Cibrario Bertolotti, Gabriele Manduchi, *"Lock and Wait-Free Communication"*, in *Real-Time Embedded Systems*, CRC Press, 2017 (`DOI: 10.1201/b11651-10`); Hyeonjoong Cho, Binoy Ravindran, E. Douglas Jensen, *"Lock-Free Synchronization for Dynamic Embedded Real-Time Systems"*, *Proc. Design, Automation and Test in Europe (DATE)*, 2006 (`DOI: 10.1109/date.2006.243800`).
+  - *Fasi Collegate*: [`Fase 35 (M1)`](plans/phase_35_M1_lsah_3tier_persistence_issue26.md), [`Fase 37 (M3)`](plans/phase_37_M3_end_to_end_db_cockpit_verification.md)
+  - *Applicazione nel Progetto*: Progettazione di `HotLsahSlot` (`256 B`, `#[repr(C, align(64))]`, `Copy`, `0` puntatori heap post-init, `< 250 ns` insert) in `HotRingBuffer` (`60–300 s @ 20 Hz`) e del doppio buffer di staging `WarmStagingSwapBuffer` (`2 x 200` slot + coalescenza d'emergenza `WelfordAccumulator` su `spawn_blocking`), garantendo che picchi di latenza `fsync()` (`50–250 ms`) su flash eMMC/NVMe rad-tolerant non blocchino mai il loop deterministico a `20 Hz` (`p99.9 < 150 us`) e riducendo le scritture flash di **`200x`** (`8,640` vs `1,728,000` sync/Sol) con protocollo crash-atomico `write(.tmp) -> sync_all -> rename`.
+
+### 12.3 Embedded `ChaCha20-Poly1305` AEAD, Monotonic Nonce Discipline & Tamper-Evident Audit Binding (Fase 35 / `M1`)
+
+- **High-Speed Embedded `ChaCha20-Poly1305` & Structured `96-bit` Nonce Uniqueness (`DATE 2017`, `RFC 8103`, `RFC 8439`):**
+  - *Autori*: Fabrizio De Santis, Andreas Schauer, Georg Sigl, *"ChaCha20-Poly1305 authenticated encryption for high-speed embedded IoT applications"*, *Proc. Design, Automation & Test in Europe Conference & Exhibition (DATE)*, IEEE, pp. 692–697, 2017 (`DOI: 10.23919/date.2017.7927078`); Russ Housley, *"Using ChaCha20-Poly1305 Authenticated Encryption in the Cryptographic Message Syntax (CMS)"*, IETF *RFC 8103*, 2017 (`DOI: 10.17487/rfc8103`); Yoav Nir, Adam Langley, *"ChaCha20 and Poly1305 for IETF Protocols"*, IETF *RFC 8439*, 2018 (`DOI: 10.17487/rfc8439`).
+  - *Fasi Collegate*: [`Fase 35 (M1)`](plans/phase_35_M1_lsah_3tier_persistence_issue26.md), [`Fase 12 (F1)`](plans/phase_12_F1_role_based_crew_privacy_sha256_audit_and_aead_plan.md)
+  - *Applicazione nel Progetto*: Sigillatura del **Cold Tier** (`.lsah.cold.aead`) in `crates/ares-storage-lsah/src/cold_aead_archive.rs` tramite nonce strutturato monotono a `96 bit` `key_epoch_id: u16 LE || mission_sol: u16 LE || chunk_seq: u64 LE` con watermark persistito su disco prima della cifratura (`Err(LsahStorageError::NonceReuseDetected)` in caso di tentato riuso post-riavvio) e legame bidirezionale **Associated Authenticated Data (`AAD`)** con `Sha256AuditLogger` (`ColdChunkHeader` di `144 B` contenente `audit_seq` e digest esadecimale `SHA-256` dell'evento `LSAH_COLD_SEAL`).
+
+### 12.4 NASA `LSAH`, Spaceflight Medical Data Architecture (`ExMC Gap Med 07`), `NASA-STD-3001` & Open Anatomical/Clinical Assets (Fasi 35–37 / `M1–M3`)
+
+- **NASA Lifetime Surveillance of Astronaut Health (`LSAH`) & Exploration Medical Data Architecture (`MDA`):**
+  - *Fonti & Autori*: NASA Johnson Space Center, *Lifetime Surveillance of Astronaut Health (LSAH)* (`https://lsda.jsc.nasa.gov/lsah_home`) & NASA Human Research Program *Exploration Medical Capability (`ExMC`) Gap Med 07: Medical Data Architecture*; Albert Assad, Olivier L. de Weck, *"Medical supply logistics for human spaceflight: Modularity, reliability, and autonomous medical data architectures"*, *Acta Astronautica*, Vol. 110, pp. 135–150, 2015 (`DOI: 10.1016/j.actaastro.2014.10.009`); Luke Stegeman et al., *"Longitudinal astronaut health surveillance and space radiation risk modeling"*, *Carcinogenesis*, 2025 (`DOI: 10.1093/carcin/bgaf076`); `NASA-STD-3001 Vol. 1 Rev C` (`[V1 3003]` *Crew Medical Privacy Governance*, `[V1 3006]` *Earth-Independent Medical Operations — EIMO*).
+  - *Fasi Collegate*: [`Fase 35 (M1)`](plans/phase_35_M1_lsah_3tier_persistence_issue26.md), [`Fase 37 (M3)`](plans/phase_37_M3_end_to_end_db_cockpit_verification.md)
+  - *Applicazione nel Progetto*: Governa il ciclo di vita completo Hot $\to$ Warm $\to$ Cold, la coda Store-and-Forward prioritizzata `DsnDownlinkOutbox` (`P0 = CriticalSafetyAlert`, `P1 = PocusSignature`, `P2 = NominalSol`) per finestre radio Terra-Marte (`OWLT 8–48 min` / blackout di congiunzione solare `14 giorni`), e il filtro di privacy per ruolo `AresSecurityGuard::apply_privacy_tier` (`[V1 3003]`) su tutte le letture storiche.
+
+- **Expanded 53-Subject PhysioNet BIDMC Cohort & Open `CC-BY-SA-4.0` 3D Anatomical Mesh Atlas (Fase 36 / `M2` & Fase 37 / `M3`):**
+  - *Fonti*: Marco A. F. Pimentel et al., *"Toward a Robust Estimation of Respiratory Rate From Pulse Oximeters"*, *IEEE TBME*, 64(8):1914–1923, 2017 — *PhysioNet BIDMC PPG and Respiration Dataset v1.0.0* (`DOI: 10.13026/C2208R`, `ODC-By v1.0`, tutti i `53` soggetti `bidmc_01..53_Numerics.csv` verificati via `SHA-256`); Gauthier Kervyn / Z-Anatomy & BodyParts3D (*Database Center for Life Science*, Mitsuhashi et al., *Nucleic Acids Research*, 37:D782–D785, 2009, `DOI: 10.1093/nar/gkn613`, licenza `CC-BY-SA-4.0` documentata in `ares-cockpit/public/anatomy/ATTRIBUTION.md` & `MANIFEST.json`).
+  - *Fasi Collegate*: [`Fase 36 (M2)`](plans/phase_36_M2_branch_unification_merge.md), [`Fase 37 (M3)`](plans/phase_37_M3_end_to_end_db_cockpit_verification.md)
+  - *Applicazione nel Progetto*: Espansione del benchmark terrestre `SubjectDisjointSplit` anti-leakage a tutti i `53` soggetti ICU `BIDMC` (mantenendo `rmssd_ms == None` per Issue `#11` e `ModelValidationStatus::IllustrativeUnvalidated` / `FLAG_TERRESTRIAL_BENCHMARKED_ONLY` per Issue `#12`) e rendering 3D air-gapped dei `5` sistemi anatomici `.glb` (`0x46546C67` magic check + mapping `UBERON:` `observed=false`).
+
+### 12.5 Open-Source Rust Storage & Cryptography Repositories Used in Blocco M (`crates/ares-storage-lsah`)
+
+| Repository Open-Source | Versione Locale in Cache | Licenza | Impiego in `crates/ares-storage-lsah` |
+| :--- | :---: | :---: | :--- |
+| [`apache/arrow-rs`](https://github.com/apache/arrow-rs) (`arrow-array`, `arrow-schema`, `arrow-ipc`) | `58.4.0` | `Apache-2.0` | Schema colonnare tipizzato, bitmap di validita `NULL` (Issue `#11`) e formato `Arrow IPC File v2`. |
+| [`gyscos/zstd-rs`](https://github.com/gyscos/zstd-rs) (`zstd`) | `0.13.3` | `MIT` | Compressione colonnare `Zstd` (`level = 3` Warm, `level = 6` Cold `5x–9x`) 100% offline. |
+| [`lancedb/lancedb`](https://github.com/lancedb/lancedb) & [`lance-format/lance`](https://github.com/lance-format/lance) | `0.40.0` / `13.0.0` | `Apache-2.0` | Backend embedded opzionale (`--features lancedb-warm`) dietro `WarmColumnarVectorBackend` + guardia air-gap. |
+| [`Amanieu/parking_lot`](https://github.com/Amanieu/parking_lot) | `0.12.5` | `MIT OR Apache-2.0` | Sincronizzazione deterministica sub-microsecondo su `HotRingBuffer` e `WarmStagingSwapBuffer`. |
+| [`srijs/rust-crc32fast`](https://github.com/srijs/rust-crc32fast) | `1.5.2` | `MIT OR Apache-2.0` | Checksum `CRC-32C` su `HotLsahSlot`, snapshot `.hnsw.bin`, `MANIFEST.lsah.json` e `ColdChunkHeader`. |
+| [`RustCrypto/AEADs`](https://github.com/RustCrypto/AEADs) (`chacha20poly1305`) & [`RustCrypto/hashes`](https://github.com/RustCrypto/hashes) (`sha2`) | `0.10.1` / `0.10.9` | `MIT OR Apache-2.0` | Sigillatura autenticata Cold Tier con nonce monotono `96-bit` e `AAD` bidirezionale su `Sha256AuditLogger`. |
+
+
 

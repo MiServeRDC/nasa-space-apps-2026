@@ -1,0 +1,62 @@
+{
+  "sourceSha256": "ead39ba6abf3103cc5037c231c66d166489e86e80baa52f4ba091a9fa7e71818",
+  "sourceUrl": "https://github.com/MiServeRDC/nasa-space-apps-2026",
+  "license": "CC0-1.0",
+  "credit": "ARES contributors; original synthetic calibration solids, not anatomical data",
+  "redistributionApproved": true,
+  "sourceToModel": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1
+  ],
+  "lodRatios": [
+    1,
+    0.5
+  ],
+  "lodMaxRelativeError": 0.05,
+  "structures": [
+    {
+      "id": "calibration-left",
+      "layer": "core",
+      "nodes": [
+        {
+          "index": 0,
+          "name": "calibration-left"
+        }
+      ]
+    },
+    {
+      "id": "calibration-right",
+      "layer": "core",
+      "nodes": [
+        {
+          "index": 1,
+          "name": "calibration-right"
+        }
+      ]
+    },
+    {
+      "id": "calibration-cover",
+      "layer": "overlay",
+      "nodes": [
+        {
+          "index": 2,
+          "name": "calibration-cover"
+        }
+      ]
+    }
+  ]
+}
