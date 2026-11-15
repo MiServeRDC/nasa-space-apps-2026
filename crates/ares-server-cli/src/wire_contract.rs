@@ -57,6 +57,24 @@ pub struct StressTestPatchRequest {
     pub pocus_thrombus_confirmed: Option<bool>,
     pub systolic_bp_drop_mmhg: Option<f64>,
     pub cabin_ppco2_mmhg: Option<f64>,
+    #[serde(default)]
+    pub helmet_ppco2_mmhg: Option<f64>,
+    #[serde(default)]
+    pub affected_crew_count: Option<usize>,
+    #[serde(default)]
+    pub platelet_count_k_ul: Option<f64>,
+    #[serde(default)]
+    pub efast_scan: Option<ares_medops_playbooks::pocus_multiorgan::PocusEfastScan>,
+    #[serde(default)]
+    pub renal_pocus: Option<ares_medops_playbooks::pocus_multiorgan::PocusRenalBladderScan>,
+    #[serde(default)]
+    pub clear_pocus_scans: Option<bool>,
+    #[serde(default)]
+    pub crew_profile: Option<ares_core_types::medical_360::CrewBiologicalProfile>,
+    #[serde(default)]
+    pub pelvic_pocus: Option<ares_core_types::medical_360::PocusPelvicScan>,
+    #[serde(default)]
+    pub medical_360_scenario: Option<ares_core_types::medical_360::Aerospace360ScenarioInput>,
 }
 
 impl From<StressTestScenarioInput> for StressTestPatchRequest {
@@ -73,6 +91,15 @@ impl From<StressTestScenarioInput> for StressTestPatchRequest {
             pocus_thrombus_confirmed: Some(s.pocus_thrombus_confirmed),
             systolic_bp_drop_mmhg: Some(s.systolic_bp_drop_mmhg),
             cabin_ppco2_mmhg: None,
+            helmet_ppco2_mmhg: None,
+            affected_crew_count: None,
+            platelet_count_k_ul: None,
+            efast_scan: None,
+            renal_pocus: None,
+            clear_pocus_scans: None,
+            crew_profile: None,
+            pelvic_pocus: None,
+            medical_360_scenario: None,
         }
     }
 }
@@ -330,6 +357,8 @@ pub struct WireTelemetryPacket {
     pub mars_circadian_sleep: Option<ares_core_types::telemetry::MarsCircadianSleep>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub neuro_immune_viral: Option<ares_core_types::telemetry::NeuroImmuneViral>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub aerospace_360: Option<ares_core_types::medical_360::AerospaceMedical360State>,
     pub timestral_quantiles: serde_json::Value,
     /// Per-channel anomaly status (`VitalsAnomalyReport`) plus the active synthetic demo injection.
     #[serde(default)]
@@ -643,6 +672,7 @@ impl WireTelemetryPacket {
             orthostatic_fluid: p.orthostatic_fluid,
             mars_circadian_sleep: p.mars_circadian_sleep,
             neuro_immune_viral: p.neuro_immune_viral,
+            aerospace_360: p.aerospace_360.clone(),
             timestral_quantiles: ctx.timestral_quantiles,
             vitals_anomaly: ctx.vitals_anomaly,
             hypergraph_spatial: ctx.hypergraph_spatial,

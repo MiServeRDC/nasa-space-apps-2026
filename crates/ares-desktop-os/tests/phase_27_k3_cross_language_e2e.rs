@@ -183,6 +183,7 @@ fn build_telemetry_packet(
         orthostatic_fluid: None,
         mars_circadian_sleep: None,
         neuro_immune_viral: None,
+        aerospace_360: None,
     }
 }
 

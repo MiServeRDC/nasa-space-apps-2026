@@ -433,6 +433,7 @@ fn compute_mission_telemetry_tick_from_row(
         orthostatic_fluid: Some(orthostatic),
         mars_circadian_sleep: Some(circadian),
         neuro_immune_viral: Some(immune),
+        aerospace_360: None,
     };
     (packet, pocus_est.thrombus_posterior, causal_chain)
 }

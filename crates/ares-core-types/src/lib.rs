@@ -7,6 +7,7 @@ pub mod anomaly;
 pub mod binary_ipc;
 pub mod constants;
 pub mod error;
+pub mod medical_360;
 pub mod security;
 pub mod telemetry;
 
@@ -20,6 +21,7 @@ pub use binary_ipc::{
 };
 pub use constants::*;
 pub use error::AresCoreError;
+pub use medical_360::*;
 pub use security::{
     AuditChainRecord, CrewPrivacyFilter, CrewRole, McpInputSanitizer, MedOpsAuditLogger,
     NoOpSecurity,
@@ -396,6 +398,7 @@ mod tests {
             orthostatic_fluid: None,
             mars_circadian_sleep: None,
             neuro_immune_viral: None,
+            aerospace_360: None,
         }
     }
 
