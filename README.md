@@ -224,8 +224,6 @@ Grounding standards, datasets, and literature. Full annotated reading list with 
 - Ebert et al. (2026). Autonomous procedural guidance (AMOS) on the ISS. https://doi.org/10.1177/15305627261422798
 - De Martino et al. (2026). Interconnected physiological systems. *Frontiers in Network Physiology*. https://doi.org/10.3389/fnetp.2026.1867627
 
-> Evidence boundaries (sample sizes, terrestrial vs. spaceflight scope, preprint status) are recorded per source in [`docs/REFERENCES.md`](docs/REFERENCES.md). These sources contextualize design choices; they do not validate ARES-Health's outputs.
-
 ---
 
 *ARES-Health is a NASA Space Apps Challenge 2026 research prototype. It is not a certified medical device and must not be used for real clinical decision-making. See the evidence-status notice at the top of this document.*
