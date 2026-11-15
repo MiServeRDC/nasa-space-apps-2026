@@ -1,4 +1,4 @@
-use crate::config::{LsahStorageConfig, atomic_write_bytes, compute_crc32c, validate_airgapped_lsah_dir};
+use crate::config::{LsahStorageConfig, atomic_write_bytes, validate_airgapped_lsah_dir};
 use crate::error::LsahStorageError;
 use crate::hnsw_index::{HnswFilter, HnswVectorIndex};
 use crate::pocus_signature::PocusSignatureRecord;
@@ -26,6 +26,31 @@ pub struct WarmRecoveryReport {
     pub valid_segments_recovered: usize,
     pub quarantined_corrupt_segments: Vec<String>,
     pub pocus_signatures_recovered: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct LegacyWarmSegmentMeta {
+    segment_id: u64,
+    mission_sol: u16,
+    relative_path: String,
+    row_count: usize,
+    compressed_bytes: u64,
+    crc32c: u32,
+    min_sequence_id: u64,
+    max_sequence_id: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct LegacyManifestPayload {
+    next_segment_id: u64,
+    pocus_dim: usize,
+    segments: Vec<LegacyWarmSegmentMeta>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct LegacySignedManifest {
+    payload: LegacyManifestPayload,
+    crc32c: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -97,19 +122,49 @@ impl ArrowIpcZstdHnswBackend {
         let mut recovered_segments = Vec::new();
         if manifest_path.exists() {
             let raw = fs::read(&manifest_path)?;
-            let signed: SignedManifest = serde_json::from_slice(&raw)?;
-            let payload_bytes = serde_json::to_vec(&signed.payload)?;
-            let computed = compute_crc32c(&payload_bytes);
-            if computed != signed.crc32c {
-                return Err(LsahStorageError::CrcMismatch {
-                    artifact: manifest_path.display().to_string(),
-                    expected: signed.crc32c,
-                    computed,
-                });
-            }
-            next_segment_id = signed.payload.next_segment_id;
+            let (next_id, segments) = match serde_json::from_slice::<SignedManifest>(&raw) {
+                Ok(signed) => {
+                    let payload_bytes = serde_json::to_vec(&signed.payload)?;
+                    let computed = crate::config::compute_storage_crc32_ieee(&payload_bytes);
+                    if computed == signed.crc32c {
+                        (signed.payload.next_segment_id, signed.payload.segments)
+                    } else {
+                        // Fallback: verify against legacy schema (v1 without min/max sol bounds)
+                        let legacy: LegacySignedManifest = serde_json::from_slice(&raw)?;
+                        let leg_bytes = serde_json::to_vec(&legacy.payload)?;
+                        let leg_computed = crate::config::compute_storage_crc32_ieee(&leg_bytes);
+                        if leg_computed != legacy.crc32c {
+                            return Err(LsahStorageError::CrcMismatch {
+                                artifact: manifest_path.display().to_string(),
+                                expected: signed.crc32c,
+                                computed,
+                            });
+                        }
+                        let segs = legacy
+                            .payload
+                            .segments
+                            .into_iter()
+                            .map(|s| WarmSegmentMeta {
+                                segment_id: s.segment_id,
+                                mission_sol: s.mission_sol,
+                                min_mission_sol: None,
+                                max_mission_sol: None,
+                                relative_path: s.relative_path,
+                                row_count: s.row_count,
+                                compressed_bytes: s.compressed_bytes,
+                                crc32c: s.crc32c,
+                                min_sequence_id: s.min_sequence_id,
+                                max_sequence_id: s.max_sequence_id,
+                            })
+                            .collect();
+                        (legacy.payload.next_segment_id, segs)
+                    }
+                }
+                Err(err) => return Err(LsahStorageError::Json(err)),
+            };
+            next_segment_id = next_id;
 
-            for seg in signed.payload.segments {
+            for seg in segments {
                 let seg_path = warm_dir.join(&seg.relative_path);
                 match Self::verify_segment_file_crc(&seg_path, seg.crc32c) {
                     Ok(()) => {
@@ -180,11 +235,11 @@ impl ArrowIpcZstdHnswBackend {
         Ok(backend)
     }
 
-    /// Verifies a segment file's CRC-32C against its expected digest.
+    /// Verifies a segment file's CRC-32 (IEEE 802.3) against its expected digest.
     pub fn verify_segment_file_crc(path: &Path, expected_crc: u32) -> Result<(), LsahStorageError> {
         let bytes = fs::read(path)?;
-        let computed = compute_crc32c(&bytes);
-        if computed != expected_crc {
+        if !crate::config::verify_segment_checksum(&bytes, expected_crc) {
+            let computed = crate::config::compute_storage_crc32_ieee(&bytes);
             return Err(LsahStorageError::CrcMismatch {
                 artifact: path.display().to_string(),
                 expected: expected_crc,
@@ -201,7 +256,7 @@ impl ArrowIpcZstdHnswBackend {
             segments: state.segments.clone(),
         };
         let payload_bytes = serde_json::to_vec(&payload)?;
-        let crc32c = compute_crc32c(&payload_bytes);
+        let crc32c = crate::config::compute_storage_crc32_ieee(&payload_bytes);
         let signed = SignedManifest { payload, crc32c };
         let encoded = serde_json::to_vec_pretty(&signed)?;
         atomic_write_bytes(&self.manifest_path, &encoded)
@@ -268,111 +323,128 @@ impl WarmColumnarVectorBackend for ArrowIpcZstdHnswBackend {
             }
         }
 
-        if distinct_sols.len() > 1 {
-            let mut last_meta = None;
-            for sol in distinct_sols {
+        if distinct_sols.is_empty() {
+            return Err(LsahStorageError::InvalidConfig(
+                "cannot append empty telemetry RecordBatch".to_string(),
+            ));
+        }
+
+        struct PreparedPartition {
+            sol: u16,
+            row_count: usize,
+            min_seq: u64,
+            max_seq: u64,
+            encoded: Vec<u8>,
+            crc32: u32,
+        }
+
+        let mut prepared = Vec::with_capacity(distinct_sols.len());
+
+        for &sol in &distinct_sols {
+            let sub_batch = if distinct_sols.len() == 1 {
+                batch.clone()
+            } else {
                 let mask: BooleanArray = (0..sol_col.len())
                     .map(|i| Some(sol_col.value(i) == sol))
                     .collect();
-                let sub_batch = arrow_select::filter::filter_record_batch(batch, &mask)?;
-                if sub_batch.num_rows() == 0 {
-                    continue;
-                }
-                let sub_seq_col = sub_batch
-                    .column_by_name("sequence_id")
-                    .ok_or_else(|| {
-                        LsahStorageError::Backend("missing sequence_id column".to_string())
-                    })?
-                    .as_primitive::<UInt64Type>();
-                let mut min_seq = u64::MAX;
-                let mut max_seq = 0u64;
-                for i in 0..sub_seq_col.len() {
-                    let s = sub_seq_col.value(i);
-                    min_seq = min_seq.min(s);
-                    max_seq = max_seq.max(s);
-                }
+                arrow_select::filter::filter_record_batch(batch, &mask)?
+            };
 
-                let encoded = Self::encode_batch_arrow_ipc_zstd(&sub_batch)?;
-                let crc32c = crate::config::compute_storage_crc32_ieee(&encoded);
-                let compressed_bytes = encoded.len() as u64;
-
-                let mut guard = self.state.lock();
-                let seg_id = guard.next_segment_id;
-                let rel_name = format!("sol_{sol:04}_seg_{seg_id:08}.arrow.zst");
-                let seg_path = self.warm_dir.join(&rel_name);
-                atomic_write_bytes(&seg_path, &encoded)?;
-
-                let meta = WarmSegmentMeta {
-                    segment_id: seg_id,
-                    mission_sol: sol,
-                    min_mission_sol: Some(sol),
-                    max_mission_sol: Some(sol),
-                    relative_path: rel_name,
-                    row_count: sub_batch.num_rows(),
-                    compressed_bytes,
-                    crc32c,
-                    min_sequence_id: min_seq,
-                    max_sequence_id: max_seq,
-                };
-                guard.segments.push(meta.clone());
-                guard.next_segment_id = seg_id.saturating_add(1);
-                if let Err(error) = self.persist_manifest_locked(&guard) {
-                    guard.segments.pop();
-                    guard.next_segment_id = seg_id;
-                    let _ = fs::remove_file(&seg_path);
-                    return Err(error);
-                }
-                last_meta = Some(meta);
+            if sub_batch.num_rows() == 0 {
+                continue;
             }
-            return last_meta.ok_or_else(|| LsahStorageError::Backend("no partitions written".to_string()));
+
+            let sub_seq_col = sub_batch
+                .column_by_name("sequence_id")
+                .ok_or_else(|| {
+                    LsahStorageError::Backend("missing sequence_id column".to_string())
+                })?
+                .as_primitive::<UInt64Type>();
+
+            let mut min_seq = u64::MAX;
+            let mut max_seq = 0u64;
+            for i in 0..sub_seq_col.len() {
+                let s = sub_seq_col.value(i);
+                min_seq = min_seq.min(s);
+                max_seq = max_seq.max(s);
+            }
+
+            let encoded = Self::encode_batch_arrow_ipc_zstd(&sub_batch)?;
+            let crc32 = crate::config::compute_storage_crc32_ieee(&encoded);
+            prepared.push(PreparedPartition {
+                sol,
+                row_count: sub_batch.num_rows(),
+                min_seq,
+                max_seq,
+                encoded,
+                crc32,
+            });
         }
 
-        let seq_col = batch
-            .column_by_name("sequence_id")
-            .ok_or_else(|| LsahStorageError::Backend("missing sequence_id column".to_string()))?
-            .as_primitive::<UInt64Type>();
-
-        let mission_sol = sol_col.value(0);
-        let mut min_seq = u64::MAX;
-        let mut max_seq = 0u64;
-        for i in 0..seq_col.len() {
-            let s = seq_col.value(i);
-            min_seq = min_seq.min(s);
-            max_seq = max_seq.max(s);
+        if prepared.is_empty() {
+            return Err(LsahStorageError::Backend("no partitions to write".to_string()));
         }
 
-        let encoded = Self::encode_batch_arrow_ipc_zstd(batch)?;
-        let crc32c = crate::config::compute_storage_crc32_ieee(&encoded);
-        let compressed_bytes = encoded.len() as u64;
-
+        // Atomic write-and-commit discipline:
+        // Write all partition files first. If any partition write fails,
+        // clean up all written files for this batch without modifying in-memory state or manifest.
         let mut guard = self.state.lock();
-        let seg_id = guard.next_segment_id;
+        let base_seg_id = guard.next_segment_id;
+        let mut written_paths = Vec::new();
+        let mut new_metas = Vec::new();
 
-        let rel_name = format!("sol_{mission_sol:04}_seg_{seg_id:08}.arrow.zst");
-        let seg_path = self.warm_dir.join(&rel_name);
-        atomic_write_bytes(&seg_path, &encoded)?;
-
-        let meta = WarmSegmentMeta {
-            segment_id: seg_id,
-            mission_sol,
-            min_mission_sol: Some(mission_sol),
-            max_mission_sol: Some(mission_sol),
-            relative_path: rel_name,
-            row_count: batch.num_rows(),
-            compressed_bytes,
-            crc32c,
-            min_sequence_id: min_seq,
-            max_sequence_id: max_seq,
-        };
-        guard.segments.push(meta.clone());
-        guard.next_segment_id = seg_id.saturating_add(1);
-        if let Err(error) = self.persist_manifest_locked(&guard) {
-            guard.segments.pop();
-            guard.next_segment_id = seg_id;
-            let _ = fs::remove_file(&seg_path);
-            return Err(error);
+        let mut write_err = None;
+        for (idx, p) in prepared.iter().enumerate() {
+            let seg_id = base_seg_id.saturating_add(idx as u64);
+            let rel_name = format!("sol_{:04}_seg_{:08}.arrow.zst", p.sol, seg_id);
+            let seg_path = self.warm_dir.join(&rel_name);
+            match atomic_write_bytes(&seg_path, &p.encoded) {
+                Ok(()) => {
+                    written_paths.push(seg_path);
+                    new_metas.push(WarmSegmentMeta {
+                        segment_id: seg_id,
+                        mission_sol: p.sol,
+                        min_mission_sol: Some(p.sol),
+                        max_mission_sol: Some(p.sol),
+                        relative_path: rel_name,
+                        row_count: p.row_count,
+                        compressed_bytes: p.encoded.len() as u64,
+                        crc32c: p.crc32,
+                        min_sequence_id: p.min_seq,
+                        max_sequence_id: p.max_seq,
+                    });
+                }
+                Err(err) => {
+                    write_err = Some(err);
+                    break;
+                }
+            }
         }
-        Ok(meta)
+
+        if let Some(err) = write_err {
+            for path in written_paths {
+                let _ = fs::remove_file(path);
+            }
+            return Err(err);
+        }
+
+        // Stage into state and persist manifest atomically
+        guard.segments.extend(new_metas.clone());
+        guard.next_segment_id = base_seg_id.saturating_add(new_metas.len() as u64);
+
+        if let Err(err) = self.persist_manifest_locked(&guard) {
+            let rollback_len = guard.segments.len().saturating_sub(new_metas.len());
+            guard.segments.truncate(rollback_len);
+            guard.next_segment_id = base_seg_id;
+            for path in written_paths {
+                let _ = fs::remove_file(path);
+            }
+            return Err(err);
+        }
+
+        new_metas.last().cloned().ok_or_else(|| {
+            LsahStorageError::Backend("no partitions committed".to_string())
+        })
     }
 
     fn read_telemetry_sol_range(
@@ -387,9 +459,12 @@ impl WarmColumnarVectorBackend for ArrowIpcZstdHnswBackend {
                 .segments
                 .iter()
                 .filter(|s| {
-                    let min_s = s.min_mission_sol.unwrap_or(s.mission_sol);
-                    let max_s = s.max_mission_sol.unwrap_or(s.mission_sol);
-                    min_s <= sol_end && max_s >= sol_start
+                    if let (Some(min_s), Some(max_s)) = (s.min_mission_sol, s.max_mission_sol) {
+                        min_s <= sol_end && max_s >= sol_start
+                    } else {
+                        // Unconstrained legacy segment: retain and filter row-by-row
+                        true
+                    }
                 })
                 .cloned()
                 .collect()

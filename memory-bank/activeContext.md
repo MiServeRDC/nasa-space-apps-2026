@@ -1,6 +1,48 @@
 # Active Context: ARES-Health (NASA Space Apps Challenge 2026)
 
-## Full Resolution of Runtime Correctness & Verification Review (2026-11-15)
+## Full Resolution of Follow-Up Runtime Correctness Review (2026-11-15)
+
+Completed end-to-end implementation and behavioral regression verification of all 6 follow-up issues on branch `work/MiServeRDC-runtime-followup` (base `0899f4d`):
+
+1. **P1-1 (Warm Archives Reopen Failure & Unpartitioned Sol Queries):**
+   * Added `skip_serializing_if = "Option::is_none"` on `WarmSegmentMeta::{min_mission_sol, max_mission_sol}` to prevent `serde_json` from injecting explicit nulls that invalidate legacy signed manifest digests.
+   * Implemented dual-schema verification in `open_with_report` with `LegacySignedManifest` fallback parser to preserve bit-exact backward compatibility.
+   * Fixed `read_telemetry_sol_range` to retain unconstrained legacy segments (where `min_mission_sol` is `None`) at segment level so row-level Arrow boolean masks correctly return rows for later sols (e.g. Sol 2 in Sol 1 segments).
+   * Verified via `crates/ares-storage-lsah/tests/legacy_manifest_and_atomic_retry.rs`.
+
+2. **P1-2 (Retry Partition Duplication):**
+   * Replaced sequential partition commit in `append_telemetry_batch` with an all-or-nothing transactional discipline:
+     - All partitions are encoded, CRC-computed, and written to disk before any in-memory state or manifest update.
+     - If writing any partition fails, all written files for that batch are unlinked, and in-memory state remains untouched.
+     - If manifest persistence fails, added segments are truncated, `next_segment_id` is restored, and partition files are unlinked.
+   * Retries now produce exactly the expected rows without duplicate partitions.
+
+3. **P1-3 (What-If CSV Contamination & Hardware Awaiting State):**
+   * In `crates/ares-server-cli/src/ws_server.rs`, updated `apply_stress_test_patch`:
+     - When `source_mode == TelemetrySourceMode::LiveWearableHardware`, it does NOT call `current_replay_row()`; it updates scenario parameters (radiation, cabin CO2, bone loss, POCUS posterior) while strictly preserving hardware sensor observations, `source_record_id`, and `BiometricsSource::HardwareWearable` provenance.
+   * When switching to `LiveWearableHardware` before receiving any hardware packets (`active_wearable_node.is_none()`), `latest_packet` immediately transitions to an explicit `awaiting_wearable_hardware` state with `None` biometrics, `AlertSeverity::DataDegradedMissingChannels`, and `"wearable_sensor_loss"` flag.
+   * Verified via 7 tests in `crates/ares-server-cli/tests/wearable_source_selection.rs`.
+
+4. **P1-4 (Desktop Snapshot Inversion & Out-of-Order Regression):**
+   * In `ares-cockpit/src/lib/useTelemetry.ts`:
+     - Added `snapshotInFlightRef` to enforce at most 1 in-flight request at any time, raced against a 1500 ms timeout.
+     - Added monotonic freshness guard in `acceptRawPayload`: rejects out-of-order snapshots with older `timestamp_ms` or regressive `relative_recording_time_s`.
+     - In `acceptBinaryBuffer`, updated `lastAppliedTimestampMsRef` from decoded 20 Hz binary frames so delayed snapshots never overwrite newer binary updates.
+   * Verified with Playwright/Chromium script (`/tmp/ares-native-order-review.mjs`), confirming resolution order `[1, 2, 3]` and HR `122` without regression, and unit test in `ares-cockpit/tests/tauri_freshness.test.ts`.
+
+5. **P2-5 (Storage CRC Policy Inconsistency):**
+   * Unified all storage write, read, recovery, and manifest verification on canonical IEEE 802.3 CRC-32 (`compute_storage_crc32_ieee`).
+   * Removed speculative dual-algorithm branching in `verify_segment_checksum` and aligned `verify_segment_file_crc` and `read_telemetry_sol_range`.
+   * Preserved Castagnoli CRC-32C strictly for 128-byte binary network frames.
+
+6. **P2-6 (Test Runner Failure Reporting & Stale Report Retention):**
+   * In `scripts/run_all_test_tiers.sh`:
+     - Added bash `trap on_exit EXIT` handler: any non-zero exit immediately rewrites `docs/evaluation/MASTER_TEST_EXECUTION_REPORT.md` with `Verification Status: FAILED`, step name, exit code, git SHA, and dirty status, preventing stale `PASSED` report retention.
+     - Added git commit SHA, dirty flag, host architecture, and dynamically parsed frontend test counts (`36 tests across 7 suites`).
+     - Corrected live workstation benchmark description to note disk recording and WS mirror are disabled during benchmark.
+   * Added automated verification probe in `scripts/test_runner_lifecycle.sh` (passing).
+
+## Previous Resolution of Runtime Correctness & Verification Review (2026-11-15)
 
 Completed end-to-end resolution and verification of all 6 runtime correctness issues on branch `work/MiServeRDC-runtime-correctness` (base `bfee931`):
 

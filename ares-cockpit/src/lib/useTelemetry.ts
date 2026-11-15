@@ -181,6 +181,9 @@ export function useTelemetry(
   const localTickRef = useRef(0);
   inputsRef.current = { whatIf, thrombusConfirmed, lastScanDay, whatIfOverlayActive };
   const activeSourceIdRef = useRef<string>('bidmc_01');
+  const lastAppliedTimestampMsRef = useRef<number | null>(null);
+  const lastAppliedRecTimeRef = useRef<number | null>(null);
+  const snapshotInFlightRef = useRef<boolean>(false);
 
   const acceptRawPayload = useCallback((raw: unknown, originLabel: string): boolean => {
     if (!isValidTelemetryPayload(raw)) {
@@ -196,6 +199,31 @@ export function useTelemetry(
       setValidationError(`Failed to normalize ${originLabel} payload`);
       return false;
     }
+
+    // Monotonic freshness guard: reject delayed, regressive, or out-of-order snapshots
+    if (
+      lastAppliedTimestampMsRef.current !== null &&
+      normalized.timestamp_ms < lastAppliedTimestampMsRef.current
+    ) {
+      console.warn(
+        `[ares-cockpit] Rejected out-of-order snapshot (${normalized.timestamp_ms} < ${lastAppliedTimestampMsRef.current}) from ${originLabel}`,
+      );
+      return false;
+    }
+
+    if (
+      lastAppliedRecTimeRef.current !== null &&
+      normalized.relative_recording_time_s < lastAppliedRecTimeRef.current &&
+      Math.abs(normalized.relative_recording_time_s - lastAppliedRecTimeRef.current) > 1e-4
+    ) {
+      console.warn(
+        `[ares-cockpit] Rejected regressive recording time (${normalized.relative_recording_time_s} < ${lastAppliedRecTimeRef.current}) from ${originLabel}`,
+      );
+      return false;
+    }
+
+    lastAppliedTimestampMsRef.current = normalized.timestamp_ms;
+    lastAppliedRecTimeRef.current = normalized.relative_recording_time_s;
 
     const now = Date.now();
     activeSourceIdRef.current = normalized.source_record_id;
@@ -265,6 +293,12 @@ export function useTelemetry(
       setIpcLatencyUs(measuredIpcUs);
       setBinaryFrameCount((c) => c + 1);
       setLastBinaryFrame(decoded);
+      if (decoded.timestamp_ms > 0) {
+        lastAppliedTimestampMsRef.current = Math.max(
+          lastAppliedTimestampMsRef.current ?? 0,
+          decoded.timestamp_ms,
+        );
+      }
       setLivePacket((prev) => (prev ? mergeBinaryFrameIntoPacket(prev, decoded) : prev));
       setLink('ENGINE_LIVE');
       return decoded;
@@ -418,13 +452,23 @@ export function useTelemetry(
     let disposed = false;
 
     const hydrateTauriSnapshot = async () => {
+      if (snapshotInFlightRef.current) {
+        return;
+      }
+      snapshotInFlightRef.current = true;
       try {
-        const snap = await tauri.invoke?.('get_full_wire_snapshot');
+        const timeoutPromise = new Promise<null>((_, reject) => {
+          window.setTimeout(() => reject(new Error('Tauri snapshot timeout')), 1500);
+        });
+        const invokePromise = tauri.invoke?.('get_full_wire_snapshot');
+        const snap = (await Promise.race([invokePromise, timeoutPromise])) as unknown;
         if (!disposed && snap) {
           acceptRawPayload(snap, 'TAURI get_full_wire_snapshot');
         }
       } catch {
-        // Fallback handled gracefully
+        // Fallback handled gracefully or timed out
+      } finally {
+        snapshotInFlightRef.current = false;
       }
       try {
         const os = await tauri.invoke?.('get_os_status_bar_state');

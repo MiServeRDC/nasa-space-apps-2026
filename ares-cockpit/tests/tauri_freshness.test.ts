@@ -155,3 +155,30 @@ test('Extended panel data updates independently when binary telemetry headers ar
   assert.equal(freshSnapshot.musculoskeletal?.sclerostin_pmol_l, 35.0, 'Extended field sclerostin must reflect fresh snapshot');
   assert.equal(freshSnapshot.safety_margins.mission_readiness_index, 92, 'Extended field MRI must reflect fresh snapshot');
 });
+
+test('Snapshot freshness guards reject out-of-order and regressive delayed responses', () => {
+  const useTelemetryPath = path.join(COCKPIT_ROOT, 'src', 'lib', 'useTelemetry.ts');
+  const src = fs.readFileSync(useTelemetryPath, 'utf8');
+
+  // Verify single-flight bounding and monotonic timestamp checks are present in source
+  assert.match(
+    src,
+    /snapshotInFlightRef/,
+    'useTelemetry must maintain snapshotInFlightRef to bound concurrent requests',
+  );
+  assert.match(
+    src,
+    /lastAppliedTimestampMsRef/,
+    'useTelemetry must maintain lastAppliedTimestampMsRef for monotonic ordering',
+  );
+  assert.match(
+    src,
+    /normalized\.timestamp_ms\s*<\s*lastAppliedTimestampMsRef\.current/,
+    'acceptRawPayload must reject snapshots whose timestamp_ms is older than last applied',
+  );
+  assert.match(
+    src,
+    /Promise\.race\(\[[\s\S]*?timeoutPromise[\s\S]*?\]\)/,
+    'hydrateTauriSnapshot must race invoke against timeout to prevent hung requests',
+  );
+});

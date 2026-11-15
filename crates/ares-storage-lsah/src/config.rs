@@ -178,14 +178,8 @@ pub fn compute_crc32c(data: &[u8]) -> u32 {
     compute_storage_crc32_ieee(data)
 }
 
-/// Verifies a segment's checksum against either canonical IEEE 802.3 CRC-32 or Castagnoli CRC-32C.
-/// Returns true if either polynomial matches the recorded expected checksum.
+/// Verifies a segment's checksum against canonical IEEE 802.3 CRC-32.
 #[inline]
 pub fn verify_segment_checksum(data: &[u8], expected: u32) -> bool {
-    let ieee = compute_storage_crc32_ieee(data);
-    if ieee == expected {
-        return true;
-    }
-    let castagnoli = compute_storage_crc32c_castagnoli(data);
-    castagnoli == expected
+    compute_storage_crc32_ieee(data) == expected
 }

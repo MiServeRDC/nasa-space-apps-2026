@@ -1,6 +1,15 @@
 # Progress Tracking: ARES-Health (Autonomous Resilient Edge-native System for Astronaut Health)
 
-## Runtime Correctness & Verification Review (2026-11-15)
+## Follow-Up Runtime Correctness Review (2026-11-15)
+
+- [x] **P1-1 (Warm Archives Reopen Failure & Unpartitioned Sol Queries):** Added `skip_serializing_if = "Option::is_none"` on `WarmSegmentMeta` min/max sol bounds to preserve signed byte digests. Added `LegacySignedManifest` fallback reader in `open_with_report` and unconstrained legacy sol filtering. Verified via `legacy_manifest_and_atomic_retry.rs`.
+- [x] **P1-2 (Retry Partition Duplication):** Converted `append_telemetry_batch` into an all-or-nothing transactional operation with atomic prepare, file unlinking on error, and manifest rollback on commit failure.
+- [x] **P1-3 (What-If CSV Contamination & Hardware Awaiting State):** Isolated What-If scenario recomputation in `LiveWearableHardware` mode to preserve real hardware vitals and `HardwareWearable` provenance without CSV replay leakage. Initialized explicit `awaiting_wearable_hardware` state when switching to hardware mode before packet arrival. Verified via 7 tests in `wearable_source_selection.rs`.
+- [x] **P1-4 (Desktop Snapshot Inversion & Out-of-Order Regression):** Bounded snapshot polling to single in-flight request with 1500 ms timeout. Enforced monotonic timestamp check in `acceptRawPayload` and synchronized with 20 Hz binary frames. Verified in Chromium reproduction (`[1, 2, 3]` order) and `tauri_freshness.test.ts`.
+- [x] **P2-5 (Storage CRC Policy Inconsistency):** Unified all storage writing, reading, recovery, and manifests on IEEE 802.3 CRC-32 (`compute_storage_crc32_ieee`), eliminating speculative dual-checksum branching.
+- [x] **P2-6 (Test Runner Failure Reporting & Stale Report Retention):** Implemented bash `trap on_exit` in `run_all_test_tiers.sh` to purge stale reports and write explicit `FAILED` reports on non-zero exit. Added dynamic test counts, git SHA, dirty flag, platform info, and accurate benchmark descriptions. Verified with `scripts/test_runner_lifecycle.sh`.
+
+## Previous Runtime Correctness & Verification Review (2026-11-15)
 
 - [x] **Problem 1 (Wearable Data vs Replay Overwrite & Provenance):** Decoupled sampling from 20 Hz UI refresh via `TelemetrySourceMode`. Sensor loss timeout (3.0s) emits `DataDegradedMissingChannels` (`"wearable_sensor_loss"`) without silent CSV fallback. Monotonicity check rejects out-of-order packets and handles supervisor restarts. Added `BiometricsSource::HardwareWearable`, wire/schema contracts, and 5 regression tests in `crates/ares-server-cli/tests/wearable_source_selection.rs`.
 - [x] **Problem 2 (Playbooks 10–15 Binary Protocol & Client Parity):** Extended `binary_ipc.rs` `playbook_id_to_u16` and added `playbook_id_from_u16` covering all 15 playbooks. Populated `BINARY_PLAYBOOK_DEFAULTS` in `binaryTelemetryDecoder.ts` for codes 10..15. Set `nextPlaybook = null` for unknown codes to eliminate action and instruction leakage.

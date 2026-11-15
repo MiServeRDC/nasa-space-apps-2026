@@ -914,6 +914,34 @@ impl SharedMissionState {
             if mode == TelemetrySourceMode::LiveWearableHardware {
                 guard.wearable_stale = false;
                 guard.last_wearable_packet_time = Some(Instant::now());
+                if guard.active_wearable_node.is_none() {
+                    guard.latest_packet.source_record_id =
+                        "awaiting_wearable_hardware".to_string();
+                    guard.latest_packet.provenance_manifest.biometrics_source =
+                        BiometricsSource::HardwareWearable;
+                    guard.latest_packet.biometrics.heart_rate_bpm = None;
+                    guard.latest_packet.biometrics.pulse_rate_bpm = None;
+                    guard.latest_packet.biometrics.spo2_pct = None;
+                    guard.latest_packet.biometrics.resp_rate_brpm = None;
+                    guard.latest_packet.biometrics.sqi_score = 0.0;
+                    if !guard
+                        .latest_packet
+                        .biometrics
+                        .missing_channels
+                        .iter()
+                        .any(|c| c == "wearable_sensor_loss")
+                    {
+                        guard
+                            .latest_packet
+                            .biometrics
+                            .missing_channels
+                            .push("wearable_sensor_loss".to_string());
+                    }
+                    guard.latest_packet.alert_severity = guard
+                        .latest_packet
+                        .alert_severity
+                        .max(AlertSeverity::DataDegradedMissingChannels);
+                }
             }
         }
     }
@@ -1378,9 +1406,10 @@ impl SharedMissionState {
 
         if guard.source_mode == TelemetrySourceMode::LiveWearableHardware {
             let now = Instant::now();
-            let is_stale = guard
-                .last_wearable_packet_time
-                .is_none_or(|t| now.duration_since(t) > WEARABLE_STALE_TIMEOUT);
+            let is_stale = guard.active_wearable_node.is_none()
+                || guard
+                    .last_wearable_packet_time
+                    .is_none_or(|t| now.duration_since(t) > WEARABLE_STALE_TIMEOUT);
             guard.wearable_stale = is_stale;
             guard.replay_elapsed = guard.replay_elapsed.saturating_add(dt);
             guard.mission_elapsed_s = guard.replay_elapsed.as_secs_f64();
@@ -1394,7 +1423,34 @@ impl SharedMissionState {
                 250.0,
             );
 
-            if is_stale {
+            if guard.active_wearable_node.is_none() {
+                guard.latest_packet.source_record_id =
+                    "awaiting_wearable_hardware".to_string();
+                guard.latest_packet.provenance_manifest.biometrics_source =
+                    BiometricsSource::HardwareWearable;
+                guard.latest_packet.biometrics.heart_rate_bpm = None;
+                guard.latest_packet.biometrics.pulse_rate_bpm = None;
+                guard.latest_packet.biometrics.spo2_pct = None;
+                guard.latest_packet.biometrics.resp_rate_brpm = None;
+                guard.latest_packet.biometrics.sqi_score = 0.0;
+                if !guard
+                    .latest_packet
+                    .biometrics
+                    .missing_channels
+                    .iter()
+                    .any(|c| c == "wearable_sensor_loss")
+                {
+                    guard
+                        .latest_packet
+                        .biometrics
+                        .missing_channels
+                        .push("wearable_sensor_loss".to_string());
+                }
+                guard.latest_packet.alert_severity = guard
+                    .latest_packet
+                    .alert_severity
+                    .max(AlertSeverity::DataDegradedMissingChannels);
+            } else if is_stale {
                 guard.latest_packet.alert_severity =
                     guard.latest_packet.alert_severity.max(AlertSeverity::DataDegradedMissingChannels);
                 if !guard.latest_packet.biometrics.missing_channels.iter().any(|c| c == "wearable_sensor_loss") {
@@ -1444,6 +1500,7 @@ impl SharedMissionState {
         {
             guard.injection = None;
         }
+
         let (row, injected) = guard.current_replay_row();
 
         if new_native_sample {
@@ -1640,6 +1697,105 @@ impl SharedMissionState {
         guard.scenario = new_scenario.clone();
         guard.cabin_ppco2_mmhg = next_ppco2;
         guard.what_if_active = true;
+
+        if guard.source_mode == TelemetrySourceMode::LiveWearableHardware {
+            let elapsed = guard.mission_elapsed_s;
+            let spot_poct = guard.spot_poct.clone();
+            let anomaly_report = guard.latest_anomaly.clone();
+            let mut current_biometrics = guard.latest_packet.biometrics.clone();
+            current_biometrics.radiation_dose_rate_msv_d =
+                new_scenario.radiation_dose_rate_msv_d.clamp(0.0, 50.0);
+            let source_record_id = guard.latest_packet.source_record_id.clone();
+            let current_row = BidmcNumericRow {
+                record_id: source_record_id.clone(),
+                relative_time_s: elapsed,
+                hr_bpm: current_biometrics.heart_rate_bpm,
+                pulse_bpm: current_biometrics.pulse_rate_bpm,
+                spo2_pct: current_biometrics.spo2_pct,
+                resp_brpm: current_biometrics.resp_rate_brpm,
+                missing_channels: current_biometrics.missing_channels.clone(),
+            };
+            let inner = &mut *guard;
+            let (mut packet, pocus_posterior, causal_chain) = compute_mission_telemetry_tick_from_row(
+                &current_row,
+                current_biometrics,
+                &mut inner.adhg_engine,
+                &inner.circadian_oscillator,
+                &new_scenario,
+                next_ppco2,
+                elapsed,
+                true,
+                spot_poct,
+                None,
+                None,
+                VitalsContext {
+                    report: Some(&anomaly_report),
+                    injected: false,
+                    source_override: Some(BiometricsSource::HardwareWearable),
+                },
+            );
+
+            packet.source_record_id = source_record_id;
+            packet.provenance_manifest.biometrics_source = BiometricsSource::HardwareWearable;
+            if guard.active_wearable_node.is_none() {
+                packet.biometrics.heart_rate_bpm = None;
+                packet.biometrics.pulse_rate_bpm = None;
+                packet.biometrics.spo2_pct = None;
+                packet.biometrics.resp_rate_brpm = None;
+                packet.biometrics.sqi_score = 0.0;
+                if !packet
+                    .biometrics
+                    .missing_channels
+                    .iter()
+                    .any(|c| c == "wearable_sensor_loss")
+                {
+                    packet
+                        .biometrics
+                        .missing_channels
+                        .push("wearable_sensor_loss".to_string());
+                }
+                packet.alert_severity =
+                    packet.alert_severity.max(AlertSeverity::DataDegradedMissingChannels);
+            }
+
+            guard.latest_packet = packet;
+            guard.latest_pocus_posterior = pocus_posterior;
+            guard.latest_causal_chain = causal_chain;
+            guard.latest_grounding = *ground_adhg_node_o1(primary_adhg_node_for_playbook(
+                &guard.latest_packet.active_playbook.playbook_id,
+            ));
+            guard.update_hypergraph_and_nqs_hot_path();
+            let _ = guard.run_1hz_timestral_inference();
+            guard.latest_recompute_latency_us = start.elapsed().as_micros() as u64;
+
+            let bin_frame = guard.build_binary_frame(
+                start.elapsed().as_nanos().min(u128::from(u32::MAX)) as u32,
+            );
+            self.binary_ring.publish(&bin_frame);
+            #[cfg(feature = "shm-ipc")]
+            if let Some(dispatcher) = &self.shm_dispatcher {
+                let owlt = guard.owlt_comm_state();
+                dispatcher.try_dispatch(&guard.latest_packet, &bin_frame, &owlt, true);
+            }
+
+            let captured = guard.capture_wire();
+            drop(guard);
+            let wire_snapshot = captured.into_wire_packet();
+            let _ = self.audit_logger.append_audit_event(
+                CrewRole::CrewMedicalOfficer,
+                &format!(
+                    "STRESS_TEST_UPDATE:FD={}:ARED={:.0}:RAD={:.2}:POCUS={}",
+                    new_scenario.flight_day,
+                    new_scenario.ared_daily_load_kgf,
+                    new_scenario.radiation_dose_rate_msv_d,
+                    new_scenario.pocus_thrombus_confirmed
+                ),
+            );
+            if let Ok(json_str) = serde_json::to_string(&wire_snapshot) {
+                let _ = self.tx.send(json_str);
+            }
+            return Some(wire_snapshot);
+        }
 
         let (row, injected) = guard.current_replay_row();
         let biometrics =

@@ -23,6 +23,19 @@
 - Sources/protocol: `docs/architecture/IMPLEMENTATION_STACK.md` optimization
   addendum and `docs/operations/PROJECT_OPTIMIZATION.md`.
 
+## Entry 012 — Legacy Storage Manifest Serialization and Checksum Invariance
+
+- Failure mode: adding optional fields with `#[serde(default)]` without `skip_serializing_if = "Option::is_none"` causes re-serialization to insert explicit `null` fields during manifest checksum verification, causing `CrcMismatch` on valid legacy manifests. Furthermore, defaulting legacy unpartitioned segments to `mission_sol` prematurely prunes multi-sol legacy data during range queries.
+- Mandatory Invariant: always use `skip_serializing_if = "Option::is_none"` on optional metadata fields that participate in cryptographic or CRC checksum signatures. Legacy segments without explicit min/max sol bounds must be retained at the segment level and filtered row-by-row via Arrow boolean masks.
+- Storage Policy Invariant: storage files (`.arrow.zst`) and manifests (`MANIFEST.lsah.json`) strictly use IEEE 802.3 CRC-32 (`compute_storage_crc32_ieee`). Castagnoli CRC-32C is reserved strictly for 128-byte binary network frames.
+
+## Entry 013 — Telemetry Stream Monotonic Ordering and Hardware Provenance Isolation
+
+- Failure mode 1: desktop client polling full snapshots at 1 Hz without in-flight request bounding or monotonic timestamp/sequence checks allows delayed responses to arrive after newer responses, regressing UI state and overwriting newer 20 Hz binary frames.
+- Mandatory Invariant 1: enforce single-flight snapshot polling with a 1500 ms timeout race, and strictly reject any incoming snapshot payload whose `timestamp_ms` or `relative_recording_time_s` is older than the last applied state.
+- Failure mode 2: calling `apply_stress_test_patch` in `LiveWearableHardware` mode and reading `current_replay_row()` silently overwrites active hardware vitals with CSV replay data (`bidmc_01`), resetting provenance to `RecordedTerrestrialBidmcCsv`.
+- Mandatory Invariant 2: when `source_mode == LiveWearableHardware`, What-If stress test patches must update scenario-driven models (radiation, cabin CO2, bone loss, POCUS posterior) while strictly preserving hardware sensor observations, `source_record_id`, and `HardwareWearable` provenance. Switching to hardware mode before the first packet arrives must publish an explicit `awaiting_wearable_hardware` state with `None` vitals and `DataDegradedMissingChannels`.
+
 > **Purpose:** Records mathematical, clinical, and systems engineering failure modes discovered during design and peer-review so no human teammate or AI coding agent ever re-introduces them.
 
 ---

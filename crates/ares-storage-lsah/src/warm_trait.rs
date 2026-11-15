@@ -8,9 +8,9 @@ use serde::{Deserialize, Serialize};
 pub struct WarmSegmentMeta {
     pub segment_id: u64,
     pub mission_sol: u16,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub min_mission_sol: Option<u16>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub max_mission_sol: Option<u16>,
     pub relative_path: String,
     pub row_count: usize,

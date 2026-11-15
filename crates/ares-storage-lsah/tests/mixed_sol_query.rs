@@ -44,14 +44,14 @@ fn test_storage_crc_ieee_and_castagnoli_known_vectors() {
         "Castagnoli CRC-32C mismatch for b'123456789'"
     );
 
-    // verify_segment_checksum must accept BOTH polynomials for backwards compatibility
+    // verify_segment_checksum strictly enforces IEEE 802.3 CRC-32 storage policy
     assert!(
         verify_segment_checksum(test_bytes, ieee),
         "verify_segment_checksum must accept valid IEEE CRC-32"
     );
     assert!(
-        verify_segment_checksum(test_bytes, castagnoli),
-        "verify_segment_checksum must accept valid Castagnoli CRC-32C"
+        !verify_segment_checksum(test_bytes, castagnoli),
+        "verify_segment_checksum must reject non-IEEE polynomial (Castagnoli is reserved for wire frames)"
     );
 
     // Corrupted checksum must be rejected

@@ -222,3 +222,104 @@ fn test_explicit_source_mode_switch_and_baseline_reset() {
         BiometricsSource::RecordedTerrestrialBidmcCsv
     );
 }
+
+#[test]
+fn test_switching_to_live_hardware_before_packet_shows_awaiting_state() {
+    let state = create_test_state();
+
+    // 1. Initial replay state
+    assert_eq!(state.source_mode(), TelemetrySourceMode::RecordedReplay);
+    let initial = state.latest_snapshot().expect("initial");
+    assert_eq!(initial.source_record_id, "bidmc_01");
+
+    // 2. Explicitly switch to LiveWearableHardware BEFORE receiving any hardware packet
+    state.set_source_mode(TelemetrySourceMode::LiveWearableHardware);
+    assert_eq!(state.source_mode(), TelemetrySourceMode::LiveWearableHardware);
+
+    // 3. Snapshot must immediately reflect awaiting state, NOT startup CSV
+    let snap = state.latest_snapshot().expect("snapshot in awaiting mode");
+    assert_eq!(snap.source_record_id, "awaiting_wearable_hardware");
+    assert_eq!(
+        snap.provenance_manifest.biometrics_source,
+        BiometricsSource::HardwareWearable
+    );
+    assert_eq!(snap.biometrics.heart_rate_bpm, None);
+    assert_eq!(snap.biometrics.spo2_pct, None);
+    assert_eq!(snap.biometrics.resp_rate_brpm, None);
+    assert_eq!(snap.biometrics.sqi_score, 0.0);
+    assert_eq!(
+        snap.alert_severity,
+        AlertSeverity::DataDegradedMissingChannels
+    );
+    assert!(
+        snap.biometrics
+            .missing_channels
+            .iter()
+            .any(|c| c == "wearable_sensor_loss")
+    );
+
+    // 4. Advance ticks: must preserve awaiting state and NOT revert to bidmc CSV
+    for _ in 0..20 {
+        let ticked = state
+            .advance_tick(Duration::from_millis(50))
+            .expect("ticked");
+        assert_eq!(ticked.source_record_id, "awaiting_wearable_hardware");
+        assert_eq!(
+            ticked.provenance_manifest.biometrics_source,
+            BiometricsSource::HardwareWearable
+        );
+        assert_eq!(ticked.biometrics.heart_rate_bpm, None);
+    }
+}
+
+#[test]
+fn test_what_if_patch_in_hardware_mode_preserves_hardware_vitals_and_provenance() {
+    let state = create_test_state();
+
+    // 1. Ingest wearable packet (HR = 118.0 on node 3)
+    let p = sample_wearable_packet(3, 1, 118.0);
+    assert!(state.ingest_wearable_packet(&p).is_some());
+    assert_eq!(state.source_mode(), TelemetrySourceMode::LiveWearableHardware);
+
+    let snap = state.latest_snapshot().expect("snapshot after ingest");
+    assert_eq!(snap.source_record_id, "hubris_node_03");
+    assert_eq!(snap.biometrics.heart_rate_bpm, Some(118.0));
+    assert_eq!(
+        snap.provenance_manifest.biometrics_source,
+        BiometricsSource::HardwareWearable
+    );
+
+    // 2. Apply What-If patch modifying flight_day and cabin_ppco2
+    let mut scenario = ares_server_cli::ws_server::default_scenario_input();
+    scenario.flight_day = 142;
+    scenario.ared_daily_load_kgf = 85.0;
+
+    let what_if_wire = state
+        .apply_stress_test(scenario)
+        .expect("apply_stress_test must succeed");
+
+    // 3. Verify that What-If did NOT overwrite hardware data with CSV (bidmc_01, HR = 94)!
+    assert_eq!(
+        what_if_wire.source_record_id, "hubris_node_03",
+        "What-If must preserve hardware source_record_id"
+    );
+    assert_eq!(
+        what_if_wire.provenance_manifest.biometrics_source,
+        BiometricsSource::HardwareWearable,
+        "What-If must preserve HardwareWearable provenance"
+    );
+    assert_eq!(
+        what_if_wire.biometrics.heart_rate_bpm,
+        Some(118.0),
+        "What-If must preserve real hardware heart rate"
+    );
+
+    // Also check latest_snapshot()
+    let snap_after_what_if = state.latest_snapshot().expect("latest snapshot");
+    assert_eq!(snap_after_what_if.source_record_id, "hubris_node_03");
+    assert_eq!(
+        snap_after_what_if.provenance_manifest.biometrics_source,
+        BiometricsSource::HardwareWearable
+    );
+    assert_eq!(snap_after_what_if.biometrics.heart_rate_bpm, Some(118.0));
+}
