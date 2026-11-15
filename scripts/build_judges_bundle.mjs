@@ -33,7 +33,7 @@ copyTree('scripts/run_judges_demo.sh',path.join(bundle,'scripts/run_judges_demo.
 fs.chmodSync(path.join(bundle,'scripts/run_judges_demo.sh'),0o755);
 fs.writeFileSync(path.join(bundle,'Start.command'),'#!/bin/sh\nexec "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/scripts/run_judges_demo.sh"\n',{mode:0o755});
 execFileSync(process.execPath,['scripts/collect_release_notices.mjs','--out',path.join(bundle,'frontend/third-party')],{stdio:'inherit'});
-const manifest={version,source_commit:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),source_dirty:dirty,
+const manifest={version,source_commit:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),source_dirty:dirty,public_deployment_verified:false,
   platform:process.platform,architecture:process.arch,built_at:new Date().toISOString(),host:os.release(),
   runtime:'Native Rust HTTP/WebSocket server and bundled static cockpit; no Node, Cargo or Python runtime required',
   source:'PhysioNet BIDMC terrestrial replay; scenario/injected values explicitly simulated',recording:false,

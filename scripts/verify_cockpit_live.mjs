@@ -116,11 +116,11 @@ try {
   await page.getByText('Browse other procedures', { exact: true }).click();
   await page.getByRole('combobox', { name: 'Browse procedures' }).selectOption({ index: 1 });
   assert.match(await body(), /Manual review/); record('catalog procedures require an explicit manual selection');
-  await phase('Evaluate'); await page.getByRole('button', { name: 'Overlay off', exact: true }).click();
+  await phase('Evaluate'); await page.getByRole('button', { name: 'Start mission simulation', exact: true }).click();
   await until(async () => (await snapshot()).what_if_overlay.active);
   s = await snapshot(); assert.equal(s.provenance_manifest.scenario_overlay_mode, 'SIMULATED_WHATIF_SCENARIO');
   assert.ok(s.hemodynamics); assert.equal(s.environment.cabin_ppco2_mmhg, 2); assert.equal(s.biometrics.hrv_rmssd_ms, null);
-  await page.getByRole('button', { name: 'Overlay on', exact: true }).click();
+  await page.getByRole('button', { name: 'Return to recorded replay', exact: true }).click();
   await until(async () => !(await snapshot()).what_if_overlay.active);
   s = await snapshot(); assert.equal(s.hemodynamics, null); assert.equal(s.active_playbook.playbook_id, 'NONE');
   record('overlay on and off change backend mode and preserve unavailable replay HRV');
@@ -139,7 +139,12 @@ try {
   await until(async () => (await snapshot()).vitals_anomaly.baseline_ready, 135000);
   s = await snapshot(); save('baseline.json', s); record('detector learns baseline from real-time replay');
   await page.getByRole('button', { name: 'DESATURATION', exact: true }).click();
-  await page.getByText(/SYNTHETIC EVENT ACTIVE/).first().waitFor();
+  await page.getByText(/Vital-sign simulation active/).first().waitFor();
+  await phase('Evaluate');
+  await page.getByText('Desaturation simulation active', { exact: true }).waitFor();
+  await page.getByText('Synthetic ultrasound is off', { exact: true }).waitFor();
+  assert.equal((await snapshot()).what_if_overlay.active, false);
+  record('Evaluate distinguishes an active vital-sign event from synthetic ultrasound being off');
   const timeline = []; const injectedAt = Date.now();
   await until(async () => {
     s = await snapshot(); timeline.push({ t: s.relative_recording_time_s, status: s.vitals_anomaly.overall, playbook: s.active_playbook.playbook_id });

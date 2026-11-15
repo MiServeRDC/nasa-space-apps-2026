@@ -1023,3 +1023,32 @@ details[open] > summary > .disclosure-caret { transform: rotate(90deg); }
 }
 .ares-workspace .act-next-step h4 { color: #a9e2fd; }
 .ares-workspace .clinical-sidebar .readiness-panel { background: #0b1321; }
+
+.simulation-purpose { flex-basis: 100%; padding-bottom: 3px; font-family: var(--font-sans); }
+.simulation-purpose strong, .simulation-context-note strong, .simulation-ultrasound-note strong {
+  color: #c4eaff;
+  font-size: 13px;
+  font-weight: 600;
+}
+.simulation-purpose p, .simulation-context-note p, .simulation-ultrasound-note p {
+  margin: 3px 0 0;
+  color: #aec0d6;
+  font: 400 12px/1.5 var(--font-sans);
+}
+.simulation-context-note, .simulation-ultrasound-note {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #2e4a61;
+  background: #0b1321;
+}
+.simulation-context-note { grid-column: 1 / -1; grid-row: 1; border-inline-start: 3px solid #38bdf8; }
+.evaluate-workbench:has(> .simulation-context-note) {
+  grid-template-areas: "notice notice" "conditions conditions" "atlas results" "ultrasound ultrasound";
+}
+.simulation-context-note { grid-area: notice; }
+.simulation-ultrasound-note { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 14px; }
+@media (max-width: 767px) {
+  .evaluate-workbench:has(> .simulation-context-note) {
+    grid-template-areas: "notice" "conditions" "atlas" "results" "ultrasound";
+  }
+}

@@ -1,6 +1,7 @@
 # Judges handoff readiness
 
-Date: 2026-11-15. Baseline main 56b888d. Branch release/judges-handoff.
+Date: 2026-11-15. Initial baseline main 56b888d; integrated subsequent UX update
+aea748b without conflicts and repeated frontend/live checks. Branch release/judges-handoff.
 **Status: native software preparation verified; public online delivery is not yet
 qualified or published.** The user declined slides and deferred the video.
 
@@ -39,20 +40,21 @@ qualified or published.** The user declined slides and deferred the video.
 | TypeScript and optimized native release build | Passed |
 | All-feature/all-target workspace Clippy | Passed; existing upstream warnings remain documented |
 | Static/API boundary, traversal and origin/proxy HTTP tests | 3 passed (included above) |
-| Native single-origin production browser | All 18 checkpoints passed; 2,787 WS frames; no page/CSP errors, failed HTTP responses or attempted external HTTP requests in main context |
+| Native single-origin production browser | All 19 latest checkpoints passed; 2,779 WS frames; no page/CSP errors, failed HTTP responses or attempted external HTTP requests in main context |
 | Relocated native bundle without development tools on PATH | Passed: startup, HTML/headers, real replay, null HRV and recording disabled |
 | Packaged process receiving SIGTERM | Clean exit 0 |
 | Docker compose syntax | Passed; daemon unavailable, image not built |
 | Source preflight | No high-confidence token/private-key markers found in current first-party files; not a history/credential audit |
 
-The 18 live checks include real baseline learning, synthetic detector event,
+The latest live checks include real baseline learning, synthetic detector event,
 playbook/step continuity, same-source restart and an absent-hardware restart,
 responsive layout and WebGL-unavailable fallback. Native executable size is
 approximately 10 MB; the preview archive was approximately 52 MB. Preview artifacts
 are explicitly marked dirty and are not authoritative final releases.
 
 Artifacts/logs are external at `/tmp/ares-judges-readiness/`, including
-`standalone-browser/results.json`, `rust-all-features.log`, `rust-default.log`,
+`standalone-browser/results.json` (initial) and `standalone-latest/results.json`
+(latest UX, including vital-event versus mission-ultrasound distinction), `rust-all-features.log`, `rust-default.log`,
 `frontend-serving-tests.log`, `frontend-tests.log`, `clippy.log`,
 `native-launch-results.json`, `sigterm.log` and `source-preflight.json`.
 A final clean bundle can be generated after committing the verified source using

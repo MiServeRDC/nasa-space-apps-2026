@@ -2,7 +2,9 @@
 
 ## Judging release preparation (2026-11-15)
 
-Baseline main 56b888d, release/judges-handoff. User explicitly declined slides and
+Baseline main 56b888d, release/judges-handoff; aea748b UX changes were merged
+without conflicts and reverified (175 frontend tests and 19 native-browser checks).
+User explicitly declined slides and
 will create the video later; no slide or replacement video was generated.
 Prepared optional single-process Rust frontend/API/WS serving, same-origin browser
 endpoint discovery with desktop/explicit overrides, Vite proxy, readiness endpoint,
@@ -526,3 +528,7 @@ Crew and mission presets preserve the current overlay mode. The cockpit uses the
 ## Desktop cockpit visual refresh
 
 Gather, Evaluate and Act use the MiServeRDC OLED palette with Geist typography. The short-term forecast uses readable signal names and units while retaining both time ranges and the model limitations.
+
+## Simulation controls and provenance
+
+Gather labels synthetic vital-sign events. Evaluate explains active events separately from mission simulation and offers a single entry point for synthetic ultrasound while replaying BIDMC.

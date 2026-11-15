@@ -45,7 +45,7 @@ export function WhatIfConsole({
     <div className="scenario-fields text-xs">
       <div className="scenario-connection text-xs text-gray-300">
         <div className="flex items-center justify-between gap-2">
-          <span className="font-bold">What-if overlay</span>
+          <span className="font-bold">{overlayActive || link !== 'ENGINE_LIVE' ? 'Mission simulation active' : 'Simulate mission conditions'}</span>
           {link === 'ENGINE_LIVE' && (
             <button
               type="button"
@@ -54,15 +54,15 @@ export function WhatIfConsole({
                 overlayActive ? 'border-warning bg-warning text-black font-bold' : 'border-line text-gray-300'
               }`}
             >
-              {overlayActive ? 'Overlay on' : 'Overlay off'}
+              {overlayActive ? 'Return to recorded replay' : 'Start mission simulation'}
             </button>
           )}
         </div>
         <div className="mt-1 text-[10px] text-gray-300">
           {link === 'ENGINE_LIVE'
             ? overlayActive
-              ? 'Scenario changes are sent to the engine. The recorded samples remain separate.'
-              : 'Watching replay. Change a condition or turn on the overlay to run a scenario.'
+              ? 'The model uses the conditions below to generate mission forecasts and synthetic ultrasound.'
+              : 'Start the simulation or change a condition to generate mission forecasts and synthetic ultrasound.'
             : 'Local simulation'}
         </div>
       </div>
