@@ -1,7 +1,15 @@
 # ARES-Health
 
+[![NASA Space Apps 2026](https://img.shields.io/badge/NASA_Space_Apps-2026-blue.svg)](https://www.spaceappschallenge.org/2026/challenges/health-monitoring-software/)
+[![Rust 2024 Safe](https://img.shields.io/badge/Rust-2024_%23!%5Bforbid(unsafe__code)%5D-orange.svg)](https://www.rust-lang.org/)
+[![UI: React 19 OLED](https://img.shields.io/badge/Cockpit-React_19_%23000000_OLED-cyan.svg)](ares-cockpit/)
+[![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT_OR_Apache--2.0-green.svg)](LICENSE)
+[![Runtime: 100% Offline](https://img.shields.io/badge/Air--Gapped-100%25_Offline-purple.svg)](#core-constraint)
+
 An offline astronaut-health cockpit built for NASA Space Apps Challenge 2026.
 Replay recorded vital signs, test a synthetic alert and follow a guided checklist.
+
+> **Quick Navigation:** [Run Demo in 60s](#run-the-demo) | [Judge Walkthrough](docs/submission/JUDGES_START_HERE.md) | [Model Evidence Audit](docs/architecture/MODEL_EVIDENCE_AUDIT.md) | [Data Provenance](#8-data-provenance--evidence-boundary) | [Submission Portal Summary](docs/submission/NASA_SUBMISSION_PORTAL_READY.md)
 
 ## Run the demo
 
@@ -29,6 +37,9 @@ from the repository root. If using a ZIP, extract it and open a terminal in that
 folder, then start at the `npm` command. The first build downloads dependencies
 and can take several minutes; subsequent starts reuse the compiled binary.
 Leave `VITE_ARES_HTTP_URL` and `VITE_ARES_WS_URL` unset for this single-origin demo.
+
+> [!NOTE]
+> **Air-Gap Architecture:** The `127.0.0.1:8080` binding is strictly an in-memory loopback transport between the Rust engine daemon and the browser cockpit. No external network socket is opened, no telemetry packets ever leave the physical flight hardware, and zero cloud services are queried.
 
 **What to try**
 
@@ -160,22 +171,30 @@ simulated actions. The reviewed flow is an engineering demonstration with no tre
 
 ARES-Health is a **dual-transport hybrid**: a Safe-Rust core engine and a React cockpit, communicating over two concurrent, isolated channels.
 
-```
-                       ARES-ENGINE  (Safe Rust / Tokio)
-   +-----------------------------------------------------------------------+
-   |  GATHER            EVALUATE                        ACT                 |
-   |  telemetry-ingest  causal-graph (ADHG)  nqs-stl    medops-playbooks    |
-   |  (BIDMC + SQI)     Frost-Hargens ODE    Lemire O(1)   + Safety Gates   |
-   |                    Bayesian POCUS       TTV / MRI                      |
-   |                                                                       |
-   |  core-types   .   storage-lsah (hot/warm/cold)   .   security-privacy |
-   +---------------+-------------------------------------+-----------------+
-                   | axum REST + 20 Hz WebSocket         | stdio FastMCP
-                   | 127.0.0.1:8080                      | JSON-RPC 2.0 (<150 tok)
-                   v                                     v
-        ARES-COCKPIT (React 19 / TS / Three.js)    Local quantized AI copilot
-        MRI gauge | 3D deconditioning map |        (offline, context-mode)
-        What-If Stress-Test Console | Playbook Runner
+```mermaid
+flowchart TD
+    subgraph GATHER ["1. GATHER (Level-1 DSP & Sensor Ingest)"]
+        BIDMC["PhysioNet BIDMC v1.0.0<br/>(Deterministic 1 Hz Replay)"] --> NullGate["Null Honesty Gate<br/>(13 nulls preserved, HRV None)"]
+        RADAR["60/5.2 GHz Doppler Radar<br/>(Notch 60/120 Hz)"] --> RingBuffer
+        NullGate --> RingBuffer["128B BinaryTelemetryFrame<br/>(Seqlock RingBuffer: 42 ns)"]
+    end
+
+    subgraph EVALUATE ["2. EVALUATE (Bio-Causal Modeling & STL)"]
+        RingBuffer --> ADHG["Astronaut Dynamic Health Graph (ADHG)<br/>(petgraph Multi-Organ Graph)"]
+        ADHG --> ODE["Frost-Hargens Sclerostin ODE (RK4)<br/>Jugular Wall Shear Stress"]
+        ODE --> NQS["O(1) LemireMinWedge NQS-STL<br/>(Quantitative Robustness Margins)"]
+        NQS --> Cones["Timestral Quantile Forecaster<br/>(Monotonic Cones: q05 &le; q50 &le; q95)"]
+    end
+
+    subgraph ACT ["3. ACT (Deterministic Flight Playbooks)"]
+        Cones --> SafetyGates["7 Hard Clinical Safety Gates<br/>(POCUS Clot Lock, LBNP Auto-Vent, EVA Damping)"]
+        SafetyGates -- "Verified Trigger" --> Playbooks["30 MedOps Playbooks (#01..#30)<br/>(Deterministic State Machines)"]
+    end
+
+    subgraph COCKPIT ["Astronaut Interface (ARES-MedOS)"]
+        Playbooks --> UI["React 19 OLED Cockpit<br/>(3D Anatomical Twin + Command Palette)"]
+        RingBuffer --> UI
+    end
 ```
 
 - **Core engine (`ares-server-cli`):** a Tokio orchestrator running an `axum` REST + 20 Hz WebSocket server on `127.0.0.1:8080` for the cockpit and the sub-millisecond What-If Stress-Test Console, **concurrently** with a dedicated `stdio` JSON-RPC 2.0 FastMCP server (<150 tokens per response) for a local, quantized AI copilot. The two transports are fully isolated.
