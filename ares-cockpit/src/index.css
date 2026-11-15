@@ -918,3 +918,9 @@ details[open] > summary > .disclosure-caret { transform: rotate(90deg); }
 .short-forecast-controls button[aria-pressed="true"] { background: #2b4236; color: #f1f7f3; }
 .short-forecast-chart { border-top: 1px solid #465b4e; padding-top: 12px; }
 .short-forecast-meta { display: grid; gap: 4px; color: #b4c1b9; font-size: 12px; }
+
+.urgent-status[data-procedure-pending="true"] { background: #2d2317; border-color: #d5a35f; }
+.urgent-status[data-procedure-pending="true"] svg, .urgent-status[data-procedure-pending="true"] strong { color: #f4d39d; }
+.act-monitor-state[data-status="procedure-pending"] { border-color: var(--color-warning); }
+.mission-connection-details { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px 16px; padding: 8px 0; color: #d3e3d9; font-size: 13px; }
+.mission-connection-details small { color: #a6b7ad; }

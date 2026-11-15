@@ -1,4 +1,3 @@
-import { getCatalogEntry } from './lib/playbookCatalog';
 import { ArrowRightIcon, WarningCircleIcon } from '@phosphor-icons/react';
 import { CockpitSelect, CockpitSummary } from './modules/ui-primitives/CockpitControls';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -17,8 +16,8 @@ import {
   type ScenarioState,
   type WhatIf,
 } from './lib/scenario';
-import { updateAlarmEpisode, type AlarmEpisode } from './lib/alarmRecovery';
-import { ACTIVITY_CONTEXT, DEFAULT_MISSION_PROFILE, EVA_AEROBIC_CAPACITY, type CrewActivity, type MissionProfile } from './lib/missionContext';
+import { updateAlarmEpisode, updateProcedureIncident, type AlarmEpisode, type ProcedureIncident } from './lib/alarmRecovery';
+import { ACTIVITY_CONTEXT, DEFAULT_MISSION_PROFILE, EVA_AEROBIC_CAPACITY, formatMissionDelay, type CrewActivity, type MissionProfile } from './lib/missionContext';
 import {
   formatNullableMetric,
   formatTimeToViolation,
@@ -34,7 +33,6 @@ import { WhatIfConsole } from './modules/whatif-console/WhatIfConsole';
 import { PlaybookRunner } from './modules/playbook-runner/PlaybookRunner';
 import { EcgStrip, OcularOnsd, PocusIjv } from './modules/analysis-imaging/Imaging';
 import {
-  EnginePlaybookCard,
   isAcuteVitalsPlaybook,
   VitalsAnomalyPanel,
 } from './modules/vitals-anomaly/VitalsAnomalyPanel';
@@ -366,6 +364,10 @@ export default function App() {
   const [missionProfile, setMissionProfile] = useState<MissionProfile>(DEFAULT_MISSION_PROFILE);
   const [crewActivity, setCrewActivity] = useState<CrewActivity>('unknown');
   const [atlasProfile, setAtlasProfile] = useState<WhatIf['sex'] | null>(null);
+  const [incident, setIncident] = useState<ProcedureIncident | null>(null);
+  const handleIncidentCompletion = useCallback((completed: boolean) => {
+    setIncident(previous => previous && previous.completed !== completed ? { ...previous, completed } : previous);
+  }, []);
   const [alarmEpisode, setAlarmEpisode] = useState<AlarmEpisode | null>(null);
   const [whatIf, setWhatIf] = useState<WhatIf>(() => {
     const s = getInitialParam('sex')?.toUpperCase();
@@ -452,6 +454,7 @@ export default function App() {
     osStatus,
     status,
     recordedHistory,
+    syncMissionContext,
     syncWhatIfNow,
     injectAnomaly,
   } = useTelemetry(
@@ -491,13 +494,13 @@ export default function App() {
     }
   }, [whatIf.lbnp_mmhg, localSim, ventEvent, P.hrLimit]);
 
-  const engineOnlyPlaybook = packet.active_playbook && packet.active_playbook.playbook_id !== 'NONE' &&
-    !getCatalogEntry(packet.active_playbook.playbook_id) ? packet.active_playbook : null;
-
   const sm = packet.safety_margins;
   const b = packet.biometrics;
   const criticalMargin = sm.alarm_level === 'CRITICAL';
   const anomaly = packet.vitals_anomaly;
+  const syntheticEvent = anomaly?.injection;
+  const syntheticSecondsRemaining = syntheticEvent
+    ? Math.max(0, Math.ceil(syntheticEvent.duration_s - syntheticEvent.elapsed_s)) : null;
   const vitalsAlarm = anomaly?.overall === 'ALARM';
   const hasCurrentData = !status.isStale && sm.alarm_level !== 'DATA_DEGRADED_MISSING_CHANNELS';
   const flaggedEffortSignal = hasCurrentData && anomaly?.channels.some(
@@ -505,13 +508,29 @@ export default function App() {
       channel.evaluable && channel.status !== 'NORMAL',
   );
   const canVerifyVitals = Boolean(anomaly?.baseline_ready) &&
+    ['heart_rate_bpm', 'spo2_pct', 'resp_rate_brpm'].every(channel =>
+      anomaly?.channels.some(reading => reading.channel === channel && reading.evaluable)) &&
     b.heart_rate_bpm != null && b.spo2_percent != null && b.respiration_rate_brpm != null;
   const currentEpisode = updateAlarmEpisode(alarmEpisode, {
     source: packet.is_local_simulation ? 'simulation' : 'engine',
     cause: vitalsAlarm ? 'vitals' : criticalMargin ? 'critical' : null,
-    fresh: hasCurrentData,
+    fresh: !status.isStale,
+    missionDataComplete: sm.alarm_level !== 'DATA_DEGRADED_MISSING_CHANNELS',
     canVerifyVitals,
   });
+  const engineProcedure = packet.active_playbook;
+  const candidate = currentEpisode?.cause === 'vitals'
+    ? packet.vitals_playbook ?? (isAcuteVitalsPlaybook(engineProcedure) ? engineProcedure : null)
+    : engineProcedure?.playbook_id !== 'NONE' ? engineProcedure : null;
+  const currentIncident = updateProcedureIncident(incident, alarmEpisode, currentEpisode, candidate ?? null);
+  if (currentIncident !== incident) setIncident(currentIncident);
+  const procedurePending = currentEpisode?.phase === 'recovered' && Boolean(currentIncident?.playbook) && !currentIncident?.completed;
+  const incidentOpen = currentEpisode !== null && (currentEpisode.phase !== 'recovered' || procedurePending);
+  const incidentPlaybook = currentIncident?.playbook;
+  const waitingForProcedure = incidentOpen && !incidentPlaybook;
+  const visiblePlaybook = incidentPlaybook && (incidentOpen || activePhase === 'ACT')
+    ? { ...incidentPlaybook, safety_gates: engineProcedure?.safety_gates ?? incidentPlaybook.safety_gates }
+    : engineProcedure;
   if (currentEpisode?.source !== alarmEpisode?.source || currentEpisode?.cause !== alarmEpisode?.cause ||
     currentEpisode?.phase !== alarmEpisode?.phase) {
     setAlarmEpisode(currentEpisode);
@@ -519,11 +538,12 @@ export default function App() {
   const showUrgentStatus = currentEpisode !== null && currentEpisode.phase !== 'recovered';
   const monitoringStatus = currentEpisode?.phase === 'awaiting' ? 'awaiting'
     : showUrgentStatus ? 'urgent'
-      : !hasCurrentData ? 'unavailable'
-        : currentEpisode?.phase === 'recovered' ? sm.alarm_level === 'NOMINAL' && anomaly?.overall !== 'ATTENTION' ? 'recovered' : 'recovered-watch'
-          : sm.alarm_level === 'NOMINAL' && anomaly?.overall !== 'ATTENTION' ? 'normal' : 'watch';
+      : procedurePending ? 'procedure-pending'
+      : currentEpisode?.phase === 'recovered' && !status.isStale ? sm.alarm_level === 'NOMINAL' && anomaly?.overall !== 'ATTENTION' ? 'recovered' : 'recovered-watch'
+          : !hasCurrentData ? 'unavailable'
+            : sm.alarm_level === 'NOMINAL' && anomaly?.overall !== 'ATTENTION' ? 'normal' : 'watch';
   const recommendedPhase: Phase =
-    showUrgentStatus || sm.alarm_level === 'WARNING'
+    showUrgentStatus || procedurePending || sm.alarm_level === 'WARNING'
       ? 'ACT'
       : sm.alarm_level === 'ADVISORY' || sm.alarm_level === 'DATA_DEGRADED_MISSING_CHANNELS'
         ? 'EVALUATE'
@@ -570,12 +590,28 @@ export default function App() {
     return 'FRESH';
   };
 
+  const selectCrewProfile = (sex: WhatIf['sex']) => {
+    setAtlasProfile(null);
+    setWhatIf(previous => previous.sex === sex ? previous : { ...previous, sex });
+  };
+
   const handleWhatIfChange = (next: WhatIf) => {
     setWhatIf(next);
-    if (link === 'ENGINE_LIVE') {
-      setWhatIfOverlayActive(true);
-    }
+    if (link === 'ENGINE_LIVE') setWhatIfOverlayActive(true);
   };
+
+  const selectMissionProfile = (profile: MissionProfile) => {
+    setMissionProfile(profile);
+    setWhatIf(previous => ({ ...previous, ppco2_mmhg: profile.cabinCo2 }));
+  };
+
+  useEffect(() => {
+    if (link === 'ENGINE_LIVE') void syncMissionContext({ sex: whatIf.sex });
+  }, [link, syncMissionContext, whatIf.sex]);
+
+  useEffect(() => {
+    if (link === 'ENGINE_LIVE') void syncMissionContext({ cabinCo2: missionProfile.cabinCo2 });
+  }, [link, missionProfile, syncMissionContext]);
 
   const restoreScenarioConditions = () => {
     setWhatIf({ ...DEFAULT_WHATIF, sex: whatIf.sex, ppco2_mmhg: missionProfile.cabinCo2 });
@@ -617,9 +653,9 @@ export default function App() {
         e.preventDefault();
         setShortcutsModalOpen((prev) => !prev);
       } else if (e.key.toLowerCase() === 'm' && !e.ctrlKey && !e.metaKey) {
-        handleWhatIfChange({ ...whatIf, sex: 'MALE' });
+        selectCrewProfile('MALE');
       } else if (e.key.toLowerCase() === 'f' && !e.ctrlKey && !e.metaKey) {
-        handleWhatIfChange({ ...whatIf, sex: 'FEMALE' });
+        selectCrewProfile('FEMALE');
       } else if (e.key === 'Escape') {
         setShortcutsModalOpen(false);
         setAuditModalOpen(false);
@@ -627,7 +663,7 @@ export default function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [whatIf]);
+  }, [link, whatIf]);
 
   const hasHemodynamics = packet.hemodynamics !== null && packet.hemodynamics !== undefined;
   const hasMusculoskeletal = packet.musculoskeletal !== null && packet.musculoskeletal !== undefined;
@@ -646,9 +682,10 @@ export default function App() {
   return (
     <div ref={workspaceRef} className="ares-workspace flex flex-col">
       <TriPhaseHeader
-        astronautId={packet.astronaut_id}
+        astronautId={whatIf.sex === 'FEMALE' ? 'ASTRO-02' : 'ASTRO-01'}
+        recordedSourceId={isRecordedBiometrics ? packet.astronaut_id : undefined}
         profile={missionProfile}
-        onSelectProfile={setMissionProfile}
+        onSelectProfile={selectMissionProfile}
         alarm={showUrgentStatus ? 'CRITICAL' : sm.alarm_level}
         link={link}
         wsConnected={status.wsConnected}
@@ -661,14 +698,14 @@ export default function App() {
         onTogglePalette={() => setPaletteOpen((v) => !v)}
       />
 
-      {showUrgentStatus && (
-        <section className="urgent-status" aria-label="Urgent status">
+      {(showUrgentStatus || procedurePending) && (
+        <section className="urgent-status" data-procedure-pending={procedurePending} aria-label="Urgent status">
           <WarningCircleIcon aria-hidden="true" size={27} weight="fill" />
           <div role="alert" className="urgent-status-message">
-            <strong>{currentEpisode?.phase === 'awaiting' ? 'Critical alert · awaiting updated readings'
+            <strong>{procedurePending ? 'Readings stable · procedure still open' : currentEpisode?.phase === 'awaiting' ? 'Critical alert · awaiting updated readings'
               : currentEpisode?.cause === 'vitals' ? 'Vitals alarm' : 'Critical alert'}</strong>
             <span>
-              {currentEpisode?.source === 'simulation' ? 'Local simulation' : currentEpisode?.phase === 'awaiting' ? 'Recovery needs fresh engine readings' : 'Engine telemetry'}
+              {procedurePending ? 'Complete the remaining steps in Act' : currentEpisode?.source === 'simulation' ? 'Local simulation' : currentEpisode?.phase === 'awaiting' ? 'Recovery needs fresh engine readings' : 'Engine telemetry'}
               {criticalMargin && !isPureReplay ? ` · ${RISK_LABEL[s.worst]}` : ''}
             </span>
           </div>
@@ -812,16 +849,14 @@ export default function App() {
                     <WhatIfConsole
                       value={whatIf}
                       onChange={handleWhatIfChange}
+                      onSelectCrewProfile={selectCrewProfile}
                       onReset={restoreScenarioConditions}
                       ventEvent={ventEvent}
                       onRearm={() => setVentEvent(null)}
                       link={link}
                       overlayActive={whatIfOverlayActive}
                       onToggleOverlay={setWhatIfOverlayActive}
-                      onSyncNow={() => {
-                        setWhatIfOverlayActive(true);
-                        void syncWhatIfNow();
-                      }}
+                      onSyncNow={syncWhatIfNow}
                     />
 
                     <details className="scenario-disclosure mission-context">
@@ -831,10 +866,7 @@ export default function App() {
                           <strong>{missionProfile.label}</strong>
                           <p>{missionProfile.gravity} · {missionProfile.cabinCo2} mmHg example cabin CO₂</p>
                           {missionProfile.eva && <p>{missionProfile.eva} EVA · NASA VO₂max reference {EVA_AEROBIC_CAPACITY[missionProfile.eva]} mL/kg/min</p>}
-                          <button type="button" className="act-secondary-button"
-                            onClick={() => handleWhatIfChange({ ...whatIf, ppco2_mmhg: missionProfile.cabinCo2 })}>
-                            Use preset cabin CO₂
-                          </button>
+
                         </div>
                         <label>
                           Crew activity · interpretation only
@@ -1022,7 +1054,7 @@ export default function App() {
             )}
 
             {/* PAGE 3: ACT */}
-            {activePhase === 'ACT' && (
+            <div hidden={activePhase !== 'ACT'}>
               <div className="act-grid min-h-0 flex-1 overflow-y-auto">
                 <Card
                   title="Guided Medical Procedure"
@@ -1030,8 +1062,20 @@ export default function App() {
                   className="min-h-0"
                 >
                   <div className="space-y-3">
-                    {engineOnlyPlaybook ? <EnginePlaybookCard playbook={engineOnlyPlaybook} /> : <PlaybookRunner
-                      activePlaybook={packet.active_playbook}
+                    {syntheticSecondsRemaining !== null && (
+                      <p className="act-monitor-state" data-status="awaiting">
+                        <strong>Synthetic event active</strong> · {syntheticSecondsRemaining} s left in the replay.
+                        The checklist records your progress. The alarm follows the incoming readings.
+                      </p>
+                    )}
+                    {waitingForProcedure ? (
+                      <p role="status" className="act-monitor-state" data-status="awaiting">
+                        Waiting for the engine to provide a procedure for this alarm.
+                      </p>
+                    ) : <PlaybookRunner
+                      key={currentIncident?.key ?? 0}
+                      activePlaybook={visiblePlaybook}
+                      onSuggestedCompletionChange={incidentPlaybook ? handleIncidentCompletion : undefined}
                       isLiveEngine={link === 'ENGINE_LIVE'}
                       monitoringStatus={monitoringStatus}
                       onRestoreScenario={showUrgentStatus && (currentEpisode?.source === 'simulation' || whatIfOverlayActive)
@@ -1040,13 +1084,10 @@ export default function App() {
                       ventEvent={ventEvent}
                       syncLatencyUs={ipcLatencyUs}
                       modelValidationStatus={packet.model_validation_status}
-                      requestedPlaybook={requestedPlaybook}
+                      requestedPlaybook={incidentOpen ? null : requestedPlaybook}
                       onConfirmPocusThrombus={handleThrombusChange}
                       onRearmLbnp={() => setVentEvent(null)}
                     />}
-                    {packet.active_playbook && isAcuteVitalsPlaybook(packet.active_playbook) && (
-                      <EnginePlaybookCard playbook={packet.active_playbook} />
-                    )}
                   </div>
                 </Card>
                 <Card title="Active Safety Protections" origin={packet.is_local_simulation ? 'SIMULATED_SCENARIO_INPUT' : 'DERIVED_COMPUTED'} className="min-h-0">
@@ -1147,7 +1188,7 @@ export default function App() {
                   </div>
                 </Card>
               </div>
-            )}
+            </div>
           </main>
 
           {/* Right Sticky Control Sidebar */}
@@ -1178,8 +1219,15 @@ export default function App() {
         <CockpitSummary>System &amp; connection details
           <span>{lastBinaryFrame?.storm_shelter_mandatory || osStatus?.storm_shelter_mandatory ? 'Storm shelter mandatory' : lastBinaryFrame?.eva_airlock_forbidden || osStatus?.eva_airlock_forbidden ? 'EVA airlock restricted' : 'Onboard tools and runtime diagnostics'}</span>
         </CockpitSummary>
+      <section className="mission-connection-details" aria-label="Simulated Earth link">
+        <strong>{missionProfile.label}</strong>
+        <span>{missionProfile.oneWayS === null ? 'Earth link unavailable · solar conjunction' :
+          `Earth link · ${formatMissionDelay(missionProfile.oneWayS)} one way`}</span>
+        <small>Simulated mission link · local engine status below</small>
+      </section>
       <OsSystemStatusBar
         packet={packet}
+        missionProfile={missionProfile}
         whatIf={whatIf}
         transportMode={transportMode}
         ipcLatencyUs={ipcLatencyUs}

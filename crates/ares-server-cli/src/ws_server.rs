@@ -2178,7 +2178,10 @@ impl SharedMissionState {
         } else if !new_scenario.lbnp_active {
             guard.lbnp_baseline = None;
         }
-        guard.what_if_active = true;
+        if !patch.preserve_overlay {
+            guard.what_if_active = true;
+        }
+        let what_if_active = guard.what_if_active;
 
         if guard.source_mode == TelemetrySourceMode::LiveWearableHardware {
             let elapsed = guard.mission_elapsed_s;
@@ -2213,7 +2216,7 @@ impl SharedMissionState {
                 &new_scenario,
                 next_ppco2,
                 elapsed,
-                true,
+                what_if_active,
                 spot_poct,
                 inner.efast_scan.as_ref(),
                 inner.renal_pocus.as_ref(),
@@ -2287,7 +2290,7 @@ impl SharedMissionState {
             &new_scenario,
             next_ppco2,
             elapsed,
-            true,
+            what_if_active,
             spot_poct,
             inner.efast_scan.as_ref(),
             inner.renal_pocus.as_ref(),
@@ -3052,6 +3055,21 @@ mod tests {
     }
 
     #[test]
+    fn mission_context_keeps_replay_mode() {
+        let state = SharedMissionState::from_data_dir(&workspace_bidmc_dir()).expect("state");
+        let packet = state.apply_stress_test_patch(StressTestPatchRequest {
+            preserve_overlay: true,
+            cabin_ppco2_mmhg: Some(2.2),
+            crew_profile: Some(ares_core_types::medical_360::CrewBiologicalProfile::female_default()),
+            ..StressTestPatchRequest::default()
+        }).expect("context update");
+        assert!(!packet.what_if_overlay.active);
+        assert_eq!(packet.what_if_overlay.cabin_ppco2_mmhg, 2.2);
+        assert_eq!(packet.aerospace_360.expect("medical context").crew_profile.biological_sex,
+            ares_core_types::medical_360::BiologicalSex::Female);
+    }
+
+    #[test]
     fn injected_desaturation_raises_alarm_opens_playbook_06_and_is_tagged_synthetic() {
         let state = SharedMissionState::from_data_dir(&workspace_bidmc_dir()).expect("state");
         assert!(matches!(
@@ -3095,6 +3113,10 @@ mod tests {
                 assert_eq!(
                     wire.active_playbook.playbook_id,
                     "PLAYBOOK_06_HYPOXEMIA_DESATURATION"
+                );
+                assert_eq!(
+                    wire.vitals_playbook.as_ref().map(|p| p.playbook_id.as_str()),
+                    Some("PLAYBOOK_06_HYPOXEMIA_DESATURATION")
                 );
                 assert_eq!(wire.alert_severity, AlertSeverity::Warning);
                 assert_eq!(wire.system_phase, SystemPhase::Act);

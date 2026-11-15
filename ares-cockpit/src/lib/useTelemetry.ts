@@ -107,6 +107,12 @@ function toArrayBuffer(payload: unknown): ArrayBuffer | null {
   return null;
 }
 
+function buildScenarioCrewProfile(sex: WhatIf['sex']) {
+  return sex === 'FEMALE'
+    ? { biological_sex: 'Female', age_years: 36, body_mass_kg: 62, height_cm: 165 }
+    : { biological_sex: 'Male' };
+}
+
 function buildStressTestPayload(
   whatIf: WhatIf,
   thrombusConfirmed: boolean | null,
@@ -123,6 +129,7 @@ function buildStressTestPayload(
     pocus_thrombus_confirmed: thrombusConfirmed === true,
     systolic_bp_drop_mmhg: Math.abs(whatIf.lbnp_mmhg) * 0.25,
     cabin_ppco2_mmhg: whatIf.ppco2_mmhg,
+    crew_profile: buildScenarioCrewProfile(whatIf.sex),
   };
 }
 
@@ -320,9 +327,8 @@ export function useTelemetry(
     [],
   );
 
-  const sendStressTestOverride = useCallback(
-    async (w: WhatIf, thrombus: boolean | null): Promise<void> => {
-      const payload = buildStressTestPayload(w, thrombus, activeSourceIdRef.current);
+  const sendStressTestPatch = useCallback(
+    async (payload: Record<string, unknown>, fallback?: Record<string, unknown>): Promise<boolean> => {
       if (IS_ARES_DESKTOP_SHELL) {
         const tauri = getTauriInternals();
         if (tauri?.invoke) {
@@ -333,7 +339,7 @@ export function useTelemetry(
             setLastSyncLatencyUs(elapsedUs);
             setIpcLatencyUs(elapsedUs);
             acceptRawPayload(updated, 'TAURI apply_what_if_patch');
-            return;
+            return true;
           } catch {
             // Fall through to HTTP loopback if Tauri command not registered
           }
@@ -349,15 +355,15 @@ export function useTelemetry(
         });
 
         // Fallback if backend uses strict 4-field schema DTO (PR #22)
-        if (res.status === 400 || res.status === 422) {
+        if (fallback && (res.status === 400 || res.status === 422)) {
           res = await fetch(`${ENGINE_HTTP_URL}/api/stress-test`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(buildFertechStressTestPayload(w)),
+            body: JSON.stringify(fallback),
           });
         }
 
-        if (!res.ok) return;
+        if (!res.ok) return false;
         const body = (await res.json()) as unknown;
         const elapsedUs = Math.round((performance.now() - start) * 1000);
         if (
@@ -379,8 +385,9 @@ export function useTelemetry(
               : body;
           acceptRawPayload(candidate, 'POST /api/stress-test');
         }
+        return true;
       } catch {
-        // Engine offline or unreachable; local simulation remains separate
+        return false;
       }
     },
     [acceptRawPayload],
@@ -389,11 +396,23 @@ export function useTelemetry(
   const postStressTestOverride = useCallback((w: WhatIf, thrombus: boolean | null) => {
     const revision = ++stressTestRevision.current;
     const pending = stressTestQueue.current.then(async () => {
-      if (revision === stressTestRevision.current) await sendStressTestOverride(w, thrombus);
+      return revision === stressTestRevision.current
+        ? sendStressTestPatch(buildStressTestPayload(w, thrombus, activeSourceIdRef.current), buildFertechStressTestPayload(w))
+        : false;
     });
-    stressTestQueue.current = pending.catch(() => {});
+    stressTestQueue.current = pending.then(() => {}, () => {});
     return pending;
-  }, [sendStressTestOverride]);
+  }, [sendStressTestPatch]);
+
+  const syncMissionContext = useCallback((context: { sex?: WhatIf['sex']; cabinCo2?: number }) => {
+    const pending = stressTestQueue.current.then(() => sendStressTestPatch({
+      preserve_overlay: true,
+      cabin_ppco2_mmhg: context.cabinCo2,
+      crew_profile: context.sex === undefined ? undefined : buildScenarioCrewProfile(context.sex),
+    }));
+    stressTestQueue.current = pending.then(() => {}, () => {});
+    return pending;
+  }, [sendStressTestPatch]);
 
   const injectAnomaly = useCallback(
     async (
@@ -775,6 +794,7 @@ export function useTelemetry(
     osStatus,
     status,
     recordedHistory,
+    syncMissionContext,
     syncWhatIfNow: () => postStressTestOverride(whatIf, thrombusConfirmed),
     injectAnomaly,
   };

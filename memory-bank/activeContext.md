@@ -503,3 +503,7 @@ All 5 critical audit vulnerabilities identified by the independent Gemini Carbon
 ## Cockpit integration
 
 The main application now uses the LelloXV frontend lab cockpit, with the paired anatomical atlas and desktop Gather, Evaluate and Act views. The current backend and frontend wire decoders remain the source for telemetry and medical_360 compatibility.
+
+## Cockpit incident and mission context
+
+Crew and mission presets preserve the current overlay mode. The cockpit uses the dedicated vital-sign checklist from the engine and keeps incidents open until the checklist and telemetry recovery are both confirmed.

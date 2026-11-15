@@ -510,6 +510,7 @@ export interface TelemetryPacket {
   environment?: Environment | null;
   safety_margins: SafetyMargins;
   active_playbook?: ActivePlaybook | null;
+  vitals_playbook?: ActivePlaybook | null;
   pocus_posterior?: number | null;
   causal_chain?: string[];
   quality_flags?: string[];

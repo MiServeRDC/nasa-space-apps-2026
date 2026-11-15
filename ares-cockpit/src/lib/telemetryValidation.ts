@@ -701,6 +701,29 @@ export function normalizeHypergraphSpatial(raw: unknown): HypergraphSpatialSumma
  * Validates and normalizes any incoming backend snapshot or WebSocket frame into
  * the canonical `TelemetryPacket` shape without ever coercing `null` to `0`.
  */
+function normalizeActivePlaybook(pb: unknown): ActivePlaybook | null {
+  if (!isRecord(pb) || typeof pb.playbook_id !== 'string') return null;
+  return {
+    playbook_id: String(pb.playbook_id),
+    title: typeof pb.title === 'string' ? pb.title : undefined,
+    current_step: typeof pb.current_step === 'number' ? pb.current_step : undefined,
+    total_steps: typeof pb.total_steps === 'number' ? pb.total_steps : undefined,
+    step_instruction: typeof pb.step_instruction === 'string' ? pb.step_instruction : undefined,
+    causal_chain_summary: isStringArray(pb.causal_chain_summary) ? pb.causal_chain_summary : undefined,
+    actions: normalizeCountermeasureActions(pb.actions),
+    safety_gates: isRecord(pb.safety_gates)
+      ? {
+          anticoagulant_lock_active: Boolean(pb.safety_gates.anticoagulant_lock_active),
+          lbnp_auto_vent_armed: Boolean(pb.safety_gates.lbnp_auto_vent_armed),
+          eva_suit_damping_active: Boolean(pb.safety_gates.eva_suit_damping_active),
+          gate4_invasive_decompression_locked:
+            pb.safety_gates.gate4_invasive_decompression_locked !== false,
+          gate4_eva_fitness_no_go: Boolean(pb.safety_gates.gate4_eva_fitness_no_go),
+        }
+      : undefined,
+  };
+}
+
 export function normalizeTelemetryPacket(data: unknown): TelemetryPacket | null {
   if (!isValidTelemetryPayload(data)) return null;
   const d = data as JsonRecord;
@@ -964,31 +987,6 @@ export function normalizeTelemetryPacket(data: unknown): TelemetryPacket | null 
     };
   }
 
-  // Active Playbook
-  let activePlaybook: ActivePlaybook | null = null;
-  if (isRecord(d.active_playbook)) {
-    const pb = d.active_playbook;
-    activePlaybook = {
-      playbook_id: String(pb.playbook_id),
-      title: typeof pb.title === 'string' ? pb.title : undefined,
-      current_step: typeof pb.current_step === 'number' ? pb.current_step : undefined,
-      total_steps: typeof pb.total_steps === 'number' ? pb.total_steps : undefined,
-      step_instruction: typeof pb.step_instruction === 'string' ? pb.step_instruction : undefined,
-      causal_chain_summary: isStringArray(pb.causal_chain_summary) ? pb.causal_chain_summary : undefined,
-      actions: normalizeCountermeasureActions(pb.actions),
-      safety_gates: isRecord(pb.safety_gates)
-        ? {
-            anticoagulant_lock_active: Boolean(pb.safety_gates.anticoagulant_lock_active),
-            lbnp_auto_vent_armed: Boolean(pb.safety_gates.lbnp_auto_vent_armed),
-            eva_suit_damping_active: Boolean(pb.safety_gates.eva_suit_damping_active),
-            gate4_invasive_decompression_locked:
-              pb.safety_gates.gate4_invasive_decompression_locked !== false,
-            gate4_eva_fitness_no_go: Boolean(pb.safety_gates.gate4_eva_fitness_no_go),
-          }
-        : undefined,
-    };
-  }
-
   const missionElapsedDays =
     d.mission_elapsed_days !== undefined
       ? asNullableNumber(d.mission_elapsed_days)
@@ -1016,7 +1014,8 @@ export function normalizeTelemetryPacket(data: unknown): TelemetryPacket | null 
     musculoskeletal,
     environment,
     safety_margins: safetyMargins,
-    active_playbook: activePlaybook,
+    active_playbook: normalizeActivePlaybook(d.active_playbook),
+    vitals_playbook: normalizeActivePlaybook(d.vitals_playbook),
     pocus_posterior: d.pocus_posterior !== undefined ? asNullableNumber(d.pocus_posterior) : undefined,
     causal_chain: isStringArray(d.causal_chain) ? d.causal_chain : undefined,
     quality_flags: biometrics.quality_flags,

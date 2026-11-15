@@ -19,8 +19,9 @@ import type {
 export interface PlaybookRunnerProps {
   activePlaybook: ActivePlaybook | null | undefined;
   isLiveEngine: boolean;
-  monitoringStatus: 'urgent' | 'awaiting' | 'watch' | 'normal' | 'unavailable' | 'recovered' | 'recovered-watch';
+  monitoringStatus: 'urgent' | 'awaiting' | 'watch' | 'normal' | 'unavailable' | 'recovered' | 'recovered-watch' | 'procedure-pending';
   onRestoreScenario?: () => void;
+  onSuggestedCompletionChange?: (completed: boolean) => void;
   thrombusConfirmed: boolean | null;
   ventEvent?: string | null;
   syncLatencyUs?: number | null;
@@ -59,6 +60,7 @@ export function PlaybookRunner({
   isLiveEngine,
   monitoringStatus,
   onRestoreScenario,
+  onSuggestedCompletionChange,
   thrombusConfirmed,
   ventEvent,
   syncLatencyUs,
@@ -81,29 +83,24 @@ export function PlaybookRunner({
     }
   }, [requestedPlaybook]);
 
-  const liveCatalogMatch = useMemo<PlaybookCatalogEntry | undefined>(() => {
-    if (!activePlaybook || activePlaybook.playbook_id === 'NONE') return undefined;
-    return getCatalogEntry(activePlaybook.playbook_id);
-  }, [activePlaybook]);
-
-  const followingLive = followLiveEngine && Boolean(liveCatalogMatch);
-  const selectedEntry = useMemo<PlaybookCatalogEntry>(() => {
-    if (followingLive && liveCatalogMatch) return liveCatalogMatch;
-    return getCatalogEntry(manualPlaybookId) ?? CRYSTALLIZED_PLAYBOOK_LIST[0];
-  }, [followingLive, liveCatalogMatch, manualPlaybookId]);
+  const suggested = activePlaybook && activePlaybook.playbook_id !== 'NONE' ? activePlaybook : null;
+  const followingLive = followLiveEngine && suggested !== null;
+  const usingSuggested = followingLive || (suggested !== null && suggested.playbook_id === manualPlaybookId);
+  const selectedId = usingSuggested && suggested ? suggested.playbook_id : manualPlaybookId;
+  const selectedEntry = getCatalogEntry(selectedId) ?? (usingSuggested ? undefined : CRYSTALLIZED_PLAYBOOK_LIST[0]);
 
   const gates = getEffectiveSafetyGates(activePlaybook, thrombusConfirmed);
 
   const resolvedActions = useMemo<CountermeasureAction[]>(() => {
     if (
-      followingLive &&
+      usingSuggested &&
       activePlaybook?.actions &&
       activePlaybook.actions.length > 0
     ) {
       return activePlaybook.actions;
     }
-    return enforceHardSafetyGatesOnActions(selectedEntry.default_actions, gates);
-  }, [followingLive, activePlaybook, selectedEntry, gates]);
+    return enforceHardSafetyGatesOnActions(selectedEntry?.default_actions ?? [], gates);
+  }, [usingSuggested, activePlaybook, selectedEntry, gates]);
 
   const steps = useMemo(
     () =>
@@ -133,10 +130,10 @@ export function PlaybookRunner({
     activePlaybook?.causal_chain_summary &&
     activePlaybook.causal_chain_summary.length > 0
       ? activePlaybook.causal_chain_summary
-      : selectedEntry.default_causal_chain;
+      : selectedEntry?.default_causal_chain ?? [];
 
   const displayTitle =
-    followingLive && activePlaybook?.title ? activePlaybook.title : selectedEntry.title;
+    usingSuggested && activePlaybook?.title ? activePlaybook.title : selectedEntry?.title ?? 'Suggested procedure';
   const displayStepInstruction =
     followingLive && activePlaybook?.step_instruction
       ? activePlaybook.step_instruction
@@ -144,9 +141,13 @@ export function PlaybookRunner({
   const validationTag = modelValidationStatus ?? 'ILLUSTRATIVE_UNVALIDATED';
 
   const completed = steps.length > 0 && activeStepIdx >= steps.length;
-  const showUltrasoundFinding = isAnticoagulantStep || selectedEntry.short_code === '#01' || selectedEntry.short_code === '#02';
+  useEffect(() => {
+    if (usingSuggested) onSuggestedCompletionChange?.(completed);
+  }, [usingSuggested, completed, onSuggestedCompletionChange]);
+  const showUltrasoundFinding = isAnticoagulantStep || selectedEntry?.short_code === '#01' || selectedEntry?.short_code === '#02';
   const statusText = {
     urgent: 'Alarm still active',
+    'procedure-pending': 'Readings stable · finish the procedure',
     awaiting: 'Recovery awaiting updated readings',
     recovered: 'Critical alert cleared',
     'recovered-watch': 'Critical alert cleared · continue monitoring',
@@ -156,7 +157,7 @@ export function PlaybookRunner({
   }[monitoringStatus];
 
   const reviewStep = (index: number) => {
-    setManualPlaybookId(selectedEntry.playbook_id);
+    setManualPlaybookId(selectedId);
     setFollowLiveEngine(false);
     setManualStepIdx(index);
   };
@@ -164,13 +165,13 @@ export function PlaybookRunner({
   return (
     <div className="act-procedure space-y-4 text-sm text-gray-200">
       <div className="act-procedure-meta">
-        <span>{followingLive ? (isLiveEngine ? 'Selected by the engine' : 'Selected by the simulation') : 'Manual review'} · {displayLabel(validationTag)}</span>
+        <span>{usingSuggested ? (isLiveEngine ? 'Suggested by the engine' : 'Suggested by the simulation') : 'Manual review'} · {displayLabel(validationTag)}</span>
 
-        {!followLiveEngine && liveCatalogMatch && (
+        {!usingSuggested && suggested && (
           <button type="button" onClick={() => {
             setFollowLiveEngine(true);
             setManualStepIdx(0);
-          }} className="act-secondary-button">Follow suggested procedure</button>
+          }} className="act-secondary-button">Switch to suggested procedure</button>
         )}
       </div>
       <h3 className="act-procedure-title">{displayLabel(displayTitle.replace(/^Playbook #\d+:\s*/i, ''))}</h3>
@@ -291,13 +292,14 @@ export function PlaybookRunner({
         <CockpitSummary>Browse other procedures</CockpitSummary>
       <label className="act-procedure-picker">
         Browse procedures
-        <CockpitSelect value={selectedEntry.playbook_id} onChange={event => {
+        <CockpitSelect value={selectedId} onChange={event => {
           const entry = ALL_CRYSTALLIZED_PLAYBOOK_LIST.find(item => item.playbook_id === event.target.value);
           if (!entry) return;
           setFollowLiveEngine(false);
           setManualPlaybookId(entry.playbook_id);
           setManualStepIdx(0);
         }}>
+          {usingSuggested && !selectedEntry && <option value={selectedId}>{displayTitle}</option>}
           {ALL_CRYSTALLIZED_PLAYBOOK_LIST.map(entry => (
             <option key={entry.playbook_id} value={entry.playbook_id}>
               {entry.title.replace(/^Playbook #\d+:\s*/i, '')}
@@ -308,7 +310,7 @@ export function PlaybookRunner({
       </details>
       <details className="scenario-disclosure">
         <CockpitSummary>Procedure details and sources</CockpitSummary>
-        <p className="mb-3 text-xs text-gray-400">{displayLabel(validationTag)} · {selectedEntry.normative_clause}
+        <p className="mb-3 text-xs text-gray-400">{displayLabel(validationTag)}{selectedEntry && ` · ${selectedEntry.normative_clause}`}
           {typeof syncLatencyUs === 'number' && Number.isFinite(syncLatencyUs) && ` · Engine response: ${syncLatencyUs} µs`}
         </p>
       {/* 4 Hard Clinical Safety Gates Strip (1, 2, 3, 4A, 4B) */}

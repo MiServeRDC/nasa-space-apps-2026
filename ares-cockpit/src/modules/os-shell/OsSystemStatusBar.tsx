@@ -1,3 +1,4 @@
+import { formatMissionDelay, type MissionProfile } from '../../lib/missionContext';
 import { CloseButton } from '../ui-primitives/CloseButton';
 import { useEffect, useState } from 'react';
 import type { DecodedBinaryTelemetryFrame } from '../../lib/binaryTelemetryDecoder';
@@ -53,17 +54,7 @@ interface TauriInternalsWindow {
 export const IS_ARES_DESKTOP_SHELL =
   typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
-function formatOwltDelay(seconds: number): string {
-  if (!Number.isFinite(seconds) || seconds < 0) {
-    return 'BLACKOUT';
-  }
-  if (seconds < 60) {
-    return `${seconds.toFixed(1)}s`;
-  }
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.round(seconds % 60);
-  return `${mins}m ${String(secs).padStart(2, '0')}s`;
-}
+
 
 function formatMetClock(elapsedSeconds: number): string {
   const safe = Number.isFinite(elapsedSeconds) && elapsedSeconds >= 0 ? Math.floor(elapsedSeconds) : 0;
@@ -76,6 +67,7 @@ function formatMetClock(elapsedSeconds: number): string {
 export function OsSystemStatusBar({
   packet,
   whatIf,
+  missionProfile,
   transportMode,
   ipcLatencyUs,
   binaryFrameCount,
@@ -84,6 +76,7 @@ export function OsSystemStatusBar({
 }: {
   packet: TelemetryPacket;
   whatIf: WhatIf;
+  missionProfile: MissionProfile;
   transportMode: TransportMode;
   ipcLatencyUs: number | null;
   binaryFrameCount: number;
@@ -118,15 +111,9 @@ export function OsSystemStatusBar({
     ? formatMetClock(osStatus.mission_elapsed_s)
     : `${utcNow.toISOString().slice(11, 19)}Z`;
 
-  const owltSeconds =
-    lastBinaryFrame?.owlt_delay_sec ??
-    osStatus?.owlt.owlt_seconds ??
-    852; // 14m 12s Mars transit default
-  const eimoAutonomous =
-    lastBinaryFrame?.eimo_autonomous_active ??
-    osStatus?.owlt.eimo_autonomous_active ??
-    owltSeconds > 60;
-  const blackoutActive = osStatus?.owlt.blackout_active ?? !Number.isFinite(owltSeconds);
+  const owltSeconds = missionProfile.oneWayS;
+  const blackoutActive = owltSeconds === null;
+  const eimoAutonomous = blackoutActive || owltSeconds > 60;
 
   const radiationDose =
     lastBinaryFrame?.radiation_msv_d ??
@@ -235,7 +222,7 @@ export function OsSystemStatusBar({
           }`}
           title="NASA-STD-3001 Vol. 1 [V1 3006] Autonomous Earth-Independent Medical Operations"
         >
-          OWLT: {formatOwltDelay(owltSeconds)} ({eimoAutonomous ? 'EIMO AUTONOMOUS' : 'GROUND LINK'}) [V1 3006]
+          OWLT: {owltSeconds === null ? 'Unavailable · solar conjunction' : formatMissionDelay(owltSeconds)} ({eimoAutonomous ? 'ONBOARD AUTONOMY' : 'GROUND LINK'})
         </span>
       </div>
 
