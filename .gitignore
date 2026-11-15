@@ -9,6 +9,10 @@ __pycache__/
 data/ares_storage/
 *.wav
 
+# Internal development tools (untracked)
+.court/
+court-tool/
+
 # Generated artifacts (not source): graphify incremental cache and ad-hoc report outputs.
 # Tracked graphify outputs (graph.json, GRAPH_REPORT.md) are intentionally NOT ignored.
 graphify-out/cache/

@@ -104,9 +104,7 @@ This report is excluded from its own inventory.
 - [00_Executive_Summary_and_Challenge.md](../../00_Executive_Summary_and_Challenge.md) — first keyword hit at line 24; 2 matching lines.
 - [05_Official_NASA_Challenge_Brief_and_Resources.md](../../05_Official_NASA_Challenge_Brief_and_Resources.md) — first keyword hit at line 55; 1 matching lines.
 - [09_NASA_Space_Apps_Official_Rules_and_Judging_Guide.md](../../09_NASA_Space_Apps_Official_Rules_and_Judging_Guide.md) — first keyword hit at line 24; 4 matching lines.
-- [10_Gemini_Argon_Review_and_Validation_Prompt.md](../../10_Gemini_Argon_Review_and_Validation_Prompt.md) — first keyword hit at line 7; 20 matching lines.
 - [PANORAMICA_GENERALE_PROGETTO.md](../../PANORAMICA_GENERALE_PROGETTO.md) — first keyword hit at line 1; 29 matching lines.
-- [PANORAMICA_GENERALE_PROGETTO.typ](../../PANORAMICA_GENERALE_PROGETTO.typ) — first keyword hit at line 20; 49 matching lines.
 - [crates/ares-security-privacy/Cargo.toml](../../crates/ares-security-privacy/Cargo.toml) — first keyword hit at line 5; 1 matching lines.
 - [docs/ARES_HEALTH_FULL_PROJECT_SNAPSHOT_AND_ARCHITECTURE.md](../ARES_HEALTH_FULL_PROJECT_SNAPSHOT_AND_ARCHITECTURE.md) — first keyword hit at line 2; 112 matching lines.
 - [docs/architecture/IMPLEMENTATION_STACK.md](../architecture/IMPLEMENTATION_STACK.md) — first keyword hit at line 32; 57 matching lines.
@@ -115,8 +113,6 @@ This report is excluded from its own inventory.
 - [docs/issues/ISSUE_CONNECTED_PORTAL_AND_3D_TWIN.md](../issues/ISSUE_CONNECTED_PORTAL_AND_3D_TWIN.md) — first keyword hit at line 4; 30 matching lines.
 - [docs/scientific_references.md](../scientific_references.md) — first keyword hit at line 1; 134 matching lines.
 - [docs/submission/PANORAMICA_GENERALE_PROGETTO.typ](../submission/PANORAMICA_GENERALE_PROGETTO.typ) — first keyword hit at line 17; 18 matching lines.
-- [generate_diagrams.py](../../generate_diagrams.py) — first keyword hit at line 119; 5 matching lines.
-- [make_typst.py](../../make_typst.py) — first keyword hit at line 25; 49 matching lines.
 
 #### Rust source/comments
 

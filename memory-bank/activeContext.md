@@ -1,5 +1,16 @@
 # Active Context: ARES-Health (NASA Space Apps Challenge 2026)
 
+## Repository Audit and Cleanup for NASA Space Apps Judging (2026-11-15)
+
+Completed systematic repository audit via Gemini 4 Carbon High and executed safe cleanup:
+1. Removed internal adversarial debate harness (.court/ and court-tool/) and duplicate skills/ directory from repository root. Added .court/ and court-tool/ to .gitignore.
+2. Removed uncompressed .wav audio files and intermediate .mp3 files from docs/submission/, fixing Gate L6-04 UnicodeDecodeError crash while preserving clean .mp4 presentation videos and .srt subtitles.
+3. Removed legacy pre-hackathon Italian planning PDF, root Typst draft, make_typst.py, and generate_diagrams.py. Kept diagrams/ directory and canonical docs/submission/PANORAMICA_GENERALE_PROGETTO.typ.
+4. Removed Dossier 10 (raw LLM review prompt) and preserved canonical English dossiers 00-09 and 11, strictly satisfying agent_probe.sh Probe 4 and Gate L6-05 link integrity.
+5. Archived one-off browser verification scripts to scripts/archive/ and eliminated obsolete scripts. Kept essential test fixtures (anatomyRegistration.mjs, inventory_anatomy_sources.py, verify_lancedb_vendor.py, verify_cockpit_live.mjs).
+6. Preserved graphify-out/ (graph.json, GRAPH_REPORT.md), satisfying Rust integration test integration_graph_and_mcp.rs.
+7. Verified: agent_probe.sh --fast (4/4 passed), 175/175 frontend tests passed, npm run build passed in 2.84s, cargo test --workspace passed (329+ tests passed).
+
 ## Repository-first judge entry (2026-11-15)
 
 User selected GitHub source delivery and deferred the video; no slides created.

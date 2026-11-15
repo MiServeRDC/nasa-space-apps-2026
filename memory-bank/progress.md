@@ -1,5 +1,12 @@
 # Progress Tracking: ARES-Health (Autonomous Resilient Edge-native System for Astronaut Health)
 
+## Repository Cleanup and Audit for NASA Space Apps Judging (2026-11-15)
+
+- Completed Gemini 4 Carbon High audit and executed clean-up of obsolete root/docs files.
+- Eliminated internal court debate harness, duplicate skills/ directory, intermediate voiceovers, and legacy pre-hackathon PDF.
+- Preserved graphify-out/, canonical numbered dossiers 00-09, 11, diagrams, and all automated testing scripts.
+- Verified 100% clean passes on agent_probe.sh --fast, npm test (175/175), npm run build, and cargo test --workspace (329+ tests).
+
 ## Repository-first judge entry (2026-11-15)
 
 User selected GitHub source delivery and deferred the video; no slides created.
