@@ -362,3 +362,7 @@ export interface IndicatorMetadata {
   availabilityReason: string | null;
   qualityFlags: string[];
 }
+
+/** Alias used by greenfield ring-buffer and spatial workbench consumers. */
+export type TelemetryFrame = TelemetryPacket;
+

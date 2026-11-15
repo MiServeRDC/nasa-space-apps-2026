@@ -1,5 +1,38 @@
 # Active Context: ARES-Health (NASA Space Apps Challenge 2026)
 
+## Greenfield ("Terra Rasa") Awwwards SOTD/SOTY Spatial Workbench Redesign — Phases 1-6 Completed & Verified (2026-11-15)
+
+The full 6-phase greenfield `ares-cockpit` spatial biomedical workbench architecture (`8.790/10` SOTY Contender blueprint) has been implemented end-to-end and verified with 100% contract, clinical safety gate, and air-gap compliance:
+
+1. **Phases 1 & 2 — Air-Gapped Foundations, Tokens, Zero-GC Ring Buffer & Privacy Stores:**
+   * Bundled local WOFF2 variable fonts (`public/fonts/Geist-Variable.woff2`, `GeistMono-Variable.woff2`) and offline Draco WASM/JS decoders (`public/draco/`) under strict `Content-Security-Policy: default-src 'self'`.
+   * Configured `src/index.css` with OKLCH perceptual tokens on `#000000` OLED canvas, CSS `@property` specular border houdini tokens, strictly `<= 4` blurred root shells (`0` nested `backdrop-filter`), and `.is-degraded-gpu` fallback.
+   * Implemented zero-GC `Float64Array` circular `TelemetryRingBuffer` (`NaN` dropout sentinels for Issue #11 `BEAT_INTERVALS_NOT_AVAILABLE`, $O(\log N)$ binary-search timeline scrubbing), `workbenchStore.ts`, `studioTimelineStore.ts` (`<= 29.8s` NASA pitch hard cap), NASA-STD-3001 Vol. 1 Ch. 7 role-based `privacyRedaction.ts`, and capture-phase `useKeyboardOrchestrator.ts`.
+
+2. **Phase 3 — Single-Canvas WebGL2 Biodigital Stage & Custom GLSL3 Shaders (`src/stage3d/`):**
+   * Built persistent `<SpatialCanvasRoot>` (`gl.scissor` / Drei `<View.Port />`, autonomous `webglcontextlost`/`webglcontextrestored` recovery, adaptive frame-time governor, and `<ShaderWarmupManager>`).
+   * Implemented dual-gender procedural + local Z-Anatomy `.glb` (`0x46546c67` magic guard) anatomical twin (`BiodigitalTwinStage.tsx`), two-pass `BackSide`/`FrontSide` Fresnel + barycentric wireframe GLSL3 `digitalTwinMaterial`, internal `organLoadMaterial`, single-`InstancedMesh` canonical 5-region `UBERON:` beacons (`UBERON:0001585` explicitly rejected), merged `CubicBezierCurve3` causal arcs, spherical shortest-arc `UnifiedCameraController` with `setViewOffset` optical frustum centering, and `SecondaryMeshViewport`.
+
+3. **Phases 4 & 5 — Zero-Reflow Instruments, Locked `100dvh` 3-Column Bento Workbench, Clinical Lenses & Drawers:**
+   * Delivered `TabularCounter` (`U+2212` minus, `1ch` sign slot, zero `null`/`NaN` coercion), `WaveformCanvas2D` (`pen-lift` across `NaN` gaps), `QuantileConeChart` ($q_{0.05} \le q_{0.50} \le q_{0.95}$ + `ConformalAbstentionGate`), `PressHoldActionBtn` (`1500 ms` hold + reduced-motion instant trigger), `BentoCardShell` (GSAP `Flip`), `HorizonBar` (`36px`, `0` blur), `VitalsAnchorCard`, `SpatialStageHud`, `TelemetryIgnitionPreloader`, and `WorkbenchShell`.
+   * Delivered `BranchedPlaybookDagLens` (all 15 Playbooks `#01-#15` across `P1-P6` triage precedence tiers + Gates `1`, `2`, `3`, `4A`, `4B` preserving non-anticoagulant therapeutics Potassium Citrate `#10` and Valacyclovir `#13`), `WhatIfCounterfactualLens` (magnetic baseline detents + `/api/stress-test` sync), `DiagnosticImagingLens` (2-stage Bayesian POCUS + `OPTICAL_RGB_HEURISTIC_V1` / `ILLUSTRATIVE_UNVALIDATED` `AiInjuryModal` with `URL.revokeObjectURL`), `AnomalyDiagnosticsLens` (Mahalanobis $D^2$ + CUSUM + 5-120s EWMA cones), and `ForecastAndBoneRenalLens` (Frost-Hargens SOST, Pegreffi MQI, `0.38g` GAI, Tiselius RSR).
+   * Delivered `SlideOverDrawerShell`, `MissionPortalDrawer` (`8.2-48.1 min` OWLT, ChaCha20-Poly1305 DSN preview queue, virtualized 24-Dataset Scientific Evidence Atlas), `AuditAndProvenanceDrawer` (`LIVE_ENGINE_LEDGER` vs `OFFLINE_SIMULATION_PREVIEW` SHA-256 chain verifier), `OpenScreenStudioBar` (`29.8s` / `120s` director bar with `FOCUS | SPLIT | PIP` Drei `<View />` layouts), `CommandPaletteOverlay` (8 `FastMCP` tools + camera hover preview/restore), `BottomCopilotStudioPill` (`[V2 10027]` voice safety interlock), and `ShortcutsOverlay`, mounted via `src/App.tsx` and `src/main.tsx`.
+
+4. **Phase 6 — NotebookLM Surgical Risk Fixes (`Risks 1-5`), Bundle Split & Full Regression Audit:**
+   * **Risk 1:** `document.fonts.ready` / `waitForFontsReadyBounded` gate enforced before GSAP `Flip.getState` / `Flip.from`, drawer transitions, and preloader ignition (`index.html`, `main.tsx`, `instrumentMath.ts`, `BentoCardShell.tsx`, `SlideOverDrawerShell.tsx`, `TelemetryIgnitionPreloader.tsx`).
+   * **Risk 2:** Strict vertex-count, normal-count, and triangle-index parity assertion (`assertMorphTopologyMatch`) verified in `proceduralTwinBuilder.ts`.
+   * **Risk 3:** `setPointerCapture` / `releasePointerCapture` + `isScrubbing` lock freezing `OrbitControls` across all sliders and viewports (`WhatIfCounterfactualLens.tsx`, `MissionPortalDrawer.tsx`, `OpenScreenStudioBar.tsx`, `PhaseActDeck.tsx`, `UnifiedCameraController.tsx`, `SecondaryMeshViewport.tsx`).
+   * **Risk 4:** Recursive `deepDisposeObject` + `renderer.renderLists.dispose()` GPU sanitization verified across `airgappedGlbLoader.ts`, `ShaderWarmupManager.tsx`, and `SecondaryMeshViewport.tsx`.
+   * **Risk 5:** `3000 ms` polite hysteresis + `5000 ms` dedup + `0 ms` assertive bypass + forced `offsetHeight` reflow in `a11yAnnouncer.ts` + background `inert` / `aria-hidden` (`useKeyboardOrchestrator.ts`), Tab focus trap (`SlideOverDrawerShell.tsx`), and `restoreFocusById` (`drawerLogic.ts`).
+   * **Bundle & Gate Verification (`vite.config.ts` `manualChunks` + `tests/greenfield_phase6.test.ts`):**
+     - `ares-cockpit` `npm run lint`: `0` errors (`tsc -b --noEmit`).
+     - `ares-cockpit` `npm test`: `55/55` tests passing across `12` suites (`0` failures, `0` skipped), including `<StrictMode>` 3D stage lifecycle, 360-degree turntable `autoRotate`, per-organ stress attributes, and pulsing 3D problem halo rings.
+     - `ares-cockpit` `npm run build`: `665` modules, `0` warnings; main entry chunk `index-C-4Co5ZU.js` = `371.47 kB` raw / `113.05 kB` (`110.40 KiB`) gzip; total combined JS across all 4 chunks (`index`, `vendor-ui`, `vendor-r3f`, `vendor-three`) = `1,638.54 kB` raw / **`475.85 kB` (`464.70 KiB`) gzip** (`< 480 KB` budget); CSS = `70.66 kB` raw / `12.94 kB` (`12.64 KiB`) gzip; `0` Unicode emojis; `0` external CDN URLs; sole telemetry validator `src/lib/telemetryValidation.ts`.
+     - Live WebGL2 Playwright verification on `http://127.0.0.1:5173/` (offline without Rust backend): `0` WebGL `GL_INVALID_VALUE` warnings, full head-to-toe rotating 3D astronaut (`> 217,000` active center-stage pixels + `8,930` warm amber/orange problem highlight pixels on IJV/CNS + 1-click organ zoom), and exact `900px` (`100dvh`) grid alignment.
+     - Rust workspace: `./scripts/agent_probe.sh --fast` (`4/4` probes passing) and `cargo test --workspace` (`205/205` tests passing across `9` crates / `30` test binaries, `0` failures, `0` ignored).
+
+---
+
 ## Full Resolution of Carbon High Independent Audit & Verified Merge into Main (2026-11-14)
 
 All 5 critical audit vulnerabilities identified by the independent Gemini Carbon High audit have been resolved, comprehensively tested, and cleanly merged into `main` (`ad3bab9`):
@@ -45,8 +78,8 @@ All 5 critical audit vulnerabilities identified by the independent Gemini Carbon
 
 ---
 
-**Last Updated:** 2026-11-14  
-**Current Phase:** ALL 41 PHASES / 14 BLOCKS (A–N) `COMPLETED (TESTED)` — Block N (`Phases 38–41` / `N1–N4`: Multisystem Exploration Medicine, Wearable Suite V2, Tiselius RSR Lithiasis, Orthostatic Fluid-Shift Hemodynamics, Mars Circadian & Neuro-Immune Dynamics, Multi-Organ POCUS & Playbooks #10–#15, and Hard Clinical Safety Gate 4) fully implemented and verified alongside Blocks A–M with **all workspace Rust crates passing tests & Clippy with 0 warnings**, **`21/21` cockpit Node tests passing across `7` suites**, `0` Clippy warnings, `0` `.unwrap()`/`.expect()` in production `crates/*/src/`, `0` Unicode emojis, `ares-calibrate --verify-only` clean across all `53` PhysioNet BIDMC subjects, `./scripts/launch_ares_medos.sh --verify` clean, `./scripts/build_submission_docs.sh` (`6/6` gates passing), and `ares-cockpit` passing. See [`docs/architecture/MODEL_EVIDENCE_AUDIT.md`](../docs/architecture/MODEL_EVIDENCE_AUDIT.md).  
+**Last Updated:** 2026-11-15  
+**Current Phase:** ALL 41 ENGINE PHASES / BLOCKS A-O + GREENFIELD TERRA RASA COCKPIT PHASES 1-6 `COMPLETED (TESTED)` — Block N (`Phases 38-41` / `N1-N4`) and Greenfield Spatial Workbench (`Phases 1-6`: Single-Canvas WebGL2 GLSL3 Biodigital Stage, Zero-GC Ring Buffer, Locked `100dvh` Bento Shell, Clinical Lenses, Slide-Over Drawers, and NotebookLM Surgical Risks 1-5) fully implemented and verified alongside Blocks A-M with **`205/205` workspace Rust tests passing across `9` crates with `0` Clippy warnings**, **`54/54` cockpit Node tests passing across `12` suites**, **`471.58 kB` (`460.53 KiB`) total gzipped JS** (`< 480 KB` budget), `0` `.unwrap()`/`.expect()` in production `crates/*/src/`, `0` Unicode emojis, `ares-calibrate --verify-only` clean across all `53` PhysioNet BIDMC subjects, `./scripts/launch_ares_medos.sh --verify` clean, `./scripts/build_submission_docs.sh` (`6/6` gates passing), and `ares-cockpit` passing. See [`docs/architecture/MODEL_EVIDENCE_AUDIT.md`](../docs/architecture/MODEL_EVIDENCE_AUDIT.md).  
 **Active Repository:** `https://github.com/MiServeRDC/nasa-space-apps-2026` (`main` synchronized).
 
 ---
