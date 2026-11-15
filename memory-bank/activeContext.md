@@ -1,5 +1,25 @@
 # Active Context: ARES-Health (NASA Space Apps Challenge 2026)
 
+## Greenfield phase 10 end-to-end qualification and controlled integration delivered (2026-11-15)
+
+Dedicated work/MiServeRDC-greenfield-phase01; no main/push/hosted Actions.
+Implemented complete end-to-end qualification suite (`tests/greenfield_phase10.test.ts`):
+- Suite A1: Non-finite telemetry values (null, NaN, undefined) render explicit "Unavailable" badges without string leaks or false zeros.
+- Suite A2: Strict forecast channel binding suppresses unmatched cones (Issue #11 absent RMSSD forces null rmssd_ms_cone).
+- Suite A3: Deliberate confirmation hold time enforced under reduced motion; frameloop drops to on-demand.
+- Suite A4: Unavailable WebGL deterministic 2D fallback; LOW_2D drops frameloop to never with DPR 1 while preserving complete clinical state.
+- Suite B: Provenance, snapshot ordering, and stale detection lifecycle verified; regressive sequence rejected; source switch resets tracking.
+- Suite C: All 15 crystallized and vitals playbooks (#01-#15) verified in catalog with safety gates, default_actions, and normative clauses.
+- Suite D: Dual donor switching (Male Z-Anatomy CC BY-SA 4.0 vs Female HRA CC BY 4.0) with license segregation and focus preservation.
+Tests: 167 frontend tests passing (`node --test`), TypeScript lint and build passing in 2.34s with 0 errors.
+Fast probe 4/4 passing (0 unwrap/expect in crates, cargo check and clippy 0 warnings).
+Dual-profile browser qualification via headless Chrome/Playwright (`scripts/verify_greenfield_phase10_browser.mjs`):
+Profile 1 (Desktop 3D): 0 external requests (100% air-gapped), cold boot within budget, 2D alert-to-action confirmed, multi-viewport reflow across 1440, 1024, 768, 390px with zero horizontal scroll overflow.
+Profile 2 (Forced WebGL Disabled): WebGL2/WebGL stubbed to undefined; deterministic 2D fallback mounts cleanly with 0 console errors and full interactive 2D alert-to-action navigation.
+Artifacts recorded in `/var/folders/0t/wclc3zfx6vn6vrcmw_bz2s9w0000gn/T/ares-greenfield-phase10-viUroQ/`.
+See `docs/evaluation/GREENFIELD_PHASE10_RESULTS.md`.
+Status: All Greenfield Phases 0-10 complete, qualified, and ready for team review and controlled integration.
+
 ## Greenfield phase 9 performance, quality policy, and resource governance delivered (2026-11-15)
 
 Dedicated work/MiServeRDC-greenfield-phase01; no main/push/hosted Actions.
