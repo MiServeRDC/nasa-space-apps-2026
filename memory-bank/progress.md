@@ -1,5 +1,13 @@
 # Progress Tracking: ARES-Health (Autonomous Resilient Edge-native System for Astronaut Health)
 
+## Final README Audit Remediation (2026-11-15)
+
+- Resolved broken `#core-constraint` anchor with explicit HTML anchor tag.
+- Corrected Alessandro Nicolini's contact email to `aleeesandronicolini@gmail.com`.
+- Refined Mermaid labels to eliminate hardware sensor ambiguity (DSP model) and highlight illustrative playbook status.
+- Clarified port 8080 (judge production) vs port 5173 (developer hot-reload).
+- Committed and pushed cleanly to origin/main (commit aa5fabe).
+
 ## README Refinement & Upstream Synchronization (2026-11-15)
 
 - Applied approved modular refinements to README.md: stack badges, quick-bar navigation, air-gap loopback note, and responsive Mermaid architecture flowchart.

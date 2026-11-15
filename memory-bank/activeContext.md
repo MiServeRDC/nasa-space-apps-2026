@@ -1,5 +1,14 @@
 # Active Context: ARES-Health (NASA Space Apps Challenge 2026)
 
+## Final README Audit Remediation (2026-11-15)
+
+- Fixed broken anchor for the 5th badge (`#core-constraint`) by placing an explicit HTML anchor `<a id="core-constraint"></a>` at Section 1.
+- Updated Section 10 team table: corrected Alessandro Nicolini's email to `aleeesandronicolini@gmail.com` (matching his primary GitHub account @MiServeRDC).
+- Refined Mermaid architecture diagram: clarified `Contactless Radar DSP Model (60/5.2 GHz Notch Filter)` and `30 Illustrative Playbooks (#01..#30)`.
+- Disambiguated Section 7 as `Developer Quickstart (Two Terminals & Hot Reload)` on port 5173 vs the single-process judge launch on port 8080.
+- Clarified Section 4 FastMCP note: highlighted that the single-process judged demo runs in `--mode ws-only`, while FastMCP operates in `--mode ws-and-mcp`.
+- Verified 100% valid internal anchors, zero emojis, clean `cargo check`, clean `npm run lint`, and synced to `origin/main` (commit `aa5fabe`).
+
 ## README Refinement & Upstream Alignment (2026-11-15)
 
 - **Approved Changes Applied to README.md:**
